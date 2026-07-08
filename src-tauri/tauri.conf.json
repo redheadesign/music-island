@@ -1,0 +1,76 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Music Island",
+  "version": "0.1.0",
+  "identifier": "com.redheadesign.music-island",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Music Island",
+        "width": 220,
+        "height": 20,
+        "minWidth": 120,
+        "minHeight": 8,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": true,
+        "center": false,
+        "x": 0,
+        "y": 0
+      },
+      {
+        "label": "settings",
+        "title": "Music Island Settings",
+        "width": 760,
+        "height": 620,
+        "minWidth": 620,
+        "minHeight": 480,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "shadow": false,
+        "alwaysOnTop": false,
+        "skipTaskbar": false,
+        "visible": false,
+        "center": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "icon": ["icons/icon.ico"],
+    "createUpdaterArtifacts": false,
+    "publisher": "Fedor Svetlov",
+    "category": "Utility",
+    "shortDescription": "Top-edge music overlay for Windows SMTC media sessions.",
+    "longDescription": "Windows top-edge overlay for the active media session. Shows track metadata, playback controls, and layout presets via native SMTC/GSMTC. Compatible with desktop players that register Windows media controls.",
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": true,
+        "installMode": "currentUser",
+        "languages": ["English", "Russian"],
+        "sidebarImage": null
+      },
+      "wix": {
+        "language": ["en-US", "ru-RU"]
+      }
+    }
+  }
+}

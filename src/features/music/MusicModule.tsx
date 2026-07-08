@@ -1,0 +1,202 @@
+import { Pause, Play } from 'lucide-react'
+import { useRef, useState } from 'react'
+import type { CSSProperties, PointerEvent } from 'react'
+import type { MediaCommand, MediaSnapshot } from '../../shared/lib/types'
+import { formatTime } from '../../shared/lib/format'
+import { MarqueeText } from '../../shared/ui/MarqueeText'
+
+interface MusicModuleProps {
+  media: MediaSnapshot | null
+  progressMs: number | null
+  progressPercent: number
+  density: 'buttons-only' | 'minimal' | 'balanced' | 'rich'
+  showArtwork: boolean
+  showTitle: boolean
+  showArtist: boolean
+  showProgress: boolean
+  showSource: boolean
+  showPreviousNext: boolean
+  onCommand: (command: MediaCommand) => void
+}
+
+export function MusicModule({
+  media,
+  progressMs,
+  progressPercent,
+  density,
+  showArtwork,
+  showTitle,
+  showArtist,
+  showProgress,
+  showPreviousNext,
+  onCommand,
+}: MusicModuleProps) {
+  const [scrubRatio, setScrubRatio] = useState<number | null>(null)
+  const scrubbingRef = useRef(false)
+  const seekGestureIdRef = useRef<number | null>(null)
+  const seekSentRef = useRef(false)
+
+  if (!media?.hasSession) {
+    return (
+      <section className="music-module music-module--empty" aria-label="No media session">
+        <div className="track-copy">
+          <strong>No music playing</strong>
+          <span>Start any Windows media source.</span>
+        </div>
+      </section>
+    )
+  }
+
+  const isPlaying = media.playbackStatus === 'playing'
+  const title = media.title || 'Unknown track'
+  const artist = media.artist || 'Unknown artist'
+  const isButtonsOnly = density === 'buttons-only'
+  const canShowSeek = showProgress && !isButtonsOnly && Boolean(media.durationMs)
+  const trackLabel = [showArtist ? artist : null, showTitle ? title : null].filter(Boolean).join(' · ') || title
+  const activeRatio = scrubRatio ?? progressPercent / 100
+  const activeProgressMs =
+    scrubRatio != null && media.durationMs
+      ? Math.round(media.durationMs * scrubRatio)
+      : progressMs
+
+  const ratioFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1)
+  }
+
+  const finishSeekGesture = (event: PointerEvent<HTMLButtonElement>, commit: boolean) => {
+    if (seekGestureIdRef.current !== event.pointerId) {
+      return
+    }
+
+    if (commit && !seekSentRef.current && media.durationMs && media.canSeek) {
+      seekSentRef.current = true
+      const ratio = ratioFromPointer(event)
+      onCommand({ seek: { positionMs: Math.round(media.durationMs * ratio) } })
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+
+    scrubbingRef.current = false
+    seekGestureIdRef.current = null
+    setScrubRatio(null)
+  }
+
+  const handleSeekPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!media.durationMs || !media.canSeek) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    scrubbingRef.current = true
+    seekSentRef.current = false
+    seekGestureIdRef.current = event.pointerId
+    setScrubRatio(ratioFromPointer(event))
+  }
+
+  const handleSeekPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!scrubbingRef.current || !event.currentTarget.hasPointerCapture(event.pointerId)) {
+      return
+    }
+
+    setScrubRatio(ratioFromPointer(event))
+  }
+
+  const handleSeekPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    finishSeekGesture(event, true)
+  }
+
+  const handleSeekPointerCancel = (event: PointerEvent<HTMLButtonElement>) => {
+    finishSeekGesture(event, false)
+  }
+
+  return (
+    <section className={`music-module music-module--${density}`} aria-label="Now playing">
+      <div className="media-controls media-controls--island" aria-label="Playback controls">
+        {showPreviousNext ? (
+          <button type="button" className="icon-button media-button" aria-label="Previous" onClick={() => onCommand('previous')} disabled={!media.canGoPrevious}>
+            <PreviousFilledIcon />
+          </button>
+        ) : null}
+        {showArtwork && !isButtonsOnly ? (
+          <div className="artwork-shell">
+            {media.thumbnailDataUrl ? (
+              <img src={media.thumbnailDataUrl} alt="" />
+            ) : (
+              <div className="artwork-placeholder">{title.slice(0, 2).toUpperCase()}</div>
+            )}
+            <button
+              type="button"
+              className="icon-button play-button artwork-play-button"
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+              onClick={() => onCommand('play-pause')}
+              disabled={!media.canPlay && !media.canPause}
+            >
+              {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="icon-button play-button"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            onClick={() => onCommand('play-pause')}
+            disabled={!media.canPlay && !media.canPause}
+          >
+            {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+          </button>
+        )}
+        {showPreviousNext ? (
+          <button type="button" className="icon-button media-button" aria-label="Next" onClick={() => onCommand('next')} disabled={!media.canGoNext}>
+            <NextFilledIcon />
+          </button>
+        ) : null}
+      </div>
+
+      {canShowSeek ? (
+        <button
+          type="button"
+          className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
+          aria-label="Seek track"
+          onPointerDown={handleSeekPointerDown}
+          onPointerMove={handleSeekPointerMove}
+          onPointerUp={handleSeekPointerUp}
+          onPointerCancel={handleSeekPointerCancel}
+          onClick={(event) => event.preventDefault()}
+          disabled={!media.canSeek}
+          style={{ '--progress': activeRatio } as CSSProperties}
+        >
+          <span className="progress-fill" />
+          <span className="progress-content progress-content--track" title={trackLabel}>
+            <MarqueeText text={trackLabel} />
+          </span>
+          <span className="progress-content progress-content--time">
+            {formatTime(activeProgressMs)} / {formatTime(media.durationMs)}
+          </span>
+        </button>
+      ) : null}
+    </section>
+  )
+}
+
+function PreviousFilledIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M6 5a1 1 0 0 1 1 1v4.22l8.48-5.09A1 1 0 0 1 17 6v12a1 1 0 0 1-1.52.86L7 13.78V18a1 1 0 1 1-2 0V6a1 1 0 0 1 1-1Z" />
+    </svg>
+  )
+}
+
+function NextFilledIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M18 5a1 1 0 0 0-1 1v4.22L8.52 5.13A1 1 0 0 0 7 6v12a1 1 0 0 0 1.52.86L17 13.78V18a1 1 0 1 0 2 0V6a1 1 0 0 0-1-1Z" />
+    </svg>
+  )
+}

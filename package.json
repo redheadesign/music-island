@@ -1,0 +1,48 @@
+{
+  "name": "music-island",
+  "private": false,
+  "version": "0.1.0",
+  "description": "Windows top-edge music overlay powered by native SMTC/GSMTC media sessions.",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "posttauri:build": "node scripts/copy-release-artifacts.mjs",
+    "release:copy": "node scripts/copy-release-artifacts.mjs",
+    "icons:generate": "node scripts/generate-icons.mjs",
+    "logs:open": "explorer \"%APPDATA%\\Music Island\\logs\"",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-autostart": "^2.5.1",
+    "@tauri-apps/plugin-log": "^2.8.0",
+    "@tauri-apps/plugin-opener": "^2.5.4",
+    "@tauri-apps/plugin-shell": "^2.3.5",
+    "@tauri-apps/plugin-updater": "^2.10.1",
+    "framer-motion": "^12.42.2",
+    "lucide-react": "^1.23.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "oxlint": "^1.71.0",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vitest": "^4.1.10"
+  }
+}
