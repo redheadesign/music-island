@@ -16,7 +16,7 @@ Windows top-edge overlay for the active media session — metadata, playback con
 
 ## Download
 
-Pre-built installers live in [GitHub Releases](https://github.com/redheadesign/music-island/releases) (when published):
+Pre-built installers: [GitHub Releases](https://github.com/redheadesign/music-island/releases) — latest **v0.8.0** (alpha, private).
 
 - **Recommended:** `Music Island_x.y.z_x64-setup.exe` (NSIS)
 - **Optional:** `.msi` bundles
