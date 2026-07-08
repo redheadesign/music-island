@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { getInterpolatedPosition, mergeMediaSnapshot, reconcilePlaybackAnchor } from './playbackClock'
+import {
+  applySessionHold,
+  getInterpolatedPosition,
+  mergeMediaSnapshot,
+  reconcilePlaybackAnchor,
+} from './playbackClock'
 import type { MediaSnapshot } from '../shared/lib/types'
 
 function snapshot(overrides: Partial<MediaSnapshot> = {}): MediaSnapshot {
@@ -86,6 +91,39 @@ describe('playbackClock', () => {
     expect(merged.hasSession).toBe(true)
     expect(merged.title).toBe('Old track')
     expect(merged.playbackStatus).toBe('changing')
+  })
+
+  it('keeps the previous session visible during transient no-session polls', () => {
+    const previous = snapshot({ title: 'Still playing' })
+    const next = snapshot({
+      hasSession: false,
+      title: null,
+      artist: null,
+      playbackStatus: 'no-session',
+    })
+
+    const merged = mergeMediaSnapshot(previous, next)
+
+    expect(merged.hasSession).toBe(true)
+    expect(merged.title).toBe('Still playing')
+    expect(merged.playbackStatus).toBe('changing')
+  })
+
+  it('extends session hold when merge cannot mask a session drop', () => {
+    const previous = snapshot({ title: 'Held track' })
+    const lost = snapshot({
+      hasSession: false,
+      title: null,
+      playbackStatus: 'stopped',
+    })
+    const nowMs = Date.parse('2026-07-08T12:00:00.000Z')
+    const merged = mergeMediaSnapshot(previous, lost, null, nowMs)
+    const held = applySessionHold(previous, merged, null, nowMs)
+
+    expect(merged.hasSession).toBe(false)
+    expect(held.snapshot.hasSession).toBe(true)
+    expect(held.snapshot.title).toBe('Held track')
+    expect(held.hold).not.toBeNull()
   })
 
   it('masks transient pause while a seek is pending', () => {

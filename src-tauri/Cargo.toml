@@ -1,6 +1,6 @@
 [package]
 name = "music-island"
-version = "0.8.0"
+version = "0.8.1"
 description = "Unofficial Windows top-edge overlay for SMTC media sessions."
 authors = ["Music Island contributors"]
 edition = "2021"

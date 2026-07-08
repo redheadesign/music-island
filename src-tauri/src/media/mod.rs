@@ -75,11 +75,32 @@ impl MediaSnapshot {
 pub fn start_watcher(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let mut previous_key = String::new();
+        let mut last_good: Option<MediaSnapshot> = None;
+        let mut miss_streak: u32 = 0;
 
         loop {
-            let snapshot = current_snapshot()
+            let raw = current_snapshot()
                 .await
                 .unwrap_or_else(|_| MediaSnapshot::no_session());
+            let snapshot = if raw.has_session {
+                last_good = Some(raw.clone());
+                miss_streak = 0;
+                raw
+            } else if let Some(last) = last_good.clone() {
+                miss_streak += 1;
+                if miss_streak <= 5 {
+                    let mut held = last;
+                    held.playback_status = PlaybackStatus::Changing;
+                    held.updated_at = chrono::Utc::now().to_rfc3339();
+                    held
+                } else {
+                    last_good = None;
+                    miss_streak = 0;
+                    raw
+                }
+            } else {
+                raw
+            };
             let key = snapshot_key(&snapshot);
 
             if key != previous_key {
@@ -118,7 +139,9 @@ fn snapshot_key(snapshot: &MediaSnapshot) -> String {
 #[cfg(windows)]
 mod platform {
     use super::{MediaCommand, MediaSnapshot, PlaybackStatus};
-    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
+    use tokio::sync::Mutex as AsyncMutex;
+    use tokio::time::{sleep, Duration};
     use windows::Media::Control::{
         GlobalSystemMediaTransportControlsSession as Session,
         GlobalSystemMediaTransportControlsSessionManager as SessionManager,
@@ -126,26 +149,29 @@ mod platform {
     };
 
     pub async fn current_snapshot() -> anyhow::Result<MediaSnapshot> {
-        let manager = SessionManager::RequestAsync()?.await?;
-        let session = match manager.GetCurrentSession() {
-            Ok(session) => session,
-            Err(_) => return Ok(MediaSnapshot::no_session()),
-        };
+        for attempt in 0..3 {
+            let manager = SessionManager::RequestAsync()?.await?;
+            if let Ok(session) = manager.GetCurrentSession() {
+                return read_session(session).await;
+            }
 
-        read_session(session).await
+            if attempt < 2 {
+                sleep(Duration::from_millis(60)).await;
+            }
+        }
+
+        Ok(MediaSnapshot::no_session())
     }
 
     static SEEK_GENERATION: AtomicU64 = AtomicU64::new(0);
+    static LATEST_SEEK_MS: AtomicI64 = AtomicI64::new(0);
+    static SEEK_MUTEX: AsyncMutex<()> = AsyncMutex::const_new(());
 
     pub async fn send_command(command: MediaCommand) -> anyhow::Result<()> {
         if let MediaCommand::Seek { position_ms } = command {
+            LATEST_SEEK_MS.store(position_ms, Ordering::SeqCst);
             let generation = SEEK_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
-            tauri::async_runtime::spawn(async move {
-                if let Err(error) = run_seek(position_ms, generation).await {
-                    eprintln!("seek command failed: {error}");
-                }
-            });
-
+            run_seek(generation).await?;
             return Ok(());
         }
 
@@ -184,10 +210,14 @@ mod platform {
         Ok(manager.GetCurrentSession().ok())
     }
 
-    async fn run_seek(position_ms: i64, generation: u64) -> anyhow::Result<()> {
+    async fn run_seek(generation: u64) -> anyhow::Result<()> {
+        let _guard = SEEK_MUTEX.lock().await;
+
         if SEEK_GENERATION.load(Ordering::SeqCst) != generation {
             return Ok(());
         }
+
+        let position_ms = LATEST_SEEK_MS.load(Ordering::SeqCst);
 
         let session = match current_session().await? {
             Some(session) => session,
@@ -202,7 +232,7 @@ mod platform {
         let start_ms = timespan_to_ms(timeline.StartTime()?);
         let seek_ticks = (start_ms + position_ms).saturating_mul(10_000);
 
-        let _ = session.TryChangePlaybackPositionAsync(seek_ticks)?;
+        session.TryChangePlaybackPositionAsync(seek_ticks)?.await?;
         Ok(())
     }
 

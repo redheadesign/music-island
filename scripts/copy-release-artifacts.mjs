@@ -13,11 +13,6 @@ const artifactPatterns = [
     match: (fileName) => fileName.startsWith('Music Island_') && fileName.endsWith('-setup.exe'),
   },
   {
-    label: 'MSI installer',
-    directory: path.join(bundleDir, 'msi'),
-    match: (fileName) => fileName.startsWith('Music Island_') && fileName.endsWith('.msi'),
-  },
-  {
     label: 'Portable app binary',
     directory: tauriReleaseDir,
     match: (fileName) => fileName === 'music-island.exe',
@@ -54,7 +49,6 @@ const readme = [
   'Music Island release artifacts',
   '',
   'Give users the NSIS setup .exe from this folder.',
-  'MSI files are optional advanced installers.',
   'The plain music-island.exe is useful for quick local smoke checks, not distribution.',
   '',
   ...copied.map((artifact) => `- ${artifact.label}: ${artifact.fileName} (${artifact.sizeMb} MB)`),

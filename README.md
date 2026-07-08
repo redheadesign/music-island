@@ -16,12 +16,17 @@ Windows top-edge overlay for the active media session — metadata, playback con
 
 ## Download
 
-Pre-built installers: [GitHub Releases](https://github.com/redheadesign/music-island/releases) — latest **v0.8.0** (alpha, private).
+Pre-built installers: [GitHub Releases](https://github.com/redheadesign/music-island/releases) — latest **v0.8.1** (alpha, private).
 
-- **Recommended:** `Music Island_x.y.z_x64-setup.exe` (NSIS)
-- **Optional:** `.msi` bundles
+- **Recommended:** `Music Island_x.y.z_x64-setup.exe` (NSIS installer, per-user)
 
 Unsigned alpha builds may trigger Windows SmartScreen until Authenticode signing is set up.
+
+## Known limitations
+
+- **Settings panel does not work yet** — UI opens, but changes are not applied or saved correctly.
+- **Seek audio spike** — a brief click or stutter when scrubbing the timeline is common with Windows SMTC/GSMTC. Music Island sends a single seek command; the artifact usually comes from the media player re-buffering after `PlaybackPositionChangeRequested` (Electron/Chromium apps, Spotify desktop, and others). Compare with the native Windows media flyout on the same track — if it sounds the same, it is a protocol/player limitation, not a duplicate command from this app.
+- **SMTC is a lowest-common-denominator API** — not every player exposes every command; behavior varies by app.
 
 ## Quick start (development)
 

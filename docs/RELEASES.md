@@ -13,8 +13,9 @@ npm run tauri:build
 
 4. Use the root `release/` folder for human-friendly artifacts. The `posttauri:build` script copies installers there automatically after a successful build.
 5. Upload the NSIS setup `.exe` from `release/` to GitHub Releases.
-6. Keep MSI files as optional advanced installers.
-7. Include changelog, screenshots/gif and known limitations.
+6. Include changelog, screenshots/gif and known limitations.
+
+We ship **NSIS `.exe` only**. MSI/WiX bundles were removed — they targeted enterprise silent deployment and duplicated locale installers (en-US / ru-RU) without benefit for normal users.
 
 If you already built the app and only need to refresh `release/`, run:
 

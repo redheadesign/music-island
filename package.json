@@ -1,7 +1,7 @@
 {
   "name": "music-island",
   "private": false,
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Windows top-edge music overlay powered by native SMTC/GSMTC media sessions.",
   "license": "GPL-3.0-or-later",
   "type": "module",

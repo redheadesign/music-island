@@ -14,7 +14,13 @@ import {
 } from './tauriApi'
 import { applyLayoutPreset } from '../features/settings/settingsPresets'
 import type { AppConfig, MediaCommand, MediaSnapshot, UpdateCheckResult } from '../shared/lib/types'
-import { applyOptimisticSeek, getInterpolatedPosition, mergeMediaSnapshot } from './playbackClock'
+import {
+  applyOptimisticSeek,
+  applySessionHold,
+  getInterpolatedPosition,
+  mergeMediaSnapshot,
+  type SessionHold,
+} from './playbackClock'
 
 export type OverlayMode = 'idle' | 'peek' | 'compact' | 'expanded' | 'pinned' | 'settings' | 'no-session'
 
@@ -42,9 +48,18 @@ export function useIslandApp(): IslandAppState {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const noSessionTimerRef = useRef<number | null>(null)
   const pendingSeekRef = useRef<{ positionMs: number; untilMs: number; preservePlaying: boolean } | null>(null)
+  const sessionHoldRef = useRef<SessionHold | null>(null)
   const mediaRef = useRef<MediaSnapshot | null>(null)
   const lastSeekDispatchRef = useRef<{ positionMs: number; atMs: number } | null>(null)
   mediaRef.current = media
+
+  const reconcileMedia = useCallback((current: MediaSnapshot | null, snapshot: MediaSnapshot) => {
+    const nowMs = Date.now()
+    const merged = mergeMediaSnapshot(current, snapshot, pendingSeekRef.current, nowMs)
+    const held = applySessionHold(current, merged, sessionHoldRef.current, nowMs)
+    sessionHoldRef.current = held.hold
+    return held.snapshot
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -75,22 +90,19 @@ export function useIslandApp(): IslandAppState {
     let cleanup: () => void = () => undefined
 
     onMediaUpdate((snapshot) => {
-      setMedia((current) => mergeMediaSnapshot(current, snapshot, pendingSeekRef.current))
-      setMode((currentMode) => {
-        if (!snapshot.hasSession && currentMode !== 'settings' && currentMode !== 'expanded') {
-          return 'no-session'
-        }
-        if (snapshot.hasSession && currentMode === 'no-session') {
-          return 'compact'
-        }
-        return currentMode
-      })
+      setMedia((current) => reconcileMedia(current, snapshot))
     }).then((unlisten) => {
       cleanup = unlisten
     })
 
     return () => cleanup()
-  }, [])
+  }, [reconcileMedia])
+
+  useEffect(() => {
+    if (media?.hasSession && mode === 'no-session') {
+      setMode('compact')
+    }
+  }, [media?.hasSession, mode])
 
   useEffect(() => {
     let cleanupSettings: () => void = () => undefined
@@ -188,10 +200,11 @@ export function useIslandApp(): IslandAppState {
       const now = Date.now()
       const lastDispatch = lastSeekDispatchRef.current
 
+      // Dedupe only accidental double-fire from the same release, not rapid user seeks.
       if (
         lastDispatch &&
-        now - lastDispatch.atMs < 600 &&
-        Math.abs(lastDispatch.positionMs - targetPosition) < 1_500
+        now - lastDispatch.atMs < 80 &&
+        Math.abs(lastDispatch.positionMs - targetPosition) < 50
       ) {
         return
       }
@@ -220,11 +233,11 @@ export function useIslandApp(): IslandAppState {
     try {
       await sendMediaCommand(command)
       const snapshot = await getMediaSnapshot()
-      setMedia((current) => mergeMediaSnapshot(current, snapshot, pendingSeekRef.current))
+      setMedia((current) => reconcileMedia(current, snapshot))
     } catch {
       pendingSeekRef.current = null
     }
-  }, [])
+  }, [reconcileMedia])
 
   const checkUpdates = useCallback(async () => {
     const result = await checkForUpdates()

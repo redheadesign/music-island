@@ -11,8 +11,20 @@ export interface PendingSeek {
   preservePlaying: boolean
 }
 
-const TRANSIENT_PAUSE_STATUSES: PlaybackStatus[] = ['paused', 'changing', 'opened']
+export interface SessionHold {
+  snapshot: MediaSnapshot
+  sinceMs: number
+}
+
+const TRANSIENT_NO_SESSION_STATUSES: PlaybackStatus[] = [
+  'no-session',
+  'changing',
+  'opened',
+  'closed',
+]
+const SESSION_HOLD_MS = 2_500
 const SEEK_CONFIRM_TOLERANCE_MS = 2_000
+const TRANSIENT_PAUSE_STATUSES: PlaybackStatus[] = ['paused', 'changing', 'opened']
 
 export function getInterpolatedPosition(snapshot: MediaSnapshot, nowMs = Date.now()): number {
   const positionMs = snapshot.positionMs ?? 0
@@ -49,14 +61,10 @@ export function mergeMediaSnapshot(
   nowMs = Date.now(),
 ): MediaSnapshot {
   if (previous?.hasSession && !next.hasSession) {
-    const transitional =
-      next.playbackStatus === 'changing' ||
-      next.playbackStatus === 'opened' ||
-      next.playbackStatus === 'closed'
-    if (transitional) {
+    if (TRANSIENT_NO_SESSION_STATUSES.includes(next.playbackStatus)) {
       return {
         ...previous,
-        playbackStatus: next.playbackStatus,
+        playbackStatus: next.playbackStatus === 'no-session' ? 'changing' : next.playbackStatus,
         updatedAt: next.updatedAt,
       }
     }
@@ -165,4 +173,34 @@ function anchorAt(positionMs: number, anchorTimeMs: number): PlaybackAnchor {
     positionMs,
     updatedAt: new Date(anchorTimeMs).toISOString(),
   }
+}
+
+export function applySessionHold(
+  previous: MediaSnapshot | null,
+  merged: MediaSnapshot,
+  hold: SessionHold | null,
+  nowMs = Date.now(),
+): { snapshot: MediaSnapshot; hold: SessionHold | null } {
+  if (merged.hasSession) {
+    return { snapshot: merged, hold: null }
+  }
+
+  const holdBase = hold?.snapshot ?? (previous?.hasSession ? previous : null)
+  if (!holdBase?.hasSession) {
+    return { snapshot: merged, hold: null }
+  }
+
+  const activeHold = hold ?? { snapshot: holdBase, sinceMs: nowMs }
+  if (nowMs - activeHold.sinceMs < SESSION_HOLD_MS) {
+    return {
+      snapshot: {
+        ...activeHold.snapshot,
+        playbackStatus: 'changing',
+        updatedAt: merged.updatedAt,
+      },
+      hold: activeHold,
+    }
+  }
+
+  return { snapshot: merged, hold: null }
 }
