@@ -3,7 +3,11 @@ import type { CSSProperties, PointerEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Pin, PinOff, Settings2 } from 'lucide-react'
 import type { IslandAppState } from '../../app/useIslandApp'
-import { getCollapsedGestureState } from '../../app/tauriApi'
+import {
+  getCollapsedGestureState,
+  onCollapsedGestureState,
+  type CollapsedGestureState,
+} from '../../app/tauriApi'
 import { MusicModule } from '../music/MusicModule'
 import {
   cancelOverlayWindowOperations,
@@ -27,7 +31,6 @@ const FALLBACK_ARTWORK_THEME: ArtworkTheme = {
 }
 
 const OPEN_PULL_THRESHOLD = 8
-const PRESSURE_ACCUMULATION_MS = 52
 const OPEN_CLOSE_GRACE_MS = 280
 
 export function OverlayShell({ app }: OverlayShellProps) {
@@ -35,7 +38,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
   const isPinned = Boolean(config?.behavior.pinExpanded)
   const [windowPhase, setWindowPhase] = useState<OverlayWindowPhase>('collapsed')
   const [expandedVisible, setExpandedVisible] = useState(false)
-  const [isHoveringIsland, setIsHoveringIsland] = useState(false)
+  const [, setIsHoveringIsland] = useState(false)
   const [peekProgress, setPeekProgress] = useState(0)
   const [peekX, setPeekX] = useState(110)
   const [hideCollapsedProgress, setHideCollapsedProgress] = useState(false)
@@ -177,7 +180,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
       return
     }
 
-    const bounds = getOverlayBounds(config.layout.size, config.layout.scale)
+    const bounds = getOverlayBounds(config.layout.width, config.layout.scale)
     const phase = isPinned ? 'open' : windowPhase
     void syncOverlayWindow(phase, bounds).then((applied) => {
       if (!applied) {
@@ -194,7 +197,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
         setWindowPhase('open')
       }
     })
-  }, [app, config, isPinned, windowPhase])
+  }, [app, config, isPinned, mode, windowPhase])
 
   useEffect(() => {
     if (!isTauriRuntime() || windowPhase !== 'collapsed') {
@@ -204,74 +207,63 @@ export function OverlayShell({ app }: OverlayShellProps) {
     const scale = config.layout.scale / 100
     const stripWidth = 220 * scale
     const stripHeight = 20 * scale
-    let frame = 0
     let active = true
 
-    const tick = () => {
-      if (!active) {
+    const processState = (state: CollapsedGestureState) => {
+      if (!active || windowPhaseRef.current !== 'collapsed') {
         return
       }
 
-      void getCollapsedGestureState()
-        .then((state) => {
-          if (!active || windowPhaseRef.current !== 'collapsed') {
-            return
-          }
+      const handlers = gestureHandlersRef.current
+      if (!state.active) {
+        stripArmedRef.current = true
+        if (gestureActiveRef.current) {
+          handlers.handlePointerLeave()
+        }
+        return
+      }
 
-          const handlers = gestureHandlersRef.current
-          if (!state.active) {
-            stripArmedRef.current = true
-            if (gestureActiveRef.current) {
-              handlers.handlePointerLeave()
-            }
-            return
-          }
+      if (!stripArmedRef.current) {
+        return
+      }
 
-          if (!stripArmedRef.current) {
-            return
-          }
+      const localXViewport = toViewportX(state.localX, state.windowWidth)
+      const localYViewport = toViewportY(state.localY, state.windowHeight)
+      const stripLeft = (window.innerWidth - stripWidth) / 2
+      const inStripX =
+        localXViewport >= stripLeft - 6 && localXViewport <= stripLeft + stripWidth + 6
 
-          if (state.active) {
-            const localXViewport = toViewportX(state.localX, state.windowWidth)
-            const localYViewport = toViewportY(state.localY, state.windowHeight)
-            const stripLeft = (window.innerWidth - stripWidth) / 2
-            const inStripX =
-              localXViewport >= stripLeft - 6 && localXViewport <= stripLeft + stripWidth + 6
+      if (!inStripX) {
+        if (gestureActiveRef.current) {
+          handlers.handlePointerLeave()
+        }
+        return
+      }
 
-            if (!inStripX) {
-              if (gestureActiveRef.current) {
-                handlers.handlePointerLeave()
-              }
-              return
-            }
-
-            const stripLocalX = localXViewport - stripLeft
-
-            if (!gestureActiveRef.current) {
-              handlers.beginPeekGesture(state.clientX, state.clientY, stripLocalX, stripWidth)
-            }
-            handlers.processGestureSample(
-              stripWidth,
-              stripHeight,
-              stripLocalX,
-              localYViewport,
-              state.clientX,
-              state.clientY,
-            )
-          }
-        })
-        .finally(() => {
-          if (active) {
-            frame = window.requestAnimationFrame(tick)
-          }
-        })
+      const stripLocalX = localXViewport - stripLeft
+      if (!gestureActiveRef.current) {
+        handlers.beginPeekGesture(state.clientX, state.clientY, stripLocalX, stripWidth)
+      }
+      handlers.processGestureSample(
+        stripWidth,
+        stripHeight,
+        stripLocalX,
+        localYViewport,
+        state.clientX,
+        state.clientY,
+      )
     }
 
-    frame = window.requestAnimationFrame(tick)
+    let cleanup: () => void = () => undefined
+    void onCollapsedGestureState(processState).then((unlisten) => {
+      if (active) cleanup = unlisten
+      else unlisten()
+    })
+    void getCollapsedGestureState().then(processState)
 
     return () => {
       active = false
-      window.cancelAnimationFrame(frame)
+      cleanup()
     }
   }, [windowPhase, config.layout.scale])
 
@@ -284,69 +276,56 @@ export function OverlayShell({ app }: OverlayShellProps) {
       return
     }
 
-    let frame = 0
     let active = true
 
-    const tick = () => {
+    const processState = (state: CollapsedGestureState) => {
       if (!active) {
         return
       }
 
-      void getCollapsedGestureState()
-        .then((state) => {
-          if (!active) {
-            return
-          }
+      const phase = windowPhaseRef.current
+      if (phase !== 'open' && phase !== 'opening') {
+        return
+      }
 
-          const phase = windowPhaseRef.current
-          if (phase !== 'open' && phase !== 'opening') {
-            return
-          }
-
-          lastPointerRef.current = { x: state.clientX, y: state.clientY }
-
-          if (performance.now() - openedAtRef.current < OPEN_CLOSE_GRACE_MS) {
-            return
-          }
-
-          if (phase === 'opening' && !expandedVisible) {
-            return
-          }
-
-          if (!state.active) {
-            if (phase === 'opening') {
-              abortOpeningRef.current()
-            } else {
-              scheduleCloseRef.current()
-            }
-            return
-          }
-
-          if (isPointerOverExpandedSurface(state.localX, state.localY, state.windowWidth, state.windowHeight)) {
-            setIsHoveringIsland(true)
-            return
-          }
-
-          if (phase === 'opening') {
-            abortOpeningRef.current()
-          } else {
-            scheduleCloseRef.current()
-          }
-        })
-        .finally(() => {
-          if (active) {
-            frame = window.requestAnimationFrame(tick)
-          }
-        })
+      lastPointerRef.current = { x: state.clientX, y: state.clientY }
+      if (performance.now() - openedAtRef.current < OPEN_CLOSE_GRACE_MS) {
+        return
+      }
+      if (phase === 'opening' && !expandedVisible) {
+        return
+      }
+      if (!state.active) {
+        if (phase === 'opening') {
+          abortOpeningRef.current()
+        } else {
+          scheduleCloseRef.current()
+        }
+        return
+      }
+      if (isPointerOverExpandedSurface(state.localX, state.localY, state.windowWidth, state.windowHeight)) {
+        setIsHoveringIsland(true)
+        return
+      }
+      if (phase === 'opening') {
+        abortOpeningRef.current()
+      } else {
+        scheduleCloseRef.current()
+      }
     }
 
-    frame = window.requestAnimationFrame(tick)
+    let cleanup: () => void = () => undefined
+    void onCollapsedGestureState(processState).then((unlisten) => {
+      if (active) cleanup = unlisten
+      else unlisten()
+    })
+    void getCollapsedGestureState().then(processState)
 
     return () => {
       active = false
-      window.cancelAnimationFrame(frame)
+      cleanup()
     }
-  }, [windowPhase])
+  }, [expandedVisible, windowPhase])
 
   const style = useMemo(() => {
     if (!config) {
@@ -358,6 +337,9 @@ export function OverlayShell({ app }: OverlayShellProps) {
       '--island-radius': `${config.appearance.cornerRadius}px`,
       '--island-blur': `${config.appearance.blurStrength}px`,
       '--island-scale': config.layout.scale / 100,
+      '--island-width': config.layout.width / 100,
+      '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,
+      '--island-hit-width': `${(500 * (config.layout.width / 100) + 112) * (config.layout.scale / 100)}px`,
       '--accent': config.appearance.accentColor,
       '--artwork-primary': artworkTheme.primary,
       '--artwork-secondary': artworkTheme.secondary,
@@ -496,7 +478,8 @@ export function OverlayShell({ app }: OverlayShellProps) {
       const now = performance.now()
       const deltaMs = Math.min(now - pressureLastTickRef.current, 48)
       pressureLastTickRef.current = now
-      postTopPullRef.current = Math.min(22, postTopPullRef.current + deltaMs / PRESSURE_ACCUMULATION_MS)
+      const pressureStepMs = Math.max(config.behavior.hoverDelayMs / OPEN_PULL_THRESHOLD, 10)
+      postTopPullRef.current = Math.min(22, postTopPullRef.current + deltaMs / pressureStepMs)
       updatePeekProgress()
       requestOpenIsland()
     }, 16)
@@ -738,6 +721,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
+            <div className="island-scale-layer">
             <section className="island-card">
               <MusicModule
                 media={media}
@@ -755,10 +739,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
             </section>
 
             <header
-              className={[
-                'island-actions',
-                config.behavior.pinExpanded && !isHoveringIsland ? 'island-actions--hidden' : '',
-              ].join(' ')}
+              className="island-actions"
               aria-label="Overlay actions"
             >
               <button
@@ -792,6 +773,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 {config.behavior.pinExpanded ? <PinOff size={16} /> : <Pin size={16} />}
               </button>
             </header>
+            </div>
             </motion.div>
           </div>
         ) : null}

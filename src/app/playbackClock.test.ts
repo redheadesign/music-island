@@ -22,8 +22,14 @@ function snapshot(overrides: Partial<MediaSnapshot> = {}): MediaSnapshot {
     canGoPrevious: true,
     canPlay: true,
     canPause: true,
+    canLike: false,
+    canDislike: false,
+    isLiked: false,
+    isDisliked: false,
     thumbnailDataUrl: null,
     updatedAt: '2026-07-08T12:00:00.000Z',
+    provider: 'smtc',
+    smtcHealth: 'healthy',
     ...overrides,
   }
 }

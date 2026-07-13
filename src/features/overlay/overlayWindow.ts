@@ -4,6 +4,7 @@ export type OverlayWindowPhase = 'collapsed' | 'opening' | 'open' | 'closing'
 
 // Keep `opening` alive briefly so top chrome can finish fading over the animating card.
 const OPENING_CHROME_TAIL_MS = 60
+const ACTIONS_GUTTER_PER_SIDE = 56
 
 interface OverlayBounds {
   cardWidth: number
@@ -53,22 +54,15 @@ export function cancelOverlayWindowOperations(): void {
   boundsOperationId += 1
 }
 
-export function getOverlayBounds(size: 'small' | 'medium' | 'large', scalePercent: number): OverlayBounds {
+export function getOverlayBounds(widthPercent: number, scalePercent: number): OverlayBounds {
+  const width = widthPercent / 100
   const scale = scalePercent / 100
   return {
-    cardWidth: getIslandCardWidth(size) * scale,
-    expandedHeight: 280,
+    // Controls sit 44px outside the card. Reserve symmetric native space so
+    // Windows can hit-test them while the visual card remains screen-centered.
+    cardWidth: (500 * width + ACTIONS_GUTTER_PER_SIDE * 2) * scale,
+    expandedHeight: 280 * scale,
     collapsedWidth: 220 * scale,
-    collapsedHeight: 20,
+    collapsedHeight: 20 * scale,
   }
-}
-
-function getIslandCardWidth(size: 'small' | 'medium' | 'large'): number {
-  if (size === 'small') {
-    return 410
-  }
-  if (size === 'large') {
-    return 600
-  }
-  return 500
 }

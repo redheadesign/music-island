@@ -6,12 +6,10 @@ use tauri::{
 };
 
 pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
-    let show_hide = MenuItem::with_id(app, "show_hide", "Show / Hide", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
-    let reset = MenuItem::with_id(app, "reset_position", "Reset position", true, None::<&str>)?;
     let updates = MenuItem::with_id(app, "check_updates", "Check for updates", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_hide, &settings, &reset, &updates, &quit])?;
+    let menu = Menu::with_items(app, &[&settings, &updates, &quit])?;
 
     let mut builder = TrayIconBuilder::new().menu(&menu).tooltip("Music Island");
 
@@ -27,24 +25,12 @@ pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
                 ..
             } = event
             {
-                if let Some(window) = tray.app_handle().get_webview_window("main") {
-                    let is_visible = window.is_visible().unwrap_or(false);
-                    let _ = if is_visible { window.hide() } else { window.show() };
-                }
+                let _ = window::open_settings_window(tray.app_handle());
             }
         })
         .on_menu_event(|app, event| match event.id.as_ref() {
-            "show_hide" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let is_visible = window.is_visible().unwrap_or(false);
-                    let _ = if is_visible { window.hide() } else { window.show() };
-                }
-            }
             "settings" => {
                 let _ = window::open_settings_window(app);
-            }
-            "reset_position" => {
-                let _ = window::reset_overlay_position(app);
             }
             "check_updates" => {
                 if let Some(window) = app.get_webview_window("main") {

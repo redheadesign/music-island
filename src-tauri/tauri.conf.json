@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Music Island",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "identifier": "com.redheadesign.music-island",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -36,15 +36,15 @@
       {
         "label": "settings",
         "title": "Music Island Settings",
-        "width": 760,
-        "height": 620,
+        "width": 860,
+        "height": 720,
         "minWidth": 620,
         "minHeight": 480,
         "resizable": true,
         "fullscreen": false,
-        "decorations": true,
-        "transparent": false,
-        "shadow": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": true,
         "alwaysOnTop": false,
         "skipTaskbar": false,
         "visible": false,
@@ -59,8 +59,8 @@
     "createUpdaterArtifacts": false,
     "publisher": "Fedor Svetlov",
     "category": "Utility",
-    "shortDescription": "Top-edge music overlay for Windows SMTC media sessions.",
-    "longDescription": "Windows top-edge overlay for the active media session. Shows track metadata, playback controls, and layout presets via native SMTC/GSMTC. Compatible with desktop players that register Windows media controls.",
+    "shortDescription": "Low-distraction top-edge media controller for Windows.",
+    "longDescription": "Music Island controls Windows media sessions through SMTC and offers an explicit opt-in direct connection to Yandex Music Desktop.",
     "windows": {
       "nsis": {
         "displayLanguageSelector": true,

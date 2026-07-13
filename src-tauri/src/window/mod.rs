@@ -1,4 +1,5 @@
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, window::Color};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, window::Color};
+use tokio::time::{sleep, Duration};
 
 const OVERLAY_WIDTH: i32 = 860;
 const OVERLAY_HEIGHT: u32 = 280;
@@ -86,7 +87,7 @@ pub fn set_overlay_clickthrough(app: &AppHandle, clickthrough: bool) -> tauri::R
     Ok(())
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CollapsedGestureState {
     pub active: bool,
@@ -122,28 +123,43 @@ pub fn get_collapsed_gesture_state(app: &AppHandle) -> tauri::Result<CollapsedGe
     platform::collapsed_gesture_state(&window)
 }
 
+pub fn start_gesture_watcher(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let mut previous = CollapsedGestureState::inactive();
+        loop {
+            let next = get_collapsed_gesture_state(&app)
+                .unwrap_or_else(|_| CollapsedGestureState::inactive());
+            if next != previous {
+                let _ = app.emit("overlay:gesture-state", next.clone());
+                previous = next;
+            }
+            sleep(Duration::from_millis(33)).await;
+        }
+    });
+}
+
 #[cfg(windows)]
 mod platform {
     use super::CollapsedGestureState;
     use tauri::WebviewWindow;
-    use windows::Win32::Foundation::POINT;
-    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    use windows::Win32::Foundation::{HWND, POINT, RECT};
+    use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetWindowRect};
 
     pub fn collapsed_gesture_state(window: &WebviewWindow) -> tauri::Result<CollapsedGestureState> {
-        let position = window.outer_position()?;
-        let size = window.outer_size()?;
-
+        let native = window.hwnd()?;
+        let hwnd = HWND(native.0);
+        let mut bounds = RECT::default();
         let mut point = POINT::default();
         unsafe {
-            if GetCursorPos(&mut point).is_err() {
+            if GetWindowRect(hwnd, &mut bounds).is_err() || GetCursorPos(&mut point).is_err() {
                 return Ok(CollapsedGestureState::inactive());
             }
         }
 
-        let local_x = (point.x - position.x) as f64;
-        let local_y = (point.y - position.y) as f64;
-        let width = size.width as f64;
-        let height = size.height as f64;
+        let local_x = (point.x - bounds.left) as f64;
+        let local_y = (point.y - bounds.top) as f64;
+        let width = (bounds.right - bounds.left).max(0) as f64;
+        let height = (bounds.bottom - bounds.top).max(0) as f64;
         let active = local_x >= 0.0 && local_y >= 0.0 && local_x <= width && local_y <= height;
         let in_top_edge = active && local_y <= 3.0;
 

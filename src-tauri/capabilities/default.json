@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default permissions for the main overlay window.",
-  "windows": ["main"],
+  "description": "Default permissions for Music Island windows.",
+  "windows": ["main", "settings"],
   "permissions": [
     "core:default",
     "opener:default",

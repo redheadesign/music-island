@@ -1,7 +1,15 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { disable as disableAutostart, enable as enableAutostart } from '@tauri-apps/plugin-autostart'
-import type { AppConfig, MediaCommand, MediaSnapshot, UpdateCheckResult } from '../shared/lib/types'
+import type {
+  AppConfig,
+  DirectYandexStatus,
+  MediaCommand,
+  MediaSessionInfo,
+  MediaSnapshot,
+  SmtcHealthSnapshot,
+  UpdateCheckResult,
+} from '../shared/lib/types'
 
 const fallbackSnapshot: MediaSnapshot = {
   hasSession: false,
@@ -17,8 +25,14 @@ const fallbackSnapshot: MediaSnapshot = {
   canGoPrevious: false,
   canPlay: false,
   canPause: false,
+  canLike: false,
+  canDislike: false,
+  isLiked: false,
+  isDisliked: false,
   thumbnailDataUrl: null,
   updatedAt: new Date().toISOString(),
+  provider: 'smtc',
+  smtcHealth: 'healthy',
 }
 
 export async function getMediaSnapshot(): Promise<MediaSnapshot> {
@@ -51,6 +65,47 @@ export async function sendMediaCommand(command: MediaCommand): Promise<void> {
   await invoke('media_control', { command })
 }
 
+export async function getSmtcHealth(): Promise<SmtcHealthSnapshot> {
+  if (!isTauriRuntime()) {
+    return {
+      status: 'healthy',
+      consecutiveFailures: 0,
+      lastProbeMs: 0,
+      lastError: null,
+      sessionCount: 1,
+    }
+  }
+  return invoke<SmtcHealthSnapshot>('get_smtc_health')
+}
+
+export async function listMediaSessions(): Promise<MediaSessionInfo[]> {
+  if (!isTauriRuntime()) {
+    return [{ sourceAppId: 'Spotify.exe', playbackStatus: 'playing', isCurrent: true }]
+  }
+  return invoke<MediaSessionInfo[]>('list_media_sessions')
+}
+
+export async function getDirectYandexStatus(): Promise<DirectYandexStatus> {
+  if (!isTauriRuntime()) {
+    return { state: 'disabled', message: 'Windows SMTC is active', port: null, executablePath: null }
+  }
+  return invoke<DirectYandexStatus>('get_direct_yandex_status')
+}
+
+export async function enableDirectYandex(): Promise<DirectYandexStatus> {
+  if (!isTauriRuntime()) {
+    return { state: 'connected', message: 'Preview direct connection', port: 9222, executablePath: null }
+  }
+  return invoke<DirectYandexStatus>('enable_direct_yandex')
+}
+
+export async function disableDirectYandex(restartPlain = true): Promise<DirectYandexStatus> {
+  if (!isTauriRuntime()) {
+    return { state: 'disabled', message: 'Windows SMTC is active', port: null, executablePath: null }
+  }
+  return invoke<DirectYandexStatus>('disable_direct_yandex', { restartPlain })
+}
+
 export async function getConfig(): Promise<AppConfig> {
   if (!isTauriRuntime()) {
     return getDefaultConfig()
@@ -65,6 +120,13 @@ export async function saveConfig(config: AppConfig): Promise<AppConfig> {
   }
 
   return invoke<AppConfig>('save_config', { config })
+}
+
+export async function previewConfig(config: AppConfig): Promise<void> {
+  if (!isTauriRuntime()) {
+    return
+  }
+  await invoke('preview_config', { config })
 }
 
 export async function resetWindowPosition(): Promise<void> {
@@ -119,6 +181,15 @@ export async function getCollapsedGestureState(): Promise<CollapsedGestureState>
   return invoke<CollapsedGestureState>('get_collapsed_gesture_state')
 }
 
+export async function onCollapsedGestureState(
+  callback: (state: CollapsedGestureState) => void,
+): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
+  }
+  return listen<CollapsedGestureState>('overlay:gesture-state', (event) => callback(event.payload))
+}
+
 export async function openSettingsWindow(): Promise<void> {
   if (!isTauriRuntime()) {
     return
@@ -162,6 +233,27 @@ export async function onMediaUpdate(callback: (snapshot: MediaSnapshot) => void)
   }
 }
 
+export async function onSmtcHealth(
+  callback: (snapshot: SmtcHealthSnapshot) => void,
+): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
+  }
+  return listen<SmtcHealthSnapshot>('smtc:health', (event) => callback(event.payload))
+}
+
+export async function onConfigChanged(callback: (config: AppConfig) => void): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
+  }
+  const unlistenChanged = await listen<AppConfig>('config:changed', (event) => callback(event.payload))
+  const unlistenPreview = await listen<AppConfig>('config:preview', (event) => callback(event.payload))
+  return () => {
+    unlistenChanged()
+    unlistenPreview()
+  }
+}
+
 export async function onOverlayAction(action: 'open-settings' | 'check-updates', callback: () => void): Promise<() => void> {
   if (!isTauriRuntime()) {
     return () => undefined
@@ -191,7 +283,7 @@ function isTauriRuntime(): boolean {
 }
 
 const defaultConfig: AppConfig = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   appearance: {
     theme: 'liquid-glass-dark',
     accentColor: '#8fb8ff',
@@ -202,6 +294,7 @@ const defaultConfig: AppConfig = {
   },
   layout: {
     size: 'medium',
+    width: 100,
     scale: 100,
     density: 'balanced',
     showArtwork: true,
@@ -213,7 +306,7 @@ const defaultConfig: AppConfig = {
     preset: 'album-pill',
   },
   behavior: {
-    hoverDelayMs: 45,
+    hoverDelayMs: 320,
     autoCollapseMs: 900,
     pinExpanded: false,
     alwaysOnTop: true,
@@ -228,5 +321,10 @@ const defaultConfig: AppConfig = {
   privacy: {
     telemetryEnabled: false,
     writeDetailedLogs: false,
+  },
+  media: {
+    protocol: 'smtc',
+    preferredSourceAppId: null,
+    directYandexConsent: false,
   },
 }

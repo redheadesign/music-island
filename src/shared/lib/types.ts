@@ -15,6 +15,8 @@ export type MediaCommand =
   | 'next'
   | 'previous'
   | 'stop'
+  | 'like'
+  | 'dislike'
   | { seek: { positionMs: number } }
 
 export interface MediaSnapshot {
@@ -31,8 +33,37 @@ export interface MediaSnapshot {
   canGoPrevious: boolean
   canPlay: boolean
   canPause: boolean
+  canLike: boolean
+  canDislike: boolean
+  isLiked: boolean
+  isDisliked: boolean
   thumbnailDataUrl: string | null
   updatedAt: string
+  provider: 'smtc' | 'yandex-direct'
+  smtcHealth: SmtcHealth
+}
+
+export type SmtcHealth = 'healthy' | 'degraded' | 'unavailable'
+
+export interface SmtcHealthSnapshot {
+  status: SmtcHealth
+  consecutiveFailures: number
+  lastProbeMs: number
+  lastError: string | null
+  sessionCount: number
+}
+
+export interface MediaSessionInfo {
+  sourceAppId: string
+  playbackStatus: PlaybackStatus
+  isCurrent: boolean
+}
+
+export interface DirectYandexStatus {
+  state: 'disabled' | 'connecting' | 'connected' | 'incompatible' | 'error'
+  message: string
+  port: number | null
+  executablePath: string | null
 }
 
 export type Theme = 'liquid-glass-dark' | 'soft-light' | 'ru-flow-inspired'
@@ -52,6 +83,7 @@ export interface AppConfig {
   }
   layout: {
     size: WidgetSize
+    width: number
     scale: number
     density: Density
     showArtwork: boolean
@@ -78,6 +110,11 @@ export interface AppConfig {
   privacy: {
     telemetryEnabled: boolean
     writeDetailedLogs: boolean
+  }
+  media: {
+    protocol: 'smtc' | 'yandex-direct'
+    preferredSourceAppId: string | null
+    directYandexConsent: boolean
   }
 }
 

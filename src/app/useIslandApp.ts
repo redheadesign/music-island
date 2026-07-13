@@ -4,16 +4,26 @@ import {
   getConfig,
   getDefaultConfig,
   getMediaSnapshot,
+  getSmtcHealth,
+  listMediaSessions,
+  onConfigChanged,
   onMediaUpdate,
   onOverlayAction,
+  onSmtcHealth,
   openSettingsWindow,
   resetWindowPosition,
   saveConfig,
   sendMediaCommand,
   setAutostart,
 } from './tauriApi'
-import { applyLayoutPreset } from '../features/settings/settingsPresets'
-import type { AppConfig, MediaCommand, MediaSnapshot, UpdateCheckResult } from '../shared/lib/types'
+import type {
+  AppConfig,
+  MediaCommand,
+  MediaSessionInfo,
+  MediaSnapshot,
+  SmtcHealthSnapshot,
+  UpdateCheckResult,
+} from '../shared/lib/types'
 import {
   applyOptimisticSeek,
   applySessionHold,
@@ -31,9 +41,11 @@ export interface IslandAppState {
   updateMessage: string | null
   progressMs: number | null
   progressPercent: number
+  smtcHealth: SmtcHealthSnapshot
+  mediaSessions: MediaSessionInfo[]
   setMode: (mode: OverlayMode) => void
   updateConfig: (config: AppConfig) => Promise<void>
-  applyPreset: (preset: AppConfig['layout']['preset']) => Promise<void>
+  refreshMediaSessions: () => Promise<void>
   sendCommand: (command: MediaCommand) => Promise<void>
   resetPosition: () => Promise<void>
   openSettingsWindow: () => Promise<void>
@@ -45,6 +57,14 @@ export function useIslandApp(): IslandAppState {
   const [media, setMedia] = useState<MediaSnapshot | null>(null)
   const [mode, setMode] = useState<OverlayMode>('idle')
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
+  const [smtcHealth, setSmtcHealth] = useState<SmtcHealthSnapshot>({
+    status: 'healthy',
+    consecutiveFailures: 0,
+    lastProbeMs: 0,
+    lastError: null,
+    sessionCount: 0,
+  })
+  const [mediaSessions, setMediaSessions] = useState<MediaSessionInfo[]>([])
   const [nowMs, setNowMs] = useState(() => Date.now())
   const noSessionTimerRef = useRef<number | null>(null)
   const pendingSeekRef = useRef<{ positionMs: number; untilMs: number; preservePlaying: boolean } | null>(null)
@@ -64,13 +84,15 @@ export function useIslandApp(): IslandAppState {
   useEffect(() => {
     let mounted = true
 
-    Promise.all([getConfig(), getMediaSnapshot()])
-      .then(([nextConfig, snapshot]) => {
+    Promise.all([getConfig(), getMediaSnapshot(), getSmtcHealth(), listMediaSessions()])
+      .then(([nextConfig, snapshot, health, sessions]) => {
         if (!mounted) {
           return
         }
         setConfig(nextConfig)
         setMedia(snapshot)
+        setSmtcHealth(health)
+        setMediaSessions(sessions)
         setMode(snapshot.hasSession ? 'compact' : 'no-session')
         void setAutostart(nextConfig.behavior.launchAtStartup)
       })
@@ -97,6 +119,21 @@ export function useIslandApp(): IslandAppState {
 
     return () => cleanup()
   }, [reconcileMedia])
+
+  useEffect(() => {
+    let stopHealth: () => void = () => undefined
+    let stopConfig: () => void = () => undefined
+    onSmtcHealth(setSmtcHealth).then((unlisten) => {
+      stopHealth = unlisten
+    })
+    onConfigChanged(setConfig).then((unlisten) => {
+      stopConfig = unlisten
+    })
+    return () => {
+      stopHealth()
+      stopConfig()
+    }
+  }, [])
 
   useEffect(() => {
     if (media?.hasSession && mode === 'no-session') {
@@ -178,17 +215,13 @@ export function useIslandApp(): IslandAppState {
     await setAutostart(saved.behavior.launchAtStartup)
   }, [])
 
-  const applyPreset = useCallback(
-    async (preset: AppConfig['layout']['preset']) => {
-      if (!config) {
-        return
-      }
-
-      const presetConfig = applyLayoutPreset(config, preset)
-      await updateConfig(presetConfig)
-    },
-    [config, updateConfig],
-  )
+  const refreshMediaSessions = useCallback(async () => {
+    try {
+      setMediaSessions(await listMediaSessions())
+    } catch {
+      setMediaSessions([])
+    }
+  }, [])
 
   const sendCommand = useCallback(async (command: MediaCommand) => {
     if (typeof command === 'object' && 'seek' in command) {
@@ -252,9 +285,11 @@ export function useIslandApp(): IslandAppState {
     updateMessage,
     progressMs,
     progressPercent,
+    smtcHealth,
+    mediaSessions,
     setMode,
     updateConfig,
-    applyPreset,
+    refreshMediaSessions,
     sendCommand,
     resetPosition: resetWindowPosition,
     openSettingsWindow,

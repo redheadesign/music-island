@@ -1,4 +1,4 @@
-import { Pause, Play } from 'lucide-react'
+import { Heart, HeartCrack, Pause, Play } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import type { MediaCommand, MediaSnapshot } from '../../shared/lib/types'
@@ -35,6 +35,17 @@ export function MusicModule({
   const scrubbingRef = useRef(false)
   const seekGestureIdRef = useRef<number | null>(null)
   const seekSentRef = useRef(false)
+
+  if (media?.smtcHealth === 'unavailable') {
+    return (
+      <section className="music-module music-module--empty music-module--warning" aria-label="SMTC unavailable">
+        <div className="track-copy">
+          <strong>SMTC недоступен</strong>
+          <span>Windows media protocol завис. Перезагрузите Windows.</span>
+        </div>
+      </section>
+    )
+  }
 
   if (!media?.hasSession) {
     return (
@@ -159,27 +170,53 @@ export function MusicModule({
         ) : null}
       </div>
 
-      {canShowSeek ? (
-        <button
-          type="button"
-          className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
-          aria-label="Seek track"
-          onPointerDown={handleSeekPointerDown}
-          onPointerMove={handleSeekPointerMove}
-          onPointerUp={handleSeekPointerUp}
-          onPointerCancel={handleSeekPointerCancel}
-          onClick={(event) => event.preventDefault()}
-          disabled={!media.canSeek}
-          style={{ '--progress': activeRatio } as CSSProperties}
-        >
-          <span className="progress-fill" />
-          <span className="progress-content progress-content--track" title={trackLabel}>
-            <MarqueeText text={trackLabel} />
-          </span>
-          <span className="progress-content progress-content--time">
-            {formatTime(activeProgressMs)} / {formatTime(media.durationMs)}
-          </span>
-        </button>
+      {canShowSeek || media.provider === 'yandex-direct' ? (
+        <div className="progress-row">
+          {media.provider === 'yandex-direct' ? (
+            <button
+              type="button"
+              className={`reaction-button ${media.isDisliked ? 'reaction-button--active' : ''}`}
+              aria-label={media.isDisliked ? 'Убрать дизлайк' : 'Не нравится'}
+              aria-pressed={media.isDisliked}
+              disabled={!media.canDislike}
+              onClick={() => onCommand('dislike')}
+            >
+              <HeartCrack fill={media.isDisliked ? 'currentColor' : 'none'} />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
+            aria-label="Seek track"
+            onPointerDown={handleSeekPointerDown}
+            onPointerMove={handleSeekPointerMove}
+            onPointerUp={handleSeekPointerUp}
+            onPointerCancel={handleSeekPointerCancel}
+            onClick={(event) => event.preventDefault()}
+            disabled={!media.canSeek}
+            style={{ '--progress': activeRatio } as CSSProperties}
+          >
+            <span className="progress-fill" />
+            <span className="progress-content progress-content--track" title={trackLabel}>
+              <MarqueeText text={trackLabel} />
+            </span>
+            <span className="progress-content progress-content--time">
+              {formatTime(activeProgressMs)} / {formatTime(media.durationMs)}
+            </span>
+          </button>
+          {media.provider === 'yandex-direct' ? (
+            <button
+              type="button"
+              className={`reaction-button ${media.isLiked ? 'reaction-button--active' : ''}`}
+              aria-label={media.isLiked ? 'Убрать из любимого' : 'Добавить в любимое'}
+              aria-pressed={media.isLiked}
+              disabled={!media.canLike}
+              onClick={() => onCommand('like')}
+            >
+              <Heart fill={media.isLiked ? 'currentColor' : 'none'} />
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </section>
   )

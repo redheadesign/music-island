@@ -1,17 +1,19 @@
 # Roadmap
 
-## MVP
+## 0.9 beta
 
 - Music module with SMTC metadata and controls.
 - Top-edge hover island with compact, expanded, pinned and settings states.
-- Layout presets, themes and local settings persistence.
-- Tray menu and installer-ready Tauri bundle configuration.
+- Live width, scale and hover-delay settings with local persistence.
+- SMTC health/backoff, multi-session arbitration and preferred source.
+- Experimental opt-in Direct Yandex control with reactions.
+- Portable Windows release.
 
 ## Next
 
-- Artwork extraction and bounded artwork cache.
+- Broader Direct Yandex client-version compatibility and reconnect handling.
 - Better DPI and fullscreen app detection.
-- Manual diagnostics export and richer troubleshooting UI.
+- Richer in-app diagnostics and protocol recovery UI.
 - Signed GitHub Releases and Tauri auto-update.
 
 ## Future Modules
@@ -23,6 +25,6 @@
 
 ## Packaging
 
-- NSIS `.exe` first.
-- MSI as optional advanced artifact.
+- Portable `.exe` during beta.
 - Authenticode signing before broader distribution.
+- Signed installer/updater artifacts after the portable channel is stable.

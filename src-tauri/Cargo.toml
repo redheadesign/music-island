@@ -1,10 +1,10 @@
 [package]
 name = "music-island"
-version = "0.8.1"
-description = "Unofficial Windows top-edge overlay for SMTC media sessions."
+version = "0.9.0"
+description = "Windows top-edge media controller with SMTC and opt-in direct desktop integration."
 authors = ["Music Island contributors"]
 edition = "2021"
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 [lib]
 name = "music_island_lib"
@@ -17,6 +17,7 @@ tauri-build = { version = "2", features = [] }
 anyhow = "1"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
+futures-util = "0.3.32"
 pollster = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -27,11 +28,13 @@ tauri-plugin-opener = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-updater = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
+tokio-tungstenite = "0.30.0"
 tracing = "0.1"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [
   "Foundation",
+  "Foundation_Collections",
   "Storage_Streams",
   "Media_Control",
   "Win32_Foundation",

@@ -16,18 +16,26 @@
 - Hover opens the island.
 - Auto-collapse works after mouse leave.
 - Pin keeps the island expanded.
-- Tray show/hide works.
-- Reset position restores top-center placement.
+- Settings and pin controls receive hover/clicks after restart.
+- Tray settings, update-check and quit actions work.
+- Reset Position in Settings restores top-center placement.
 - DPI scaling: 100%, 125%, 150%.
 - Multi-monitor: primary monitor switch and disconnected monitor recovery.
 
-## Installer
+## Portable release
 
-- Fresh install.
-- Install over previous version.
-- Uninstall.
-- Reinstall.
-- Settings persistence after update.
+- Starts without a Vite development server.
+- Replacing the executable preserves app-data settings.
+- Unsigned SmartScreen warning is documented.
+
+## Direct Yandex
+
+- Consent dialog is centered and can be dismissed.
+- Desktop client restarts with a random loopback-only debug port.
+- Status reaches connected and remains usable during playback changes.
+- Metadata, artwork, play/pause, previous/next and seek work.
+- Like/dislike capabilities and pressed states match the desktop client.
+- Returning to SMTC restarts the desktop client without debug flags.
 
 ## Performance
 

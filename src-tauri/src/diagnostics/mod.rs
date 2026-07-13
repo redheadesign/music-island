@@ -1,4 +1,4 @@
-use crate::{config, logging};
+use crate::{config, logging, media, yandex};
 use serde::Serialize;
 use tauri::AppHandle;
 
@@ -11,6 +11,8 @@ struct DiagnosticsReport {
     config_path: String,
     log_note: String,
     log_path: String,
+    smtc_health: media::health::SmtcHealthSnapshot,
+    direct_yandex: yandex::DirectYandexStatus,
 }
 
 pub fn collect(app: &AppHandle) -> anyhow::Result<String> {
@@ -20,8 +22,11 @@ pub fn collect(app: &AppHandle) -> anyhow::Result<String> {
         os: std::env::consts::OS.to_string(),
         arch: std::env::consts::ARCH.to_string(),
         config_path: config::config_path()?.display().to_string(),
-        log_note: "Local startup/runtime logs are written by default for troubleshooting.".to_string(),
+        log_note: "Local startup/runtime logs are written by default for troubleshooting."
+            .to_string(),
         log_path: logging::log_file_path().display().to_string(),
+        smtc_health: media::current_health(),
+        direct_yandex: yandex::status(),
     };
 
     Ok(serde_json::to_string_pretty(&report)?)

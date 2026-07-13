@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a Windows top-edge overlay that surfaces the active Windows SMTC media session and behaves like a small native-feeling island. The first module is music control for any SMTC-compatible player; the shell must support future productivity modules.
+Build a Windows top-edge overlay that surfaces the active media session and behaves like a small native-feeling island. Windows SMTC is the universal provider; explicit local Yandex Music Desktop control is an experimental low-latency provider. The shell must support future productivity modules.
 
 ## MVP Scope
 
@@ -10,14 +10,15 @@ Build a Windows top-edge overlay that surfaces the active Windows SMTC media ses
 - Hover-driven compact and expanded states.
 - SMTC metadata: source app, title, artist, album, playback status, timeline and capabilities.
 - Controls: play/pause, previous, next and stop where the active session supports them.
-- Settings: size, scale, density, artwork/title/artist/progress/source visibility, theme, opacity, blur, reduced motion and autostart.
-- Tray menu: show/hide, settings, reset position, check updates and quit.
+- Settings: live width, scale, open delay, preferred SMTC source, protocol status, direct connection consent and autostart.
+- Tray menu: settings, update check and quit.
 - Local settings persistence in app data.
-- Windows NSIS installer path and GitHub Releases documentation.
+- Portable Windows executable and GitHub Releases documentation.
+- Opt-in Direct Yandex metadata, playback, seek and like/dislike control without creating a second audio session.
 
 ## Out Of Scope For MVP
 
-- Streaming service account login.
+- Streaming service account login or token storage.
 - Custom audio playback.
 - Track downloads or third-party streaming API integration.
 - Third-party plugin marketplace.
@@ -28,5 +29,5 @@ Build a Windows top-edge overlay that surfaces the active Windows SMTC media ses
 - The app starts in dev browser preview with demo data.
 - The installed Tauri app can read a current Windows media session on Windows.
 - The overlay can be opened by hovering near the top edge.
-- Settings survive restart and future installer updates.
+- Settings survive restart and executable replacement.
 - The app has README, architecture, release, QA and troubleshooting documentation suitable for GitHub.

@@ -16,6 +16,8 @@ pub struct AppConfig {
     pub behavior: BehaviorConfig,
     pub modules: ModulesConfig,
     pub privacy: PrivacyConfig,
+    #[serde(default)]
+    pub media: MediaConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +35,8 @@ pub struct AppearanceConfig {
 #[serde(rename_all = "camelCase")]
 pub struct LayoutConfig {
     pub size: WidgetSize,
+    #[serde(default = "default_width_percent")]
+    pub width: u8,
     pub scale: u8,
     pub density: Density,
     pub show_artwork: bool,
@@ -42,6 +46,10 @@ pub struct LayoutConfig {
     pub show_source: bool,
     pub show_previous_next: bool,
     pub preset: LayoutPreset,
+}
+
+fn default_width_percent() -> u8 {
+    100
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,6 +76,31 @@ pub struct ModulesConfig {
 pub struct PrivacyConfig {
     pub telemetry_enabled: bool,
     pub write_detailed_logs: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaConfig {
+    pub protocol: MediaProtocol,
+    pub preferred_source_app_id: Option<String>,
+    pub direct_yandex_consent: bool,
+}
+
+impl Default for MediaConfig {
+    fn default() -> Self {
+        Self {
+            protocol: MediaProtocol::Smtc,
+            preferred_source_app_id: None,
+            direct_yandex_consent: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum MediaProtocol {
+    Smtc,
+    YandexDirect,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,7 +140,7 @@ pub enum LayoutPreset {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            schema_version: 1,
+            schema_version: 2,
             appearance: AppearanceConfig {
                 theme: Theme::LiquidGlassDark,
                 accent_color: "#8fb8ff".to_string(),
@@ -118,6 +151,7 @@ impl Default for AppConfig {
             },
             layout: LayoutConfig {
                 size: WidgetSize::Medium,
+                width: default_width_percent(),
                 scale: 100,
                 density: Density::Balanced,
                 show_artwork: true,
@@ -145,6 +179,7 @@ impl Default for AppConfig {
                 telemetry_enabled: false,
                 write_detailed_logs: false,
             },
+            media: MediaConfig::default(),
         }
     }
 }
@@ -168,7 +203,9 @@ impl ConfigState {
 
     pub fn save(&self, config: AppConfig) -> anyhow::Result<AppConfig> {
         let mut normalized = config;
-        normalized.schema_version = 1;
+        normalized.schema_version = 2;
+        normalized.layout.width = normalized.layout.width.clamp(80, 125);
+        normalized.layout.scale = normalized.layout.scale.clamp(70, 120);
         let path = config_path()?;
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
@@ -190,6 +227,7 @@ fn load_from_disk() -> anyhow::Result<AppConfig> {
     let path = config_path()?;
     let contents = fs::read_to_string(path)?;
     let mut config: AppConfig = serde_json::from_str(&contents)?;
+    config.schema_version = 2;
     if config.behavior.hover_delay_ms <= 70 {
         config.behavior.hover_delay_ms = 320;
     }

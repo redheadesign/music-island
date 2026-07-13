@@ -1,30 +1,31 @@
 # Music Island
 
-Windows top-edge overlay for the active media session — metadata, playback controls, and a compact “island” UI driven by native SMTC/GSMTC. Works with any desktop player that registers with Windows media controls (Spotify, browser players, desktop streaming apps, and others).
+Windows top-edge media controller with a compact “island” UI. It works with any player registered in Windows SMTC and offers an explicit opt-in direct connection to Yandex Music Desktop.
 
-> **Status:** alpha MVP · Windows 10/11 · local-first · no telemetry by default
+> **Status:** 0.9 beta · Windows 10/11 · local-first · no telemetry
 
 ## Highlights
 
 - Hover-reveal island at the top center of the screen
 - Live track metadata, artwork, progress, play/pause, previous/next
-- Layout presets: Clean Controls, Album Pill, Now Playing Rich, Focus Mode
-- Themes, opacity, blur, scale, reduced motion, pin-expanded mode
-- System tray: show/hide, settings, update check, reset position
+- Live width, scale and open-delay controls in a focused glass settings UI
+- Stable multi-session arbitration, preferred-source selection and SMTC health diagnostics
+- Automatic SMTC backoff when the Windows broker is degraded or unavailable
+- Experimental low-latency Yandex Music Desktop control with like/dislike state
+- System tray shortcuts for settings, update checks and quit
 - Settings stored locally in `%APPDATA%\Music Island\`
-- Extensible shell for future modules (notes, todos, transcription)
 
 ## Download
 
-Pre-built installers: [GitHub Releases](https://github.com/redheadesign/music-island/releases) — latest **v0.8.1** (alpha, private).
+Download the latest build from [GitHub Releases](https://github.com/redheadesign/music-island/releases) — **v0.9.0 beta**.
 
-- **Recommended:** `Music Island_x.y.z_x64-setup.exe` (NSIS installer, per-user)
+- `music-island.exe` is a portable Windows executable; no installer is required.
 
-Unsigned alpha builds may trigger Windows SmartScreen until Authenticode signing is set up.
+The build is currently unsigned and can trigger Windows SmartScreen until Authenticode signing is set up.
 
 ## Known limitations
 
-- **Settings panel does not work yet** — UI opens, but changes are not applied or saved correctly.
+- **Direct Yandex connection is experimental** — it restarts the installed desktop client with a random loopback-only CDP port after explicit confirmation. Desktop client updates can change its internal controls; Windows SMTC remains available as fallback.
 - **Seek audio spike** — a brief click or stutter when scrubbing the timeline is common with Windows SMTC/GSMTC. Music Island sends a single seek command; the artifact usually comes from the media player re-buffering after `PlaybackPositionChangeRequested` (Electron/Chromium apps, Spotify desktop, and others). Compare with the native Windows media flyout on the same track — if it sounds the same, it is a protocol/player limitation, not a duplicate command from this app.
 - **SMTC is a lowest-common-denominator API** — not every player exposes every command; behavior varies by app.
 
@@ -50,6 +51,8 @@ npm run build
 ```mermaid
 flowchart LR
   WindowsSMTC[Windows SMTC] --> RustMedia[Rust media watcher]
+  YandexDesktop[Yandex Music Desktop] <-->|Local CDP, opt-in| DirectProvider[Rust direct provider]
+  DirectProvider --> RustMedia
   RustMedia --> TauriEvents[Tauri events]
   ReactStore[React app store] --> OverlayShell[Overlay shell]
   TauriEvents --> ReactStore
@@ -57,7 +60,7 @@ flowchart LR
   OverlayShell --> SettingsModule[Settings]
 ```
 
-Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
+Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/MEDIA_ARCHITECTURE.md`](docs/MEDIA_ARCHITECTURE.md) · [`docs/YANDEX_MUSIC_API.md`](docs/YANDEX_MUSIC_API.md) · [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) · [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 
 ## Support & author
 
@@ -72,8 +75,8 @@ You may use, study, modify, and share this project under GPL terms. Donations ar
 
 ## Privacy
 
-No telemetry by default. Settings and logs stay on your machine.
+No telemetry by default. Settings and logs stay on your machine. Direct integration communicates only with the local desktop client through `127.0.0.1`.
 
 ## Disclaimer
 
-Unofficial community project. Not affiliated with Apple, Microsoft, Spotify, or any music streaming service. Uses public Windows media session APIs only.
+Unofficial community project. Not affiliated with Apple, Microsoft, Spotify, Yandex, or any music streaming service.

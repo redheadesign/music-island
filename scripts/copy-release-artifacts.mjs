@@ -4,14 +4,7 @@ import path from 'node:path'
 const rootDir = process.cwd()
 const releaseDir = path.join(rootDir, 'release')
 const tauriReleaseDir = path.join(rootDir, 'src-tauri', 'target', 'release')
-const bundleDir = path.join(tauriReleaseDir, 'bundle')
-
 const artifactPatterns = [
-  {
-    label: 'Recommended installer',
-    directory: path.join(bundleDir, 'nsis'),
-    match: (fileName) => fileName.startsWith('Music Island_') && fileName.endsWith('-setup.exe'),
-  },
   {
     label: 'Portable app binary',
     directory: tauriReleaseDir,
@@ -19,8 +12,9 @@ const artifactPatterns = [
   },
 ]
 
-await rm(releaseDir, { recursive: true, force: true })
 await mkdir(releaseDir, { recursive: true })
+await rm(path.join(releaseDir, 'music-island.exe'), { force: true })
+await rm(path.join(releaseDir, 'README.txt'), { force: true })
 
 const copied = []
 
@@ -48,8 +42,7 @@ if (copied.length === 0) {
 const readme = [
   'Music Island release artifacts',
   '',
-  'Give users the NSIS setup .exe from this folder.',
-  'The plain music-island.exe is useful for quick local smoke checks, not distribution.',
+  'Portable Windows build. No installer is required.',
   '',
   ...copied.map((artifact) => `- ${artifact.label}: ${artifact.fileName} (${artifact.sizeMb} MB)`),
   '',

@@ -1,6 +1,6 @@
 # Releases
 
-## MVP Manual Release
+## Beta manual release
 
 1. Install prerequisites: Node.js, Rust, Microsoft C++ Build Tools and WebView2 runtime.
 2. Bump versions in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`.
@@ -8,14 +8,14 @@
 
 ```powershell
 npm install
-npm run tauri:build
+npm run tauri:build -- --no-bundle
 ```
 
-4. Use the root `release/` folder for human-friendly artifacts. The `posttauri:build` script copies installers there automatically after a successful build.
-5. Upload the NSIS setup `.exe` from `release/` to GitHub Releases.
-6. Include changelog, screenshots/gif and known limitations.
+4. Use the root `release/` folder. The `posttauri:build` script copies the portable executable there after a successful build.
+5. Upload `release/music-island.exe` to GitHub Releases.
+6. Include the changelog, verification summary and known limitations.
 
-We ship **NSIS `.exe` only**. MSI/WiX bundles were removed — they targeted enterprise silent deployment and duplicated locale installers (en-US / ru-RU) without benefit for normal users.
+The 0.9 beta ships as a single portable `.exe`. Installer and updater artifacts are intentionally deferred until signing and update distribution are ready.
 
 If you already built the app and only need to refresh `release/`, run:
 
@@ -25,7 +25,7 @@ npm run release:copy
 
 ## Updating Over Previous Versions
 
-Keep `identifier`, `productName` and bundle identity stable after the first public release. User config is stored in app data, not in the install folder, so installer updates should preserve settings.
+Keep `identifier`, `productName` and bundle identity stable. User config is stored in app data, not next to the portable executable, so replacing the executable preserves settings.
 
 ## Future Auto-Update
 
