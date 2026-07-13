@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.9.1 — 2026-07-13
+
+### Provider reliability
+
+- Made the configured provider authoritative for snapshots and commands. A Direct failure no longer falls back to SMTC or displays the SMTC-unavailable banner.
+- Kept inactive SMTC checks as rare health-only probes which cannot emit playback state.
+- Added single-flight WinRT protection so a timed-out SMTC worker cannot create an accumulating thread/handle storm.
+
+### Direct Yandex
+
+- Replaced per-request discovery/WebSocket setup with one serialized persistent CDP actor.
+- Added bounded reconnect, increasing request IDs, compact timeline events and immediate commands through the open socket.
+- Reattach to a validated running Yandex Music process/loopback endpoint on startup; client restart now requires an explicit Settings action.
+- Persisted the last Direct port as a hint and reject non-Yandex targets or non-loopback WebSocket endpoints.
+
+### Performance and UI
+
+- Removed media/timeline subscriptions and the progress clock from the Settings WebView.
+- Reduced the progress clock to 1 Hz, moved artwork color interpolation to CSS and deduplicated native bounds work.
+- Stopped global cursor-coordinate events while the pointer is outside the overlay and made native gesture polling adaptive.
+- Stabilized SMTC source-list refreshes with debounce, single-flight and equality checks.
+- Fixed reaction order to dislike — timeline — like.
+- Added runtime counters and `scripts/profile-hotfix.mjs` for provider, CDP, event, bounds and resource acceptance.
+
+### Acceptance
+
+- Expanded Direct playback averaged 0.12% Task Manager CPU on the 8-logical-core test machine (0.94% of one core), below the 4% budget.
+- A 60-second expanded run stayed stable at 20–25 threads and 463–469 handles; the 0.9.0 baseline grew from 316 to 1414 threads and 1328 to 5111 handles in 30 seconds.
+- Ten Direct track switches used one discovery and one WebSocket. CDP RPC max was 35 ms; overlay updates averaged 911 ms with p95 933 ms.
+- The same live run had zero SMTC media probes while Direct was active; the isolated 30-second passive health probe remained single-flight.
+
 ## 0.9.0 — 2026-07-13
 
 Music Island 0.9 moves the alpha toward a stable beta while deliberately keeping the project below 1.0.

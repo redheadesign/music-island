@@ -1,14 +1,15 @@
 # Performance budget
 
-Music Island 0.9 limits media work by design:
+Music Island 0.9.1 limits media work by design:
 
-- active timeline IPC: at most 2 updates/second;
+- active Direct timeline IPC: about 1 compact update/second;
 - idle SMTC polling: once every 2 seconds;
 - degraded SMTC polling: once every 5 seconds;
 - unavailable SMTC recovery probe: once every 15 seconds;
 - metadata: at most once every 2 seconds while active;
 - artwork: one read per source/track key;
-- UI progress: interpolated locally, with no backend request per animation frame.
+- passive SMTC health while Direct is active: once every 30 seconds, single-flight and never emitted as media;
+- UI progress: interpolated locally at 1 Hz, with no backend request per animation frame.
 
 ## Verification scenarios
 
@@ -23,32 +24,39 @@ Use Task Manager or Windows Performance Recorder with the release executable:
 
 Record average CPU, peak CPU, working set, `media:update`/`timeline:update` rate and metadata/artwork reads. The expected behavior is near-zero idle CPU, no continuous thumbnail decoding, and automatic backoff when the broker fails.
 
-Exact machine-dependent CPU numbers are intentionally not fabricated in this document. They must be captured on the tester's release build and hardware.
-
-## 0.9 implementation
+## 0.9.1 implementation
 
 - Blocking WinRT calls run outside the async runtime and have explicit timeouts.
 - Metadata is sampled less often than timeline state; artwork is cached by track/source key.
 - SMTC health changes polling from active to idle, degraded and unavailable intervals.
 - Cursor gesture detection runs natively and emits only state changes instead of making high-frequency frontend IPC calls.
 - React interpolates playback progress from the latest snapshot.
-- Direct Yandex uses loopback HTTP/WebSocket requests with bounded response and RPC timeouts.
+- Direct Yandex uses one persistent loopback WebSocket; HTTP discovery happens only on connect/reconnect.
+- All SMTC probes and session listings share one in-flight guard. A timed-out WinRT worker blocks replacement workers until it actually exits.
+- Settings has no media subscription or progress clock. Its source list uses debounce, in-flight dedupe, equality checks and retains the last non-empty result.
+- Timeline events contain only position, duration, playback state, timestamp and provider; metadata/artwork are not serialized every second.
 - Animations favor `transform`, `opacity` and CSS variables over layout-heavy properties.
 
 ## Local verification
 
 Release builds are produced through `tauri build --no-bundle`, which embeds frontend assets and does not depend on the Vite development server.
 
-The 0.9 acceptance run verified:
+The 0.9.1 acceptance run verified:
 
 - all 17 frontend tests and all direct-provider Rust tests;
 - SMTC health/backoff and multi-session logic through unit and smoke coverage;
 - a live Yandex Music 5.110.1 CDP connection;
 - direct metadata/capabilities and a like toggle/restore round trip;
 - native button hit-testing, physical hover/click and centered consent-dialog geometry.
+- persistent CDP reuse: 10 switches, 1 discovery, 1 WebSocket, 0 reconnects, RPC max 35 ms;
+- overlay track update: 911 ms average, 933 ms p95 across 10 switches;
+- collapsed idle: 0.14% Task Manager CPU over 60 seconds;
+- expanded Direct playback: 0.12% Task Manager CPU over 60 seconds;
+- stable resources during expanded playback: 20–25 threads and 463–469 handles;
+- active Direct isolation: 0 SMTC media probes, with one separate passive health worker after 30 seconds.
 
-CPU and memory vary by WebView2, GPU, source player and Windows state. Long-duration measurements should still follow the scenarios above rather than treating one machine's short sample as a universal number.
+Measurements were captured on an 8-logical-core Windows test machine. CPU and memory vary by WebView2, GPU, source player and Windows state, so repeat the scenarios above on target hardware.
 
 ## Diagnostics
 
-Copy Diagnostics includes app/config information, current media provider, SMTC health and direct-provider status. Local runtime events are stored in `%APPDATA%\Music Island\logs\app.log`.
+Copy Diagnostics includes app/config information, current media provider, independent health/status and counters for media polls/events, SMTC in-flight work, CDP discovery/connections/RTT, gesture events and native bounds sync. Local runtime events are stored in `%APPDATA%\Music Island\logs\app.log`.

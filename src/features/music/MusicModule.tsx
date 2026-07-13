@@ -36,7 +36,7 @@ export function MusicModule({
   const seekGestureIdRef = useRef<number | null>(null)
   const seekSentRef = useRef(false)
 
-  if (media?.smtcHealth === 'unavailable') {
+  if (media?.provider === 'smtc' && media.smtcHealth === 'unavailable') {
     return (
       <section className="music-module music-module--empty music-module--warning" aria-label="SMTC unavailable">
         <div className="track-copy">
@@ -51,8 +51,8 @@ export function MusicModule({
     return (
       <section className="music-module music-module--empty" aria-label="No media session">
         <div className="track-copy">
-          <strong>No music playing</strong>
-          <span>Start any Windows media source.</span>
+          <strong>{media?.provider === 'yandex-direct' ? 'Direct connection is reconnecting' : 'No music playing'}</strong>
+          <span>{media?.provider === 'yandex-direct' ? 'Open Settings to reconnect if this persists.' : 'Start any Windows media source.'}</span>
         </div>
       </section>
     )

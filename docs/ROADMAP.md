@@ -9,9 +9,16 @@
 - Experimental opt-in Direct Yandex control with reactions.
 - Portable Windows release.
 
+## 0.9.1 hotfix
+
+- Authoritative provider routing and independent health.
+- Persistent CDP actor with safe startup reattach.
+- Single-flight SMTC protection and stable Settings source refresh.
+- CPU/resource acceptance counters and repeatable live profiling.
+
 ## Next
 
-- Broader Direct Yandex client-version compatibility and reconnect handling.
+- Broader Direct Yandex client-version compatibility and recovery UI.
 - Better DPI and fullscreen app detection.
 - Richer in-app diagnostics and protocol recovery UI.
 - Signed GitHub Releases and Tauri auto-update.

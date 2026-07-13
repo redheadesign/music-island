@@ -43,6 +43,14 @@ export interface MediaSnapshot {
   smtcHealth: SmtcHealth
 }
 
+export interface TimelineUpdate {
+  positionMs: number | null
+  durationMs: number | null
+  playbackStatus: PlaybackStatus
+  updatedAt: string
+  provider: 'smtc' | 'yandex-direct'
+}
+
 export type SmtcHealth = 'healthy' | 'degraded' | 'unavailable'
 
 export interface SmtcHealthSnapshot {
@@ -60,7 +68,7 @@ export interface MediaSessionInfo {
 }
 
 export interface DirectYandexStatus {
-  state: 'disabled' | 'connecting' | 'connected' | 'incompatible' | 'error'
+  state: 'disabled' | 'connecting' | 'connected' | 'degraded' | 'restart-required' | 'incompatible' | 'error'
   message: string
   port: number | null
   executablePath: string | null
@@ -115,6 +123,7 @@ export interface AppConfig {
     protocol: 'smtc' | 'yandex-direct'
     preferredSourceAppId: string | null
     directYandexConsent: boolean
+    directYandexPort: number | null
   }
 }
 

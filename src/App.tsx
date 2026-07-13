@@ -8,7 +8,7 @@ import './App.css'
 
 function App() {
   const windowLabel = isTauriRuntime() ? getCurrentWindow().label : 'main'
-  const app = useIslandApp()
+  const app = useIslandApp({ mediaEnabled: windowLabel !== 'settings' })
 
   if (windowLabel === 'settings') {
     if (!app.config) {
@@ -30,11 +30,11 @@ function App() {
             updateMessage={app.updateMessage}
             smtcHealth={app.smtcHealth}
             mediaSessions={app.mediaSessions}
-            onChange={(nextConfig) => void app.updateConfig(nextConfig)}
-            onResetPosition={() => void app.resetPosition()}
-            onCheckUpdates={() => void app.checkUpdates()}
+            onChange={app.updateConfig}
+            onResetPosition={app.resetPosition}
+            onCheckUpdates={app.checkUpdates}
             onCopyDiagnostics={() => void copyDiagnostics().then((text) => navigator.clipboard?.writeText(text))}
-            onRefreshSources={() => void app.refreshMediaSessions()}
+            onRefreshSources={app.refreshMediaSessions}
           />
         </div>
       </main>

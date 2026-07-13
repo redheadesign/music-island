@@ -14,7 +14,10 @@ fn main() {
 async fn run() {
     use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager as SessionManager;
 
-    println!("=== GSMTC RUST PROBE {} ===", chrono::Utc::now().to_rfc3339());
+    println!(
+        "=== GSMTC RUST PROBE {} ===",
+        chrono::Utc::now().to_rfc3339()
+    );
 
     let manager = match SessionManager::RequestAsync() {
         Ok(op) => match op.await {

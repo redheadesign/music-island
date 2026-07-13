@@ -6,35 +6,84 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener},
     path::PathBuf,
     process::{Command, Stdio},
-    sync::{OnceLock, RwLock},
-    time::Duration,
+    sync::{
+        atomic::{AtomicU32, AtomicU64, Ordering},
+        OnceLock, RwLock,
+    },
+    time::{Duration, Instant},
 };
+use sysinfo::System;
+use tokio::net::TcpStream as TokioTcpStream;
+use tokio::sync::Mutex as AsyncMutex;
 use tokio::time::{sleep, timeout};
-use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 
 use crate::media::{health, MediaCommand, MediaProvider, MediaSnapshot, PlaybackStatus};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const RPC_TIMEOUT: Duration = Duration::from_secs(3);
 const MAX_DISCOVERY_RESPONSE_BYTES: usize = 256 * 1024;
+static PROBE_FAILURES: AtomicU32 = AtomicU32::new(0);
+static DISCOVERIES: AtomicU64 = AtomicU64::new(0);
+static WEBSOCKET_CONNECTS: AtomicU64 = AtomicU64::new(0);
+static RECONNECTS: AtomicU64 = AtomicU64::new(0);
+static EVALUATIONS: AtomicU64 = AtomicU64::new(0);
+static COMMANDS: AtomicU64 = AtomicU64::new(0);
+static RPC_RTT_TOTAL_MS: AtomicU64 = AtomicU64::new(0);
+static RPC_RTT_MAX_MS: AtomicU64 = AtomicU64::new(0);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum DirectYandexState {
     Disabled,
     Connecting,
     Connected,
+    Degraded,
+    RestartRequired,
     Incompatible,
     Error,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DirectYandexStatus {
     pub state: DirectYandexState,
     pub message: String,
     pub port: Option<u16>,
     pub executable_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectMetrics {
+    pub discoveries: u64,
+    pub websocket_connects: u64,
+    pub reconnects: u64,
+    pub evaluations: u64,
+    pub commands: u64,
+    pub consecutive_failures: u32,
+    pub average_rpc_rtt_ms: u64,
+    pub max_rpc_rtt_ms: u64,
+    pub persistent_socket_open: bool,
+}
+
+pub async fn metrics() -> DirectMetrics {
+    let evaluations = EVALUATIONS.load(Ordering::Relaxed);
+    DirectMetrics {
+        discoveries: DISCOVERIES.load(Ordering::Relaxed),
+        websocket_connects: WEBSOCKET_CONNECTS.load(Ordering::Relaxed),
+        reconnects: RECONNECTS.load(Ordering::Relaxed),
+        evaluations,
+        commands: COMMANDS.load(Ordering::Relaxed),
+        consecutive_failures: PROBE_FAILURES.load(Ordering::Relaxed),
+        average_rpc_rtt_ms: if evaluations == 0 {
+            0
+        } else {
+            RPC_RTT_TOTAL_MS.load(Ordering::Relaxed) / evaluations
+        },
+        max_rpc_rtt_ms: RPC_RTT_MAX_MS.load(Ordering::Relaxed),
+        persistent_socket_open: actor_lock().lock().await.is_some(),
+    }
 }
 
 impl Default for DirectYandexStatus {
@@ -53,6 +102,19 @@ fn status_lock() -> &'static RwLock<DirectYandexStatus> {
     STATUS.get_or_init(|| RwLock::new(DirectYandexStatus::default()))
 }
 
+type CdpSocket = WebSocketStream<MaybeTlsStream<TokioTcpStream>>;
+
+struct CdpConnection {
+    port: u16,
+    socket: CdpSocket,
+    next_id: u64,
+}
+
+fn actor_lock() -> &'static AsyncMutex<Option<CdpConnection>> {
+    static ACTOR: OnceLock<AsyncMutex<Option<CdpConnection>>> = OnceLock::new();
+    ACTOR.get_or_init(|| AsyncMutex::new(None))
+}
+
 pub fn status() -> DirectYandexStatus {
     status_lock()
         .read()
@@ -66,11 +128,43 @@ fn set_status(next: DirectYandexStatus) {
         .expect("Yandex direct status lock poisoned") = next;
 }
 
-pub fn is_connected() -> bool {
-    matches!(status().state, DirectYandexState::Connected)
+pub fn record_probe_success() {
+    PROBE_FAILURES.store(0, Ordering::Relaxed);
+    let current = status();
+    if current.state == DirectYandexState::Degraded {
+        set_status(DirectYandexStatus {
+            state: DirectYandexState::Connected,
+            message: "Direct connection is active".into(),
+            ..current
+        });
+    }
+}
+
+pub fn record_probe_failure(message: &str) {
+    let failures = PROBE_FAILURES.fetch_add(1, Ordering::Relaxed) + 1;
+    let current = status();
+    if matches!(
+        current.state,
+        DirectYandexState::Connected | DirectYandexState::Degraded
+    ) {
+        set_status(DirectYandexStatus {
+            state: DirectYandexState::Degraded,
+            message: format!("Reconnecting direct endpoint ({failures}): {message}"),
+            ..current
+        });
+    }
 }
 
 pub async fn enable() -> anyhow::Result<DirectYandexStatus> {
+    if let Some((port, executable)) = find_running_debug_endpoint() {
+        match attach_existing(port, executable.clone()).await {
+            Ok(status) => return Ok(status),
+            Err(error) => crate::logging::append_event(&format!(
+                "existing direct endpoint rejected before explicit restart: {error:#}"
+            )),
+        }
+    }
+
     let executable =
         find_executable().ok_or_else(|| anyhow::anyhow!("Yandex Music Desktop was not found"))?;
     let port = reserve_local_port()?;
@@ -99,31 +193,23 @@ pub async fn enable() -> anyhow::Result<DirectYandexStatus> {
     let started = std::time::Instant::now();
     let mut last_error = "local debug endpoint is not ready".to_string();
     while started.elapsed() < CONNECT_TIMEOUT {
-        match discover_target(port).await {
-            Ok(target) => match evaluate_target(&target, STATE_EXPRESSION).await {
-                Ok(value) if value.get("ready").and_then(Value::as_bool) == Some(true) => {
-                    crate::logging::append_event(&format!(
-                        "direct Yandex connected: port={port}, title={}, url={}",
-                        target.title, target.url
-                    ));
-                    let next = DirectYandexStatus {
-                        state: DirectYandexState::Connected,
-                        message: "Direct connection is active".into(),
-                        port: Some(port),
-                        executable_path: Some(executable.to_string_lossy().into_owned()),
-                    };
-                    set_status(next.clone());
-                    return Ok(next);
-                }
-                Ok(_) => {
-                    last_error = "renderer opened, but player controls are still loading".into();
-                }
-                Err(error) => {
-                    last_error = format!("renderer evaluation failed: {error:#}");
-                }
-            },
+        match evaluate(port, STATE_EXPRESSION).await {
+            Ok(value) if value.get("ready").and_then(Value::as_bool) == Some(true) => {
+                crate::logging::append_event(&format!("direct Yandex connected: port={port}"));
+                let next = DirectYandexStatus {
+                    state: DirectYandexState::Connected,
+                    message: "Direct connection is active".into(),
+                    port: Some(port),
+                    executable_path: Some(executable.to_string_lossy().into_owned()),
+                };
+                set_status(next.clone());
+                return Ok(next);
+            }
+            Ok(_) => {
+                last_error = "renderer opened, but player controls are still loading".into();
+            }
             Err(error) => {
-                last_error = format!("endpoint discovery failed: {error:#}");
+                last_error = format!("endpoint connection failed: {error:#}");
             }
         }
         sleep(Duration::from_millis(300)).await;
@@ -143,6 +229,60 @@ pub async fn enable() -> anyhow::Result<DirectYandexStatus> {
     Err(anyhow::anyhow!(next.message))
 }
 
+pub async fn reattach(port_hint: Option<u16>) -> anyhow::Result<DirectYandexStatus> {
+    let candidate = find_running_debug_endpoint();
+    let Some((port, executable)) = candidate else {
+        let next = DirectYandexStatus {
+            state: DirectYandexState::RestartRequired,
+            message: "Direct endpoint is not running. Reconnect explicitly in Settings.".into(),
+            port: port_hint,
+            executable_path: find_executable().map(|path| path.to_string_lossy().into_owned()),
+        };
+        set_status(next.clone());
+        anyhow::bail!(next.message)
+    };
+    match attach_existing(port, executable.clone()).await {
+        Ok(status) => Ok(status),
+        Err(error) => {
+            let next = DirectYandexStatus {
+                state: DirectYandexState::RestartRequired,
+                message: format!(
+                    "Existing endpoint was rejected ({error:#}). Reconnect explicitly in Settings."
+                ),
+                port: Some(port),
+                executable_path: Some(executable.to_string_lossy().into_owned()),
+            };
+            set_status(next.clone());
+            Err(anyhow::anyhow!(next.message))
+        }
+    }
+}
+
+async fn attach_existing(port: u16, executable: PathBuf) -> anyhow::Result<DirectYandexStatus> {
+    set_status(DirectYandexStatus {
+        state: DirectYandexState::Connecting,
+        message: "Attaching to the existing local debug endpoint…".into(),
+        port: Some(port),
+        executable_path: Some(executable.to_string_lossy().into_owned()),
+    });
+    let value = evaluate(port, STATE_EXPRESSION).await?;
+    if value.get("ready").and_then(Value::as_bool) != Some(true) {
+        anyhow::bail!("existing endpoint does not expose ready player controls");
+    }
+    let next = DirectYandexStatus {
+        state: DirectYandexState::Connected,
+        message: "Reattached without restarting Yandex Music".into(),
+        port: Some(port),
+        executable_path: Some(executable.to_string_lossy().into_owned()),
+    };
+    PROBE_FAILURES.store(0, Ordering::Relaxed);
+    set_status(next.clone());
+    crate::logging::append_event(&format!(
+        "direct Yandex reattached to validated process endpoint: port={port}"
+    ));
+    Ok(next)
+}
+
 pub async fn disable(restart_plain: bool) -> anyhow::Result<DirectYandexStatus> {
     let executable = status()
         .executable_path
@@ -150,6 +290,7 @@ pub async fn disable(restart_plain: bool) -> anyhow::Result<DirectYandexStatus> 
         .map(PathBuf::from)
         .or_else(find_executable);
     set_status(DirectYandexStatus::default());
+    *actor_lock().lock().await = None;
     if restart_plain {
         stop_client();
         sleep(Duration::from_millis(500)).await;
@@ -227,6 +368,7 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
 }
 
 pub async fn send_command(command: MediaCommand) -> anyhow::Result<()> {
+    COMMANDS.fetch_add(1, Ordering::Relaxed);
     let port = status()
         .port
         .ok_or_else(|| anyhow::anyhow!("direct Yandex connection is disabled"))?;
@@ -279,6 +421,25 @@ fn find_executable() -> Option<PathBuf> {
     .find(|path| path.is_file())
 }
 
+fn find_running_debug_endpoint() -> Option<(u16, PathBuf)> {
+    let system = System::new_all();
+    system.processes().values().find_map(|process| {
+        let executable = process.exe()?.to_path_buf();
+        let name = executable.file_name()?.to_string_lossy().to_lowercase();
+        if !name.contains("yandex music") && !name.contains("яндекс музыка") {
+            return None;
+        }
+        let port = process.cmd().iter().find_map(|argument| {
+            argument
+                .to_string_lossy()
+                .strip_prefix("--remote-debugging-port=")?
+                .parse::<u16>()
+                .ok()
+        })?;
+        Some((port, executable))
+    })
+}
+
 #[cfg(windows)]
 fn stop_client() {
     let _ = Command::new("taskkill")
@@ -301,12 +462,12 @@ fn stop_client() {}
 struct DebugTarget {
     #[serde(rename = "type")]
     kind: String,
-    title: String,
     url: String,
     web_socket_debugger_url: String,
 }
 
 async fn discover_target(port: u16) -> anyhow::Result<DebugTarget> {
+    DISCOVERIES.fetch_add(1, Ordering::Relaxed);
     let targets = timeout(
         RPC_TIMEOUT,
         tauri::async_runtime::spawn_blocking(move || discover_targets_blocking(port)),
@@ -316,13 +477,12 @@ async fn discover_target(port: u16) -> anyhow::Result<DebugTarget> {
     .map_err(|error| anyhow::anyhow!("CDP discovery worker failed: {error}"))??;
     targets
         .into_iter()
-        .find(|target| {
-            target.kind == "page"
-                && (target.url.starts_with("music-application://")
-                    || target.title.to_lowercase().contains("yandex")
-                    || target.title.to_lowercase().contains("яндекс"))
-        })
+        .find(is_valid_target)
         .ok_or_else(|| anyhow::anyhow!("Yandex Music renderer target was not found"))
+}
+
+fn is_valid_target(target: &DebugTarget) -> bool {
+    target.kind == "page" && target.url.starts_with("music-application://")
 }
 
 fn discover_targets_blocking(port: u16) -> anyhow::Result<Vec<DebugTarget>> {
@@ -409,18 +569,67 @@ fn log_capabilities_once(value: &Value) {
 }
 
 async fn evaluate(port: u16, expression: &str) -> anyhow::Result<Value> {
-    let target = discover_target(port).await?;
-    evaluate_target(&target, expression).await
+    let mut actor = actor_lock().lock().await;
+    if actor
+        .as_ref()
+        .is_some_and(|connection| connection.port != port)
+    {
+        *actor = None;
+    }
+    if actor.is_none() {
+        *actor = Some(connect_actor(port).await?);
+    }
+
+    match evaluate_on_socket(actor.as_mut().expect("CDP actor initialized"), expression).await {
+        Ok(value) => Ok(value),
+        Err(first_error) => {
+            *actor = None;
+            RECONNECTS.fetch_add(1, Ordering::Relaxed);
+            let mut connection = connect_actor(port).await.map_err(|reconnect_error| {
+                anyhow::anyhow!(
+                    "CDP request failed ({first_error:#}); reconnect failed ({reconnect_error:#})"
+                )
+            })?;
+            let value = evaluate_on_socket(&mut connection, expression).await?;
+            *actor = Some(connection);
+            Ok(value)
+        }
+    }
 }
 
-async fn evaluate_target(target: &DebugTarget, expression: &str) -> anyhow::Result<Value> {
-    let (mut socket, _) = timeout(RPC_TIMEOUT, connect_async(&target.web_socket_debugger_url))
+async fn connect_actor(port: u16) -> anyhow::Result<CdpConnection> {
+    let target = discover_target(port).await?;
+    if !websocket_matches_endpoint(port, &target.web_socket_debugger_url) {
+        anyhow::bail!("renderer websocket is not bound to the validated loopback endpoint");
+    }
+    let (socket, _) = timeout(RPC_TIMEOUT, connect_async(&target.web_socket_debugger_url))
         .await
         .map_err(|_| anyhow::anyhow!("CDP websocket timeout"))??;
-    socket
+    WEBSOCKET_CONNECTS.fetch_add(1, Ordering::Relaxed);
+    Ok(CdpConnection {
+        port,
+        socket,
+        next_id: 1,
+    })
+}
+
+fn websocket_matches_endpoint(port: u16, url: &str) -> bool {
+    url.starts_with(&format!("ws://127.0.0.1:{port}/"))
+        || url.starts_with(&format!("ws://localhost:{port}/"))
+}
+
+async fn evaluate_on_socket(
+    connection: &mut CdpConnection,
+    expression: &str,
+) -> anyhow::Result<Value> {
+    let request_id = connection.next_id;
+    connection.next_id = connection.next_id.wrapping_add(1).max(1);
+    let started = Instant::now();
+    connection
+        .socket
         .send(Message::Text(
             json!({
-                "id": 1,
+                "id": request_id,
                 "method": "Runtime.evaluate",
                 "params": {
                     "expression": expression,
@@ -434,19 +643,30 @@ async fn evaluate_target(target: &DebugTarget, expression: &str) -> anyhow::Resu
         .await?;
 
     let reply = timeout(RPC_TIMEOUT, async {
-        while let Some(message) = socket.next().await {
+        while let Some(message) = connection.socket.next().await {
             let message = message?;
-            if let Message::Text(text) = message {
-                let value: Value = serde_json::from_str(&text)?;
-                if value.get("id").and_then(Value::as_u64) == Some(1) {
-                    return Ok::<Value, anyhow::Error>(value);
+            match message {
+                Message::Text(text) => {
+                    let value: Value = serde_json::from_str(&text)?;
+                    if value.get("id").and_then(Value::as_u64) == Some(request_id) {
+                        return Ok::<Value, anyhow::Error>(value);
+                    }
                 }
+                Message::Ping(payload) => {
+                    connection.socket.send(Message::Pong(payload)).await?;
+                }
+                Message::Close(_) => anyhow::bail!("CDP websocket closed before reply"),
+                _ => {}
             }
         }
         anyhow::bail!("CDP websocket closed before reply")
     })
     .await
     .map_err(|_| anyhow::anyhow!("CDP evaluate timeout"))??;
+    let elapsed_ms = started.elapsed().as_millis() as u64;
+    EVALUATIONS.fetch_add(1, Ordering::Relaxed);
+    RPC_RTT_TOTAL_MS.fetch_add(elapsed_ms, Ordering::Relaxed);
+    RPC_RTT_MAX_MS.fetch_max(elapsed_ms, Ordering::Relaxed);
 
     if let Some(error) = reply.get("error") {
         anyhow::bail!("CDP error: {error}");
@@ -568,5 +788,102 @@ mod tests {
         server.join().expect("server");
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].url, "music-application://desktop/");
+    }
+
+    #[test]
+    fn rejects_non_music_targets_and_non_loopback_websockets() {
+        let target = DebugTarget {
+            kind: "page".into(),
+            url: "https://example.invalid/".into(),
+            web_socket_debugger_url: "ws://example.invalid/devtools/page/1".into(),
+        };
+        assert!(!is_valid_target(&target));
+        assert!(!websocket_matches_endpoint(
+            9_222,
+            &target.web_socket_debugger_url
+        ));
+    }
+
+    #[test]
+    fn reuses_one_websocket_for_multiple_evaluations() {
+        tokio::runtime::Runtime::new()
+            .expect("runtime")
+            .block_on(async {
+                use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+                *actor_lock().lock().await = None;
+                let listener = tokio::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
+                    .await
+                    .expect("listener");
+                let port = listener.local_addr().expect("address").port();
+                let server = tokio::spawn(async move {
+                    let (mut discovery, _) =
+                        listener.accept().await.expect("discovery connection");
+                    let mut request = [0_u8; 1024];
+                    discovery
+                        .read(&mut request)
+                        .await
+                        .expect("discovery request");
+                    let body = format!(
+                        r#"[{{"type":"page","url":"music-application://desktop/","webSocketDebuggerUrl":"ws://127.0.0.1:{port}/devtools/page/1"}}]"#
+                    );
+                    discovery
+                        .write_all(
+                            format!(
+                                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                                body.len(),
+                                body
+                            )
+                            .as_bytes(),
+                        )
+                        .await
+                        .expect("discovery response");
+                    drop(discovery);
+
+                    let (stream, _) = listener.accept().await.expect("websocket connection");
+                    let mut socket = tokio_tungstenite::accept_async(stream)
+                        .await
+                        .expect("websocket handshake");
+                    for value in [41, 42] {
+                        let message = socket
+                            .next()
+                            .await
+                            .expect("request")
+                            .expect("valid request");
+                        let Message::Text(text) = message else {
+                            panic!("expected text request")
+                        };
+                        let request: Value =
+                            serde_json::from_str(&text).expect("request json");
+                        let id = request
+                            .get("id")
+                            .and_then(Value::as_u64)
+                            .expect("request id");
+                        socket
+                            .send(Message::Text(
+                                json!({"id": id, "result": {"result": {"value": value}}})
+                                    .to_string()
+                                    .into(),
+                            ))
+                            .await
+                            .expect("reply");
+                    }
+                });
+
+                let discoveries_before = DISCOVERIES.load(Ordering::Relaxed);
+                let connects_before = WEBSOCKET_CONNECTS.load(Ordering::Relaxed);
+                assert_eq!(evaluate(port, "41").await.expect("first evaluation"), 41);
+                assert_eq!(evaluate(port, "42").await.expect("second evaluation"), 42);
+                assert_eq!(
+                    DISCOVERIES.load(Ordering::Relaxed) - discoveries_before,
+                    1
+                );
+                assert_eq!(
+                    WEBSOCKET_CONNECTS.load(Ordering::Relaxed) - connects_before,
+                    1
+                );
+                server.await.expect("server");
+                *actor_lock().lock().await = None;
+            });
     }
 }

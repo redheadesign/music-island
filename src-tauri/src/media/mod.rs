@@ -3,18 +3,52 @@ pub mod health;
 use health::{SmtcHealth, SmtcHealthSnapshot};
 use serde::{Deserialize, Serialize};
 use std::{
-    sync::{OnceLock, RwLock},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        OnceLock, RwLock,
+    },
     time::Instant,
 };
 use tauri::{AppHandle, Emitter};
 use tokio::time::{sleep, timeout, Duration};
 
-const ACTIVE_POLL_MS: u64 = 500;
+const ACTIVE_POLL_MS: u64 = 1_000;
+const DIRECT_POLL_MS: u64 = 900;
 const IDLE_POLL_MS: u64 = 2_000;
 const DEGRADED_POLL_MS: u64 = 5_000;
 const UNAVAILABLE_POLL_MS: u64 = 15_000;
+const PASSIVE_SMTC_POLL_MS: u64 = 30_000;
 const FULL_METADATA_EVERY: u32 = 4;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(4);
+
+static SMTC_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
+static MEDIA_POLLS: AtomicU64 = AtomicU64::new(0);
+static MEDIA_COMMANDS: AtomicU64 = AtomicU64::new(0);
+static MEDIA_UPDATES: AtomicU64 = AtomicU64::new(0);
+static TIMELINE_UPDATES: AtomicU64 = AtomicU64::new(0);
+static SMTC_PROBES: AtomicU64 = AtomicU64::new(0);
+static SMTC_PASSIVE_PROBES: AtomicU64 = AtomicU64::new(0);
+static SMTC_BUSY_SKIPS: AtomicU64 = AtomicU64::new(0);
+
+struct SmtcFlightGuard;
+
+impl Drop for SmtcFlightGuard {
+    fn drop(&mut self) {
+        SMTC_IN_FLIGHT.store(false, Ordering::Release);
+    }
+}
+
+fn try_smtc_flight() -> Option<SmtcFlightGuard> {
+    if SMTC_IN_FLIGHT
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_ok()
+    {
+        Some(SmtcFlightGuard)
+    } else {
+        SMTC_BUSY_SKIPS.fetch_add(1, Ordering::Relaxed);
+        None
+    }
+}
 
 fn preferred_source_lock() -> &'static RwLock<Option<String>> {
     static PREFERRED: OnceLock<RwLock<Option<String>>> = OnceLock::new();
@@ -60,12 +94,90 @@ pub enum MediaProvider {
     YandexDirect,
 }
 
+impl PartialEq for MediaProvider {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Smtc, Self::Smtc) | (Self::YandexDirect, Self::YandexDirect)
+        )
+    }
+}
+
+impl Eq for MediaProvider {}
+
+fn active_provider_lock() -> &'static RwLock<MediaProvider> {
+    static ACTIVE: OnceLock<RwLock<MediaProvider>> = OnceLock::new();
+    ACTIVE.get_or_init(|| RwLock::new(MediaProvider::Smtc))
+}
+
+pub fn set_active_provider(provider: MediaProvider) {
+    *active_provider_lock()
+        .write()
+        .expect("active provider lock poisoned") = provider;
+}
+
+pub fn active_provider() -> MediaProvider {
+    *active_provider_lock()
+        .read()
+        .expect("active provider lock poisoned")
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaMetrics {
+    pub active_provider: MediaProvider,
+    pub polls: u64,
+    pub commands: u64,
+    pub media_updates: u64,
+    pub timeline_updates: u64,
+    pub smtc_probes: u64,
+    pub smtc_passive_probes: u64,
+    pub smtc_busy_skips: u64,
+    pub smtc_in_flight: bool,
+}
+
+pub fn metrics() -> MediaMetrics {
+    MediaMetrics {
+        active_provider: active_provider(),
+        polls: MEDIA_POLLS.load(Ordering::Relaxed),
+        commands: MEDIA_COMMANDS.load(Ordering::Relaxed),
+        media_updates: MEDIA_UPDATES.load(Ordering::Relaxed),
+        timeline_updates: TIMELINE_UPDATES.load(Ordering::Relaxed),
+        smtc_probes: SMTC_PROBES.load(Ordering::Relaxed),
+        smtc_passive_probes: SMTC_PASSIVE_PROBES.load(Ordering::Relaxed),
+        smtc_busy_skips: SMTC_BUSY_SKIPS.load(Ordering::Relaxed),
+        smtc_in_flight: SMTC_IN_FLIGHT.load(Ordering::Acquire),
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaSessionInfo {
     pub source_app_id: String,
     pub playback_status: PlaybackStatus,
     pub is_current: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TimelineUpdate {
+    position_ms: Option<i64>,
+    duration_ms: Option<i64>,
+    playback_status: PlaybackStatus,
+    updated_at: String,
+    provider: MediaProvider,
+}
+
+impl From<&MediaSnapshot> for TimelineUpdate {
+    fn from(snapshot: &MediaSnapshot) -> Self {
+        Self {
+            position_ms: snapshot.position_ms,
+            duration_ms: snapshot.duration_ms,
+            playback_status: snapshot.playback_status.clone(),
+            updated_at: snapshot.updated_at.clone(),
+            provider: snapshot.provider,
+        }
+    }
 }
 
 struct PollResult {
@@ -105,6 +217,10 @@ pub enum MediaCommand {
 
 impl MediaSnapshot {
     pub fn no_session() -> Self {
+        Self::no_session_for(MediaProvider::Smtc)
+    }
+
+    pub fn no_session_for(provider: MediaProvider) -> Self {
         Self {
             has_session: false,
             source_app_id: None,
@@ -125,42 +241,79 @@ impl MediaSnapshot {
             is_disliked: false,
             thumbnail_data_url: None,
             updated_at: chrono::Utc::now().to_rfc3339(),
-            provider: MediaProvider::Smtc,
+            provider,
             smtc_health: health::current().status,
         }
     }
 }
 
 pub fn start_watcher(app: AppHandle) {
+    start_passive_smtc_watcher(app.clone());
     tauri::async_runtime::spawn(async move {
         let mut previous_key = String::new();
         let mut last_good: Option<MediaSnapshot> = None;
         let mut miss_streak: u32 = 0;
         let mut poll_index: u32 = 0;
         let mut last_health = health::current();
+        let mut last_provider = active_provider();
+        let mut last_direct_status = None;
 
         loop {
-            if crate::yandex::is_connected() {
+            MEDIA_POLLS.fetch_add(1, Ordering::Relaxed);
+            let provider = active_provider();
+            if provider != last_provider {
+                previous_key.clear();
+                last_good = None;
+                miss_streak = 0;
+                last_provider = provider;
+            }
+
+            if provider == MediaProvider::YandexDirect {
                 match timeout(PROBE_TIMEOUT, crate::yandex::snapshot()).await {
                     Ok(Ok(snapshot)) => {
+                        crate::yandex::record_probe_success();
                         let key = snapshot_key(&snapshot);
                         if key != previous_key {
                             let _ = app.emit("media:update", snapshot.clone());
+                            MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
                             previous_key = key;
                         } else {
-                            let _ = app.emit("timeline:update", snapshot.clone());
+                            let _ = app.emit("timeline:update", TimelineUpdate::from(&snapshot));
+                            TIMELINE_UPDATES.fetch_add(1, Ordering::Relaxed);
                         }
                         last_good = Some(snapshot);
-                        sleep(Duration::from_millis(ACTIVE_POLL_MS)).await;
-                        continue;
+                        emit_direct_status_if_changed(&app, &mut last_direct_status);
+                        sleep(Duration::from_millis(DIRECT_POLL_MS)).await;
                     }
-                    Ok(Err(error)) => crate::logging::append_event(&format!(
-                        "direct Yandex probe failed, falling back to SMTC: {error}"
-                    )),
-                    Err(_) => crate::logging::append_event(
-                        "direct Yandex probe timed out, falling back to SMTC",
-                    ),
+                    Ok(Err(error)) => {
+                        crate::yandex::record_probe_failure(&error.to_string());
+                        crate::logging::append_event_rate_limited(
+                            "direct-probe",
+                            &format!("direct Yandex probe failed; retaining direct state: {error}"),
+                            Duration::from_secs(15),
+                        );
+                        emit_direct_status_if_changed(&app, &mut last_direct_status);
+                        if last_good.is_none() && previous_key.is_empty() {
+                            let snapshot =
+                                MediaSnapshot::no_session_for(MediaProvider::YandexDirect);
+                            let _ = app.emit("media:update", snapshot.clone());
+                            MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
+                            previous_key = snapshot_key(&snapshot);
+                        }
+                        sleep(Duration::from_millis(DEGRADED_POLL_MS.min(2_000))).await;
+                    }
+                    Err(_) => {
+                        crate::yandex::record_probe_failure("CDP probe timed out");
+                        crate::logging::append_event_rate_limited(
+                            "direct-timeout",
+                            "direct Yandex probe timed out; retaining direct state",
+                            Duration::from_secs(15),
+                        );
+                        emit_direct_status_if_changed(&app, &mut last_direct_status);
+                        sleep(Duration::from_millis(2_000)).await;
+                    }
                 }
+                continue;
             }
 
             let include_metadata = last_good.is_none() || poll_index % FULL_METADATA_EVERY == 0;
@@ -176,46 +329,70 @@ pub fn start_watcher(app: AppHandle) {
                         .as_ref()
                         .and_then(|snapshot| snapshot.source_app_id.clone())
                 });
-            let probe = timeout(
-                PROBE_TIMEOUT,
-                tauri::async_runtime::spawn_blocking(move || {
-                    platform::poll_snapshot(
-                        previous_for_poll.as_ref(),
-                        preferred_source.as_deref(),
-                        include_metadata,
+            let probe = if let Some(guard) = try_smtc_flight() {
+                SMTC_PROBES.fetch_add(1, Ordering::Relaxed);
+                Some(
+                    timeout(
+                        PROBE_TIMEOUT,
+                        tauri::async_runtime::spawn_blocking(move || {
+                            let _guard = guard;
+                            platform::poll_snapshot(
+                                previous_for_poll.as_ref(),
+                                preferred_source.as_deref(),
+                                include_metadata,
+                            )
+                        }),
                     )
-                }),
-            )
-            .await;
+                    .await,
+                )
+            } else {
+                None
+            };
 
             let (raw, next_health) = match probe {
-                Ok(Ok(Ok(result))) => {
+                None => {
+                    sleep(Duration::from_millis(250)).await;
+                    continue;
+                }
+                Some(Ok(Ok(Ok(result)))) => {
                     let health = health::record_success(
                         started.elapsed().as_millis() as u64,
                         result.session_count,
                     );
                     (result.snapshot, health)
                 }
-                Ok(Ok(Err(error))) => {
+                Some(Ok(Ok(Err(error)))) => {
                     let message = format!("{error:#}");
-                    crate::logging::append_event(&format!("SMTC probe failed: {message}"));
+                    crate::logging::append_event_rate_limited(
+                        "smtc-probe",
+                        &format!("SMTC probe failed: {message}"),
+                        Duration::from_secs(15),
+                    );
                     (
                         MediaSnapshot::no_session(),
                         health::record_failure(started.elapsed().as_millis() as u64, message),
                     )
                 }
-                Ok(Err(error)) => {
+                Some(Ok(Err(error))) => {
                     let message = format!("SMTC worker failed: {error}");
-                    crate::logging::append_event(&message);
+                    crate::logging::append_event_rate_limited(
+                        "smtc-worker",
+                        &message,
+                        Duration::from_secs(15),
+                    );
                     (
                         MediaSnapshot::no_session(),
                         health::record_failure(started.elapsed().as_millis() as u64, message),
                     )
                 }
-                Err(_) => {
+                Some(Err(_)) => {
                     let message =
                         format!("SMTC probe timed out after {}ms", PROBE_TIMEOUT.as_millis());
-                    crate::logging::append_event(&message);
+                    crate::logging::append_event_rate_limited(
+                        "smtc-timeout",
+                        &message,
+                        Duration::from_secs(15),
+                    );
                     (
                         MediaSnapshot::no_session(),
                         health::record_failure(started.elapsed().as_millis() as u64, message),
@@ -256,9 +433,11 @@ pub fn start_watcher(app: AppHandle) {
 
             if key != previous_key {
                 let _ = app.emit("media:update", snapshot.clone());
+                MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
                 previous_key = key;
             } else if snapshot.has_session {
-                let _ = app.emit("timeline:update", snapshot.clone());
+                let _ = app.emit("timeline:update", TimelineUpdate::from(&snapshot));
+                TIMELINE_UPDATES.fetch_add(1, Ordering::Relaxed);
             }
 
             let delay_ms = match next_health.status {
@@ -272,18 +451,92 @@ pub fn start_watcher(app: AppHandle) {
     });
 }
 
-pub async fn current_snapshot() -> anyhow::Result<MediaSnapshot> {
-    if crate::yandex::is_connected() {
-        if let Ok(snapshot) = timeout(PROBE_TIMEOUT, crate::yandex::snapshot()).await {
-            if let Ok(snapshot) = snapshot {
-                return Ok(snapshot);
-            }
-        }
+fn emit_direct_status_if_changed(
+    app: &AppHandle,
+    previous: &mut Option<crate::yandex::DirectYandexStatus>,
+) {
+    let next = crate::yandex::status();
+    if previous.as_ref() != Some(&next) {
+        let _ = app.emit("direct:status", next.clone());
+        *previous = Some(next);
     }
+}
+
+fn start_passive_smtc_watcher(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            sleep(Duration::from_millis(PASSIVE_SMTC_POLL_MS)).await;
+            if active_provider() != MediaProvider::YandexDirect {
+                continue;
+            }
+            let Some(guard) = try_smtc_flight() else {
+                continue;
+            };
+            SMTC_PASSIVE_PROBES.fetch_add(1, Ordering::Relaxed);
+            let started = Instant::now();
+            let probe = timeout(
+                PROBE_TIMEOUT,
+                tauri::async_runtime::spawn_blocking(move || {
+                    let _guard = guard;
+                    platform::poll_snapshot(None, None, false)
+                }),
+            )
+            .await;
+            let health = match probe {
+                Ok(Ok(Ok(result))) => health::record_success(
+                    started.elapsed().as_millis() as u64,
+                    result.session_count,
+                ),
+                Ok(Ok(Err(error))) => health::record_failure(
+                    started.elapsed().as_millis() as u64,
+                    format!("{error:#}"),
+                ),
+                Ok(Err(error)) => health::record_failure(
+                    started.elapsed().as_millis() as u64,
+                    format!("SMTC passive worker failed: {error}"),
+                ),
+                Err(_) => health::record_failure(
+                    started.elapsed().as_millis() as u64,
+                    format!(
+                        "SMTC passive probe timed out after {}ms",
+                        PROBE_TIMEOUT.as_millis()
+                    ),
+                ),
+            };
+            let _ = app.emit("smtc:health", health);
+        }
+    });
+}
+
+pub async fn current_snapshot() -> anyhow::Result<MediaSnapshot> {
+    MEDIA_POLLS.fetch_add(1, Ordering::Relaxed);
+    if active_provider() == MediaProvider::YandexDirect {
+        return match timeout(PROBE_TIMEOUT, crate::yandex::snapshot()).await {
+            Ok(Ok(snapshot)) => {
+                crate::yandex::record_probe_success();
+                Ok(snapshot)
+            }
+            Ok(Err(error)) => {
+                crate::yandex::record_probe_failure(&error.to_string());
+                Ok(MediaSnapshot::no_session_for(MediaProvider::YandexDirect))
+            }
+            Err(_) => {
+                crate::yandex::record_probe_failure("CDP snapshot timed out");
+                Ok(MediaSnapshot::no_session_for(MediaProvider::YandexDirect))
+            }
+        };
+    }
+    let Some(guard) = try_smtc_flight() else {
+        return Ok(MediaSnapshot::no_session());
+    };
+    SMTC_PROBES.fetch_add(1, Ordering::Relaxed);
     let started = Instant::now();
     let result = timeout(
         PROBE_TIMEOUT,
-        tauri::async_runtime::spawn_blocking(|| platform::poll_snapshot(None, None, true)),
+        tauri::async_runtime::spawn_blocking(move || {
+            let _guard = guard;
+            platform::poll_snapshot(None, None, true)
+        }),
     )
     .await
     .map_err(|_| anyhow::anyhow!("SMTC snapshot timed out"))?
@@ -295,9 +548,14 @@ pub async fn current_snapshot() -> anyhow::Result<MediaSnapshot> {
 }
 
 pub async fn send_command(command: MediaCommand) -> anyhow::Result<()> {
-    if crate::yandex::is_connected() {
+    MEDIA_COMMANDS.fetch_add(1, Ordering::Relaxed);
+    if active_provider() == MediaProvider::YandexDirect {
         return crate::yandex::send_command(command).await;
     }
+    let Some(_guard) = try_smtc_flight() else {
+        anyhow::bail!("SMTC is busy with an existing request");
+    };
+    SMTC_PROBES.fetch_add(1, Ordering::Relaxed);
     platform::send_command(command).await
 }
 
@@ -306,9 +564,19 @@ pub fn current_health() -> SmtcHealthSnapshot {
 }
 
 pub async fn list_sessions() -> anyhow::Result<Vec<MediaSessionInfo>> {
+    if active_provider() != MediaProvider::Smtc {
+        return Ok(Vec::new());
+    }
+    let Some(guard) = try_smtc_flight() else {
+        anyhow::bail!("SMTC session request is already in flight");
+    };
+    SMTC_PROBES.fetch_add(1, Ordering::Relaxed);
     timeout(
         PROBE_TIMEOUT,
-        tauri::async_runtime::spawn_blocking(platform::list_sessions),
+        tauri::async_runtime::spawn_blocking(move || {
+            let _guard = guard;
+            platform::list_sessions()
+        }),
     )
     .await
     .map_err(|_| anyhow::anyhow!("SMTC session list timed out"))?
@@ -637,6 +905,28 @@ mod platform {
             NativePlaybackStatus::Paused => PlaybackStatus::Paused,
             _ => PlaybackStatus::Unknown,
         }
+    }
+}
+
+#[cfg(test)]
+mod routing_tests {
+    use super::*;
+
+    #[test]
+    fn configured_provider_remains_authoritative_without_a_session() {
+        set_active_provider(MediaProvider::YandexDirect);
+        let snapshot = MediaSnapshot::no_session_for(active_provider());
+        assert_eq!(snapshot.provider, MediaProvider::YandexDirect);
+        assert!(!snapshot.has_session);
+        set_active_provider(MediaProvider::Smtc);
+    }
+
+    #[test]
+    fn smtc_work_is_single_flight() {
+        let first = try_smtc_flight().expect("first SMTC worker");
+        assert!(try_smtc_flight().is_none());
+        drop(first);
+        assert!(try_smtc_flight().is_some());
     }
 }
 

@@ -10,6 +10,7 @@ import {
   onMediaUpdate,
   onOverlayAction,
   onSmtcHealth,
+  onTimelineUpdate,
   openSettingsWindow,
   resetWindowPosition,
   saveConfig,
@@ -52,7 +53,11 @@ export interface IslandAppState {
   checkUpdates: () => Promise<UpdateCheckResult>
 }
 
-export function useIslandApp(): IslandAppState {
+interface UseIslandAppOptions {
+  mediaEnabled?: boolean
+}
+
+export function useIslandApp({ mediaEnabled = true }: UseIslandAppOptions = {}): IslandAppState {
   const [config, setConfig] = useState<AppConfig>(() => getDefaultConfig())
   const [media, setMedia] = useState<MediaSnapshot | null>(null)
   const [mode, setMode] = useState<OverlayMode>('idle')
@@ -71,6 +76,7 @@ export function useIslandApp(): IslandAppState {
   const sessionHoldRef = useRef<SessionHold | null>(null)
   const mediaRef = useRef<MediaSnapshot | null>(null)
   const lastSeekDispatchRef = useRef<{ positionMs: number; atMs: number } | null>(null)
+  const sessionRefreshRef = useRef<Promise<void> | null>(null)
   mediaRef.current = media
 
   const reconcileMedia = useCallback((current: MediaSnapshot | null, snapshot: MediaSnapshot) => {
@@ -84,17 +90,23 @@ export function useIslandApp(): IslandAppState {
   useEffect(() => {
     let mounted = true
 
-    Promise.all([getConfig(), getMediaSnapshot(), getSmtcHealth(), listMediaSessions()])
-      .then(([nextConfig, snapshot, health, sessions]) => {
+    Promise.all([getConfig(), getSmtcHealth()])
+      .then(async ([nextConfig, health]) => {
         if (!mounted) {
           return
         }
         setConfig(nextConfig)
-        setMedia(snapshot)
         setSmtcHealth(health)
-        setMediaSessions(sessions)
-        setMode(snapshot.hasSession ? 'compact' : 'no-session')
-        void setAutostart(nextConfig.behavior.launchAtStartup)
+        if (mediaEnabled) {
+          const snapshot = await getMediaSnapshot()
+          if (!mounted) return
+          setMedia(snapshot)
+          setMode(snapshot.hasSession ? 'compact' : 'no-session')
+          void setAutostart(nextConfig.behavior.launchAtStartup)
+        } else if (nextConfig.media.protocol === 'smtc') {
+          const sessions = await listMediaSessions().catch(() => [])
+          if (mounted && sessions.length > 0) setMediaSessions(sessions)
+        }
       })
       .catch(() => {
         if (mounted) {
@@ -106,19 +118,40 @@ export function useIslandApp(): IslandAppState {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [mediaEnabled])
 
   useEffect(() => {
+    if (!mediaEnabled) {
+      return
+    }
     let cleanup: () => void = () => undefined
+    let cleanupTimeline: () => void = () => undefined
 
     onMediaUpdate((snapshot) => {
       setMedia((current) => reconcileMedia(current, snapshot))
     }).then((unlisten) => {
       cleanup = unlisten
     })
+    onTimelineUpdate((timeline) => {
+      setMedia((current) => {
+        if (!current || current.provider !== timeline.provider) return current
+        return reconcileMedia(current, {
+          ...current,
+          positionMs: timeline.positionMs,
+          durationMs: timeline.durationMs,
+          playbackStatus: timeline.playbackStatus,
+          updatedAt: timeline.updatedAt,
+        })
+      })
+    }).then((unlisten) => {
+      cleanupTimeline = unlisten
+    })
 
-    return () => cleanup()
-  }, [reconcileMedia])
+    return () => {
+      cleanup()
+      cleanupTimeline()
+    }
+  }, [mediaEnabled, reconcileMedia])
 
   useEffect(() => {
     let stopHealth: () => void = () => undefined
@@ -136,12 +169,18 @@ export function useIslandApp(): IslandAppState {
   }, [])
 
   useEffect(() => {
+    if (!mediaEnabled) {
+      return
+    }
     if (media?.hasSession && mode === 'no-session') {
       setMode('compact')
     }
-  }, [media?.hasSession, mode])
+  }, [media?.hasSession, mediaEnabled, mode])
 
   useEffect(() => {
+    if (!mediaEnabled) {
+      return
+    }
     let cleanupSettings: () => void = () => undefined
     let cleanupUpdates: () => void = () => undefined
 
@@ -162,18 +201,21 @@ export function useIslandApp(): IslandAppState {
       cleanupSettings()
       cleanupUpdates()
     }
-  }, [])
+  }, [mediaEnabled])
 
   useEffect(() => {
-    if (media?.playbackStatus !== 'playing') {
+    if (!mediaEnabled || media?.playbackStatus !== 'playing') {
       return
     }
 
-    const interval = window.setInterval(() => setNowMs(Date.now()), 250)
+    const interval = window.setInterval(() => setNowMs(Date.now()), 1_000)
     return () => window.clearInterval(interval)
-  }, [media?.playbackStatus])
+  }, [media?.playbackStatus, mediaEnabled])
 
   useEffect(() => {
+    if (!mediaEnabled) {
+      return
+    }
     if (noSessionTimerRef.current) {
       window.clearTimeout(noSessionTimerRef.current)
       noSessionTimerRef.current = null
@@ -192,7 +234,7 @@ export function useIslandApp(): IslandAppState {
         window.clearTimeout(noSessionTimerRef.current)
       }
     }
-  }, [media?.hasSession, mode])
+  }, [media?.hasSession, mediaEnabled, mode])
 
   const progressMs = useMemo(() => {
     if (media?.positionMs == null) {
@@ -216,11 +258,18 @@ export function useIslandApp(): IslandAppState {
   }, [])
 
   const refreshMediaSessions = useCallback(async () => {
-    try {
-      setMediaSessions(await listMediaSessions())
-    } catch {
-      setMediaSessions([])
-    }
+    if (sessionRefreshRef.current) return sessionRefreshRef.current
+    const refresh = listMediaSessions()
+      .then((sessions) => {
+        if (sessions.length === 0) return
+        setMediaSessions((current) => mediaSessionsEqual(current, sessions) ? current : sessions)
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        sessionRefreshRef.current = null
+      })
+    sessionRefreshRef.current = refresh
+    return refresh
   }, [])
 
   const sendCommand = useCallback(async (command: MediaCommand) => {
@@ -265,12 +314,10 @@ export function useIslandApp(): IslandAppState {
 
     try {
       await sendMediaCommand(command)
-      const snapshot = await getMediaSnapshot()
-      setMedia((current) => reconcileMedia(current, snapshot))
     } catch {
       pendingSeekRef.current = null
     }
-  }, [reconcileMedia])
+  }, [])
 
   const checkUpdates = useCallback(async () => {
     const result = await checkForUpdates()
@@ -295,4 +342,12 @@ export function useIslandApp(): IslandAppState {
     openSettingsWindow,
     checkUpdates,
   }
+}
+
+function mediaSessionsEqual(left: MediaSessionInfo[], right: MediaSessionInfo[]): boolean {
+  return left.length === right.length && left.every((session, index) => (
+    session.sourceAppId === right[index]?.sourceAppId
+    && session.playbackStatus === right[index]?.playbackStatus
+    && session.isCurrent === right[index]?.isCurrent
+  ))
 }

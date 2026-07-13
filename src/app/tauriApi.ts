@@ -8,6 +8,7 @@ import type {
   MediaSessionInfo,
   MediaSnapshot,
   SmtcHealthSnapshot,
+  TimelineUpdate,
   UpdateCheckResult,
 } from '../shared/lib/types'
 
@@ -224,13 +225,16 @@ export async function onMediaUpdate(callback: (snapshot: MediaSnapshot) => void)
     return () => undefined
   }
 
-  const unlistenMedia = await listen<MediaSnapshot>('media:update', (event) => callback(event.payload))
-  const unlistenTimeline = await listen<MediaSnapshot>('timeline:update', (event) => callback(event.payload))
+  return listen<MediaSnapshot>('media:update', (event) => callback(event.payload))
+}
 
-  return () => {
-    unlistenMedia()
-    unlistenTimeline()
+export async function onTimelineUpdate(
+  callback: (timeline: TimelineUpdate) => void,
+): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
   }
+  return listen<TimelineUpdate>('timeline:update', (event) => callback(event.payload))
 }
 
 export async function onSmtcHealth(
@@ -240,6 +244,15 @@ export async function onSmtcHealth(
     return () => undefined
   }
   return listen<SmtcHealthSnapshot>('smtc:health', (event) => callback(event.payload))
+}
+
+export async function onDirectYandexStatus(
+  callback: (status: DirectYandexStatus) => void,
+): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
+  }
+  return listen<DirectYandexStatus>('direct:status', (event) => callback(event.payload))
 }
 
 export async function onConfigChanged(callback: (config: AppConfig) => void): Promise<() => void> {
@@ -326,5 +339,6 @@ const defaultConfig: AppConfig = {
     protocol: 'smtc',
     preferredSourceAppId: null,
     directYandexConsent: false,
+    directYandexPort: null,
   },
 }

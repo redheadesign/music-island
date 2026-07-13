@@ -1,10 +1,37 @@
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, window::Color};
+use serde::Serialize;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Mutex, OnceLock,
+};
+use tauri::{window::Color, AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
 use tokio::time::{sleep, Duration};
 
 const OVERLAY_WIDTH: i32 = 860;
 const OVERLAY_HEIGHT: u32 = 280;
 const OVERLAY_TOP_OFFSET: i32 = -1;
 const COLLAPSED_HEIGHT: u32 = 20;
+static BOUNDS_REQUESTS: AtomicU64 = AtomicU64::new(0);
+static BOUNDS_APPLIED: AtomicU64 = AtomicU64::new(0);
+static GESTURE_POLLS: AtomicU64 = AtomicU64::new(0);
+static GESTURE_EVENTS: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowMetrics {
+    pub bounds_requests: u64,
+    pub bounds_applied: u64,
+    pub gesture_polls: u64,
+    pub gesture_events: u64,
+}
+
+pub fn metrics() -> WindowMetrics {
+    WindowMetrics {
+        bounds_requests: BOUNDS_REQUESTS.load(Ordering::Relaxed),
+        bounds_applied: BOUNDS_APPLIED.load(Ordering::Relaxed),
+        gesture_polls: GESTURE_POLLS.load(Ordering::Relaxed),
+        gesture_events: GESTURE_EVENTS.load(Ordering::Relaxed),
+    }
+}
 
 fn stage_width(card_visual_width: f64) -> u32 {
     (card_visual_width.ceil() as u32 + 64).clamp(300, OVERLAY_WIDTH as u32)
@@ -51,6 +78,7 @@ pub fn set_overlay_bounds(
     visual_width: f64,
     visual_height: f64,
 ) -> tauri::Result<()> {
+    BOUNDS_REQUESTS.fetch_add(1, Ordering::Relaxed);
     let Some(window) = app.get_webview_window("main") else {
         return Ok(());
     };
@@ -61,6 +89,16 @@ pub fn set_overlay_bounds(
     } else {
         (visual_height.ceil() as u32).clamp(8, 24)
     };
+    let key = (expanded, width, height);
+    static LAST_BOUNDS: OnceLock<Mutex<Option<(bool, u32, u32)>>> = OnceLock::new();
+    let last_bounds = LAST_BOUNDS.get_or_init(|| Mutex::new(None));
+    {
+        let mut previous = last_bounds.lock().expect("overlay bounds lock poisoned");
+        if previous.as_ref() == Some(&key) {
+            return Ok(());
+        }
+        *previous = Some(key);
+    }
 
     window.set_size(PhysicalSize::new(width, height))?;
 
@@ -74,6 +112,7 @@ pub fn set_overlay_bounds(
     }
 
     set_overlay_clickthrough(app, !expanded)?;
+    BOUNDS_APPLIED.fetch_add(1, Ordering::Relaxed);
 
     Ok(())
 }
@@ -127,13 +166,20 @@ pub fn start_gesture_watcher(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let mut previous = CollapsedGestureState::inactive();
         loop {
+            GESTURE_POLLS.fetch_add(1, Ordering::Relaxed);
             let next = get_collapsed_gesture_state(&app)
                 .unwrap_or_else(|_| CollapsedGestureState::inactive());
             if next != previous {
                 let _ = app.emit("overlay:gesture-state", next.clone());
+                GESTURE_EVENTS.fetch_add(1, Ordering::Relaxed);
                 previous = next;
             }
-            sleep(Duration::from_millis(33)).await;
+            sleep(Duration::from_millis(if previous.active {
+                33
+            } else {
+                100
+            }))
+            .await;
         }
     });
 }
@@ -161,6 +207,9 @@ mod platform {
         let width = (bounds.right - bounds.left).max(0) as f64;
         let height = (bounds.bottom - bounds.top).max(0) as f64;
         let active = local_x >= 0.0 && local_y >= 0.0 && local_x <= width && local_y <= height;
+        if !active {
+            return Ok(CollapsedGestureState::inactive());
+        }
         let in_top_edge = active && local_y <= 3.0;
 
         Ok(CollapsedGestureState {
@@ -181,7 +230,9 @@ mod platform {
     use super::CollapsedGestureState;
     use tauri::WebviewWindow;
 
-    pub fn collapsed_gesture_state(_window: &WebviewWindow) -> tauri::Result<CollapsedGestureState> {
+    pub fn collapsed_gesture_state(
+        _window: &WebviewWindow,
+    ) -> tauri::Result<CollapsedGestureState> {
         Ok(CollapsedGestureState::inactive())
     }
 }

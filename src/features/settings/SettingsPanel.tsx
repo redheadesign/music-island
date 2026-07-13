@@ -6,6 +6,7 @@ import {
   disableDirectYandex,
   enableDirectYandex,
   getDirectYandexStatus,
+  onDirectYandexStatus,
   previewConfig,
 } from '../../app/tauriApi'
 import type {
@@ -49,23 +50,34 @@ export function SettingsPanel({
   const [directBusy, setDirectBusy] = useState(false)
   const saveTimer = useRef<number | null>(null)
   const connectAttempt = useRef(0)
+  const lastSourceRefreshAt = useRef(0)
 
   useEffect(() => setDraft(config), [config])
   useEffect(() => {
     let active = true
-    const refresh = () => {
-      void getDirectYandexStatus().then((status) => {
-        if (active) setDirectStatus(status)
-      })
-    }
-    refresh()
-    const timer = window.setInterval(refresh, 1_000)
-    onRefreshSources()
+    let cleanup: () => void = () => undefined
+    void getDirectYandexStatus().then((status) => {
+      if (active) setDirectStatus((current) => directStatusEqual(current, status) ? current : status)
+    })
+    void onDirectYandexStatus((status) => {
+      if (active) setDirectStatus((current) => directStatusEqual(current, status) ? current : status)
+    }).then((unlisten) => {
+      if (active) cleanup = unlisten
+      else unlisten()
+    })
+    if (config.media.protocol === 'smtc') onRefreshSources()
     return () => {
       active = false
-      window.clearInterval(timer)
+      cleanup()
     }
-  }, [onRefreshSources])
+  }, [config.media.protocol, onRefreshSources])
+
+  const refreshSources = () => {
+    const now = Date.now()
+    if (draft.media.protocol !== 'smtc' || now - lastSourceRefreshAt.current < 1_000) return
+    lastSourceRefreshAt.current = now
+    onRefreshSources()
+  }
 
   const previewAndSave = (next: AppConfig) => {
     setDraft(next)
@@ -85,10 +97,14 @@ export function SettingsPanel({
     const attempt = ++connectAttempt.current
     setDirectBusy(true)
     try {
-      const status = await Promise.race([enableDirectYandex(), waitForDirectConnection()])
+      const status = await enableDirectYandex()
       if (connectAttempt.current !== attempt) return
       setDirectStatus(status)
-      patchMedia({ protocol: 'yandex-direct', directYandexConsent: true })
+      patchMedia({
+        protocol: 'yandex-direct',
+        directYandexConsent: true,
+        directYandexPort: status.port,
+      })
       setShowConsent(false)
     } catch (error) {
       setDirectStatus({
@@ -112,7 +128,7 @@ export function SettingsPanel({
     setDirectBusy(true)
     try {
       setDirectStatus(await disableDirectYandex(true))
-      patchMedia({ protocol: 'smtc' })
+      patchMedia({ protocol: 'smtc', directYandexPort: null })
     } finally {
       setDirectBusy(false)
     }
@@ -122,7 +138,7 @@ export function SettingsPanel({
     <section className="settings-panel" aria-label="Island settings">
       <header className="settings-hero">
         <div>
-          <span className="settings-eyebrow">Music Island 0.9</span>
+          <span className="settings-eyebrow">Music Island 0.9.1</span>
           <h1>Настройки</h1>
           <p>Только то, что меняет поведение островка.</p>
         </div>
@@ -164,16 +180,16 @@ export function SettingsPanel({
       </SettingsSection>
 
       <SettingsSection title="Источник музыки" icon={<Activity />}>
-        <label className="settings-control-row">
+        {draft.media.protocol === 'smtc' ? <label className="settings-control-row">
           <span>
             <strong>Предпочитаемый источник</strong>
             <small>Auto сохраняет текущий играющий источник</small>
           </span>
-          <select value={draft.media.preferredSourceAppId ?? ''} onFocus={onRefreshSources} onChange={(event) => patchMedia({ preferredSourceAppId: event.currentTarget.value || null })}>
+          <select value={draft.media.preferredSourceAppId ?? ''} onFocus={refreshSources} onChange={(event) => patchMedia({ preferredSourceAppId: event.currentTarget.value || null })}>
             <option value="">Auto</option>
             {mediaSessions.map((session) => <option key={session.sourceAppId} value={session.sourceAppId}>{session.sourceAppId}</option>)}
           </select>
-        </label>
+        </label> : null}
 
         <div className="protocol-list">
           <article className={`protocol-row ${draft.media.protocol === 'smtc' ? 'protocol-row--selected' : ''}`}>
@@ -194,7 +210,7 @@ export function SettingsPanel({
             ) : <span className="active-protocol-label">Активен</span>}
           </article>
 
-          <article className={`protocol-row ${directStatus.state === 'connected' ? 'protocol-row--selected' : ''}`}>
+          <article className={`protocol-row ${draft.media.protocol === 'yandex-direct' ? 'protocol-row--selected' : ''}`}>
             <span className="protocol-icon protocol-icon--yandex"><Music2 /></span>
             <div className="protocol-copy">
               <strong>Direct Yandex Music</strong>
@@ -207,7 +223,7 @@ export function SettingsPanel({
               </span>
               {directStatus.port ? <small>127.0.0.1:{directStatus.port}</small> : null}
             </div>
-            {directStatus.state === 'connected' ? (
+            {draft.media.protocol === 'yandex-direct' && (directStatus.state === 'connected' || directStatus.state === 'degraded') ? (
               <button type="button" className="secondary-button" disabled={directBusy} onClick={() => void switchToLegacy()}>Отключить</button>
             ) : (
               <button type="button" className="primary-button" disabled={directBusy} onClick={() => setShowConsent(true)}>Подключить</button>
@@ -232,7 +248,7 @@ export function SettingsPanel({
           <section className="consent-dialog" role="dialog" aria-modal="true" aria-labelledby="direct-title">
             <TriangleAlert size={28} />
             <h2 id="direct-title">Прямое подключение к Yandex Music</h2>
-            <p>Music Island закроет и автоматически запустит десктопный клиент с локальным debug endpoint на случайном порту.</p>
+            <p>Music Island сначала подключится к уже открытому локальному endpoint. Перезапуск клиента нужен только если endpoint отсутствует.</p>
             <ul>
               <li>endpoint доступен только через 127.0.0.1;</li>
               <li>интеграция экспериментальная и может сломаться после обновления клиента;</li>
@@ -240,7 +256,7 @@ export function SettingsPanel({
             </ul>
             <div className="consent-actions">
               <button type="button" className="secondary-button" onClick={dismissConsent}>{directBusy ? 'Закрыть' : 'Отмена'}</button>
-              <button type="button" className="primary-button" disabled={directBusy} onClick={() => void connectDirect()}>{directBusy ? 'Подключение…' : 'Закрыть клиент и подключить'}</button>
+              <button type="button" className="primary-button" disabled={directBusy} onClick={() => void connectDirect()}>{directBusy ? 'Подключение…' : 'Подключить'}</button>
             </div>
           </section>
         </div>
@@ -249,17 +265,11 @@ export function SettingsPanel({
   )
 }
 
-async function waitForDirectConnection(): Promise<DirectYandexStatus> {
-  const deadline = Date.now() + 35_000
-  while (Date.now() < deadline) {
-    await new Promise((resolve) => window.setTimeout(resolve, 350))
-    const status = await getDirectYandexStatus()
-    if (status.state === 'connected') return status
-    if (status.state === 'error' || status.state === 'incompatible') {
-      throw new Error(status.message)
-    }
-  }
-  throw new Error('Direct connection timed out')
+function directStatusEqual(left: DirectYandexStatus, right: DirectYandexStatus): boolean {
+  return left.state === right.state
+    && left.message === right.message
+    && left.port === right.port
+    && left.executablePath === right.executablePath
 }
 
 interface SettingsSectionProps {

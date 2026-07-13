@@ -12,10 +12,12 @@ Music Island stops frequent polling after repeated timeouts or `0x80010002` and 
 - The integration listens on a random `127.0.0.1` port only. Security software that blocks local Electron debugging can prevent connection.
 - Check `%APPDATA%\Music Island\logs\app.log` for the selected port and the last discovery/evaluation error.
 - Connection can take several seconds because Music Island waits for the Electron renderer and player controls, not just an open TCP port.
+- `restart-required` means no validated existing endpoint was available. Music Island will not restart the client during application startup; use **Подключить** explicitly if a restart is acceptable.
+- A broken SMTC broker does not affect Direct playback. Its health can remain unavailable in Settings while the overlay continues to use Direct metadata, artwork, timeline and commands.
 
 ## Direct connection works but reactions are missing
 
-Version 0.9 exposes like/dislike as soon as the desktop renderer reports those capabilities, even if its timeline still shows `00:00 / 00:00`. If they remain absent, reconnect from Settings and include diagnostics plus the desktop-client version in the report.
+Version 0.9.1 exposes like/dislike as soon as the desktop renderer reports those capabilities, even if its timeline still shows `00:00 / 00:00`. If they remain absent, reconnect from Settings and include diagnostics plus the desktop-client version in the report.
 
 ## No Track Is Shown
 

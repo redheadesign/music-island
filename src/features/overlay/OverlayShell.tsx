@@ -34,7 +34,17 @@ const OPEN_PULL_THRESHOLD = 8
 const OPEN_CLOSE_GRACE_MS = 280
 
 export function OverlayShell({ app }: OverlayShellProps) {
-  const { config, media, mode, progressMs, progressPercent } = app
+  const {
+    config,
+    media,
+    mode,
+    progressMs,
+    progressPercent,
+    setMode,
+    sendCommand,
+    openSettingsWindow,
+    updateConfig,
+  } = app
   const isPinned = Boolean(config?.behavior.pinExpanded)
   const [windowPhase, setWindowPhase] = useState<OverlayWindowPhase>('collapsed')
   const [expandedVisible, setExpandedVisible] = useState(false)
@@ -77,7 +87,6 @@ export function OverlayShell({ app }: OverlayShellProps) {
   const stripArmedRef = useRef(true)
   const openedAtRef = useRef(0)
   windowPhaseRef.current = windowPhase
-  const themeAnimationRef = useRef<number | null>(null)
   const currentArtworkThemeRef = useRef<ArtworkTheme>(FALLBACK_ARTWORK_THEME)
   const [artworkTheme, setArtworkTheme] = useState<ArtworkTheme>(FALLBACK_ARTWORK_THEME)
 
@@ -85,35 +94,12 @@ export function OverlayShell({ app }: OverlayShellProps) {
   const showTopChrome = windowPhase === 'collapsed' || windowPhase === 'opening'
 
   const animateArtworkTheme = (targetTheme: ArtworkTheme) => {
-    if (themeAnimationRef.current) {
-      window.cancelAnimationFrame(themeAnimationRef.current)
-      themeAnimationRef.current = null
-    }
-
-    const startTheme = parseTheme(currentArtworkThemeRef.current)
-    const endTheme = parseTheme(targetTheme)
-    const startedAt = performance.now()
-    const durationMs = 1100
-
-    const tick = (time: number) => {
-      const progress = Math.min((time - startedAt) / durationMs, 1)
-      const eased = easeInOutCubic(progress)
-      const nextTheme = {
-        primary: formatRgb(lerpRgb(startTheme.primary, endTheme.primary, eased)),
-        secondary: formatRgb(lerpRgb(startTheme.secondary, endTheme.secondary, eased)),
-      }
-
-      currentArtworkThemeRef.current = nextTheme
-      setArtworkTheme(nextTheme)
-
-      if (progress < 1) {
-        themeAnimationRef.current = window.requestAnimationFrame(tick)
-      } else {
-        themeAnimationRef.current = null
-      }
-    }
-
-    themeAnimationRef.current = window.requestAnimationFrame(tick)
+    if (
+      currentArtworkThemeRef.current.primary === targetTheme.primary
+      && currentArtworkThemeRef.current.secondary === targetTheme.secondary
+    ) return
+    currentArtworkThemeRef.current = targetTheme
+    setArtworkTheme(targetTheme)
   }
 
   useEffect(() => {
@@ -126,9 +112,6 @@ export function OverlayShell({ app }: OverlayShellProps) {
       }
       if (peekResetTimerRef.current) {
         window.clearTimeout(peekResetTimerRef.current)
-      }
-      if (themeAnimationRef.current) {
-        window.cancelAnimationFrame(themeAnimationRef.current)
       }
       cancelOverlayWindowOperations()
     }
@@ -170,16 +153,12 @@ export function OverlayShell({ app }: OverlayShellProps) {
       setWindowPhase('open')
     }
     if (mode !== 'settings' && mode !== 'expanded') {
-      app.setMode('expanded')
+      setMode('expanded')
     }
     setExpandedVisible(true)
-  }, [app, config, isPinned, mode, windowPhase])
+  }, [config, isPinned, mode, setMode, windowPhase])
 
   useEffect(() => {
-    if (!config) {
-      return
-    }
-
     const bounds = getOverlayBounds(config.layout.width, config.layout.scale)
     const phase = isPinned ? 'open' : windowPhase
     void syncOverlayWindow(phase, bounds).then((applied) => {
@@ -191,13 +170,13 @@ export function OverlayShell({ app }: OverlayShellProps) {
           return
         }
         if (mode !== 'settings') {
-          app.setMode('expanded')
+          setMode('expanded')
         }
         setExpandedVisible(true)
         setWindowPhase('open')
       }
     })
-  }, [app, config, isPinned, mode, windowPhase])
+  }, [config.layout.scale, config.layout.width, isPinned, mode, setMode, windowPhase])
 
   useEffect(() => {
     if (!isTauriRuntime() || windowPhase !== 'collapsed') {
@@ -482,7 +461,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
       postTopPullRef.current = Math.min(22, postTopPullRef.current + deltaMs / pressureStepMs)
       updatePeekProgress()
       requestOpenIsland()
-    }, 16)
+    }, 33)
   }
 
   const processGestureSample = (
@@ -601,7 +580,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
       return
     }
 
-    app.setMode(media?.hasSession ? 'compact' : 'no-session')
+    setMode(media?.hasSession ? 'compact' : 'no-session')
     resetPeekVisuals()
     stripArmedRef.current = false
     setWindowPhase('collapsed')
@@ -631,7 +610,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
     clearCloseTimer()
     if (windowPhase === 'closing') {
       setWindowPhase('open')
-      app.setMode('expanded')
+      setMode('expanded')
       setExpandedVisible(true)
       openedAtRef.current = performance.now()
     }
@@ -734,7 +713,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 showProgress={config.layout.showProgress && (windowPhase === 'open' || windowPhase === 'opening')}
                 showSource={config.layout.showSource}
                 showPreviousNext={config.layout.showPreviousNext}
-                onCommand={(command) => void app.sendCommand(command)}
+                onCommand={(command) => void sendCommand(command)}
               />
             </section>
 
@@ -746,7 +725,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 type="button"
                 className="icon-button"
                 aria-label="Open settings"
-                onClick={() => void app.openSettingsWindow()}
+                onClick={() => void openSettingsWindow()}
               >
                 <Settings2 size={16} />
               </button>
@@ -756,7 +735,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 aria-label={config.behavior.pinExpanded ? 'Unpin island' : 'Pin island'}
                 onClick={() => {
                   const nextPinExpanded = !config.behavior.pinExpanded
-                  void app.updateConfig({
+                  void updateConfig({
                     ...config,
                     behavior: {
                       ...config.behavior,
@@ -764,7 +743,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                     },
                   })
                   if (!nextPinExpanded) {
-                    app.setMode('expanded')
+                    setMode('expanded')
                     setWindowPhase('open')
                     setExpandedVisible(true)
                   }
@@ -886,34 +865,4 @@ async function extractArtworkTheme(dataUrl: string): Promise<ArtworkTheme> {
 
 function darken(value: number, factor: number): number {
   return Math.max(0, Math.min(255, Math.round(value * factor)))
-}
-
-function parseTheme(theme: ArtworkTheme): { primary: Rgb; secondary: Rgb } {
-  return {
-    primary: parseRgb(theme.primary),
-    secondary: parseRgb(theme.secondary),
-  }
-}
-
-type Rgb = [number, number, number]
-
-function parseRgb(value: string): Rgb {
-  const [r = 0, g = 0, b = 0] = value.split(',').map((item) => Number.parseInt(item.trim(), 10))
-  return [r, g, b]
-}
-
-function lerpRgb(from: Rgb, to: Rgb, progress: number): Rgb {
-  return [
-    Math.round(from[0] + (to[0] - from[0]) * progress),
-    Math.round(from[1] + (to[1] - from[1]) * progress),
-    Math.round(from[2] + (to[2] - from[2]) * progress),
-  ]
-}
-
-function formatRgb([r, g, b]: Rgb): string {
-  return `${r}, ${g}, ${b}`
-}
-
-function easeInOutCubic(value: number): number {
-  return value < 0.5 ? 4 * value * value * value : 1 - Math.pow(-2 * value + 2, 3) / 2
 }

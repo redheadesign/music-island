@@ -24,6 +24,10 @@ async fn save_config(
 ) -> Result<AppConfig, String> {
     let saved = state.save(config).map_err(|error| error.to_string())?;
     media::set_preferred_source(saved.media.preferred_source_app_id.clone());
+    media::set_active_provider(match saved.media.protocol {
+        config::MediaProtocol::Smtc => media::MediaProvider::Smtc,
+        config::MediaProtocol::YandexDirect => media::MediaProvider::YandexDirect,
+    });
     let _ = app.emit("config:changed", saved.clone());
     Ok(saved)
 }
@@ -65,15 +69,22 @@ fn get_direct_yandex_status() -> yandex::DirectYandexStatus {
 }
 
 #[tauri::command]
-async fn enable_direct_yandex() -> Result<yandex::DirectYandexStatus, String> {
-    yandex::enable().await.map_err(|error| error.to_string())
+async fn enable_direct_yandex(app: tauri::AppHandle) -> Result<yandex::DirectYandexStatus, String> {
+    let status = yandex::enable().await.map_err(|error| error.to_string())?;
+    let _ = app.emit("direct:status", status.clone());
+    Ok(status)
 }
 
 #[tauri::command]
-async fn disable_direct_yandex(restart_plain: bool) -> Result<yandex::DirectYandexStatus, String> {
-    yandex::disable(restart_plain)
+async fn disable_direct_yandex(
+    app: tauri::AppHandle,
+    restart_plain: bool,
+) -> Result<yandex::DirectYandexStatus, String> {
+    let status = yandex::disable(restart_plain)
         .await
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    let _ = app.emit("direct:status", status.clone());
+    Ok(status)
 }
 
 #[tauri::command]
@@ -106,7 +117,9 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 async fn copy_diagnostics(app: tauri::AppHandle) -> Result<String, String> {
-    diagnostics::collect(&app).map_err(|error| error.to_string())
+    diagnostics::collect(&app)
+        .await
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -167,25 +180,42 @@ pub fn run() {
                 Ok(()) => logging::append_event("tray setup ok"),
                 Err(error) => logging::append_event(&format!("tray setup failed: {error}")),
             }
-            media::start_watcher(handle.clone());
-            window::start_gesture_watcher(app.handle().clone());
             if let Ok(config) = app.state::<ConfigState>().load() {
                 media::set_preferred_source(config.media.preferred_source_app_id.clone());
+                media::set_active_provider(match config.media.protocol {
+                    config::MediaProtocol::Smtc => media::MediaProvider::Smtc,
+                    config::MediaProtocol::YandexDirect => media::MediaProvider::YandexDirect,
+                });
                 if config.behavior.pin_expanded {
                     let _ = window::set_overlay_clickthrough(&handle, false);
                 }
                 if matches!(config.media.protocol, config::MediaProtocol::YandexDirect)
                     && config.media.direct_yandex_consent
                 {
-                    tauri::async_runtime::spawn(async {
-                        if let Err(error) = yandex::enable().await {
-                            logging::append_event(&format!(
-                                "direct Yandex startup failed, keeping SMTC fallback: {error}"
-                            ));
+                    let direct_port = config.media.direct_yandex_port;
+                    let direct_app = handle.clone();
+                    let config_state = app.state::<ConfigState>().inner().clone();
+                    tauri::async_runtime::spawn(async move {
+                        match yandex::reattach(direct_port).await {
+                            Ok(status) if status.port != direct_port => {
+                                if let Ok(mut current) = config_state.load() {
+                                    current.media.direct_yandex_port = status.port;
+                                    if let Ok(saved) = config_state.save(current) {
+                                        let _ = direct_app.emit("config:changed", saved);
+                                    }
+                                }
+                            }
+                            Ok(_) => {}
+                            Err(error) => logging::append_event(&format!(
+                                "direct Yandex startup reattach unavailable: {error}"
+                            )),
                         }
+                        let _ = direct_app.emit("direct:status", yandex::status());
                     });
                 }
             }
+            media::start_watcher(handle.clone());
+            window::start_gesture_watcher(app.handle().clone());
             logging::append_event("media watcher started");
             Ok(())
         });

@@ -1,4 +1,4 @@
-use crate::{config, logging, media, yandex};
+use crate::{config, logging, media, window, yandex};
 use serde::Serialize;
 use tauri::AppHandle;
 
@@ -13,9 +13,12 @@ struct DiagnosticsReport {
     log_path: String,
     smtc_health: media::health::SmtcHealthSnapshot,
     direct_yandex: yandex::DirectYandexStatus,
+    media_metrics: media::MediaMetrics,
+    direct_metrics: yandex::DirectMetrics,
+    window_metrics: window::WindowMetrics,
 }
 
-pub fn collect(app: &AppHandle) -> anyhow::Result<String> {
+pub async fn collect(app: &AppHandle) -> anyhow::Result<String> {
     let package = app.package_info();
     let report = DiagnosticsReport {
         app_version: package.version.to_string(),
@@ -27,6 +30,9 @@ pub fn collect(app: &AppHandle) -> anyhow::Result<String> {
         log_path: logging::log_file_path().display().to_string(),
         smtc_health: media::current_health(),
         direct_yandex: yandex::status(),
+        media_metrics: media::metrics(),
+        direct_metrics: yandex::metrics().await,
+        window_metrics: window::metrics(),
     };
 
     Ok(serde_json::to_string_pretty(&report)?)

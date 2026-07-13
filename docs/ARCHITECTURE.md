@@ -42,11 +42,13 @@ Overlay modes: `idle`, `peek`, `compact`, `expanded`, `pinned`, `settings`, `no-
 
 The normalized `MediaSnapshot` identifies its provider (`smtc` or `yandex-direct`) and carries capability flags, timeline data, artwork, reaction state and SMTC health. The frontend does not need provider-specific command logic.
 
-Native events are intentionally low frequency. The UI interpolates progress locally while playback is active, avoiding unnecessary native-to-webview chatter. SMTC uses active, idle, degraded and unavailable polling intervals; metadata and artwork are not re-read on every timeline probe.
+Native events are intentionally low frequency. Timeline events are compact and the UI interpolates progress locally while playback is active. The hidden Settings WebView has no media subscription or progress timer. SMTC uses active, idle, degraded and unavailable polling intervals; metadata and artwork are not re-read on every timeline probe.
 
 ## Provider lifecycle
 
-Windows SMTC is the default and universal fallback. Direct Yandex is enabled only after user confirmation. Music Island restarts the installed Electron client with a random `127.0.0.1` debugging port, validates its renderer and waits for player controls before reporting `connected`. Returning to SMTC closes the debug-enabled process and launches it normally.
+Windows SMTC is the default provider. The configured provider is authoritative: a Direct timeout retains the last Direct state and never injects SMTC playback or commands. The inactive provider may update only independent health shown in Settings/diagnostics.
+
+Direct Yandex is enabled only after user confirmation. Music Island first reattaches to a validated running process and loopback endpoint. Only an explicit connection action may restart the installed Electron client with a random `127.0.0.1` debugging port. A serialized actor keeps one CDP WebSocket open for state and commands. Returning to SMTC closes the debug-enabled process and launches it normally after an explicit user action.
 
 The direct provider uses fixed selectors and commands only. It never accepts arbitrary JavaScript from the frontend, stores account tokens or creates a second playback session.
 

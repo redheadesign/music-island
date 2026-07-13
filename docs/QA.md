@@ -31,19 +31,23 @@
 ## Direct Yandex
 
 - Consent dialog is centered and can be dismissed.
-- Desktop client restarts with a random loopback-only debug port.
+- Existing validated debug endpoint reattaches without changing Yandex Music process IDs.
+- Explicit first connection restarts with a random loopback-only debug port only when no endpoint exists.
 - Status reaches connected and remains usable during playback changes.
 - Metadata, artwork, play/pause, previous/next and seek work.
 - Like/dislike capabilities and pressed states match the desktop client.
 - Returning to SMTC restarts the desktop client without debug flags.
+- Broken SMTC does not change Direct overlay state or receive Direct-path commands.
 
 ## Performance
 
-- Idle CPU.
-- Playing CPU.
+- Collapsed idle CPU ≤1%.
+- Expanded Direct playback CPU ≤4%.
 - Hover latency.
 - Memory after 30-60 minutes.
 - Rapid track changes.
+- 10-switch Direct run: one discovery/WebSocket, command RPC p95 <100 ms, overlay update ≤1 second.
+- Threads/handles remain stable while an SMTC worker is timed out.
 
 ## Accessibility
 

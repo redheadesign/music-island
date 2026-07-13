@@ -1,10 +1,10 @@
 # Yandex Music integration options
 
-Status reviewed for Music Island 0.9 (July 2026).
+Status reviewed for Music Island 0.9.1 (July 2026).
 
 ## Chosen path: local CDP control
 
-Yandex Music Desktop is an Electron application. Music Island can restart the installed client with:
+Yandex Music Desktop is an Electron application. Music Island can reattach to an already running validated debug endpoint. If no endpoint exists, an explicit user action can restart the installed client with:
 
 ```text
 --remote-debugging-address=127.0.0.1 --remote-debugging-port=<random-port>
@@ -12,15 +12,15 @@ Yandex Music Desktop is an Electron application. Music Island can restart the in
 
 It discovers only a local Yandex Music renderer target and executes a fixed Rust-side command set: state, play/pause, previous, next, seek, like and dislike. The existing desktop client remains responsible for login, playback, recommendations and audio.
 
-The first restart requires an explicit confirmation in Settings. The endpoint uses a random loopback port, is never exposed to LAN, and cookies/tokens or arbitrary frontend JavaScript are not logged or accepted. Returning to Windows SMTC closes the debug-enabled client and launches it normally.
+The first restart requires an explicit confirmation in Settings. The endpoint uses a random loopback port, is never exposed to LAN, and cookies/tokens or arbitrary frontend JavaScript are not logged or accepted. Later Music Island launches validate the owning process, `music-application://` target and loopback WebSocket before reattaching without a client restart. Returning to Windows SMTC closes the debug-enabled client and launches it normally after an explicit action.
 
-The adapter uses stable `data-test-id` controls where available and falls back to SMTC when the player surface is incompatible. It reads Chromium discovery responses by their declared `Content-Length` because the endpoint keeps HTTP connections alive. Client updates can still break this experimental path.
+The adapter uses stable `data-test-id` controls where available. It reads Chromium discovery responses by their declared `Content-Length` because the endpoint keeps HTTP connections alive, then keeps one serialized CDP WebSocket open. Client updates can still break this experimental path; failures are reported as Direct degraded/reconnect state and never fall through to SMTC implicitly.
 
 ## Alternatives
 
 ### Windows SMTC/GSMTC
 
-Universal, account-free and supported by many players. It is the default and fallback. Windows owns the broker, so Music Island cannot repair a hung broker. Known failure signals include timeouts and `RPC_E_CALL_REJECTED` (`0x80010002`).
+Universal, account-free and supported by many players. It is the default provider and an explicit alternative to Direct. Windows owns the broker, so Music Island cannot repair a hung broker. Known failure signals include timeouts and `RPC_E_CALL_REJECTED` (`0x80010002`).
 
 ### KM.Yandex.Music.Api
 
@@ -43,4 +43,4 @@ Catalog APIs are appropriate for metadata and library operations, not for contro
 
 ## Recovery
 
-If direct discovery, target validation or a command fails, Music Island reports the error and continues through SMTC. It does not enter a restart loop. The user can retry direct connection or return permanently to SMTC from Settings.
+If direct discovery, target validation or a command fails, Music Island retains the last Direct snapshot, reports reconnect/degraded status and retries the Direct endpoint with bounded delay. It does not call SMTC or enter a restart loop. The user can retry connection or switch explicitly to SMTC from Settings.

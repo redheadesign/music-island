@@ -7,7 +7,13 @@ use tauri::{
 
 pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
-    let updates = MenuItem::with_id(app, "check_updates", "Check for updates", true, None::<&str>)?;
+    let updates = MenuItem::with_id(
+        app,
+        "check_updates",
+        "Check for updates",
+        true,
+        None::<&str>,
+    )?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&settings, &updates, &quit])?;
 

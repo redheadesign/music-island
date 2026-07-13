@@ -2,10 +2,12 @@
 
 Music Island has two media providers:
 
-- **Windows SMTC** is the universal default and fallback.
+- **Windows SMTC** is the universal default.
 - **Yandex Direct** is an explicit opt-in controller for the already running Yandex Music Desktop client. It does not stream audio or create another playback session.
 
 Both providers produce the same `MediaSnapshot` and accept the same `MediaCommand` enum. Provider-specific behavior stays in Rust; React renders controls from capabilities such as `canSeek`, `canLike` and `canDislike`.
+
+The configured provider is authoritative. Snapshots and commands never fall through to the other provider after a timeout. Inactive-provider probes update only Settings/diagnostics health.
 
 ## Patterns adopted from Zen Browser
 
@@ -35,6 +37,8 @@ Not adopted:
 - Thumbnail bytes are read only when the source/track key changes.
 - A failed probe changes health from `healthy` to `degraded`; two consecutive failures produce `unavailable`.
 - Degraded polling backs off to 5 seconds. Unavailable polling backs off to 15 seconds.
+- Every WinRT probe/listing shares one global single-flight guard. A timed-out blocking worker cannot be replaced until it returns.
+- When Direct is active, SMTC receives only a health-only probe every 30 seconds and cannot emit `media:update`.
 - `0x80010002`, timeouts and probe latency are included in local diagnostics.
 
 SMTC seek audio spikes remain a player/protocol limitation. Music Island sends one latest-wins seek and does not hide the issue with pause/play sequences.
@@ -42,14 +46,16 @@ SMTC seek audio spikes remain a player/protocol limitation. Music Island sends o
 ## Direct provider lifecycle
 
 1. The user confirms the first connection in Settings.
-2. Music Island closes the installed desktop client and reserves a random loopback port.
-3. The client starts with `--remote-debugging-address=127.0.0.1` and `--remote-debugging-port=<port>`.
-4. Rust reads the CDP target list using `Content-Length` instead of waiting for Chromium's keep-alive connection to close.
-5. The adapter validates the `music-application://` renderer and waits until player controls are present.
-6. State is normalized into the regular media snapshot. Commands are evaluated from fixed Rust-owned expressions.
-7. Returning to SMTC restarts the desktop client without debugging flags.
+2. Music Island first searches for a running Yandex Music process with a local debug port and validates the process, target scheme and loopback WebSocket.
+3. If no endpoint exists, the explicit action closes the installed desktop client and reserves a random loopback port.
+4. The client starts with `--remote-debugging-address=127.0.0.1` and `--remote-debugging-port=<port>`.
+5. Rust reads the CDP target list using `Content-Length` instead of waiting for Chromium's keep-alive connection to close.
+6. One serialized CDP actor keeps the WebSocket open, assigns increasing request IDs and reconnects with bounded backoff.
+7. State is normalized into the regular media snapshot. Commands are evaluated from fixed Rust-owned expressions.
+8. On later Music Island launches, the persisted port is a hint for safe reattach; absence/rejection reports `restart-required` and does not restart the client automatically.
+9. Returning to SMTC restarts the desktop client without debugging flags only after an explicit user action.
 
-The 0.9 adapter supports metadata, artwork, playback state, previous/next, seek, like/dislike capabilities and pressed states. Reaction controls remain available while the desktop client is still initializing timeline duration.
+The 0.9.1 adapter supports metadata, artwork, playback state, previous/next, seek, like/dislike capabilities and pressed states. Reaction controls remain available while the desktop client is still initializing timeline duration.
 
 ## UI and window interaction
 

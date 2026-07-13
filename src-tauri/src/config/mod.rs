@@ -84,6 +84,8 @@ pub struct MediaConfig {
     pub protocol: MediaProtocol,
     pub preferred_source_app_id: Option<String>,
     pub direct_yandex_consent: bool,
+    #[serde(default)]
+    pub direct_yandex_port: Option<u16>,
 }
 
 impl Default for MediaConfig {
@@ -92,11 +94,12 @@ impl Default for MediaConfig {
             protocol: MediaProtocol::Smtc,
             preferred_source_app_id: None,
             direct_yandex_consent: false,
+            direct_yandex_port: None,
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum MediaProtocol {
     Smtc,
