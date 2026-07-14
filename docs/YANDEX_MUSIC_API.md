@@ -1,6 +1,6 @@
 # Yandex Music integration options
 
-Status reviewed for Music Island 0.9.1 (July 2026).
+Status reviewed for v0.9.5 (July 2026).
 
 ## Chosen path: local CDP control
 
@@ -10,11 +10,24 @@ Yandex Music Desktop is an Electron application. Music Island can reattach to an
 --remote-debugging-address=127.0.0.1 --remote-debugging-port=<random-port>
 ```
 
-It discovers only a local Yandex Music renderer target and executes a fixed Rust-side command set: state, play/pause, previous, next, seek, like and dislike. The existing desktop client remains responsible for login, playback, recommendations and audio.
+It discovers only a local Yandex Music renderer target and executes a fixed Rust-side command set: state, play/pause, previous, next, seek, like/dislike and supported My Wave selection actions. The existing desktop client remains responsible for login, playback, recommendations and audio.
 
-The first restart requires an explicit confirmation in Settings. The endpoint uses a random loopback port, is never exposed to LAN, and cookies/tokens or arbitrary frontend JavaScript are not logged or accepted. Later Music Island launches validate the owning process, `music-application://` target and loopback WebSocket before reattaching without a client restart. Returning to Windows SMTC closes the debug-enabled client and launches it normally after an explicit action.
+The first restart requires an explicit confirmation in Settings. The endpoint uses a random loopback port, is never exposed to LAN, and cookies/tokens or arbitrary frontend JavaScript are not logged or accepted. Later Music Island launches validate the owning process, `music-application://` target and loopback WebSocket before reattaching without a client restart. Returning to Windows SMTC closes the debug-enabled client and launches it normally after an explicit action. When Direct stays `degraded` after a long client downtime, Settings exposes **Перезапустить** which calls the same enable path without switching providers.
 
-The adapter uses stable `data-test-id` controls where available. It reads Chromium discovery responses by their declared `Content-Length` because the endpoint keeps HTTP connections alive, then keeps one serialized CDP WebSocket open. Client updates can still break this experimental path; failures are reported as Direct degraded/reconnect state and never fall through to SMTC implicitly.
+The adapter uses stable `data-test-id` controls where available. It reads Chromium discovery responses by their declared `Content-Length` because the endpoint keeps HTTP connections alive, then keeps one serialized CDP WebSocket open. Client updates and in-app route changes can still break this experimental path; failures are reported as Direct degraded/reconnect state and never fall through to SMTC implicitly.
+
+## My Wave selections
+
+The July 2026 desktop renderer exposes the current selection and recommendation wheel through:
+
+- `RESET_VIBE_CONTEXT_BUTTON`: active selection label and the native reset action;
+- `WHEEL_DESKTOP`: the visible recommendation wheel;
+- `WHEEL_VIBE_ITEM`: label, cover and a nested fixed playback button for each visible selection;
+- `VIBE_PLAYERBAR`: confirmation that the current renderer is in a Vibe/My Wave context.
+
+Music Island reads the active selection label from the Direct snapshot and shows a centered chip under the island. The wheel carousel and preset-catalog fetch are **disabled in 0.9.5**; they remain in the codebase as a future optional Settings feature. Preset IDs are adapter-owned identifiers; the frontend cannot provide selectors or JavaScript. Clearing the active selection still uses the native reset control when available.
+
+The newer `/rotor/session/{new,tracks,feedback}` API can model long-lived My Wave sessions and settings such as diversity, mood/energy and language. It requires account authorization and would create a new token boundary, so it is research reference only. Music Island neither reads nor stores OAuth tokens, cookies or session API responses.
 
 ## Alternatives
 
@@ -37,10 +50,10 @@ Catalog APIs are appropriate for metadata and library operations, not for contro
 ## Capability matrix
 
 - SMTC: metadata, playback state, timeline, play/pause, next/previous, seek; broad compatibility.
-- Local CDP: core playback controls plus like/dislike state with lower local latency for Yandex Music Desktop; experimental/version-dependent.
+- Local CDP: core playback controls, reactions and renderer-owned My Wave selection state/actions with lower local latency; experimental/version-dependent; currently most reliable on the home surface.
 - Catalog API: search, playlists, likes and metadata; no direct local renderer control.
 - Ynison: cloud device/session synchronization; internal and unstable.
 
 ## Recovery
 
-If direct discovery, target validation or a command fails, Music Island retains the last Direct snapshot, reports reconnect/degraded status and retries the Direct endpoint with bounded delay. It does not call SMTC or enter a restart loop. The user can retry connection or switch explicitly to SMTC from Settings.
+If direct discovery, target validation or a command fails, Music Island retains the last Direct snapshot, reports reconnect/degraded status and retries the Direct endpoint with bounded delay. It does not call SMTC or enter a restart loop. The user can press **Перезапустить**, retry connection, or switch explicitly to SMTC from Settings.

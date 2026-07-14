@@ -1,6 +1,6 @@
 [package]
 name = "music-island"
-version = "0.9.1"
+version = "0.9.5"
 description = "Windows top-edge media controller with SMTC and opt-in direct desktop integration."
 authors = ["Music Island contributors"]
 edition = "2021"
@@ -33,6 +33,7 @@ tokio-tungstenite = "0.30.0"
 tracing = "0.1"
 
 [target.'cfg(windows)'.dependencies]
+winreg = "0.55"
 windows = { version = "0.62", features = [
   "Foundation",
   "Foundation_Collections",

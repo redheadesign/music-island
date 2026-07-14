@@ -11,6 +11,7 @@ function snapshot(overrides: Partial<MediaSnapshot> = {}): MediaSnapshot {
   return {
     hasSession: true,
     sourceAppId: 'Spotify.exe',
+    trackId: 'track-1',
     title: 'Track',
     artist: 'Artist',
     albumTitle: null,
@@ -26,6 +27,8 @@ function snapshot(overrides: Partial<MediaSnapshot> = {}): MediaSnapshot {
     canDislike: false,
     isLiked: false,
     isDisliked: false,
+    activeWaveId: null,
+    activeWaveTitle: null,
     thumbnailDataUrl: null,
     updatedAt: '2026-07-08T12:00:00.000Z',
     provider: 'smtc',
@@ -71,6 +74,32 @@ describe('playbackClock', () => {
     const merged = mergeMediaSnapshot(previous, next, null, nowMs)
 
     expect(merged.positionMs).toBe(30_000)
+  })
+
+  it('invalidates immediately when the authoritative provider changes', () => {
+    const previous = snapshot({ provider: 'yandex-direct', title: 'Direct track' })
+    const next = snapshot({
+      provider: 'smtc',
+      hasSession: false,
+      playbackStatus: 'no-session',
+      title: null,
+      artist: null,
+    })
+
+    expect(mergeMediaSnapshot(previous, next)).toEqual(next)
+    expect(applySessionHold(previous, next, { snapshot: previous, sinceMs: Date.now() }).snapshot)
+      .toEqual(next)
+  })
+
+  it('preserves artist metadata when a paused status-only probe omits it', () => {
+    const previous = snapshot({ provider: 'yandex-direct', playbackStatus: 'playing' })
+    const next = snapshot({
+      provider: 'yandex-direct',
+      playbackStatus: 'paused',
+      artist: null,
+    })
+
+    expect(mergeMediaSnapshot(previous, next).artist).toBe('Artist')
   })
 
   it('never re-anchors backward when SMTC position lags by ten seconds', () => {

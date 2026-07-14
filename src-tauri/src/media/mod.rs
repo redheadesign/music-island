@@ -20,6 +20,8 @@ const UNAVAILABLE_POLL_MS: u64 = 15_000;
 const PASSIVE_SMTC_POLL_MS: u64 = 30_000;
 const FULL_METADATA_EVERY: u32 = 4;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(4);
+const DIRECT_STALE_MAX_FAILURES: u32 = 3;
+const DIRECT_STALE_MAX_AGE: Duration = Duration::from_secs(10);
 
 static SMTC_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 static MEDIA_POLLS: AtomicU64 = AtomicU64::new(0);
@@ -29,6 +31,7 @@ static TIMELINE_UPDATES: AtomicU64 = AtomicU64::new(0);
 static SMTC_PROBES: AtomicU64 = AtomicU64::new(0);
 static SMTC_PASSIVE_PROBES: AtomicU64 = AtomicU64::new(0);
 static SMTC_BUSY_SKIPS: AtomicU64 = AtomicU64::new(0);
+static PROVIDER_GENERATION: AtomicU64 = AtomicU64::new(0);
 
 struct SmtcFlightGuard;
 
@@ -66,6 +69,7 @@ pub fn set_preferred_source(source: Option<String>) {
 pub struct MediaSnapshot {
     pub has_session: bool,
     pub source_app_id: Option<String>,
+    pub track_id: Option<String>,
     pub title: Option<String>,
     pub artist: Option<String>,
     pub album_title: Option<String>,
@@ -81,6 +85,8 @@ pub struct MediaSnapshot {
     pub can_dislike: bool,
     pub is_liked: bool,
     pub is_disliked: bool,
+    pub active_wave_id: Option<String>,
+    pub active_wave_title: Option<String>,
     pub thumbnail_data_url: Option<String>,
     pub updated_at: String,
     pub provider: MediaProvider,
@@ -111,9 +117,22 @@ fn active_provider_lock() -> &'static RwLock<MediaProvider> {
 }
 
 pub fn set_active_provider(provider: MediaProvider) {
-    *active_provider_lock()
+    let mut active = active_provider_lock()
         .write()
-        .expect("active provider lock poisoned") = provider;
+        .expect("active provider lock poisoned");
+    if *active != provider {
+        *active = provider;
+        PROVIDER_GENERATION.fetch_add(1, Ordering::AcqRel);
+    }
+}
+
+pub fn switch_active_provider(app: &AppHandle, provider: MediaProvider) {
+    let previous = active_provider();
+    set_active_provider(provider);
+    if previous != provider {
+        let _ = app.emit("media:update", MediaSnapshot::no_session_for(provider));
+        MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
+    }
 }
 
 pub fn active_provider() -> MediaProvider {
@@ -224,6 +243,7 @@ impl MediaSnapshot {
         Self {
             has_session: false,
             source_app_id: None,
+            track_id: None,
             title: None,
             artist: None,
             album_title: None,
@@ -239,6 +259,8 @@ impl MediaSnapshot {
             can_dislike: false,
             is_liked: false,
             is_disliked: false,
+            active_wave_id: None,
+            active_wave_title: None,
             thumbnail_data_url: None,
             updated_at: chrono::Utc::now().to_rfc3339(),
             provider,
@@ -252,6 +274,8 @@ pub fn start_watcher(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let mut previous_key = String::new();
         let mut last_good: Option<MediaSnapshot> = None;
+        let mut last_good_at: Option<Instant> = None;
+        let mut direct_failure_streak: u32 = 0;
         let mut miss_streak: u32 = 0;
         let mut poll_index: u32 = 0;
         let mut last_health = health::current();
@@ -264,14 +288,21 @@ pub fn start_watcher(app: AppHandle) {
             if provider != last_provider {
                 previous_key.clear();
                 last_good = None;
+                last_good_at = None;
+                direct_failure_streak = 0;
                 miss_streak = 0;
                 last_provider = provider;
             }
 
             if provider == MediaProvider::YandexDirect {
+                let generation = PROVIDER_GENERATION.load(Ordering::Acquire);
                 match timeout(PROBE_TIMEOUT, crate::yandex::snapshot()).await {
-                    Ok(Ok(snapshot)) => {
+                    Ok(Ok(mut snapshot)) => {
+                        if generation != PROVIDER_GENERATION.load(Ordering::Acquire) {
+                            continue;
+                        }
                         crate::yandex::record_probe_success();
+                        preserve_same_track_metadata(last_good.as_ref(), &mut snapshot);
                         let key = snapshot_key(&snapshot);
                         if key != previous_key {
                             let _ = app.emit("media:update", snapshot.clone());
@@ -282,41 +313,78 @@ pub fn start_watcher(app: AppHandle) {
                             TIMELINE_UPDATES.fetch_add(1, Ordering::Relaxed);
                         }
                         last_good = Some(snapshot);
+                        last_good_at = Some(Instant::now());
+                        direct_failure_streak = 0;
                         emit_direct_status_if_changed(&app, &mut last_direct_status);
                         sleep(Duration::from_millis(DIRECT_POLL_MS)).await;
                     }
                     Ok(Err(error)) => {
+                        if generation != PROVIDER_GENERATION.load(Ordering::Acquire) {
+                            continue;
+                        }
                         crate::yandex::record_probe_failure(&error.to_string());
+                        direct_failure_streak = direct_failure_streak.saturating_add(1);
                         crate::logging::append_event_rate_limited(
                             "direct-probe",
                             &format!("direct Yandex probe failed; retaining direct state: {error}"),
                             Duration::from_secs(15),
                         );
                         emit_direct_status_if_changed(&app, &mut last_direct_status);
-                        if last_good.is_none() && previous_key.is_empty() {
+                        if !retain_direct_stale(
+                            last_good_at,
+                            direct_failure_streak,
+                            &crate::yandex::status().state,
+                        ) {
+                            last_good = None;
+                            last_good_at = None;
                             let snapshot =
                                 MediaSnapshot::no_session_for(MediaProvider::YandexDirect);
-                            let _ = app.emit("media:update", snapshot.clone());
-                            MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
-                            previous_key = snapshot_key(&snapshot);
+                            let key = snapshot_key(&snapshot);
+                            if key != previous_key {
+                                let _ = app.emit("media:update", snapshot);
+                                MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
+                                previous_key = key;
+                            }
                         }
                         sleep(Duration::from_millis(DEGRADED_POLL_MS.min(2_000))).await;
                     }
                     Err(_) => {
+                        if generation != PROVIDER_GENERATION.load(Ordering::Acquire) {
+                            continue;
+                        }
                         crate::yandex::record_probe_failure("CDP probe timed out");
+                        direct_failure_streak = direct_failure_streak.saturating_add(1);
                         crate::logging::append_event_rate_limited(
                             "direct-timeout",
                             "direct Yandex probe timed out; retaining direct state",
                             Duration::from_secs(15),
                         );
                         emit_direct_status_if_changed(&app, &mut last_direct_status);
+                        if !retain_direct_stale(
+                            last_good_at,
+                            direct_failure_streak,
+                            &crate::yandex::status().state,
+                        ) {
+                            last_good = None;
+                            last_good_at = None;
+                            let snapshot =
+                                MediaSnapshot::no_session_for(MediaProvider::YandexDirect);
+                            let key = snapshot_key(&snapshot);
+                            if key != previous_key {
+                                let _ = app.emit("media:update", snapshot);
+                                MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
+                                previous_key = key;
+                            }
+                        }
                         sleep(Duration::from_millis(2_000)).await;
                     }
                 }
                 continue;
             }
 
-            let include_metadata = last_good.is_none() || poll_index % FULL_METADATA_EVERY == 0;
+            let generation = PROVIDER_GENERATION.load(Ordering::Acquire);
+            let include_metadata =
+                last_good.is_none() || poll_index.is_multiple_of(FULL_METADATA_EVERY);
             poll_index = poll_index.wrapping_add(1);
             let started = Instant::now();
             let previous_for_poll = last_good.clone();
@@ -399,6 +467,9 @@ pub fn start_watcher(app: AppHandle) {
                     )
                 }
             };
+            if generation != PROVIDER_GENERATION.load(Ordering::Acquire) {
+                continue;
+            }
 
             if next_health.status != last_health.status
                 || next_health.consecutive_failures != last_health.consecutive_failures
@@ -409,6 +480,7 @@ pub fn start_watcher(app: AppHandle) {
 
             let mut raw = raw;
             raw.smtc_health = next_health.status;
+            preserve_same_track_metadata(last_good.as_ref(), &mut raw);
             let snapshot = if raw.has_session {
                 last_good = Some(raw.clone());
                 miss_streak = 0;
@@ -585,13 +657,69 @@ pub async fn list_sessions() -> anyhow::Result<Vec<MediaSessionInfo>> {
 
 fn snapshot_key(snapshot: &MediaSnapshot) -> String {
     format!(
-        "{}|{:?}|{}|{}|{}",
+        "{}|{}|{:?}|{}|{}|{}|{}|{}|{}|{}",
         snapshot.source_app_id.as_deref().unwrap_or_default(),
+        snapshot.track_id.as_deref().unwrap_or_default(),
         snapshot.playback_status,
         snapshot.title.as_deref().unwrap_or_default(),
         snapshot.artist.as_deref().unwrap_or_default(),
-        snapshot.duration_ms.unwrap_or_default()
+        snapshot.duration_ms.unwrap_or_default(),
+        snapshot.is_liked,
+        snapshot.is_disliked,
+        snapshot.active_wave_id.as_deref().unwrap_or_default(),
+        snapshot.active_wave_title.as_deref().unwrap_or_default()
     )
+}
+
+fn retain_direct_stale(
+    last_good_at: Option<Instant>,
+    failure_streak: u32,
+    state: &crate::yandex::DirectYandexState,
+) -> bool {
+    let recoverable = matches!(
+        state,
+        crate::yandex::DirectYandexState::Connecting
+            | crate::yandex::DirectYandexState::Connected
+            | crate::yandex::DirectYandexState::Degraded
+    );
+    recoverable
+        && failure_streak <= DIRECT_STALE_MAX_FAILURES
+        && last_good_at.is_some_and(|at| at.elapsed() <= DIRECT_STALE_MAX_AGE)
+}
+
+fn preserve_same_track_metadata(previous: Option<&MediaSnapshot>, current: &mut MediaSnapshot) {
+    let Some(previous) = previous else {
+        return;
+    };
+    let status_only = matches!(
+        current.playback_status,
+        PlaybackStatus::Paused
+            | PlaybackStatus::Changing
+            | PlaybackStatus::Opened
+            | PlaybackStatus::Stopped
+    );
+    let identity_matches = current.source_app_id == previous.source_app_id
+        && match (&current.track_id, &previous.track_id) {
+            (Some(current), Some(previous)) => current == previous,
+            (None, None) => current.duration_ms == previous.duration_ms,
+            _ => false,
+        };
+    let no_conflicting_metadata = current.title.is_none() || current.title == previous.title;
+    if !status_only || !identity_matches || !no_conflicting_metadata {
+        return;
+    }
+    if current.title.is_none() {
+        current.title = previous.title.clone();
+    }
+    if current.artist.is_none() {
+        current.artist = previous.artist.clone();
+    }
+    if current.album_title.is_none() {
+        current.album_title = previous.album_title.clone();
+    }
+    if current.thumbnail_data_url.is_none() {
+        current.thumbnail_data_url = previous.thumbnail_data_url.clone();
+    }
 }
 
 #[cfg(windows)]
@@ -789,6 +917,7 @@ mod platform {
         Ok(MediaSnapshot {
             has_session: true,
             source_app_id,
+            track_id: None,
             title,
             artist,
             album_title,
@@ -804,6 +933,8 @@ mod platform {
             can_dislike: false,
             is_liked: false,
             is_disliked: false,
+            active_wave_id: None,
+            active_wave_title: None,
             thumbnail_data_url,
             updated_at,
             provider: MediaProvider::Smtc,
@@ -912,6 +1043,35 @@ mod platform {
 mod routing_tests {
     use super::*;
 
+    fn snapshot() -> MediaSnapshot {
+        MediaSnapshot {
+            has_session: true,
+            source_app_id: Some("test.player".into()),
+            track_id: Some("track-1".into()),
+            title: Some("Title".into()),
+            artist: Some("Artist".into()),
+            album_title: Some("Album".into()),
+            playback_status: PlaybackStatus::Playing,
+            position_ms: Some(1_000),
+            duration_ms: Some(10_000),
+            can_seek: true,
+            can_go_next: true,
+            can_go_previous: true,
+            can_play: true,
+            can_pause: true,
+            can_like: true,
+            can_dislike: true,
+            is_liked: false,
+            is_disliked: false,
+            active_wave_id: None,
+            active_wave_title: None,
+            thumbnail_data_url: Some("data:image/jpeg;base64,test".into()),
+            updated_at: "now".into(),
+            provider: MediaProvider::YandexDirect,
+            smtc_health: SmtcHealth::Healthy,
+        }
+    }
+
     #[test]
     fn configured_provider_remains_authoritative_without_a_session() {
         set_active_provider(MediaProvider::YandexDirect);
@@ -927,6 +1087,63 @@ mod routing_tests {
         assert!(try_smtc_flight().is_none());
         drop(first);
         assert!(try_smtc_flight().is_some());
+    }
+
+    #[test]
+    fn snapshot_key_includes_reactions_and_wave_selection() {
+        let original = snapshot();
+        let key = snapshot_key(&original);
+        let mut changed = original.clone();
+        changed.is_liked = true;
+        assert_ne!(key, snapshot_key(&changed));
+        changed.is_liked = false;
+        changed.active_wave_id = Some("wave-1".into());
+        assert_ne!(key, snapshot_key(&changed));
+    }
+
+    #[test]
+    fn paused_status_only_snapshot_keeps_same_track_metadata() {
+        let previous = snapshot();
+        let mut current = previous.clone();
+        current.playback_status = PlaybackStatus::Paused;
+        current.title = None;
+        current.artist = None;
+        current.album_title = None;
+        current.thumbnail_data_url = None;
+        preserve_same_track_metadata(Some(&previous), &mut current);
+        assert_eq!(current.title.as_deref(), Some("Title"));
+        assert_eq!(current.artist.as_deref(), Some("Artist"));
+        assert!(current.thumbnail_data_url.is_some());
+    }
+
+    #[test]
+    fn metadata_is_not_reused_for_a_different_track() {
+        let previous = snapshot();
+        let mut current = previous.clone();
+        current.track_id = Some("track-2".into());
+        current.playback_status = PlaybackStatus::Paused;
+        current.title = None;
+        preserve_same_track_metadata(Some(&previous), &mut current);
+        assert!(current.title.is_none());
+    }
+
+    #[test]
+    fn direct_stale_retention_is_bounded_and_terminal_aware() {
+        assert!(retain_direct_stale(
+            Some(Instant::now()),
+            DIRECT_STALE_MAX_FAILURES,
+            &crate::yandex::DirectYandexState::Degraded
+        ));
+        assert!(!retain_direct_stale(
+            Some(Instant::now()),
+            DIRECT_STALE_MAX_FAILURES + 1,
+            &crate::yandex::DirectYandexState::Degraded
+        ));
+        assert!(!retain_direct_stale(
+            Some(Instant::now()),
+            1,
+            &crate::yandex::DirectYandexState::RestartRequired
+        ));
     }
 }
 

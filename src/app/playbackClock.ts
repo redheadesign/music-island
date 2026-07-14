@@ -60,6 +60,10 @@ export function mergeMediaSnapshot(
   pendingSeek: PendingSeek | null = null,
   nowMs = Date.now(),
 ): MediaSnapshot {
+  if (previous && previous.provider !== next.provider) {
+    return next
+  }
+
   if (previous?.hasSession && !next.hasSession) {
     if (TRANSIENT_NO_SESSION_STATUSES.includes(next.playbackStatus)) {
       return {
@@ -78,16 +82,23 @@ export function mergeMediaSnapshot(
     return next
   }
 
+  const nextWithStableMetadata: MediaSnapshot = {
+    ...next,
+    artist: next.artist ?? previous.artist,
+    albumTitle: next.albumTitle ?? previous.albumTitle,
+    thumbnailDataUrl: next.thumbnailDataUrl ?? previous.thumbnailDataUrl,
+  }
+
   if (pendingSeek && nowMs < pendingSeek.untilMs) {
-    const incomingPosition = next.positionMs ?? 0
+    const incomingPosition = nextWithStableMetadata.positionMs ?? 0
     const confirmed = Math.abs(incomingPosition - pendingSeek.positionMs) <= SEEK_CONFIRM_TOLERANCE_MS
     let merged = withAnchor(
-      next,
+      nextWithStableMetadata,
       confirmed ? incomingPosition : pendingSeek.positionMs,
       nowMs,
     )
 
-    if (pendingSeek.preservePlaying && TRANSIENT_PAUSE_STATUSES.includes(next.playbackStatus)) {
+    if (pendingSeek.preservePlaying && TRANSIENT_PAUSE_STATUSES.includes(nextWithStableMetadata.playbackStatus)) {
       merged = {
         ...merged,
         playbackStatus: 'playing',
@@ -97,9 +108,13 @@ export function mergeMediaSnapshot(
     return merged
   }
 
-  const anchor = reconcilePlaybackAnchor(previous, next, nowMs)
+  const anchor = reconcilePlaybackAnchor(previous, nextWithStableMetadata, nowMs)
   const anchorTimeMs = Date.parse(anchor.updatedAt)
-  return withAnchor(next, anchor.positionMs, Number.isNaN(anchorTimeMs) ? nowMs : anchorTimeMs)
+  return withAnchor(
+    nextWithStableMetadata,
+    anchor.positionMs,
+    Number.isNaN(anchorTimeMs) ? nowMs : anchorTimeMs,
+  )
 }
 
 export function reconcilePlaybackAnchor(
@@ -154,7 +169,7 @@ export function reconcilePlaybackAnchor(
 function isSameTrack(previous: MediaSnapshot, next: MediaSnapshot): boolean {
   return (
     previous.title === next.title &&
-    previous.artist === next.artist &&
+    (previous.artist === next.artist || previous.artist == null || next.artist == null) &&
     previous.durationMs === next.durationMs &&
     previous.sourceAppId === next.sourceAppId
   )
@@ -181,6 +196,10 @@ export function applySessionHold(
   hold: SessionHold | null,
   nowMs = Date.now(),
 ): { snapshot: MediaSnapshot; hold: SessionHold | null } {
+  if (previous && previous.provider !== merged.provider) {
+    return { snapshot: merged, hold: null }
+  }
+
   if (merged.hasSession) {
     return { snapshot: merged, hold: null }
   }

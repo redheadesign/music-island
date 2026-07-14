@@ -19,9 +19,44 @@ export type MediaCommand =
   | 'dislike'
   | { seek: { positionMs: number } }
 
+export interface WaveSelection {
+  id: string
+  label: string
+  iconUrl: string | null
+  removable: boolean
+}
+
+export interface WavePreset {
+  id: string
+  title: string
+  iconUrl: string | null
+  isActive: boolean
+}
+
+export interface WaveContext {
+  isMyWave: boolean
+  active: WaveSelection | null
+  presets: WavePreset[]
+  supported: boolean
+}
+
+export interface WaveCatalogResult {
+  supported: boolean
+  presets: WavePreset[]
+  message: string | null
+}
+
+export interface WaveSelectionResult {
+  supported: boolean
+  applied: boolean
+  activeWaveId: string | null
+  message: string | null
+}
+
 export interface MediaSnapshot {
   hasSession: boolean
   sourceAppId: string | null
+  trackId: string | null
   title: string | null
   artist: string | null
   albumTitle: string | null
@@ -37,6 +72,8 @@ export interface MediaSnapshot {
   canDislike: boolean
   isLiked: boolean
   isDisliked: boolean
+  activeWaveId: string | null
+  activeWaveTitle: string | null
   thumbnailDataUrl: string | null
   updatedAt: string
   provider: 'smtc' | 'yandex-direct'

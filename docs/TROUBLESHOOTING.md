@@ -8,16 +8,25 @@ Music Island stops frequent polling after repeated timeouts or `0x80010002` and 
 
 - Confirm that the desktop client is installed in `%LOCALAPPDATA%\Programs\YandexMusic`.
 - Retry from Settings after the client has finished updating.
-- If the client UI changed and the adapter reports `incompatible`, use **Вернуться на SMTC**. Music Island will restart the client without debug flags.
+- If status is `degraded`, `restart-required` or `error`, use **Перезапустить** in the Direct row. That reattaches or restarts the client with a fresh loopback debug endpoint without switching back to SMTC.
+- If the client UI changed and the adapter reports `incompatible`, use **Вернуться на SMTC** / **Отключить**. Music Island will restart the client without debug flags.
 - The integration listens on a random `127.0.0.1` port only. Security software that blocks local Electron debugging can prevent connection.
 - Check `%APPDATA%\Music Island\logs\app.log` for the selected port and the last discovery/evaluation error.
 - Connection can take several seconds because Music Island waits for the Electron renderer and player controls, not just an open TCP port.
-- `restart-required` means no validated existing endpoint was available. Music Island will not restart the client during application startup; use **Подключить** explicitly if a restart is acceptable.
+- `restart-required` means no validated existing endpoint was available. Music Island will not restart the client during application startup; use **Подключить** or **Перезапустить** explicitly if a restart is acceptable.
 - A broken SMTC broker does not affect Direct playback. Its health can remain unavailable in Settings while the overlay continues to use Direct metadata, artwork, timeline and commands.
+
+## Direct works on Home but fails on Collection / other pages
+
+Direct selectors currently assume the home/player-bar DOM shape. Navigating to Collection or other Yandex Music routes can remove or remount those nodes, so metadata, wave title, play/pause and reactions may stop updating. Workaround: return to the home surface or press **Перезапустить**. This is a known limitation tracked in GitHub issues.
+
+## Launch with Windows does nothing (portable exe)
+
+Music Island writes a single `HKCU\...\Run\Music Island` entry that points at the current `.exe` path (quoted when the path contains spaces) plus `--startup`. On every launch with the option enabled it refreshes that path, so moving the portable file does not leave a stale entry. Turn the toggle off and on once after upgrading from 0.9.1 if an old unquoted entry remains.
 
 ## Direct connection works but reactions are missing
 
-Version 0.9.1 exposes like/dislike as soon as the desktop renderer reports those capabilities, even if its timeline still shows `00:00 / 00:00`. If they remain absent, reconnect from Settings and include diagnostics plus the desktop-client version in the report.
+Version 0.9.5 exposes like/dislike as soon as the desktop renderer reports those capabilities, even if its timeline still shows `00:00 / 00:00`. If they remain absent, reconnect with **Перезапустить** and include diagnostics plus the desktop-client version in the report.
 
 ## No Track Is Shown
 

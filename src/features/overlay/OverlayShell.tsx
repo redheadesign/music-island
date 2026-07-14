@@ -9,6 +9,7 @@ import {
   type CollapsedGestureState,
 } from '../../app/tauriApi'
 import { MusicModule } from '../music/MusicModule'
+import { ActiveSelectionChip } from '../music/wave/ActiveSelectionChip'
 import {
   cancelOverlayWindowOperations,
   getOverlayBounds,
@@ -42,6 +43,8 @@ export function OverlayShell({ app }: OverlayShellProps) {
     progressPercent,
     setMode,
     sendCommand,
+    waveContext,
+    clearWaveSelection,
     openSettingsWindow,
     updateConfig,
   } = app
@@ -149,19 +152,19 @@ export function OverlayShell({ app }: OverlayShellProps) {
       return
     }
 
-    if (windowPhase !== 'open') {
-      setWindowPhase('open')
+    if (windowPhase === 'collapsed' || windowPhase === 'closing') {
+      openCommittedRef.current = true
+      openedAtRef.current = performance.now()
+      setExpandedVisible(false)
+      setWindowPhase('opening')
     }
-    if (mode !== 'settings' && mode !== 'expanded') {
-      setMode('expanded')
-    }
-    setExpandedVisible(true)
   }, [config, isPinned, mode, setMode, windowPhase])
 
   useEffect(() => {
+    let cancelled = false
     const bounds = getOverlayBounds(config.layout.width, config.layout.scale)
-    const phase = isPinned ? 'open' : windowPhase
-    void syncOverlayWindow(phase, bounds).then((applied) => {
+    const phase = windowPhase
+    void syncOverlayWindow(phase, bounds).then(async (applied) => {
       if (!applied) {
         return
       }
@@ -169,6 +172,8 @@ export function OverlayShell({ app }: OverlayShellProps) {
         if (!openCommittedRef.current) {
           return
         }
+        await nextPaint()
+        if (cancelled || !openCommittedRef.current) return
         if (mode !== 'settings') {
           setMode('expanded')
         }
@@ -176,7 +181,10 @@ export function OverlayShell({ app }: OverlayShellProps) {
         setWindowPhase('open')
       }
     })
-  }, [config.layout.scale, config.layout.width, isPinned, mode, setMode, windowPhase])
+    return () => {
+      cancelled = true
+    }
+  }, [config.layout.scale, config.layout.width, mode, setMode, windowPhase])
 
   useEffect(() => {
     if (!isTauriRuntime() || windowPhase !== 'collapsed') {
@@ -426,7 +434,6 @@ export function OverlayShell({ app }: OverlayShellProps) {
       peekX,
     })
     setHideCollapsedProgress(true)
-    setExpandedVisible(true)
     setWindowPhase('opening')
   }
 
@@ -692,11 +699,11 @@ export function OverlayShell({ app }: OverlayShellProps) {
               key="island-expanded"
               onPointerEnter={handleExpandedHoverEnter}
               onPointerLeave={handleExpandedHoverLeave}
-              initial={{ opacity: 0, y: -6 }}
+              initial={config.appearance.reducedMotion ? false : { opacity: 0, y: -18 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              exit={{ opacity: 0, y: -10 }}
               transition={{
-                duration: config.appearance.reducedMotion ? 0 : 0.14,
+                duration: config.appearance.reducedMotion ? 0 : 0.26,
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
@@ -716,6 +723,12 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 onCommand={(command) => void sendCommand(command)}
               />
             </section>
+            {waveContext?.active ? (
+              <ActiveSelectionChip
+                selection={waveContext.active}
+                onClear={() => void clearWaveSelection()}
+              />
+            ) : null}
 
             <header
               className="island-actions"
@@ -795,11 +808,19 @@ function isPointerOverExpandedSurface(
   const viewportX = localX * (window.innerWidth / windowWidth)
   const viewportY = localY * (window.innerHeight / windowHeight)
   const element = document.elementFromPoint(viewportX, viewportY)
-  return Boolean(element?.closest('.island-hover-zone, .island-actions, .island-card'))
+  return Boolean(element?.closest(
+    '.island-hover-zone, .island-actions, .island-card, .wave-wheel, .wave-selection-chip',
+  ))
 }
 
 function isTauriRuntime(): boolean {
   return '__TAURI_INTERNALS__' in window
+}
+
+function nextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  })
 }
 
 async function extractArtworkTheme(dataUrl: string): Promise<ArtworkTheme> {

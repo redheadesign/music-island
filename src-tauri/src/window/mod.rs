@@ -6,8 +6,8 @@ use std::sync::{
 use tauri::{window::Color, AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
 use tokio::time::{sleep, Duration};
 
-const OVERLAY_WIDTH: i32 = 860;
-const OVERLAY_HEIGHT: u32 = 280;
+const OVERLAY_WIDTH: i32 = 1_100;
+const OVERLAY_HEIGHT: u32 = 320;
 const OVERLAY_TOP_OFFSET: i32 = -1;
 const COLLAPSED_HEIGHT: u32 = 20;
 static BOUNDS_REQUESTS: AtomicU64 = AtomicU64::new(0);
@@ -237,13 +237,24 @@ mod platform {
     }
 }
 
+pub fn setup_settings_window(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window("settings") {
+        window.set_background_color(Some(Color(9, 11, 16, 255)))?;
+    }
+
+    Ok(())
+}
+
 pub fn open_settings_window(app: &AppHandle) -> tauri::Result<()> {
     if let Some(window) = app.get_webview_window("settings") {
-        if window.is_visible().unwrap_or(false) {
+        if window.is_minimized().unwrap_or(false) {
+            window.unminimize()?;
+            window.show()?;
+            window.set_focus()?;
+        } else if window.is_visible().unwrap_or(false) {
             window.hide()?;
         } else {
             window.show()?;
-            let _ = window.unminimize();
             window.set_focus()?;
         }
     }

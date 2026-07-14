@@ -67,6 +67,32 @@ pub struct DirectMetrics {
     pub persistent_socket_open: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WavePreset {
+    pub id: String,
+    pub title: String,
+    pub icon_url: Option<String>,
+    pub is_active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WaveCatalogResult {
+    pub supported: bool,
+    pub presets: Vec<WavePreset>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WaveSelectionResult {
+    pub supported: bool,
+    pub applied: bool,
+    pub active_wave_id: Option<String>,
+    pub message: Option<String>,
+}
+
 pub async fn metrics() -> DirectMetrics {
     let evaluations = EVALUATIONS.load(Ordering::Relaxed);
     DirectMetrics {
@@ -76,11 +102,10 @@ pub async fn metrics() -> DirectMetrics {
         evaluations,
         commands: COMMANDS.load(Ordering::Relaxed),
         consecutive_failures: PROBE_FAILURES.load(Ordering::Relaxed),
-        average_rpc_rtt_ms: if evaluations == 0 {
-            0
-        } else {
-            RPC_RTT_TOTAL_MS.load(Ordering::Relaxed) / evaluations
-        },
+        average_rpc_rtt_ms: RPC_RTT_TOTAL_MS
+            .load(Ordering::Relaxed)
+            .checked_div(evaluations)
+            .unwrap_or(0),
         max_rpc_rtt_ms: RPC_RTT_MAX_MS.load(Ordering::Relaxed),
         persistent_socket_open: actor_lock().lock().await.is_some(),
     }
@@ -100,6 +125,20 @@ impl Default for DirectYandexStatus {
 fn status_lock() -> &'static RwLock<DirectYandexStatus> {
     static STATUS: OnceLock<RwLock<DirectYandexStatus>> = OnceLock::new();
     STATUS.get_or_init(|| RwLock::new(DirectYandexStatus::default()))
+}
+
+#[derive(Clone)]
+struct DirectMetadata {
+    track_id: Option<String>,
+    title: Option<String>,
+    artist: Option<String>,
+    cover: Option<String>,
+    duration_ms: Option<i64>,
+}
+
+fn metadata_lock() -> &'static RwLock<Option<DirectMetadata>> {
+    static METADATA: OnceLock<RwLock<Option<DirectMetadata>>> = OnceLock::new();
+    METADATA.get_or_init(|| RwLock::new(None))
 }
 
 type CdpSocket = WebSocketStream<MaybeTlsStream<TokioTcpStream>>;
@@ -291,6 +330,9 @@ pub async fn disable(restart_plain: bool) -> anyhow::Result<DirectYandexStatus> 
         .or_else(find_executable);
     set_status(DirectYandexStatus::default());
     *actor_lock().lock().await = None;
+    *metadata_lock()
+        .write()
+        .expect("Yandex metadata lock poisoned") = None;
     if restart_plain {
         stop_client();
         sleep(Duration::from_millis(500)).await;
@@ -323,11 +365,42 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
         .get("duration")
         .and_then(Value::as_f64)
         .map(|v| (v * 1_000.0) as i64);
+    let track_id = validated_dom_id(string_field(&value, "trackId"));
+    let title = string_field(&value, "title");
+    let mut artist = string_field(&value, "artist");
+    let mut cover = string_field(&value, "cover");
+    {
+        let previous = metadata_lock()
+            .read()
+            .expect("Yandex metadata lock poisoned")
+            .clone();
+        let same_track = previous.as_ref().is_some_and(|previous| {
+            previous.track_id == track_id
+                && previous.title == title
+                && previous.duration_ms == duration_ms
+        });
+        if same_track {
+            artist = artist.or_else(|| previous.as_ref().and_then(|item| item.artist.clone()));
+            cover = cover.or_else(|| previous.as_ref().and_then(|item| item.cover.clone()));
+        }
+        if title.is_some() {
+            *metadata_lock()
+                .write()
+                .expect("Yandex metadata lock poisoned") = Some(DirectMetadata {
+                track_id: track_id.clone(),
+                title: title.clone(),
+                artist: artist.clone(),
+                cover: cover.clone(),
+                duration_ms,
+            });
+        }
+    }
     Ok(MediaSnapshot {
         has_session: true,
         source_app_id: Some("YandexMusic.Direct".into()),
-        title: string_field(&value, "title"),
-        artist: string_field(&value, "artist"),
+        track_id,
+        title,
+        artist,
         album_title: None,
         playback_status: if value.get("playing").and_then(Value::as_bool) == Some(true) {
             PlaybackStatus::Playing
@@ -360,7 +433,9 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
             .get("disliked")
             .and_then(Value::as_bool)
             .unwrap_or(false),
-        thumbnail_data_url: string_field(&value, "cover"),
+        active_wave_id: validated_dom_id(string_field(&value, "activeWaveId")),
+        active_wave_title: string_field(&value, "activeWaveTitle"),
+        thumbnail_data_url: cover,
         updated_at: chrono::Utc::now().to_rfc3339(),
         provider: MediaProvider::YandexDirect,
         smtc_health: health::current().status,
@@ -372,23 +447,127 @@ pub async fn send_command(command: MediaCommand) -> anyhow::Result<()> {
     let port = status()
         .port
         .ok_or_else(|| anyhow::anyhow!("direct Yandex connection is disabled"))?;
-    let expression = match command {
-        MediaCommand::Play | MediaCommand::Pause | MediaCommand::PlayPause => {
-            click_expression(&["PAUSE_BUTTON", "PLAY_BUTTON"])
-        }
+    let before = if matches!(
+        &command,
+        MediaCommand::Play
+            | MediaCommand::Pause
+            | MediaCommand::PlayPause
+            | MediaCommand::Stop
+            | MediaCommand::Like
+            | MediaCommand::Dislike
+    ) {
+        Some(evaluate(port, STATE_EXPRESSION).await?)
+    } else {
+        None
+    };
+    let expression = match &command {
+        MediaCommand::Play => playback_click_expression("PLAY_BUTTON"),
+        MediaCommand::Pause | MediaCommand::Stop => playback_click_expression("PAUSE_BUTTON"),
+        MediaCommand::PlayPause => play_pause_click_expression(),
         MediaCommand::Next => click_expression(&["NEXT_TRACK_BUTTON"]),
         MediaCommand::Previous => click_expression(&["PREVIOUS_TRACK_BUTTON"]),
-        MediaCommand::Stop => click_expression(&["PAUSE_BUTTON"]),
         MediaCommand::Like => click_expression(&["LIKE_BUTTON"]),
         MediaCommand::Dislike => click_expression(&["DISLIKE_BUTTON"]),
-        MediaCommand::Seek { position_ms } => seek_expression(position_ms),
+        MediaCommand::Seek { position_ms } => seek_expression(*position_ms),
     };
     let result = evaluate(port, &expression).await?;
     if result.as_bool() != Some(true) {
         crate::logging::append_event("direct Yandex command was rejected by renderer");
         anyhow::bail!("Yandex Music rejected the direct command");
     }
+    if let Some(before) = before {
+        confirm_command(port, &command, &before).await?;
+    }
     Ok(())
+}
+
+pub async fn wave_presets() -> anyhow::Result<WaveCatalogResult> {
+    let port = direct_port()?;
+    let value = evaluate(port, WAVE_CATALOG_EXPRESSION).await?;
+    let mut result: WaveCatalogResult = serde_json::from_value(value)
+        .map_err(|error| anyhow::anyhow!("invalid wave catalog response: {error}"))?;
+    result.presets.retain(|preset| valid_dom_id(&preset.id));
+    if result.supported && result.presets.is_empty() {
+        result.message = Some("Wave preset controls were found, but expose no stable IDs".into());
+    }
+    Ok(result)
+}
+
+pub async fn select_wave_preset(id: &str) -> anyhow::Result<WaveSelectionResult> {
+    validate_dom_id(id)?;
+    let port = direct_port()?;
+    let quoted_id = serde_json::to_string(id)?;
+    let expression = format!(
+        "(() => {{ const id={quoted_id}; const nodes=[...document.querySelectorAll(\"[data-test-id='WHEEL_VIBE_ITEM']\")]; const e=nodes.find(x=>String(x.getAttribute('data-intersection-property-id')||'')===id); if(!e)return {{supported:nodes.length>0,applied:false,activeWaveId:null,message:nodes.length?'Wave preset ID is unavailable':'Wave preset selection is unsupported by this client version'}}; const button=e.querySelector(\"[data-test-id='PLAY_BUTTON']\")||e.closest('button'); if(!button)return {{supported:true,applied:false,activeWaveId:null,message:'Wave preset play control is unavailable'}}; button.click(); return {{supported:true,applied:true,activeWaveId:id,message:null}}; }})()"
+    );
+    parse_wave_selection(evaluate(port, &expression).await?)
+}
+
+pub async fn clear_wave_selection() -> anyhow::Result<WaveSelectionResult> {
+    let port = direct_port()?;
+    parse_wave_selection(evaluate(port, WAVE_CLEAR_EXPRESSION).await?)
+}
+
+fn direct_port() -> anyhow::Result<u16> {
+    status()
+        .port
+        .ok_or_else(|| anyhow::anyhow!("direct Yandex connection is disabled"))
+}
+
+fn parse_wave_selection(value: Value) -> anyhow::Result<WaveSelectionResult> {
+    let mut result: WaveSelectionResult = serde_json::from_value(value)
+        .map_err(|error| anyhow::anyhow!("invalid wave selection response: {error}"))?;
+    result.active_wave_id = validated_dom_id(result.active_wave_id);
+    Ok(result)
+}
+
+fn valid_dom_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 128
+        && id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b':' | b'.'))
+}
+
+fn validate_dom_id(id: &str) -> anyhow::Result<()> {
+    if valid_dom_id(id) {
+        Ok(())
+    } else {
+        anyhow::bail!("invalid wave preset ID")
+    }
+}
+
+fn validated_dom_id(id: Option<String>) -> Option<String> {
+    id.filter(|value| valid_dom_id(value))
+}
+
+async fn confirm_command(port: u16, command: &MediaCommand, before: &Value) -> anyhow::Result<()> {
+    let confirmed = |after: &Value| match command {
+        MediaCommand::Play => after.get("playing").and_then(Value::as_bool) == Some(true),
+        MediaCommand::Pause | MediaCommand::Stop => {
+            after.get("playing").and_then(Value::as_bool) == Some(false)
+        }
+        MediaCommand::PlayPause => {
+            after.get("playing").and_then(Value::as_bool)
+                != before.get("playing").and_then(Value::as_bool)
+        }
+        MediaCommand::Like => {
+            after.get("liked").and_then(Value::as_bool)
+                != before.get("liked").and_then(Value::as_bool)
+        }
+        MediaCommand::Dislike => {
+            after.get("disliked").and_then(Value::as_bool)
+                != before.get("disliked").and_then(Value::as_bool)
+        }
+        _ => true,
+    };
+    for _ in 0..4 {
+        sleep(Duration::from_millis(125)).await;
+        if confirmed(&evaluate(port, STATE_EXPRESSION).await?) {
+            return Ok(());
+        }
+    }
+    anyhow::bail!("Yandex Music did not confirm the direct command")
 }
 
 fn string_field(value: &Value, key: &str) -> Option<String> {
@@ -684,8 +863,16 @@ fn click_expression(ids: &[&str]) -> String {
         .collect::<Vec<_>>()
         .join(",");
     format!(
-        "(() => {{ for (const s of [{selectors}]) {{ const e=document.querySelector(s); if(e){{(e.closest('button')||e).click();return true;}} }} return false; }})()"
+        "(() => {{ const root=document.querySelector(\"[data-test-id='VIBE_PLAYERBAR']\")||document.querySelector(\"[data-test-id='PLAYER_BAR']\")||document.querySelector(\"[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']\")?.closest('footer,section,div'); if(!root)return false; for (const s of [{selectors}]) {{ const e=root.querySelector(s); if(e){{(e.closest('button')||e).click();return true;}} }} return false; }})()"
     )
+}
+
+fn playback_click_expression(id: &str) -> String {
+    click_expression(&[id])
+}
+
+fn play_pause_click_expression() -> String {
+    click_expression(&["PAUSE_BUTTON", "PLAY_BUTTON"])
 }
 
 fn seek_expression(position_ms: i64) -> String {
@@ -700,43 +887,90 @@ const STATE_EXPRESSION: &str = r#"
   const q = (...s) => { for (const x of s) { const e=document.querySelector(x); if(e) return e; } return null; };
   const text = (e) => e ? (e.textContent||'').trim() : '';
   const sec = (s) => { const p=String(s||'').split(':').map(Number); return p.length===2?p[0]*60+p[1]:p.length===3?p[0]*3600+p[1]*60+p[2]:0; };
-  const play=q("[data-test-id='PAUSE_BUTTON']","[data-test-id='PLAY_BUTTON']");
-  const titleRoot=q("[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']");
-  const title=q("[data-test-id='VIBE_PLAYERBAR_TRACK_NAME'] > :not([aria-hidden='true'])","[data-test-id='TRACK_TITLE']","a[href*='/track/']")||titleRoot;
-  const artist=q("[data-test-id='SEPARATED_ARTIST_TITLE']","[class*='PlayerBarTitle_artist']");
-  const cover=q("[data-test-id='VIBE_ALBUM_COVER'] img","img[data-test-id='ENTITY_COVER_IMAGE']","[class*='PlayerBarDesktop_cover'] img");
-  const like=q("[data-test-id='LIKE_BUTTON']");
-  const dislike=q("[data-test-id='DISLIKE_BUTTON']");
-  const now=q("[data-test-id='TIMECODE_TIME_START']");
-  const end=q("[data-test-id='TIMECODE_TIME_END']");
-  const timecode=q("[data-test-id='VIBE_PLAYERBAR_TIMECODE']");
+  const root=q("[data-test-id='VIBE_PLAYERBAR']","[data-test-id='PLAYER_BAR']")||q("[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']")?.closest('footer,section,div');
+  const pq = (...s) => { if(!root)return null; for(const x of s){const e=root.querySelector(x);if(e)return e;}return null; };
+  const play=pq("[data-test-id='PAUSE_BUTTON']","[data-test-id='PLAY_BUTTON']");
+  const titleRoot=pq("[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']");
+  const stableTitle=titleRoot?.querySelector(":scope > [aria-hidden='true']");
+  const title=pq("[data-test-id='TRACK_TITLE']","a[href*='/track/']")||stableTitle||titleRoot;
+  const trackLink=pq("a[href*='/track/']");
+  const trackId=trackLink?.getAttribute('href')?.match(/\/track\/([A-Za-z0-9_.:-]+)/)?.[1]||titleRoot?.getAttribute('data-track-id')||'';
+  const artist=pq("[data-test-id='SEPARATED_ARTIST_TITLE']","[class*='PlayerBarTitle_artist']","[data-test-id='VIBE_PLAYERBAR_TRACK_NAME'] [class*='artists']");
+  const artistText=text(artist).replace(/\s*[—–-]\s*$/,'').trim();
+  const titleText=(()=>{
+    if(!title)return '';
+    const copy=title.cloneNode(true);
+    copy.querySelectorAll("[class*='artists'],[data-test-id='SEPARATED_ARTIST_TITLE']").forEach(e=>e.remove());
+    return text(copy);
+  })();
+  const cover=pq("[data-test-id='VIBE_ALBUM_COVER'] img","img[data-test-id='ENTITY_COVER_IMAGE']","[class*='PlayerBarDesktop_cover'] img");
+  const like=pq("[data-test-id='LIKE_BUTTON']");
+  const dislike=pq("[data-test-id='DISLIKE_BUTTON']");
+  const now=pq("[data-test-id='TIMECODE_TIME_START']");
+  const end=pq("[data-test-id='TIMECODE_TIME_END']");
+  const timecode=pq("[data-test-id='VIBE_PLAYERBAR_TIMECODE']");
   const timeParts=text(timecode).split('/').map(x=>x.trim());
-  const slider=q("[data-test-id='VIBE_PLAYERBAR_TIMECODE_SLIDER'] input[type='range']","input[data-test-id='TIMECODE_SLIDER']");
+  const slider=pq("[data-test-id='VIBE_PLAYERBAR_TIMECODE_SLIDER'] input[type='range']","input[data-test-id='TIMECODE_SLIDER']");
   const position=Number(slider?.value)||sec(text(now))||sec(timeParts[0]);
   const duration=Number(slider?.max)||sec(text(end))||sec(timeParts[1]);
-  const active=(e) => {
+  const active=(e, kind) => {
     if(!e) return false;
     const pressed=e.getAttribute('aria-pressed');
     if(pressed!==null) return pressed==='true';
-    const cls=String(e.className||'').toLowerCase();
+    if(['active','checked','on','selected'].includes(String(e.getAttribute('data-state')||'').toLowerCase())) return true;
+    const classes=String(e.className||'').toLowerCase().split(/\s+/).filter(Boolean);
+    if(classes.some(x=>['active','checked','selected',kind==='like'?'liked':'disliked'].includes(x))) return true;
     const href=String(e.querySelector('use')?.getAttribute('href')||e.querySelector('use')?.getAttribute('xlink:href')||'').toLowerCase();
-    return cls.includes('active')||cls.includes('checked')||href.includes('filled')||href.includes('liked');
+    const icon=href.split(/[\/#]/).filter(Boolean).pop()||'';
+    const icons=kind==='like'?['liked','like-filled','heart-filled','favorite-filled']:['disliked','dislike-filled','thumb-down-filled'];
+    return icons.includes(icon);
   };
+  const activeWave=document.querySelector("[data-test-id='RESET_VIBE_CONTEXT_BUTTON']");
+  const activeWaveTitle=text(activeWave);
+  const activeWheelItem=[...document.querySelectorAll("[data-test-id='WHEEL_VIBE_ITEM']")]
+    .find(e=>text(e)===activeWaveTitle);
   return {
     ready: !!play,
-    title:text(title),
-    artist:text(artist),
+    trackId,
+    title:titleText,
+    artist:artistText,
     cover:cover ? cover.src : '',
-    playing:!!document.querySelector("[data-test-id='PAUSE_BUTTON']"),
+    playing:!!pq("[data-test-id='PAUSE_BUTTON']"),
     position,
     duration,
-    canNext:!!q("[data-test-id='NEXT_TRACK_BUTTON']"),
-    canPrev:!!q("[data-test-id='PREVIOUS_TRACK_BUTTON']"),
+    canNext:!!pq("[data-test-id='NEXT_TRACK_BUTTON']"),
+    canPrev:!!pq("[data-test-id='PREVIOUS_TRACK_BUTTON']"),
     canLike:!!like,
     canDislike:!!dislike,
-    liked:active(like),
-    disliked:active(dislike)
+    liked:active(like,'like'),
+    disliked:active(dislike,'dislike'),
+    activeWaveId:activeWheelItem?.getAttribute('data-intersection-property-id')||'',
+    activeWaveTitle
   };
+})()
+"#;
+
+const WAVE_CATALOG_EXPRESSION: &str = r#"
+(() => {
+  const nodes=[...document.querySelectorAll("[data-test-id='WHEEL_VIBE_ITEM']")];
+  if(!nodes.length)return {supported:false,presets:[],message:"Wave preset selection is unsupported by this client version"};
+  const activeTitle=String(document.querySelector("[data-test-id='RESET_VIBE_CONTEXT_BUTTON']")?.textContent||'').trim();
+  const presets=nodes.map(e=>{
+    const id=e.getAttribute('data-intersection-property-id')||'';
+    const title=String(e.textContent||e.getAttribute('aria-label')||'').trim();
+    const iconUrl=e.querySelector("img[data-test-id='ENTITY_COVER_IMAGE']")?.src||null;
+    return {id,title,iconUrl,isActive:title===activeTitle};
+  }).filter(x=>x.id);
+  return {supported:true,presets:[...new Map(presets.map(x=>[x.title,x])).values()],message:null};
+})()
+"#;
+
+const WAVE_CLEAR_EXPRESSION: &str = r#"
+(() => {
+  const e=document.querySelector("[data-test-id='RESET_VIBE_CONTEXT_BUTTON']");
+  if(!e)return {supported:false,applied:false,activeWaveId:null,message:"Clearing wave selection is unsupported by this client version"};
+  (e.closest('button')||e).click();
+  return {supported:true,applied:true,activeWaveId:null,message:null};
 })()
 "#;
 
@@ -755,7 +989,47 @@ mod tests {
     fn commands_are_built_from_fixed_selectors() {
         let expression = click_expression(&["NEXT_TRACK_BUTTON"]);
         assert!(expression.contains("data-test-id='NEXT_TRACK_BUTTON'"));
+        assert!(expression.contains("VIBE_PLAYERBAR"));
         assert!(!expression.contains("eval("));
+    }
+
+    #[test]
+    fn playback_commands_use_distinct_player_bar_selectors() {
+        let play = playback_click_expression("PLAY_BUTTON");
+        let pause = playback_click_expression("PAUSE_BUTTON");
+        assert!(play.contains("PLAY_BUTTON"));
+        assert!(!play.contains("PAUSE_BUTTON"));
+        assert!(pause.contains("PAUSE_BUTTON"));
+        assert!(!pause.contains("\"[data-test-id='PLAY_BUTTON']\""));
+        let toggle = play_pause_click_expression();
+        assert!(toggle.contains("PAUSE_BUTTON"));
+        assert!(toggle.contains("PLAY_BUTTON"));
+    }
+
+    #[test]
+    fn reaction_detection_uses_exact_tokens() {
+        assert!(!STATE_EXPRESSION.contains("href.includes('liked')"));
+        assert!(!STATE_EXPRESSION.contains("href.includes('disliked')"));
+        assert!(STATE_EXPRESSION.contains("icons.includes(icon)"));
+        assert!(STATE_EXPRESSION.contains("aria-pressed"));
+    }
+
+    #[test]
+    fn wave_ids_reject_script_and_selector_injection() {
+        for valid in ["daily-mix", "wave_1", "genre:rock", "preset.2"] {
+            assert!(validate_dom_id(valid).is_ok());
+        }
+        for invalid in ["", "a'b", "x] button", "wave;alert(1)", "пресет"] {
+            assert!(validate_dom_id(invalid).is_err());
+        }
+    }
+
+    #[test]
+    fn wave_expressions_are_rust_owned_and_report_unsupported() {
+        assert!(WAVE_CATALOG_EXPRESSION.contains("supported:false"));
+        assert!(WAVE_CLEAR_EXPRESSION.contains("supported:false"));
+        assert!(!WAVE_CATALOG_EXPRESSION.contains("eval("));
+        assert!(!WAVE_CLEAR_EXPRESSION.contains("eval("));
     }
 
     #[test]
@@ -820,10 +1094,11 @@ mod tests {
                     let (mut discovery, _) =
                         listener.accept().await.expect("discovery connection");
                     let mut request = [0_u8; 1024];
-                    discovery
+                    let request_size = discovery
                         .read(&mut request)
                         .await
                         .expect("discovery request");
+                    assert!(request_size > 0, "empty discovery request");
                     let body = format!(
                         r#"[{{"type":"page","url":"music-application://desktop/","webSocketDebuggerUrl":"ws://127.0.0.1:{port}/devtools/page/1"}}]"#
                     );

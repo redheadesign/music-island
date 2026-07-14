@@ -1,7 +1,7 @@
 {
   "name": "music-island",
   "private": false,
-  "version": "0.9.1",
+  "version": "0.9.5",
   "description": "Windows top-edge media controller with SMTC and opt-in direct desktop integration.",
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -15,7 +15,8 @@
     "icons:generate": "node scripts/generate-icons.mjs",
     "logs:open": "explorer \"%APPDATA%\\Music Island\\logs\"",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "lint": "oxlint && node scripts/check-import-boundaries.mjs",
+    "check:boundaries": "node scripts/check-import-boundaries.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview"

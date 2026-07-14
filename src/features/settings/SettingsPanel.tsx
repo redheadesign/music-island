@@ -8,6 +8,7 @@ import {
   getDirectYandexStatus,
   onDirectYandexStatus,
   previewConfig,
+  getDefaultConfig,
 } from '../../app/tauriApi'
 import type {
   AppConfig,
@@ -15,6 +16,8 @@ import type {
   MediaSessionInfo,
   SmtcHealthSnapshot,
 } from '../../shared/lib/types'
+import { GlassSurface } from '../../shared/ui/GlassSurface'
+import { StatusChip } from '../../shared/ui/StatusChip'
 
 interface SettingsPanelProps {
   config: AppConfig
@@ -93,6 +96,23 @@ export function SettingsPanel({
   const patchMedia = (media: Partial<AppConfig['media']>) =>
     previewAndSave({ ...draft, media: { ...draft.media, ...media } })
 
+  const resetIslandSettings = () => {
+    const defaults = getDefaultConfig()
+    previewAndSave({
+      ...draft,
+      layout: {
+        ...draft.layout,
+        width: defaults.layout.width,
+        scale: defaults.layout.scale,
+        size: defaults.layout.size,
+      },
+      behavior: {
+        ...draft.behavior,
+        hoverDelayMs: defaults.behavior.hoverDelayMs,
+      },
+    })
+  }
+
   const connectDirect = async () => {
     const attempt = ++connectAttempt.current
     setDirectBusy(true)
@@ -134,17 +154,58 @@ export function SettingsPanel({
     }
   }
 
+  const restartDirect = async () => {
+    const attempt = ++connectAttempt.current
+    setDirectBusy(true)
+    try {
+      const status = await enableDirectYandex()
+      if (connectAttempt.current !== attempt) return
+      setDirectStatus(status)
+      patchMedia({
+        protocol: 'yandex-direct',
+        directYandexConsent: true,
+        directYandexPort: status.port,
+      })
+    } catch (error) {
+      if (connectAttempt.current !== attempt) return
+      setDirectStatus({
+        state: 'error',
+        message: error instanceof Error ? error.message : String(error),
+        port: draft.media.directYandexPort,
+        executablePath: null,
+      })
+    } finally {
+      if (connectAttempt.current === attempt) setDirectBusy(false)
+    }
+  }
+
+  const directActive = draft.media.protocol === 'yandex-direct'
+  const directNeedsRecovery = directActive && (
+    directStatus.state === 'degraded'
+    || directStatus.state === 'restart-required'
+    || directStatus.state === 'error'
+    || directStatus.state === 'incompatible'
+  )
+  const directConnected = directActive && (
+    directStatus.state === 'connected' || directStatus.state === 'degraded'
+  )
+
   return (
     <section className="settings-panel" aria-label="Island settings">
       <header className="settings-hero">
-        <div>
-          <span className="settings-eyebrow">Music Island 0.9.1</span>
-          <h1>Настройки</h1>
-          <p>Только то, что меняет поведение островка.</p>
-        </div>
+        <h1>Настройки</h1>
       </header>
 
-      <SettingsSection title="Островок" icon={<Music2 />}>
+      <SettingsSection
+        title="Островок"
+        icon={<Music2 />}
+        action={(
+          <button type="button" className="settings-section-reset" onClick={resetIslandSettings}>
+            <RotateCcw aria-hidden="true" />
+            Сбросить
+          </button>
+        )}
+      >
         <label className="settings-control-row">
           <span>
             <strong>Ширина</strong>
@@ -199,10 +260,13 @@ export function SettingsPanel({
               <small>Универсальный системный протокол</small>
             </div>
             <div className="protocol-state">
-              <span className={`status-pill status-pill--${smtcHealth.status}`}>
+              <StatusChip
+                tone={smtcHealth.status === 'healthy' ? 'success' : 'warning'}
+                className={`status-pill status-pill--${smtcHealth.status}`}
+              >
                 {smtcHealth.status === 'healthy' ? <CheckCircle2 /> : <TriangleAlert />}
                 {smtcHealth.status}
-              </span>
+              </StatusChip>
               <small>{smtcHealth.lastProbeMs} ms · {smtcHealth.sessionCount} сесс.</small>
             </div>
             {draft.media.protocol !== 'smtc' ? (
@@ -217,17 +281,29 @@ export function SettingsPanel({
               <small>{directStatus.message}</small>
             </div>
             <div className="protocol-state">
-              <span className={`status-pill status-pill--${directStatus.state}`}>
+              <StatusChip
+                tone={directStatus.state === 'connected' ? 'success' : directStatus.state === 'degraded' ? 'warning' : 'neutral'}
+                className={`status-pill status-pill--${directStatus.state}`}
+              >
                 {directStatus.state === 'connected' ? <CheckCircle2 /> : <Activity />}
                 {directStatus.state}
-              </span>
+              </StatusChip>
               {directStatus.port ? <small>127.0.0.1:{directStatus.port}</small> : null}
             </div>
-            {draft.media.protocol === 'yandex-direct' && (directStatus.state === 'connected' || directStatus.state === 'degraded') ? (
-              <button type="button" className="secondary-button" disabled={directBusy} onClick={() => void switchToLegacy()}>Отключить</button>
-            ) : (
-              <button type="button" className="primary-button" disabled={directBusy} onClick={() => setShowConsent(true)}>Подключить</button>
-            )}
+            <div className="protocol-actions">
+              {directConnected || directNeedsRecovery ? (
+                <>
+                  {directNeedsRecovery ? (
+                    <button type="button" className="primary-button" disabled={directBusy} onClick={() => void restartDirect()}>
+                      {directBusy ? 'Перезапуск…' : 'Перезапустить'}
+                    </button>
+                  ) : null}
+                  <button type="button" className="secondary-button" disabled={directBusy} onClick={() => void switchToLegacy()}>Отключить</button>
+                </>
+              ) : (
+                <button type="button" className="primary-button" disabled={directBusy} onClick={() => setShowConsent(true)}>Подключить</button>
+              )}
+            </div>
           </article>
         </div>
       </SettingsSection>
@@ -276,17 +352,21 @@ interface SettingsSectionProps {
   title: string
   icon: ReactNode
   children: ReactNode
+  action?: ReactNode
 }
 
-function SettingsSection({ title, icon, children }: SettingsSectionProps) {
+function SettingsSection({ title, icon, children, action }: SettingsSectionProps) {
   return (
-    <section className="settings-section">
+    <GlassSurface as="section" className="settings-section">
       <header className="settings-section-header">
-        {icon}
-        <h2>{title}</h2>
+        <div className="settings-section-title">
+          {icon}
+          <h2>{title}</h2>
+        </div>
+        {action}
       </header>
       {children}
-    </section>
+    </GlassSurface>
   )
 }
 

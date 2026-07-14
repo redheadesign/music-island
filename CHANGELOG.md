@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.9.5 — 2026-07-14
+
+### Overlay and settings polish
+
+- Removed the My Wave carousel and right-side window gutter from the overlay. Wave preset catalog fetching is disabled; the active-selection chip remains and is centered under the island.
+- Active wave chip uses Yandex Music yellow (`#FFFF00`) for label and dismiss control.
+- Settings window: fixed mismatched corner clipping, made the full title bar draggable, and kept minimize/close as non-drag hit targets.
+- Added a small **Сбросить** control in the Island settings section (width, scale, hover delay → defaults).
+- Like button no longer tints its background with artwork color when active; progress fill uses a stronger artwork tint.
+
+### Portable autostart
+
+- Replaced the generic Tauri autostart plugin path with a Windows registry helper that quotes executable paths (critical for portable folders with spaces), uses a single `Music Island` Run entry, cleans legacy names, and refreshes the path on every launch and config save when autostart is enabled.
+
+### Direct protocol recovery
+
+- Added **Перезапустить** in Settings for Direct Yandex when status is `degraded`, `restart-required`, `error`, or `incompatible`, without forcing a switch back to SMTC.
+
+### Architecture preview carry-over
+
+- Frontend composition split (`config` / `media` / `window` controllers), shared glass UI primitives, import-boundary check, and `AGENTS.md`.
+- Earlier preview fixes for Settings controls, Like sync, overlay reveal, provider invalidation, Play/Pause scoping, and paused metadata are included in this release.
+
+### Known issues (tracked)
+
+- Direct controls and metadata can stop working when the Yandex Music Desktop renderer navigates away from the home surface (for example Collection). See GitHub issues for the current tracking entries.
+- After a long Yandex Music downtime, Direct may stay `degraded` until the user presses **Перезапустить** (or reconnects). Automatic silent recovery is still incomplete.
+- SMTC seek can still produce a player-side audio click (documented limitation, issue #3).
+
 ## 0.9.1 — 2026-07-13
 
 ### Provider reliability

@@ -3,7 +3,8 @@ const switchCount = Number(process.argv[3] || 10)
 const holdSeconds = Number(process.argv[4] || 0)
 const targets = await fetch(`http://127.0.0.1:${port}/json`).then((response) => response.json())
 const target = targets
-  .filter((entry) => entry.type === 'page' && entry.url.includes('tauri.localhost'))
+  .filter((entry) => entry.type === 'page'
+    && (entry.url.includes('tauri.localhost') || entry.url.includes('localhost')))
   .at(-1)
 if (!target) throw new Error('Music Island WebView target not found')
 

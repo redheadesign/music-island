@@ -222,7 +222,7 @@ impl ConfigState {
 pub fn config_path() -> anyhow::Result<PathBuf> {
     let base = std::env::var_os("APPDATA")
         .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::temp_dir());
+        .unwrap_or_else(std::env::temp_dir);
     Ok(base.join("Music Island").join(CONFIG_FILE_NAME))
 }
 

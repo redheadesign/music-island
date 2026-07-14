@@ -9,8 +9,11 @@ flowchart LR
   DirectProvider --> MediaWatcher
   MediaWatcher --> Events[Tauri events]
   Commands[Tauri commands] --> MediaWatcher
-  Events --> AppStore[React app store]
-  AppStore --> Overlay[Overlay shell]
+  Events --> AppFacade[useIslandApp facade]
+  AppFacade --> ConfigController[Config controller]
+  AppFacade --> MediaController[Media controller]
+  AppFacade --> WindowController[Window controller]
+  AppFacade --> Overlay[Overlay shell]
   Overlay --> Music[Music module]
   Overlay --> Settings[Settings]
   Overlay --> Registry[Module registry]
@@ -18,6 +21,7 @@ flowchart LR
 
 ## Native Layer
 
+- `src-tauri/src/autostart`: portable Windows Run-key helper with quoted paths and single-entry refresh.
 - `src-tauri/src/media`: provider arbitration, Windows `GlobalSystemMediaTransportControlsSessionManager`, health/backoff state and normalized snapshots/commands.
 - `src-tauri/src/yandex`: explicit opt-in CDP discovery, renderer validation and a fixed command/state adapter for the installed desktop client.
 - `src-tauri/src/config`: schema-versioned JSON config in `%APPDATA%\Music Island`.
@@ -29,12 +33,18 @@ flowchart LR
 
 ## Frontend Layer
 
-- `src/app`: app state, Tauri API wrapper and local progress interpolation.
+- `src/app/useIslandApp.ts`: stable typed facade consumed by feature UI. It composes controllers without exposing their ownership details.
+- `src/app/config`: configuration loading, change subscription and persistence. Autostart is synchronized from the Rust save/startup path for portable path refresh.
+- `src/app/media`: media snapshot/timeline subscriptions, local progress interpolation, session discovery, command dispatch and wave-chip state (catalog carousel disabled).
+- `src/app/window`: settings-window and update-action lifecycle.
+- `src/app/tauriApi.ts`: the frontend's native adapter; native command/event details stop here.
 - `src/features/overlay`: top-edge shell, native gesture events, hit-tested action controls and animation orchestration.
-- `src/features/music`: capability-driven playback, timeline and direct-provider reaction controls.
-- `src/features/settings`: live-saved layout controls, protocol health/status and direct-connection consent.
+- `src/features/music`: capability-driven playback, timeline and direct-provider reaction controls; optional wave chip UI.
+- `src/features/settings`: live-saved layout controls, protocol health/status, Direct reconnect and consent.
 - `src/features/modules`: module contract and reserved future modules.
-- `src/shared`: UI primitives, formatting and tokens.
+- `src/shared`: UI primitives (glass surface/buttons/chips), formatting and tokens.
+
+Dependencies point inward: `shared` does not import app or feature code, `app` does not import feature UI, and features consume app-owned state through `useIslandApp`. A lightweight check in `scripts/check-import-boundaries.mjs` enforces these constraints as part of `npm run lint`. Feature-specific native interactions may use `tauriApi` until they become facade responsibilities.
 
 ## State Model
 
@@ -43,6 +53,8 @@ Overlay modes: `idle`, `peek`, `compact`, `expanded`, `pinned`, `settings`, `no-
 The normalized `MediaSnapshot` identifies its provider (`smtc` or `yandex-direct`) and carries capability flags, timeline data, artwork, reaction state and SMTC health. The frontend does not need provider-specific command logic.
 
 Native events are intentionally low frequency. Timeline events are compact and the UI interpolates progress locally while playback is active. The hidden Settings WebView has no media subscription or progress timer. SMTC uses active, idle, degraded and unavailable polling intervals; metadata and artwork are not re-read on every timeline probe.
+
+The facade preserves one public state contract for both overlay and Settings windows. Passing `mediaEnabled: false` keeps the Settings WebView out of media snapshot/timeline subscriptions while retaining config, health and source-discovery behavior.
 
 ## Provider lifecycle
 

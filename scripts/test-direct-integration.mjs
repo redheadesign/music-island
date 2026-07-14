@@ -1,6 +1,9 @@
 const port = Number(process.argv[2] || 9333)
 const targets = await fetch(`http://127.0.0.1:${port}/json`).then((response) => response.json())
-const pages = targets.filter((target) => target.type === 'page' && target.url.includes('tauri.localhost'))
+const pages = targets.filter(
+  (target) => target.type === 'page'
+    && (target.url.includes('tauri.localhost') || target.url.includes('localhost')),
+)
 if (!pages.length) throw new Error('Music Island WebView targets not found')
 
 async function connect(target) {
@@ -69,6 +72,39 @@ const snapshot = await main.call('Runtime.evaluate', {
   returnByValue: true,
 })
 const initialSnapshot = snapshot.result.result.value
+if (initialSnapshot.playbackStatus === 'playing') {
+  await main.call('Runtime.evaluate', {
+    expression: `window.__TAURI_INTERNALS__.invoke('media_control', { command: 'pause' })`,
+    awaitPromise: true,
+    returnByValue: true,
+  })
+  await new Promise((resolve) => setTimeout(resolve, 500))
+}
+const pausedSnapshotResponse = await main.call('Runtime.evaluate', {
+  expression: `window.__TAURI_INTERNALS__.invoke('get_media_snapshot')`,
+  awaitPromise: true,
+  returnByValue: true,
+})
+const pausedSnapshot = pausedSnapshotResponse.result.result.value
+await main.call('Runtime.evaluate', {
+  expression: `window.__TAURI_INTERNALS__.invoke('media_control', { command: 'play' })`,
+  awaitPromise: true,
+  returnByValue: true,
+})
+await new Promise((resolve) => setTimeout(resolve, 700))
+const resumedSnapshotResponse = await main.call('Runtime.evaluate', {
+  expression: `window.__TAURI_INTERNALS__.invoke('get_media_snapshot')`,
+  awaitPromise: true,
+  returnByValue: true,
+})
+const resumedSnapshot = resumedSnapshotResponse.result.result.value
+if (initialSnapshot.playbackStatus !== 'playing') {
+  await main.call('Runtime.evaluate', {
+    expression: `window.__TAURI_INTERNALS__.invoke('media_control', { command: 'pause' })`,
+    awaitPromise: true,
+    returnByValue: true,
+  })
+}
 await main.call('Runtime.evaluate', {
   expression: `window.__TAURI_INTERNALS__.invoke('media_control', { command: 'like' })`,
   awaitPromise: true,
@@ -99,6 +135,35 @@ const controls = await main.call('Runtime.evaluate', {
   })))()`,
   returnByValue: true,
 })
+const waveUi = await main.call('Runtime.evaluate', {
+  expression: `(() => {
+    const wheel = document.querySelector('.wave-wheel');
+    const card = document.querySelector('.island-card');
+    const chip = document.querySelector('.wave-selection-chip');
+    const focused = wheel?.querySelector('[data-focused]');
+    const itemStyles = [...(wheel?.querySelectorAll('.wave-wheel__item') || [])]
+      .slice(0, 3)
+      .map((item) => ({
+        index: item.getAttribute('data-wheel-index'),
+        focused: item.hasAttribute('data-focused'),
+        transform: item.style.transform,
+        opacity: item.style.opacity,
+      }));
+    const wheelRect = wheel?.getBoundingClientRect();
+    const cardRect = card?.getBoundingClientRect();
+    return {
+      rootClass: document.querySelector('.island-root')?.className,
+      viewport: { width: innerWidth, height: innerHeight },
+      mountedItems: wheel?.querySelectorAll('.wave-wheel__item').length || 0,
+      focusedTransform: focused ? getComputedStyle(focused).transform : null,
+      itemStyles,
+      chip: chip?.textContent?.trim() || null,
+      wheelWithinHeight: Boolean(wheelRect && wheelRect.top >= 0 && wheelRect.bottom <= innerHeight),
+      wheelLeftOfCard: Boolean(wheelRect && cardRect && wheelRect.left < cardRect.left),
+    };
+  })()`,
+  returnByValue: true,
+})
 await main.call('Runtime.evaluate', {
   expression: `window.__TAURI_INTERNALS__.invoke('save_config', {
     config: ${JSON.stringify(originalConfig)}
@@ -116,5 +181,15 @@ console.log(JSON.stringify({
     afterToggle: toggledSnapshot.result.result.value.isLiked,
     afterRestore: restoredSnapshot.result.result.value.isLiked,
   },
+  resumeRoundTrip: {
+    pausedStatus: pausedSnapshot.playbackStatus,
+    resumedStatus: resumedSnapshot.playbackStatus,
+    pausedTrack: { title: pausedSnapshot.title, artist: pausedSnapshot.artist },
+    resumedTrack: { title: resumedSnapshot.title, artist: resumedSnapshot.artist },
+    sameTrack: pausedSnapshot.title === resumedSnapshot.title
+      && pausedSnapshot.artist === resumedSnapshot.artist,
+    sameWaveContext: pausedSnapshot.activeWaveTitle === resumedSnapshot.activeWaveTitle,
+  },
   reactionButtons: controls.result.result.value,
+  waveUi: waveUi.result.result.value,
 }, null, 2))

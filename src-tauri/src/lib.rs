@@ -1,3 +1,4 @@
+mod autostart;
 mod config;
 mod diagnostics;
 mod logging;
@@ -23,11 +24,25 @@ async fn save_config(
     state: State<'_, ConfigState>,
 ) -> Result<AppConfig, String> {
     let saved = state.save(config).map_err(|error| error.to_string())?;
+    match autostart::sync(saved.behavior.launch_at_startup) {
+        Ok(status) => {
+            if status.path_updated {
+                logging::append_event(&format!(
+                    "autostart entry refreshed at {}",
+                    status.command.unwrap_or_default()
+                ));
+            }
+        }
+        Err(error) => logging::append_event(&format!("autostart sync failed: {error}")),
+    }
     media::set_preferred_source(saved.media.preferred_source_app_id.clone());
-    media::set_active_provider(match saved.media.protocol {
-        config::MediaProtocol::Smtc => media::MediaProvider::Smtc,
-        config::MediaProtocol::YandexDirect => media::MediaProvider::YandexDirect,
-    });
+    media::switch_active_provider(
+        &app,
+        match saved.media.protocol {
+            config::MediaProtocol::Smtc => media::MediaProvider::Smtc,
+            config::MediaProtocol::YandexDirect => media::MediaProvider::YandexDirect,
+        },
+    );
     let _ = app.emit("config:changed", saved.clone());
     Ok(saved)
 }
@@ -59,6 +74,27 @@ async fn list_media_sessions() -> Result<Vec<MediaSessionInfo>, String> {
 #[tauri::command]
 async fn media_control(command: MediaCommand) -> Result<(), String> {
     media::send_command(command)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn list_yandex_wave_presets() -> Result<yandex::WaveCatalogResult, String> {
+    yandex::wave_presets()
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn select_yandex_wave_preset(id: String) -> Result<yandex::WaveSelectionResult, String> {
+    yandex::select_wave_preset(&id)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn clear_yandex_wave_selection() -> Result<yandex::WaveSelectionResult, String> {
+    yandex::clear_wave_selection()
         .await
         .map_err(|error| error.to_string())
 }
@@ -149,6 +185,9 @@ pub fn run() {
             get_smtc_health,
             list_media_sessions,
             media_control,
+            list_yandex_wave_presets,
+            select_yandex_wave_preset,
+            clear_yandex_wave_selection,
             get_direct_yandex_status,
             enable_direct_yandex,
             disable_direct_yandex,
@@ -176,11 +215,24 @@ pub fn run() {
                     logging::append_event(&format!("overlay window setup failed: {error}"))
                 }
             }
+            match window::setup_settings_window(&handle) {
+                Ok(()) => logging::append_event("settings window setup ok"),
+                Err(error) => {
+                    logging::append_event(&format!("settings window setup failed: {error}"))
+                }
+            }
             match tray::setup_tray(app) {
                 Ok(()) => logging::append_event("tray setup ok"),
                 Err(error) => logging::append_event(&format!("tray setup failed: {error}")),
             }
             if let Ok(config) = app.state::<ConfigState>().load() {
+                match autostart::sync(config.behavior.launch_at_startup) {
+                    Ok(status) if status.path_updated => {
+                        logging::append_event("autostart entry refreshed on startup")
+                    }
+                    Ok(_) => {}
+                    Err(error) => logging::append_event(&format!("autostart sync failed: {error}")),
+                }
                 media::set_preferred_source(config.media.preferred_source_app_id.clone());
                 media::set_active_provider(match config.media.protocol {
                     config::MediaProtocol::Smtc => media::MediaProvider::Smtc,

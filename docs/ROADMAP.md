@@ -16,11 +16,19 @@
 - Single-flight SMTC protection and stable Settings source refresh.
 - CPU/resource acceptance counters and repeatable live profiling.
 
+## 0.9.5
+
+- Overlay UI polish: remove wave carousel, center active-wave chip, settings drag/corners, island reset, reaction/progress visuals.
+- Portable Windows autostart with path refresh and quoted registry entries.
+- Direct recovery action (**Перезапустить**) when the protocol is degraded or reconnect fails.
+- Frontend composition boundaries (`AGENTS.md`, import check, shared glass kit).
+
 ## Next
 
-- Broader Direct Yandex client-version compatibility and recovery UI.
+- Make Direct selectors resilient across Yandex Music Desktop routes (home vs Collection and other surfaces).
+- Improve automatic Direct recovery after long client downtime; keep explicit restart as the fallback.
+- Optional My Wave carousel as a settings-gated feature.
 - Better DPI and fullscreen app detection.
-- Richer in-app diagnostics and protocol recovery UI.
 - Signed GitHub Releases and Tauri auto-update.
 
 ## Future Modules

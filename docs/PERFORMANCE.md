@@ -1,6 +1,6 @@
 # Performance budget
 
-Music Island 0.9.1 limits media work by design:
+Music Island 0.9.5 keeps the 0.9.1 performance model and adds UI-only work that must stay off the media path:
 
 - active Direct timeline IPC: about 1 compact update/second;
 - idle SMTC polling: once every 2 seconds;
@@ -10,6 +10,8 @@ Music Island 0.9.1 limits media work by design:
 - artwork: one read per source/track key;
 - passive SMTC health while Direct is active: once every 30 seconds, single-flight and never emitted as media;
 - UI progress: interpolated locally at 1 Hz, with no backend request per animation frame.
+- Active My Wave selection metadata piggybacks on the Direct snapshot. The preset catalog / wheel carousel is disabled in 0.9.5 and must not be polled until re-enabled as an optional Settings feature.
+- the wave wheel renders at most nine items, performs no idle animation and coalesces drag style writes into one `requestAnimationFrame`.
 
 ## Verification scenarios
 
@@ -21,8 +23,16 @@ Use Task Manager or Windows Performance Recorder with the release executable:
 4. artwork change;
 5. deliberately unavailable SMTC broker;
 6. Yandex Direct connected and disconnected.
+7. expanded Direct wheel idle for 60 seconds and continuously dragged for 10 seconds.
 
 Record average CPU, peak CPU, working set, `media:update`/`timeline:update` rate and metadata/artwork reads. The expected behavior is near-zero idle CPU, no continuous thumbnail decoding, and automatic backoff when the broker fails.
+
+Preview budgets:
+
+- static wheel CPU delta: no more than 0.05%;
+- continuous wheel drag CPU delta: no more than 0.3%;
+- no residual animation frames or GPU growth after pointer release;
+- preset selection emits one Direct command after click/Enter, never one command per scroll tick.
 
 ## 0.9.1 implementation
 

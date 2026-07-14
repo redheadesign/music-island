@@ -1,0 +1,49 @@
+.glass-surface {
+  border: 0;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: none;
+  backdrop-filter: blur(18px) saturate(115%);
+}
+
+.glass-icon-button {
+  display: inline-grid;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.075);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.glass-icon-button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.glass-icon-button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.glass-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.status-chip--success {
+  color: #9fe1bd;
+}
+
+.status-chip--warning {
+  color: #ffe09d;
+}
+
+.status-chip--danger {
+  color: #ffb1b1;
+}

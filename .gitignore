@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 release
+artifacts
 src-tauri/target
 src-tauri/gen
 debug-capture*.png

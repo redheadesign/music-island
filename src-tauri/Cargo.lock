@@ -2334,7 +2334,7 @@ dependencies = [
 
 [[package]]
 name = "music-island"
-version = "0.9.1"
+version = "0.9.5"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2355,6 +2355,7 @@ dependencies = [
  "tokio-tungstenite",
  "tracing",
  "windows 0.62.2",
+ "winreg 0.55.0",
 ]
 
 [[package]]

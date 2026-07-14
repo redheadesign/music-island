@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { disable as disableAutostart, enable as enableAutostart } from '@tauri-apps/plugin-autostart'
 import type {
   AppConfig,
   DirectYandexStatus,
@@ -10,11 +9,14 @@ import type {
   SmtcHealthSnapshot,
   TimelineUpdate,
   UpdateCheckResult,
+  WaveCatalogResult,
+  WaveSelectionResult,
 } from '../shared/lib/types'
 
 const fallbackSnapshot: MediaSnapshot = {
   hasSession: false,
   sourceAppId: null,
+  trackId: null,
   title: null,
   artist: null,
   albumTitle: null,
@@ -30,6 +32,8 @@ const fallbackSnapshot: MediaSnapshot = {
   canDislike: false,
   isLiked: false,
   isDisliked: false,
+  activeWaveId: null,
+  activeWaveTitle: null,
   thumbnailDataUrl: null,
   updatedAt: new Date().toISOString(),
   provider: 'smtc',
@@ -42,6 +46,7 @@ export async function getMediaSnapshot(): Promise<MediaSnapshot> {
       ...fallbackSnapshot,
       hasSession: true,
       sourceAppId: 'Spotify.exe',
+      trackId: 'preview-track',
       title: 'Aesthetic Morning',
       artist: 'Local SMTC Preview',
       albumTitle: 'Music Island Demo',
@@ -52,6 +57,11 @@ export async function getMediaSnapshot(): Promise<MediaSnapshot> {
       canGoPrevious: true,
       canPause: true,
       canPlay: true,
+      canLike: true,
+      canDislike: true,
+      provider: 'yandex-direct',
+      activeWaveId: 'preview_0',
+      activeWaveTitle: 'Е-е-е, рок!',
     }
   }
 
@@ -105,6 +115,41 @@ export async function disableDirectYandex(restartPlain = true): Promise<DirectYa
     return { state: 'disabled', message: 'Windows SMTC is active', port: null, executablePath: null }
   }
   return invoke<DirectYandexStatus>('disable_direct_yandex', { restartPlain })
+}
+
+const previewWavePresets = [
+  'Е-е-е, рок!',
+  'Хочется инди',
+  'Любимое',
+  'Инди-поп',
+  '100% музыки, 0% слов',
+  'Наслаждаюсь твоей компанией',
+].map((title, index) => ({
+  id: `preview_${index}`,
+  title,
+  iconUrl: null,
+  isActive: index === 0,
+}))
+
+export async function listYandexWavePresets(): Promise<WaveCatalogResult> {
+  if (!isTauriRuntime()) {
+    return { supported: true, presets: previewWavePresets, message: null }
+  }
+  return invoke<WaveCatalogResult>('list_yandex_wave_presets')
+}
+
+export async function selectYandexWavePreset(id: string): Promise<WaveSelectionResult> {
+  if (!isTauriRuntime()) {
+    return { supported: true, applied: true, activeWaveId: id, message: null }
+  }
+  return invoke<WaveSelectionResult>('select_yandex_wave_preset', { id })
+}
+
+export async function clearYandexWaveSelection(): Promise<WaveSelectionResult> {
+  if (!isTauriRuntime()) {
+    return { supported: true, applied: true, activeWaveId: null, message: null }
+  }
+  return invoke<WaveSelectionResult>('clear_yandex_wave_selection')
 }
 
 export async function getConfig(): Promise<AppConfig> {
@@ -273,18 +318,6 @@ export async function onOverlayAction(action: 'open-settings' | 'check-updates',
   }
 
   return listen(`overlay:${action}`, callback)
-}
-
-export async function setAutostart(enabled: boolean): Promise<void> {
-  if (!isTauriRuntime()) {
-    return
-  }
-
-  if (enabled) {
-    await enableAutostart()
-  } else {
-    await disableAutostart()
-  }
 }
 
 export function getDefaultConfig(): AppConfig {

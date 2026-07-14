@@ -60,10 +60,12 @@ export function MusicModule({
 
   const isPlaying = media.playbackStatus === 'playing'
   const title = media.title || 'Unknown track'
-  const artist = media.artist || 'Unknown artist'
   const isButtonsOnly = density === 'buttons-only'
   const canShowSeek = showProgress && !isButtonsOnly && Boolean(media.durationMs)
-  const trackLabel = [showArtist ? artist : null, showTitle ? title : null].filter(Boolean).join(' · ') || title
+  const trackLabel = [
+    showArtist ? media.artist : null,
+    showTitle ? title : null,
+  ].filter(Boolean).join(' · ') || title
   const activeRatio = scrubRatio ?? progressPercent / 100
   const activeProgressMs =
     scrubRatio != null && media.durationMs
@@ -207,7 +209,7 @@ export function MusicModule({
           {media.provider === 'yandex-direct' ? (
             <button
               type="button"
-              className={`reaction-button ${media.isLiked ? 'reaction-button--active' : ''}`}
+              className={`reaction-button reaction-button--like ${media.isLiked ? 'reaction-button--active' : ''}`}
               aria-label={media.isLiked ? 'Убрать из любимого' : 'Добавить в любимое'}
               aria-pressed={media.isLiked}
               disabled={!media.canLike}

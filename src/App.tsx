@@ -4,6 +4,7 @@ import { copyDiagnostics } from './app/tauriApi'
 import { useIslandApp } from './app/useIslandApp'
 import { OverlayShell } from './features/overlay/OverlayShell'
 import { SettingsPanel } from './features/settings/SettingsPanel'
+import { IconButton } from './shared/ui/IconButton'
 import './App.css'
 
 function App() {
@@ -18,10 +19,10 @@ function App() {
     return (
       <main className="settings-window-root">
         <header className="settings-titlebar" data-tauri-drag-region>
-          <strong data-tauri-drag-region>Music Island</strong>
-          <div className="settings-window-actions">
-            <button type="button" aria-label="Свернуть" onClick={() => void getCurrentWindow().minimize()}><Minus /></button>
-            <button type="button" aria-label="Закрыть" onClick={() => void getCurrentWindow().hide()}><X /></button>
+          <strong className="settings-titlebar-drag">Music Island</strong>
+          <div className="settings-window-actions" data-tauri-drag-region="false">
+            <IconButton data-tauri-drag-region="false" aria-label="Свернуть" onClick={() => void runWindowAction('minimize')}><Minus /></IconButton>
+            <IconButton data-tauri-drag-region="false" aria-label="Закрыть" onClick={() => void runWindowAction('hide')}><X /></IconButton>
           </div>
         </header>
         <div className="settings-scroll">
@@ -46,6 +47,14 @@ function App() {
 
 function isTauriRuntime(): boolean {
   return '__TAURI_INTERNALS__' in window
+}
+
+async function runWindowAction(action: 'minimize' | 'hide'): Promise<void> {
+  try {
+    await getCurrentWindow()[action]()
+  } catch (error) {
+    console.error(`Settings window ${action} failed`, error)
+  }
 }
 
 export default App
