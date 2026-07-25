@@ -8,13 +8,7 @@ Windows top-edge media island. Works with any SMTC player; optional Direct mode 
 
 **0.9.8 · open beta** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
 
-[![Music Island preview](docs/media/preview-poster.jpg)](https://player.vimeo.com/video/1212924830?background=1&autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0&badge=0&controls=0)
-
-<p align="center">
-  <a href="https://player.vimeo.com/video/1212924830?background=1&autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0&badge=0&controls=0"><strong>▶ Watch preview</strong></a>
-  ·
-  <a href="https://vimeo.com/1212924830">Vimeo</a>
-</p>
+https://github.com/user-attachments/assets/28c65a1f-1fee-4ee0-a4f6-2fb89cf8c78e
 
 ## Download
 
@@ -27,6 +21,22 @@ Windows top-edge media island. Works with any SMTC player; optional Direct mode 
 - SMTC health + preferred source
 - Opt-in Direct Yandex (like/dislike, wave chip, quick reload)
 - Tray: settings / quit · config in `%APPDATA%\Music Island\`
+
+## Architecture
+
+```mermaid
+flowchart LR
+  WindowsSMTC[Windows SMTC] --> RustMedia[Rust media watcher]
+  YandexDesktop[Yandex Music Desktop] <-->|Local CDP, opt-in| DirectProvider[Rust direct provider]
+  DirectProvider --> RustMedia
+  RustMedia --> TauriEvents[Tauri events]
+  ReactStore[React app store] --> OverlayShell[Overlay shell]
+  TauriEvents --> ReactStore
+  OverlayShell --> MusicModule[Music module]
+  OverlayShell --> SettingsModule[Settings]
+```
+
+Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/MEDIA_ARCHITECTURE.md`](docs/MEDIA_ARCHITECTURE.md) · [`docs/YANDEX_MUSIC_API.md`](docs/YANDEX_MUSIC_API.md) · [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 
 ## Limitations
 
@@ -44,8 +54,6 @@ npm install
 npm run tauri:dev
 npm run tauri:build   # → release/music-island.exe
 ```
-
-Docs: [Architecture](docs/ARCHITECTURE.md) · [Media](docs/MEDIA_ARCHITECTURE.md) · [Direct](docs/YANDEX_MUSIC_API.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Releases](docs/RELEASES.md)
 
 ## Author
 
