@@ -1,13 +1,13 @@
-# Media assets (README)
+# Media assets
 
-Drop files here, then uncomment / wire them in the root [`README.md`](../../README.md).
+Used by the root [`README.md`](../../README.md).
 
-| File | Suggested content |
+| File | Content |
 | --- | --- |
-| `screenshot-01-island.png` | Expanded island overlay |
-| `screenshot-02-settings.png` | Settings window |
-| `screenshot-03-direct.png` | Direct reactions / progress |
-| `screenshot-04-wave.png` | Active wave chip |
-| *(optional)* video link | Paste into README **Preview → Video overview** |
+| `preview.mp4` | Compressed overview (~5 MB, 1280×720) |
+| `preview-poster.jpg` | Poster frame for the video |
+| `screenshot-01-island.png` | Expanded island + track/artist |
+| `screenshot-02-direct.png` | Direct reactions |
+| `screenshot-03-wave.png` | Island + My Wave chip |
 
-Keep PNGs reasonably sized (≈1280–1600px wide). No need to commit huge RAW captures.
+Source capture before compress: keep the original locally if needed — do not commit the ~120 MB master.

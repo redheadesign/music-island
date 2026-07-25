@@ -345,20 +345,27 @@ export function SettingsPanel({
       </SettingsSection>
 
       <SettingsSection title={t('settings.system')} icon={<Power />}>
-        <Toggle label={t('settings.launchAtStartup')} checked={draft.behavior.launchAtStartup} onChange={(launchAtStartup) => patchBehavior({ launchAtStartup })} />
-        {autostartError ? <p className="settings-note settings-note--error">{autostartError}</p> : null}
-        {!autostartError && autostartStatus ? (
-          <div className={`autostart-status ${autostartStatus.ok ? 'autostart-status--ok' : 'autostart-status--error'}`}>
-            <strong>{autostartStatus.message ?? (autostartStatus.ok ? t('settings.autostartOk') : t('settings.autostartFail'))}</strong>
-            {autostartStatus.enabled && autostartStatus.exePath ? (
-              <small title={autostartStatus.command ?? autostartStatus.exePath}>
-                {t('settings.autostartFile')}: {autostartStatus.exePath}
-              </small>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="settings-actions">
-          <button type="button" onClick={onCopyDiagnostics}><Copy /> {t('settings.copyDiagnostics')}</button>
+        <div className="autostart-block">
+          <Switch
+            label={t('settings.launchAtStartup')}
+            hint={t('settings.launchAtStartupHint')}
+            checked={draft.behavior.launchAtStartup}
+            onChange={(launchAtStartup) => patchBehavior({ launchAtStartup })}
+          />
+          {autostartError ? (
+            <p className="autostart-feedback autostart-feedback--error">{autostartError}</p>
+          ) : null}
+          {!autostartError && autostartStatus && !autostartStatus.ok ? (
+            <p className="autostart-feedback autostart-feedback--error">
+              {autostartStatus.message ?? t('settings.autostartFail')}
+            </p>
+          ) : null}
+          {!autostartError && autostartStatus?.ok && draft.behavior.launchAtStartup && autostartStatus.exePath ? (
+            <p className="autostart-feedback" title={autostartStatus.command ?? autostartStatus.exePath}>
+              <span className="autostart-feedback__state">{t('settings.autostartOk')}</span>
+              <span className="autostart-feedback__path">{autostartStatus.exePath}</span>
+            </p>
+          ) : null}
         </div>
       </SettingsSection>
 
@@ -392,6 +399,13 @@ export function SettingsPanel({
           <small>{t('settings.aboutLicense')}</small>
         </div>
       </SettingsSection>
+
+      <footer className="settings-footer">
+        <button type="button" className="settings-footer-action" onClick={onCopyDiagnostics}>
+          <Copy />
+          {t('settings.copyDiagnostics')}
+        </button>
+      </footer>
 
       {showConsent ? createPortal((
         <div className="consent-backdrop" role="presentation">
@@ -444,17 +458,30 @@ function SettingsSection({ title, icon, children, action }: SettingsSectionProps
   )
 }
 
-interface ToggleProps {
+interface SwitchProps {
   label: string
+  hint?: string
   checked: boolean
   onChange: (checked: boolean) => void
 }
 
-function Toggle({ label, checked, onChange }: ToggleProps) {
+function Switch({ label, hint, checked, onChange }: SwitchProps) {
   return (
-    <label className="toggle settings-toggle">
-      <strong>{label}</strong>
-      <input type="checkbox" role="switch" checked={checked} onChange={(event) => onChange(event.currentTarget.checked)} />
-    </label>
+    <div className="settings-switch-row">
+      <span className="settings-switch-copy">
+        <strong>{label}</strong>
+        {hint ? <small>{hint}</small> : null}
+      </span>
+      <button
+        type="button"
+        className={['ui-switch', checked ? 'ui-switch--on' : ''].filter(Boolean).join(' ')}
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+      >
+        <span className="ui-switch__thumb" aria-hidden="true" />
+      </button>
+    </div>
   )
 }

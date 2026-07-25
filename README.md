@@ -4,31 +4,23 @@ Windows top-edge media island. Works with any SMTC player; optional Direct mode 
 
 **0.9.8 · open beta** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
 
+<video src="docs/media/preview.mp4" poster="docs/media/preview-poster.jpg" controls playsinline preload="metadata" width="100%"></video>
+
+<p align="center"><a href="docs/media/preview.mp4">Download preview (MP4)</a></p>
+
+<p align="center">
+  <img src="docs/media/screenshot-01-island.png" alt="Expanded island with track and artist" width="48%">
+  &nbsp;
+  <img src="docs/media/screenshot-02-direct.png" alt="Direct reactions and title" width="48%">
+</p>
+
+<p align="center">
+  <img src="docs/media/screenshot-03-wave.png" alt="Island with My Wave chip" width="72%">
+</p>
+
 ## Download
 
 [GitHub Releases](https://github.com/redheadesign/music-island/releases) → `music-island.exe` (portable, unsigned — SmartScreen may warn).
-
-## Preview
-
-<!-- Drop a YouTube / Telegram / Loom link below when the review is ready -->
-
-**Video overview** — *coming soon*
-
-```text
-[ video placeholder ]
-Paste embed or link here → docs/media/README.md
-```
-
-### Screenshots
-
-*Coming soon — drop PNGs into [`docs/media/`](docs/media/) using these names:*
-
-1. `screenshot-01-island.png` — expanded island  
-2. `screenshot-02-settings.png` — settings  
-3. `screenshot-03-direct.png` — Direct / reactions  
-4. `screenshot-04-wave.png` — wave chip  
-
-Then replace this list with a markdown image grid (see `docs/media/README.md`).
 
 ## Features
 

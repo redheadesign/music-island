@@ -840,8 +840,7 @@
   letter-spacing: -0.02em;
 }
 
-.settings-section-header svg,
-.settings-actions svg {
+.settings-section-header svg {
   width: 16px;
   height: 16px;
 }
@@ -867,7 +866,6 @@
   background: rgba(255, 255, 255, 0.11);
 }
 
-.settings-actions,
 .range-control {
   display: flex;
   flex-wrap: wrap;
@@ -875,33 +873,15 @@
   gap: 10px;
 }
 
-.settings-actions button {
-  display: inline-flex;
-  min-height: 40px;
-  padding: 0 13px;
-  align-items: center;
-  gap: 7px;
-  border: 0;
-  border-radius: 14px;
-  color: var(--text-primary);
-  background: var(--control-bg);
-  cursor: pointer;
-}
-
 .settings-control-row strong,
-.toggle strong {
+.settings-switch-copy strong {
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.2;
 }
 
-.settings-actions button:hover {
-  color: var(--text-primary);
-  background: var(--control-bg-hover);
-}
-
 .settings-control-row,
-.toggle {
+.settings-switch-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -912,13 +892,14 @@
   color: var(--text-secondary);
 }
 
-.settings-control-row > span {
+.settings-control-row > span,
+.settings-switch-copy {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
-.settings-control-row input[type='range'],
-.toggle input {
+.settings-control-row input[type='range'] {
   accent-color: var(--accent);
 }
 
@@ -948,10 +929,104 @@
   text-align: right;
 }
 
-.toggle input {
-  width: 36px;
-  height: 20px;
+.ui-switch {
+  position: relative;
   flex: 0 0 auto;
+  width: 46px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.ui-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  transition: transform 160ms ease;
+}
+
+.ui-switch--on {
+  background: color-mix(in srgb, var(--accent, #8fb8ff) 72%, #fff 8%);
+}
+
+.ui-switch--on .ui-switch__thumb {
+  transform: translateX(18px);
+}
+
+.ui-switch:focus-visible {
+  outline: 2px solid var(--accent, #8fb8ff);
+  outline-offset: 2px;
+}
+
+.autostart-block {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 2px;
+}
+
+.autostart-feedback {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.autostart-feedback__state {
+  color: color-mix(in srgb, var(--accent, #8fb8ff) 55%, #9fe1bd 45%);
+  font-weight: 600;
+}
+
+.autostart-feedback__path {
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autostart-feedback--error {
+  color: #ffb1b1;
+}
+
+.settings-footer {
+  display: flex;
+  justify-content: center;
+  padding: 4px 8px 8px;
+}
+
+.settings-footer-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-footer-action svg {
+  width: 15px;
+  height: 15px;
+}
+
+.settings-footer-action:hover {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .protocol-card,
@@ -1125,36 +1200,6 @@
   color: #ffb1b1;
 }
 
-.autostart-status {
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.autostart-status strong {
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.autostart-status small {
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.autostart-status--ok strong {
-  color: #9fe1bd;
-}
-
-.autostart-status--error strong {
-  color: #ffb1b1;
-}
-
 .about-block {
   display: grid;
   gap: 10px;
@@ -1262,9 +1307,13 @@
   }
 
   .settings-control-row,
-  .toggle {
+  .settings-switch-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .settings-switch-row .ui-switch {
+    align-self: flex-end;
   }
 
   .range-control {
