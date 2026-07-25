@@ -4,10 +4,8 @@ Used by the root [`README.md`](../../README.md).
 
 | File | Content |
 | --- | --- |
-| `preview.mp4` | Compressed overview (~5 MB, 1280×720) |
-| `preview-poster.jpg` | Poster frame for the video |
-| `screenshot-01-island.png` | Expanded island + track/artist |
-| `screenshot-02-direct.png` | Direct reactions |
-| `screenshot-03-wave.png` | Island + My Wave chip |
+| `preview.mp4` | Overview clip (~5 MB) — also on [release v0.9.8](https://github.com/redheadesign/music-island/releases/tag/v0.9.8) |
+| `preview-poster.jpg` | Poster / click target for the preview |
+| `screenshot-island.png` | Single README screenshot (island + wave chip) |
 
-Source capture before compress: keep the original locally if needed — do not commit the ~120 MB master.
+GitHub README does not embed `<video>` tags reliably — the poster links to the MP4 instead.
