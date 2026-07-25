@@ -1,7 +1,3 @@
-
-
-https://github.com/user-attachments/assets/28c65a1f-1fee-4ee0-a4f6-2fb89cf8c78e
-
 # Music Island
 
 Windows top-edge media island. Works with any SMTC player; optional Direct mode for Yandex Music Desktop.
