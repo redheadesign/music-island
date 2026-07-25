@@ -1,11 +1,9 @@
 # Media assets
 
-Used by the root [`README.md`](../../README.md).
-
 | File | Content |
 | --- | --- |
-| `preview.mp4` | Overview clip (~5 MB) — also on [release v0.9.8](https://github.com/redheadesign/music-island/releases/tag/v0.9.8) |
-| `preview-poster.jpg` | Poster / click target for the preview |
-| `screenshot-island.png` | Single README screenshot (island + wave chip) |
+| `preview-poster.jpg` | README click target → Vimeo |
+| `preview.mp4` | Local/release copy of the overview clip |
+| `preview.html` | Full-bleed Vimeo embed (`background=1`, no player chrome) for local open or GitHub Pages |
 
-GitHub README does not embed `<video>` tags reliably — the poster links to the MP4 instead.
+GitHub README **cannot** embed Vimeo iframes or `<script>` — they are stripped. The README links the poster to the chrome-less player URL instead.

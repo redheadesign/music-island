@@ -4,12 +4,12 @@ Windows top-edge media island. Works with any SMTC player; optional Direct mode 
 
 **0.9.8 · open beta** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
 
-[![Music Island preview](docs/media/preview-poster.jpg)](https://github.com/redheadesign/music-island/releases/download/v0.9.8/preview.mp4)
-
-<p align="center"><a href="https://github.com/redheadesign/music-island/releases/download/v0.9.8/preview.mp4"><strong>▶ Watch preview (MP4)</strong></a></p>
+[![Music Island preview](docs/media/preview-poster.jpg)](https://player.vimeo.com/video/1212924830?background=1&autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0&badge=0&controls=0)
 
 <p align="center">
-  <img src="docs/media/screenshot-island.png" alt="Music Island overlay with My Wave chip" width="820">
+  <a href="https://player.vimeo.com/video/1212924830?background=1&autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0&badge=0&controls=0"><strong>▶ Watch preview</strong></a>
+  ·
+  <a href="https://vimeo.com/1212924830">Vimeo</a>
 </p>
 
 ## Download
