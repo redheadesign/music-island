@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAppConfig } from './config/useAppConfig'
 import type { IslandAppState, OverlayMode, UseIslandAppOptions } from './islandApp.types'
+import { useDirectStatus } from './media/useDirectStatus'
 import { useMediaController } from './media/useMediaController'
 import { useWaveController } from './media/useWaveController'
 import { useWindowController } from './window/useWindowController'
@@ -19,6 +20,9 @@ export function useIslandApp({ mediaEnabled = true }: UseIslandAppOptions = {}):
   })
   const windowController = useWindowController(mediaEnabled, setMode)
   const waveController = useWaveController(mediaController.media)
+  const directController = useDirectStatus(
+    mediaEnabled && configController.config.media.protocol === 'yandex-direct',
+  )
 
   useEffect(() => {
     if (!mediaEnabled || !mediaController.mediaLoaded || initialMediaModeSetRef.current) return
@@ -68,6 +72,7 @@ export function useIslandApp({ mediaEnabled = true }: UseIslandAppOptions = {}):
     media: mediaController.media,
     mode,
     updateMessage: windowController.updateMessage,
+    autostartError: configController.autostartError,
     progressMs: mediaController.progressMs,
     progressPercent: mediaController.progressPercent,
     smtcHealth: mediaController.smtcHealth,
@@ -83,5 +88,8 @@ export function useIslandApp({ mediaEnabled = true }: UseIslandAppOptions = {}):
     resetPosition: windowController.resetPosition,
     openSettingsWindow: windowController.openSettingsWindow,
     checkUpdates: windowController.checkUpdates,
+    directNeedsRecovery: directController.needsRecovery,
+    directReloadBusy: directController.busy,
+    restartDirect: directController.restartDirect,
   }
 }

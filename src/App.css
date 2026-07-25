@@ -288,6 +288,40 @@
   grid-template-columns: minmax(0, 1fr);
   min-height: 76px;
   align-content: center;
+  gap: 12px;
+  justify-items: center;
+}
+
+.direct-reload-banner {
+  display: flex;
+  width: 100%;
+  padding: 0 4px 2px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+}
+
+.direct-reload-button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  color: rgba(10, 12, 16, 0.92);
+  font-size: 12px;
+  font-weight: 650;
+  background: #ffff00;
+  cursor: pointer;
+}
+
+.direct-reload-button:hover {
+  background: #ffff66;
+}
+
+.direct-reload-button:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .artwork-shell,
@@ -1049,6 +1083,10 @@
   margin: 0;
   color: var(--text-muted);
   font-size: 14px;
+}
+
+.settings-note--error {
+  color: #ffb1b1;
 }
 
 .consent-backdrop {

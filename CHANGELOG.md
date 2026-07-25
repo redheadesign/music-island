@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.9.6 — 2026-07-25
+
+### Overlay and settings
+
+- Active My Wave chip uses the same artwork glass background as the island card so it stays readable on light wallpapers; label/× remain `#FFFF00`.
+- Removed inert Settings actions **Сбросить позицию** and **Проверить обновления** (tray update stub unchanged).
+- Overlay shows **Быстрая перезагрузка** when Direct needs recovery or has no session; after a successful reconnect it sends Play once.
+
+### Direct Yandex
+
+- `STATE_EXPRESSION` rediscovers common desktop PlayerBar layouts (Home, Collection, vibe and class-hash variants) and scopes reads to the active root.
+- Metadata can refresh when play controls are briefly missing during SPA navigation; artist falls back to `Artist — Track` splitting and last-known cache.
+
+### Portable autostart
+
+- Enabling launch-at-startup now writes both the HKCU Run entry and a Startup-folder `.lnk` (quoted paths, `--startup`, path refresh).
+- Sync failures surface under the Settings toggle instead of failing silently.
+
+### Known issues
+
+- Long-downtime auto-recovery without a button remains incomplete (#19); use overlay quick reload or Settings restart.
+- SMTC seek click remains a protocol limitation (#3).
+
 ## 0.9.5 — 2026-07-14
 
 ### Overlay and settings polish

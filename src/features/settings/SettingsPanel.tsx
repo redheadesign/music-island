@@ -1,4 +1,4 @@
-import { Activity, CheckCircle2, Copy, Download, Music2, Power, RadioTower, RotateCcw, TriangleAlert } from 'lucide-react'
+import { Activity, CheckCircle2, Copy, Music2, Power, RadioTower, RotateCcw, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -21,26 +21,22 @@ import { StatusChip } from '../../shared/ui/StatusChip'
 
 interface SettingsPanelProps {
   config: AppConfig
-  updateMessage: string | null
   smtcHealth: SmtcHealthSnapshot
   mediaSessions: MediaSessionInfo[]
   onChange: (config: AppConfig) => void
-  onResetPosition: () => void
-  onCheckUpdates: () => void
   onCopyDiagnostics: () => void
   onRefreshSources: () => void
+  autostartError?: string | null
 }
 
 export function SettingsPanel({
   config,
-  updateMessage,
   smtcHealth,
   mediaSessions,
   onChange,
-  onResetPosition,
-  onCheckUpdates,
   onCopyDiagnostics,
   onRefreshSources,
+  autostartError = null,
 }: SettingsPanelProps) {
   const [draft, setDraft] = useState(config)
   const [showConsent, setShowConsent] = useState(false)
@@ -310,14 +306,11 @@ export function SettingsPanel({
 
       <SettingsSection title="Система" icon={<Power />}>
         <Toggle label="Запускать вместе с Windows" checked={draft.behavior.launchAtStartup} onChange={(launchAtStartup) => patchBehavior({ launchAtStartup })} />
+        {autostartError ? <p className="settings-note settings-note--error">{autostartError}</p> : null}
         <div className="settings-actions">
-          <button type="button" onClick={onResetPosition}><RotateCcw /> Сбросить позицию</button>
-          <button type="button" onClick={onCheckUpdates}><Download /> Проверить обновления</button>
           <button type="button" onClick={onCopyDiagnostics}><Copy /> Скопировать диагностику</button>
         </div>
       </SettingsSection>
-
-      {updateMessage ? <p className="settings-note">{updateMessage}</p> : null}
 
       {showConsent ? createPortal((
         <div className="consent-backdrop" role="presentation">

@@ -47,8 +47,37 @@ export function OverlayShell({ app }: OverlayShellProps) {
     clearWaveSelection,
     openSettingsWindow,
     updateConfig,
+    directNeedsRecovery,
+    directReloadBusy,
+    restartDirect,
   } = app
   const isPinned = Boolean(config?.behavior.pinExpanded)
+  const directEnabled = config?.media.protocol === 'yandex-direct'
+  const showDirectReload = Boolean(
+    directEnabled
+    && (directNeedsRecovery || (media?.provider === 'yandex-direct' && !media.hasSession)),
+  )
+  const handleDirectReload = async () => {
+    try {
+      const status = await restartDirect()
+      if (status.state === 'connected') {
+        await sendCommand('play')
+        if (config) {
+          await updateConfig({
+            ...config,
+            media: {
+              ...config.media,
+              protocol: 'yandex-direct',
+              directYandexConsent: true,
+              directYandexPort: status.port,
+            },
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Direct quick reload failed', error)
+    }
+  }
   const [windowPhase, setWindowPhase] = useState<OverlayWindowPhase>('collapsed')
   const [expandedVisible, setExpandedVisible] = useState(false)
   const [, setIsHoveringIsland] = useState(false)
@@ -721,6 +750,9 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 showSource={config.layout.showSource}
                 showPreviousNext={config.layout.showPreviousNext}
                 onCommand={(command) => void sendCommand(command)}
+                showDirectReload={showDirectReload}
+                directReloadBusy={directReloadBusy}
+                onDirectReload={() => void handleDirectReload()}
               />
             </section>
             {waveContext?.active ? (

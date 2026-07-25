@@ -23,10 +23,16 @@
 - Direct recovery action (**Перезапустить**) when the protocol is degraded or reconnect fails.
 - Frontend composition boundaries (`AGENTS.md`, import check, shared glass kit).
 
+## 0.9.6
+
+- Wave chip glass parity; remove inert Settings reset-position / check-updates buttons.
+- Overlay **Быстрая перезагрузка** + Play after Direct reconnect.
+- Multi-layout Direct player-bar rediscovery for track/artist across SPA routes.
+- Portable autostart: Run key + Startup `.lnk`, error surfaced in Settings.
+
 ## Next
 
-- Make Direct selectors resilient across Yandex Music Desktop routes (home vs Collection and other surfaces).
-- Improve automatic Direct recovery after long client downtime; keep explicit restart as the fallback.
+- Improve automatic Direct recovery after long client downtime without requiring a button.
 - Optional My Wave carousel as a settings-gated feature.
 - Better DPI and fullscreen app detection.
 - Signed GitHub Releases and Tauri auto-update.

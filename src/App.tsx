@@ -28,14 +28,12 @@ function App() {
         <div className="settings-scroll">
           <SettingsPanel
             config={app.config}
-            updateMessage={app.updateMessage}
             smtcHealth={app.smtcHealth}
             mediaSessions={app.mediaSessions}
             onChange={app.updateConfig}
-            onResetPosition={app.resetPosition}
-            onCheckUpdates={app.checkUpdates}
             onCopyDiagnostics={() => void copyDiagnostics().then((text) => navigator.clipboard?.writeText(text))}
             onRefreshSources={app.refreshMediaSessions}
+            autostartError={app.autostartError ?? null}
           />
         </div>
       </main>

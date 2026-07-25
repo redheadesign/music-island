@@ -1,5 +1,6 @@
 import type {
   AppConfig,
+  DirectYandexStatus,
   MediaCommand,
   MediaSessionInfo,
   MediaSnapshot,
@@ -16,6 +17,7 @@ export interface IslandAppState {
   media: MediaSnapshot | null
   mode: OverlayMode
   updateMessage: string | null
+  autostartError: string | null
   progressMs: number | null
   progressPercent: number
   smtcHealth: SmtcHealthSnapshot
@@ -31,6 +33,9 @@ export interface IslandAppState {
   resetPosition: () => Promise<void>
   openSettingsWindow: () => Promise<void>
   checkUpdates: () => Promise<UpdateCheckResult>
+  directNeedsRecovery: boolean
+  directReloadBusy: boolean
+  restartDirect: () => Promise<DirectYandexStatus>
 }
 
 export interface UseIslandAppOptions {

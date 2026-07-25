@@ -87,11 +87,18 @@
   gap: 7px;
   border-radius: 999px;
   color: #ffff00;
-  background: rgba(255, 255, 255, 0.105);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035)),
+    radial-gradient(circle at 18% 0%, rgba(var(--artwork-primary), 0.42), transparent 42%),
+    linear-gradient(180deg, rgba(var(--artwork-primary), 0.28), rgba(var(--artwork-secondary), 0.24)),
+    rgba(10, 12, 18, 0.84);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.35),
+    inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(18px) saturate(125%);
   transform: translateX(-50%);
   pointer-events: auto;
+  transition: background 700ms ease;
 }
 
 .wave-selection-chip > span {

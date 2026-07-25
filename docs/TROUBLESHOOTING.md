@@ -18,11 +18,16 @@ Music Island stops frequent polling after repeated timeouts or `0x80010002` and 
 
 ## Direct works on Home but fails on Collection / other pages
 
-Direct selectors currently assume the home/player-bar DOM shape. Navigating to Collection or other Yandex Music routes can remove or remount those nodes, so metadata, wave title, play/pause and reactions may stop updating. Workaround: return to the home surface or press **Перезапустить**. This is a known limitation tracked in GitHub issues.
+0.9.6 rediscovers common desktop PlayerBar layouts each snapshot. If a specific client build still fails after a route change, use overlay **Быстрая перезагрузка** (or Settings **Перезапустить**). Report the desktop client version and route if it still breaks.
 
 ## Launch with Windows does nothing (portable exe)
 
-Music Island writes a single `HKCU\...\Run\Music Island` entry that points at the current `.exe` path (quoted when the path contains spaces) plus `--startup`. On every launch with the option enabled it refreshes that path, so moving the portable file does not leave a stale entry. Turn the toggle off and on once after upgrading from 0.9.1 if an old unquoted entry remains.
+Music Island writes both:
+
+1. `HKCU\...\Run\Music Island` — quoted exe path + `--startup`
+2. `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Music Island.lnk`
+
+On every launch with the option enabled it refreshes those paths. If enable fails, Settings shows the error under the toggle. Checklist: enable → confirm `.lnk` exists → reboot → tray icon appears. Turn the toggle off/on once after upgrading if an old unquoted Run entry remains.
 
 ## Direct connection works but reactions are missing
 

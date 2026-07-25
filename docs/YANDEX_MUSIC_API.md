@@ -1,6 +1,6 @@
 # Yandex Music integration options
 
-Status reviewed for v0.9.5 (July 2026).
+Status reviewed for v0.9.6 (July 2026).
 
 ## Chosen path: local CDP control
 
@@ -14,7 +14,7 @@ It discovers only a local Yandex Music renderer target and executes a fixed Rust
 
 The first restart requires an explicit confirmation in Settings. The endpoint uses a random loopback port, is never exposed to LAN, and cookies/tokens or arbitrary frontend JavaScript are not logged or accepted. Later Music Island launches validate the owning process, `music-application://` target and loopback WebSocket before reattaching without a client restart. Returning to Windows SMTC closes the debug-enabled client and launches it normally after an explicit action. When Direct stays `degraded` after a long client downtime, Settings exposes **Перезапустить** which calls the same enable path without switching providers.
 
-The adapter uses stable `data-test-id` controls where available. It reads Chromium discovery responses by their declared `Content-Length` because the endpoint keeps HTTP connections alive, then keeps one serialized CDP WebSocket open. Client updates and in-app route changes can still break this experimental path; failures are reported as Direct degraded/reconnect state and never fall through to SMTC implicitly.
+The adapter uses stable `data-test-id` controls where available and rediscovers common desktop PlayerBar class layouts each state evaluate so SPA route changes (Home → Collection, etc.) keep feeding title/artist when the player chrome remounts. It reads Chromium discovery responses by their declared `Content-Length` because the endpoint keeps HTTP connections alive, then keeps one serialized CDP WebSocket open. Client updates can still break this experimental path; failures are reported as Direct degraded/reconnect state and never fall through to SMTC implicitly. Overlay **Быстрая перезагрузка** and Settings **Перезапустить** call the same enable path; overlay also sends Play after a successful reconnect.
 
 ## My Wave selections
 

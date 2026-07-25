@@ -2,7 +2,7 @@
 
 Windows top-edge media controller with a compact “island” UI. It works with any player registered in Windows SMTC and offers an explicit opt-in direct connection to Yandex Music Desktop.
 
-> **Status:** 0.9.5 beta · Windows 10/11 · local-first · no telemetry
+> **Status:** 0.9.6 beta · Windows 10/11 · local-first · no telemetry
 
 ## Highlights
 
@@ -20,7 +20,7 @@ Windows top-edge media controller with a compact “island” UI. It works with 
 
 ## Download
 
-Download the latest build from [GitHub Releases](https://github.com/redheadesign/music-island/releases) — **v0.9.5 beta**.
+Download the latest build from [GitHub Releases](https://github.com/redheadesign/music-island/releases) — **v0.9.6 beta**.
 
 - `music-island.exe` is a portable Windows executable; no installer is required.
 
@@ -29,8 +29,8 @@ The build is currently unsigned and can trigger Windows SmartScreen until Authen
 ## Known limitations
 
 - **Direct Yandex connection is experimental** — first connection may restart the installed desktop client with a random loopback-only CDP port after explicit confirmation. Later launches reattach to the validated endpoint without restarting the client. Desktop client updates can change its internal controls; switch to Windows SMTC explicitly if needed.
-- **Direct can break on non-home Yandex routes** — metadata and commands may stop working after navigating to Collection or other pages until the home surface (or a protocol restart) restores the expected DOM. Tracked in GitHub issues.
-- **Long downtime can leave Direct degraded** — if Yandex Music was closed for a long time, use **Перезапустить** in Settings. Automatic recovery is incomplete.
+- **Direct on non-home routes** — 0.9.6 rediscovers common PlayerBar layouts; if a client restyle still breaks metadata, use overlay **Быстрая перезагрузка** or Settings **Перезапустить**.
+- **Long downtime can leave Direct degraded** — use overlay **Быстрая перезагрузка** (auto-Play after reconnect) or Settings **Перезапустить**. Fully automatic recovery is still incomplete.
 - **Seek audio spike** — a brief click or stutter when scrubbing the timeline is common with Windows SMTC/GSMTC. Music Island sends a single seek command; the artifact usually comes from the media player re-buffering after `PlaybackPositionChangeRequested` (Electron/Chromium apps, Spotify desktop, and others). Compare with the native Windows media flyout on the same track — if it sounds the same, it is a protocol/player limitation, not a duplicate command from this app.
 - **SMTC is a lowest-common-denominator API** — not every player exposes every command; behavior varies by app.
 

@@ -3,13 +3,16 @@ import type { AppConfig } from '../../shared/lib/types'
 import {
   getConfig,
   getDefaultConfig,
+  onAutostartSync,
   onConfigChanged,
   saveConfig,
 } from '../tauriApi'
+
 interface AppConfigController {
   config: AppConfig
   configLoaded: boolean
   configLoadFailed: boolean
+  autostartError: string | null
   updateConfig: (config: AppConfig) => Promise<void>
 }
 
@@ -17,6 +20,7 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
   const [config, setConfig] = useState<AppConfig>(() => getDefaultConfig())
   const [configLoaded, setConfigLoaded] = useState(false)
   const [configLoadFailed, setConfigLoadFailed] = useState(false)
+  const [autostartError, setAutostartError] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -47,10 +51,24 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
     return () => cleanup()
   }, [])
 
+  useEffect(() => {
+    let cleanup: () => void = () => undefined
+    void onAutostartSync((event) => {
+      if (event.ok || !event.enabled) {
+        setAutostartError(null)
+        return
+      }
+      setAutostartError(event.message ?? 'Не удалось настроить автозапуск')
+    }).then((unlisten) => {
+      cleanup = unlisten
+    })
+    return () => cleanup()
+  }, [])
+
   const updateConfig = useCallback(async (nextConfig: AppConfig) => {
     const saved = await saveConfig(nextConfig)
     setConfig(saved)
   }, [])
 
-  return { config, configLoaded, configLoadFailed, updateConfig }
+  return { config, configLoaded, configLoadFailed, autostartError, updateConfig }
 }

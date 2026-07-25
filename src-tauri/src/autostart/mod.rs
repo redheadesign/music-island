@@ -3,13 +3,16 @@ use std::path::Path;
 pub const STARTUP_ARG: &str = "--startup";
 const ENTRY_NAME: &str = "Music Island";
 const LEGACY_ENTRY_NAMES: [&str; 1] = ["music-island"];
+const STARTUP_SHORTCUT_NAME: &str = "Music Island.lnk";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AutostartStatus {
     pub enabled: bool,
     pub entry_name: String,
     pub command: Option<String>,
     pub path_updated: bool,
+    pub shortcut_path: Option<String>,
 }
 
 impl AutostartStatus {
@@ -19,6 +22,7 @@ impl AutostartStatus {
             entry_name: ENTRY_NAME.to_string(),
             command: None,
             path_updated: false,
+            shortcut_path: None,
         }
     }
 }
@@ -37,12 +41,17 @@ pub fn sync(enabled: bool) -> Result<AutostartStatus, String> {
 }
 
 pub fn format_startup_command(exe_path: &Path) -> String {
-    let path = exe_path.display().to_string();
+    let path = normalize_path_display(exe_path);
     if needs_quotes(&path) {
         format!("\"{}\" {}", path, STARTUP_ARG)
     } else {
         format!("{} {}", path, STARTUP_ARG)
     }
+}
+
+fn normalize_path_display(path: &Path) -> String {
+    let raw = path.display().to_string();
+    raw.strip_prefix(r"\\?\").unwrap_or(&raw).to_string()
 }
 
 fn needs_quotes(path: &str) -> bool {
@@ -51,9 +60,14 @@ fn needs_quotes(path: &str) -> bool {
 
 #[cfg(windows)]
 mod windows {
-    use super::{format_startup_command, AutostartStatus, ENTRY_NAME, LEGACY_ENTRY_NAMES};
+    use super::{
+        format_startup_command, normalize_path_display, AutostartStatus, ENTRY_NAME,
+        LEGACY_ENTRY_NAMES, STARTUP_ARG, STARTUP_SHORTCUT_NAME,
+    };
     use std::env::current_exe;
-    use std::path::PathBuf;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
     use winreg::enums::RegType::REG_BINARY;
     use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_SET_VALUE};
     use winreg::{RegKey, RegValue};
@@ -81,17 +95,20 @@ mod windows {
         let previous = read_entry(ENTRY_NAME)?;
         let path_updated = previous.as_deref() != Some(command.as_str());
         write_entry(ENTRY_NAME, &command)?;
+        let shortcut_path = write_startup_shortcut(&exe)?;
         Ok(AutostartStatus {
             enabled: true,
             entry_name: ENTRY_NAME.to_string(),
             command: Some(command),
             path_updated,
+            shortcut_path: Some(shortcut_path.display().to_string()),
         })
     }
 
     fn disable_entries() -> Result<AutostartStatus, String> {
         delete_entry(ENTRY_NAME)?;
         cleanup_legacy_entries()?;
+        let _ = delete_startup_shortcut();
         Ok(AutostartStatus::disabled())
     }
 
@@ -115,7 +132,65 @@ mod windows {
                 canonical.display()
             ));
         }
-        Ok(canonical)
+        Ok(PathBuf::from(normalize_path_display(&canonical)))
+    }
+
+    fn startup_dir() -> Result<PathBuf, String> {
+        let appdata = std::env::var_os("APPDATA")
+            .map(PathBuf::from)
+            .ok_or_else(|| "APPDATA is not set".to_string())?;
+        Ok(appdata.join(r"Microsoft\Windows\Start Menu\Programs\Startup"))
+    }
+
+    fn startup_shortcut_path() -> Result<PathBuf, String> {
+        Ok(startup_dir()?.join(STARTUP_SHORTCUT_NAME))
+    }
+
+    fn write_startup_shortcut(exe: &Path) -> Result<PathBuf, String> {
+        let dir = startup_dir()?;
+        fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+        let shortcut = startup_shortcut_path()?;
+        let target = normalize_path_display(exe);
+        let working_dir = exe.parent().map(normalize_path_display).unwrap_or_default();
+        let shortcut_display = shortcut.display().to_string();
+        let script = format!(
+            "$ws = New-Object -ComObject WScript.Shell; \
+             $s = $ws.CreateShortcut('{shortcut}'); \
+             $s.TargetPath = '{target}'; \
+             $s.Arguments = '{args}'; \
+             $s.WorkingDirectory = '{cwd}'; \
+             $s.WindowStyle = 7; \
+             $s.Save();",
+            shortcut = escape_ps(&shortcut_display),
+            target = escape_ps(&target),
+            args = escape_ps(STARTUP_ARG),
+            cwd = escape_ps(&working_dir),
+        );
+        let output = Command::new("powershell")
+            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .output()
+            .map_err(|error| format!("failed to create startup shortcut: {error}"))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("failed to create startup shortcut: {stderr}"));
+        }
+        if !shortcut.is_file() {
+            return Err("startup shortcut was not created".into());
+        }
+        Ok(shortcut)
+    }
+
+    fn delete_startup_shortcut() -> Result<(), String> {
+        let shortcut = startup_shortcut_path()?;
+        match fs::remove_file(&shortcut) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+
+    fn escape_ps(value: &str) -> String {
+        value.replace('\'', "''")
     }
 
     fn read_entry(name: &str) -> Result<Option<String>, String> {

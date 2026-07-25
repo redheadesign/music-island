@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type {
+  AutostartSyncEvent,
   AppConfig,
   DirectYandexStatus,
   MediaCommand,
@@ -310,6 +311,13 @@ export async function onConfigChanged(callback: (config: AppConfig) => void): Pr
     unlistenChanged()
     unlistenPreview()
   }
+}
+
+export async function onAutostartSync(callback: (event: AutostartSyncEvent) => void): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
+  }
+  return listen<AutostartSyncEvent>('autostart:sync', (event) => callback(event.payload))
 }
 
 export async function onOverlayAction(action: 'open-settings' | 'check-updates', callback: () => void): Promise<() => void> {

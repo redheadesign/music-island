@@ -17,6 +17,9 @@ interface MusicModuleProps {
   showSource: boolean
   showPreviousNext: boolean
   onCommand: (command: MediaCommand) => void
+  showDirectReload?: boolean
+  directReloadBusy?: boolean
+  onDirectReload?: () => void
 }
 
 export function MusicModule({
@@ -30,6 +33,9 @@ export function MusicModule({
   showProgress,
   showPreviousNext,
   onCommand,
+  showDirectReload = false,
+  directReloadBusy = false,
+  onDirectReload,
 }: MusicModuleProps) {
   const [scrubRatio, setScrubRatio] = useState<number | null>(null)
   const scrubbingRef = useRef(false)
@@ -48,12 +54,23 @@ export function MusicModule({
   }
 
   if (!media?.hasSession) {
+    const isDirect = media?.provider === 'yandex-direct'
     return (
       <section className="music-module music-module--empty" aria-label="No media session">
         <div className="track-copy">
-          <strong>{media?.provider === 'yandex-direct' ? 'Direct connection is reconnecting' : 'No music playing'}</strong>
-          <span>{media?.provider === 'yandex-direct' ? 'Open Settings to reconnect if this persists.' : 'Start any Windows media source.'}</span>
+          <strong>{isDirect ? 'Direct переподключается' : 'No music playing'}</strong>
+          <span>{isDirect ? 'Можно быстро перезагрузить протокол прямо здесь.' : 'Start any Windows media source.'}</span>
         </div>
+        {isDirect && onDirectReload ? (
+          <button
+            type="button"
+            className="direct-reload-button"
+            disabled={directReloadBusy}
+            onClick={() => onDirectReload()}
+          >
+            {directReloadBusy ? 'Перезагрузка…' : 'Быстрая перезагрузка'}
+          </button>
+        ) : null}
       </section>
     )
   }
@@ -71,6 +88,19 @@ export function MusicModule({
     scrubRatio != null && media.durationMs
       ? Math.round(media.durationMs * scrubRatio)
       : progressMs
+  const recoveryBanner = showDirectReload && onDirectReload ? (
+    <div className="direct-reload-banner">
+      <span>Direct нужно перезагрузить</span>
+      <button
+        type="button"
+        className="direct-reload-button"
+        disabled={directReloadBusy}
+        onClick={() => onDirectReload()}
+      >
+        {directReloadBusy ? 'Перезагрузка…' : 'Быстрая перезагрузка'}
+      </button>
+    </div>
+  ) : null
 
   const ratioFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -131,6 +161,7 @@ export function MusicModule({
 
   return (
     <section className={`music-module music-module--${density}`} aria-label="Now playing">
+      {recoveryBanner}
       <div className="media-controls media-controls--island" aria-label="Playback controls">
         {showPreviousNext ? (
           <button type="button" className="icon-button media-button" aria-label="Previous" onClick={() => onCommand('previous')} disabled={!media.canGoPrevious}>

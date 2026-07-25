@@ -170,3 +170,9 @@ export interface UpdateCheckResult {
   currentVersion: string
   message: string
 }
+
+export interface AutostartSyncEvent {
+  ok: boolean
+  message: string | null
+  enabled: boolean
+}

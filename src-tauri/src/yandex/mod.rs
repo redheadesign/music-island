@@ -352,7 +352,9 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
         .port
         .ok_or_else(|| anyhow::anyhow!("direct Yandex connection is disabled"))?;
     let value = evaluate(port, STATE_EXPRESSION).await?;
-    if value.get("ready").and_then(Value::as_bool) != Some(true) {
+    let controls_ready = value.get("ready").and_then(Value::as_bool) == Some(true);
+    let metadata_ready = value.get("metadataReady").and_then(Value::as_bool) == Some(true);
+    if !controls_ready && !metadata_ready {
         anyhow::bail!("Yandex player controls are temporarily unavailable");
     }
     log_capabilities_once(&value);
@@ -376,19 +378,26 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
             .clone();
         let same_track = previous.as_ref().is_some_and(|previous| {
             previous.track_id == track_id
-                && previous.title == title
-                && previous.duration_ms == duration_ms
+                && (title.is_none() || previous.title == title)
+                && (duration_ms.is_none() || previous.duration_ms == duration_ms)
         });
         if same_track {
-            artist = artist.or_else(|| previous.as_ref().and_then(|item| item.artist.clone()));
-            cover = cover.or_else(|| previous.as_ref().and_then(|item| item.cover.clone()));
+            artist = artist
+                .filter(|value| !value.is_empty())
+                .or_else(|| previous.as_ref().and_then(|item| item.artist.clone()));
+            cover = cover
+                .filter(|value| !value.is_empty())
+                .or_else(|| previous.as_ref().and_then(|item| item.cover.clone()));
         }
-        if title.is_some() {
+        if title.is_some() || track_id.is_some() {
+            let retained_title = title
+                .clone()
+                .or_else(|| previous.as_ref().and_then(|item| item.title.clone()));
             *metadata_lock()
                 .write()
                 .expect("Yandex metadata lock poisoned") = Some(DirectMetadata {
                 track_id: track_id.clone(),
-                title: title.clone(),
+                title: retained_title,
                 artist: artist.clone(),
                 cover: cover.clone(),
                 duration_ms,
@@ -396,7 +405,7 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
         }
     }
     Ok(MediaSnapshot {
-        has_session: true,
+        has_session: title.is_some() || track_id.is_some() || controls_ready,
         source_app_id: Some("YandexMusic.Direct".into()),
         track_id,
         title,
@@ -409,25 +418,29 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
         },
         position_ms,
         duration_ms,
-        can_seek: duration_ms.unwrap_or(0) > 0,
-        can_go_next: value
-            .get("canNext")
-            .and_then(Value::as_bool)
-            .unwrap_or(false),
-        can_go_previous: value
-            .get("canPrev")
-            .and_then(Value::as_bool)
-            .unwrap_or(false),
-        can_play: true,
-        can_pause: true,
-        can_like: value
-            .get("canLike")
-            .and_then(Value::as_bool)
-            .unwrap_or(false),
-        can_dislike: value
-            .get("canDislike")
-            .and_then(Value::as_bool)
-            .unwrap_or(false),
+        can_seek: controls_ready && duration_ms.unwrap_or(0) > 0,
+        can_go_next: controls_ready
+            && value
+                .get("canNext")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        can_go_previous: controls_ready
+            && value
+                .get("canPrev")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        can_play: controls_ready,
+        can_pause: controls_ready,
+        can_like: controls_ready
+            && value
+                .get("canLike")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        can_dislike: controls_ready
+            && value
+                .get("canDislike")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
         is_liked: value.get("liked").and_then(Value::as_bool).unwrap_or(false),
         is_disliked: value
             .get("disliked")
@@ -863,7 +876,7 @@ fn click_expression(ids: &[&str]) -> String {
         .collect::<Vec<_>>()
         .join(",");
     format!(
-        "(() => {{ const root=document.querySelector(\"[data-test-id='VIBE_PLAYERBAR']\")||document.querySelector(\"[data-test-id='PLAYER_BAR']\")||document.querySelector(\"[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']\")?.closest('footer,section,div'); if(!root)return false; for (const s of [{selectors}]) {{ const e=root.querySelector(s); if(e){{(e.closest('button')||e).click();return true;}} }} return false; }})()"
+        "(() => {{ const root=document.querySelector(\"[data-test-id='VIBE_PLAYERBAR']\")||document.querySelector(\"[data-test-id='PLAYER_BAR']\")||document.querySelector(\"[class*='PlayerBarDesktopWithBackgroundProgressBar']\")||document.querySelector(\"[class*='PlayerBarDesktop']\")||document.querySelector(\"[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']\")?.closest('footer,section,div'); if(!root)return false; for (const s of [{selectors}]) {{ const e=root.querySelector(s); if(e){{(e.closest('button')||e).click();return true;}} }} return false; }})()"
     )
 }
 
@@ -887,30 +900,67 @@ const STATE_EXPRESSION: &str = r#"
   const q = (...s) => { for (const x of s) { const e=document.querySelector(x); if(e) return e; } return null; };
   const text = (e) => e ? (e.textContent||'').trim() : '';
   const sec = (s) => { const p=String(s||'').split(':').map(Number); return p.length===2?p[0]*60+p[1]:p.length===3?p[0]*3600+p[1]*60+p[2]:0; };
-  const root=q("[data-test-id='VIBE_PLAYERBAR']","[data-test-id='PLAYER_BAR']")||q("[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']")?.closest('footer,section,div');
+  const findRoot = () => {
+    const explicit=q(
+      "[data-test-id='VIBE_PLAYERBAR']",
+      "[data-test-id='PLAYER_BAR']",
+      "[class*='PlayerBarDesktopWithBackgroundProgressBar']",
+      "[class*='PlayerBarDesktop_root']",
+      "[class*='PlayerBarDesktop']",
+      "[class*='PlayerBarMobile']"
+    );
+    if(explicit) return explicit;
+    const titleAnchor=q("[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']","[data-test-id='TRACK_TITLE']","a[href*='/track/']");
+    const fromTitle=titleAnchor?.closest('footer,section,[class*="PlayerBar"],div');
+    if(fromTitle && (fromTitle.querySelector("[data-test-id='PAUSE_BUTTON'],[data-test-id='PLAY_BUTTON']") || fromTitle.querySelector("a[href*='/track/']"))) {
+      return fromTitle;
+    }
+    const control=q("[data-test-id='PAUSE_BUTTON']","[data-test-id='PLAY_BUTTON']");
+    return control?.closest('footer,section,[class*="PlayerBar"],div')||null;
+  };
+  const root=findRoot();
   const pq = (...s) => { if(!root)return null; for(const x of s){const e=root.querySelector(x);if(e)return e;}return null; };
   const play=pq("[data-test-id='PAUSE_BUTTON']","[data-test-id='PLAY_BUTTON']");
   const titleRoot=pq("[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']");
   const stableTitle=titleRoot?.querySelector(":scope > [aria-hidden='true']");
-  const title=pq("[data-test-id='TRACK_TITLE']","a[href*='/track/']")||stableTitle||titleRoot;
+  const title=pq("[data-test-id='TRACK_TITLE']","a[href*='/track/']","[class*='PlayerBarTitle_title']","[class*='TrackName']")||stableTitle||titleRoot;
   const trackLink=pq("a[href*='/track/']");
   const trackId=trackLink?.getAttribute('href')?.match(/\/track\/([A-Za-z0-9_.:-]+)/)?.[1]||titleRoot?.getAttribute('data-track-id')||'';
-  const artist=pq("[data-test-id='SEPARATED_ARTIST_TITLE']","[class*='PlayerBarTitle_artist']","[data-test-id='VIBE_PLAYERBAR_TRACK_NAME'] [class*='artists']");
-  const artistText=text(artist).replace(/\s*[—–-]\s*$/,'').trim();
-  const titleText=(()=>{
+  const artist=pq(
+    "[data-test-id='SEPARATED_ARTIST_TITLE']",
+    "[class*='PlayerBarTitle_artist']",
+    "[class*='SeparatedArtists']",
+    "[data-test-id='VIBE_PLAYERBAR_TRACK_NAME'] [class*='artists']",
+    "a[href*='/artist/']"
+  );
+  let artistText=text(artist).replace(/\s*[—–-]\s*$/,'').trim();
+  let titleText=(()=>{
     if(!title)return '';
     const copy=title.cloneNode(true);
-    copy.querySelectorAll("[class*='artists'],[data-test-id='SEPARATED_ARTIST_TITLE']").forEach(e=>e.remove());
+    copy.querySelectorAll("[class*='artists'],[data-test-id='SEPARATED_ARTIST_TITLE'],a[href*='/artist/']").forEach(e=>e.remove());
     return text(copy);
   })();
-  const cover=pq("[data-test-id='VIBE_ALBUM_COVER'] img","img[data-test-id='ENTITY_COVER_IMAGE']","[class*='PlayerBarDesktop_cover'] img");
-  const like=pq("[data-test-id='LIKE_BUTTON']");
-  const dislike=pq("[data-test-id='DISLIKE_BUTTON']");
+  if(!artistText && titleText){
+    const split=titleText.split(/\s+[—–-]\s+/);
+    if(split.length>=2){
+      artistText=split[0].trim();
+      titleText=split.slice(1).join(' — ').trim();
+    }
+  }
+  const cover=pq(
+    "[data-test-id='VIBE_ALBUM_COVER'] img",
+    "img[data-test-id='ENTITY_COVER_IMAGE']",
+    "[class*='PlayerBarDesktop_cover'] img",
+    "[class*='PlayerBarDesktopWithBackgroundProgressBar'] img",
+    "img[src*='avatars.yandex.net']"
+  );
+  const like=pq("[data-test-id='LIKE_BUTTON']","button[aria-label*='рав'],button[aria-label*='ike']");
+  const dislike=pq("[data-test-id='DISLIKE_BUTTON']","button[aria-label*='е нрав'],button[aria-label*='islike']");
   const now=pq("[data-test-id='TIMECODE_TIME_START']");
   const end=pq("[data-test-id='TIMECODE_TIME_END']");
   const timecode=pq("[data-test-id='VIBE_PLAYERBAR_TIMECODE']");
   const timeParts=text(timecode).split('/').map(x=>x.trim());
-  const slider=pq("[data-test-id='VIBE_PLAYERBAR_TIMECODE_SLIDER'] input[type='range']","input[data-test-id='TIMECODE_SLIDER']");
+  const slider=pq("[data-test-id='VIBE_PLAYERBAR_TIMECODE_SLIDER'] input[type='range']","input[data-test-id='TIMECODE_SLIDER']","input[type='range']");
   const position=Number(slider?.value)||sec(text(now))||sec(timeParts[0]);
   const duration=Number(slider?.max)||sec(text(end))||sec(timeParts[1]);
   const active=(e, kind) => {
@@ -929,8 +979,10 @@ const STATE_EXPRESSION: &str = r#"
   const activeWaveTitle=text(activeWave);
   const activeWheelItem=[...document.querySelectorAll("[data-test-id='WHEEL_VIBE_ITEM']")]
     .find(e=>text(e)===activeWaveTitle);
+  const hasMeta=!!(titleText || trackId || (cover && cover.src));
   return {
     ready: !!play,
+    metadataReady: hasMeta,
     trackId,
     title:titleText,
     artist:artistText,
@@ -1012,6 +1064,14 @@ mod tests {
         assert!(!STATE_EXPRESSION.contains("href.includes('disliked')"));
         assert!(STATE_EXPRESSION.contains("icons.includes(icon)"));
         assert!(STATE_EXPRESSION.contains("aria-pressed"));
+    }
+
+    #[test]
+    fn state_expression_rediscovers_desktop_player_layouts() {
+        assert!(STATE_EXPRESSION.contains("PlayerBarDesktopWithBackgroundProgressBar"));
+        assert!(STATE_EXPRESSION.contains("metadataReady"));
+        assert!(STATE_EXPRESSION.contains("split(/\\s+[—–-]\\s+/)"));
+        assert!(click_expression(&["PLAY_BUTTON"]).contains("PlayerBarDesktop"));
     }
 
     #[test]

@@ -24,17 +24,7 @@ async fn save_config(
     state: State<'_, ConfigState>,
 ) -> Result<AppConfig, String> {
     let saved = state.save(config).map_err(|error| error.to_string())?;
-    match autostart::sync(saved.behavior.launch_at_startup) {
-        Ok(status) => {
-            if status.path_updated {
-                logging::append_event(&format!(
-                    "autostart entry refreshed at {}",
-                    status.command.unwrap_or_default()
-                ));
-            }
-        }
-        Err(error) => logging::append_event(&format!("autostart sync failed: {error}")),
-    }
+    emit_autostart_sync(&app, saved.behavior.launch_at_startup);
     media::set_preferred_source(saved.media.preferred_source_app_id.clone());
     media::switch_active_provider(
         &app,
@@ -165,6 +155,46 @@ async fn check_for_updates(app: tauri::AppHandle) -> Result<updater::UpdateCheck
         .map_err(|error| error.to_string())
 }
 
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AutostartSyncEvent {
+    ok: bool,
+    message: Option<String>,
+    enabled: bool,
+}
+
+fn emit_autostart_sync(app: &tauri::AppHandle, enabled: bool) {
+    match autostart::sync(enabled) {
+        Ok(status) => {
+            if status.path_updated {
+                logging::append_event(&format!(
+                    "autostart entry refreshed at {}",
+                    status.command.unwrap_or_default()
+                ));
+            }
+            let _ = app.emit(
+                "autostart:sync",
+                AutostartSyncEvent {
+                    ok: true,
+                    message: None,
+                    enabled: status.enabled,
+                },
+            );
+        }
+        Err(error) => {
+            logging::append_event(&format!("autostart sync failed: {error}"));
+            let _ = app.emit(
+                "autostart:sync",
+                AutostartSyncEvent {
+                    ok: false,
+                    message: Some(error),
+                    enabled,
+                },
+            );
+        }
+    }
+}
+
 pub fn run() {
     logging::install_panic_hook();
     logging::append_event("app bootstrap started");
@@ -226,13 +256,7 @@ pub fn run() {
                 Err(error) => logging::append_event(&format!("tray setup failed: {error}")),
             }
             if let Ok(config) = app.state::<ConfigState>().load() {
-                match autostart::sync(config.behavior.launch_at_startup) {
-                    Ok(status) if status.path_updated => {
-                        logging::append_event("autostart entry refreshed on startup")
-                    }
-                    Ok(_) => {}
-                    Err(error) => logging::append_event(&format!("autostart sync failed: {error}")),
-                }
+                emit_autostart_sync(&handle, config.behavior.launch_at_startup);
                 media::set_preferred_source(config.media.preferred_source_app_id.clone());
                 media::set_active_provider(match config.media.protocol {
                     config::MediaProtocol::Smtc => media::MediaProvider::Smtc,
