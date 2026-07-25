@@ -1,5 +1,6 @@
 import type {
   AppConfig,
+  AutostartSyncEvent,
   DirectYandexStatus,
   MediaCommand,
   MediaSessionInfo,
@@ -18,6 +19,7 @@ export interface IslandAppState {
   mode: OverlayMode
   updateMessage: string | null
   autostartError: string | null
+  autostartStatus: AutostartSyncEvent | null
   progressMs: number | null
   progressPercent: number
   smtcHealth: SmtcHealthSnapshot

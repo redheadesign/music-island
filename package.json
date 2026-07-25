@@ -1,7 +1,7 @@
 {
   "name": "music-island",
   "private": false,
-  "version": "0.9.6",
+  "version": "0.9.8",
   "description": "Windows top-edge media controller with SMTC and opt-in direct desktop integration.",
   "license": "GPL-3.0-or-later",
   "type": "module",

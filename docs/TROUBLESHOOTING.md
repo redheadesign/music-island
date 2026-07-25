@@ -18,7 +18,9 @@ Music Island stops frequent polling after repeated timeouts or `0x80010002` and 
 
 ## Direct works on Home but fails on Collection / other pages
 
-0.9.6 rediscovers common desktop PlayerBar layouts each snapshot. If a specific client build still fails after a route change, use overlay **Быстрая перезагрузка** (or Settings **Перезапустить**). Report the desktop client version and route if it still breaks.
+0.9.8 rediscovers common desktop PlayerBar layouts each snapshot and dedupes accidental title concatenations. If a specific client build still fails after a route change, use overlay **Быстрая перезагрузка** / **Quick reload** (or Settings **Перезапустить** / **Restart**). Report the desktop client version and route if it still breaks.
+
+If the artist stops updating after skipping many tracks, use quick reload once; 0.9.8 keeps artist by track id when the DOM briefly omits it, but a stuck PlayerBar still needs a reconnect.
 
 ## Launch with Windows does nothing (portable exe)
 

@@ -167,11 +167,19 @@ export function reconcilePlaybackAnchor(
 }
 
 function isSameTrack(previous: MediaSnapshot, next: MediaSnapshot): boolean {
+  if (previous.sourceAppId !== next.sourceAppId) {
+    return false
+  }
+
+  // Prefer stable track ids from Direct / SMTC when both sides have them.
+  if (previous.trackId && next.trackId) {
+    return previous.trackId === next.trackId
+  }
+
   return (
     previous.title === next.title &&
-    (previous.artist === next.artist || previous.artist == null || next.artist == null) &&
     previous.durationMs === next.durationMs &&
-    previous.sourceAppId === next.sourceAppId
+    (previous.artist === next.artist || previous.artist == null || next.artist == null)
   )
 }
 

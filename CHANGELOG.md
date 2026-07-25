@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.9.8 — 2026-07-25
+
+Open beta release. Project stays **GPL-3.0**.
+
+### UX and i18n
+
+- Settings language toggle **Ru / En** (persisted in `appearance.locale`; UI dictionaries on the frontend, protocol states mapped by code).
+- About block: version, Telegram, GitHub, GPL note.
+- Direct empty / recovery copy clarifies that the user should press quick reload (no fake “reconnecting” loop).
+
+### Direct metadata
+
+- Deduplicate concatenated track titles from DOM double-mounts (`TitleTitle`).
+- Prefer leaf title nodes over parent text that merges visible + `aria-hidden` copies.
+- Stronger artist scraping; retain artist/cover only for the same track id.
+- Frontend merge uses `trackId` so rapid skips no longer glue the previous artist onto a new track forever.
+
+### Autostart / packaging
+
+- Portable autostart status shows exe path; Startup `.lnk` write is quieter when unchanged.
+- README trimmed for open beta; media placeholders under `docs/media/`.
+
+### Known issues
+
+- Long-downtime auto-recovery without a button remains incomplete (#19).
+- SMTC seek click remains a protocol/player limitation (#3).
+- Builds are still unsigned (SmartScreen).
+
 ## 0.9.6 — 2026-07-25
 
 ### Overlay and settings

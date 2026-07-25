@@ -29,6 +29,17 @@ pub struct AppearanceConfig {
     pub blur_strength: u8,
     pub corner_radius: u8,
     pub reduced_motion: bool,
+    /// UI language. Opaque to the media protocol layer — frontend owns dictionaries.
+    #[serde(default)]
+    pub locale: Locale,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum Locale {
+    #[default]
+    Ru,
+    En,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,6 +162,7 @@ impl Default for AppConfig {
                 blur_strength: 28,
                 corner_radius: 30,
                 reduced_motion: false,
+                locale: Locale::Ru,
             },
             layout: LayoutConfig {
                 size: WidgetSize::Medium,

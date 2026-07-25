@@ -73,6 +73,7 @@ export function useIslandApp({ mediaEnabled = true }: UseIslandAppOptions = {}):
     mode,
     updateMessage: windowController.updateMessage,
     autostartError: configController.autostartError,
+    autostartStatus: configController.autostartStatus,
     progressMs: mediaController.progressMs,
     progressPercent: mediaController.progressPercent,
     smtcHealth: mediaController.smtcHealth,

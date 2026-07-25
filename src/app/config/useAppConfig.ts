@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AppConfig } from '../../shared/lib/types'
+import type { AppConfig, AutostartSyncEvent } from '../../shared/lib/types'
+import { normalizeLocale } from '../../shared/i18n/messages'
 import {
   getConfig,
   getDefaultConfig,
@@ -8,11 +9,22 @@ import {
   saveConfig,
 } from '../tauriApi'
 
+function withNormalizedLocale(config: AppConfig): AppConfig {
+  return {
+    ...config,
+    appearance: {
+      ...config.appearance,
+      locale: normalizeLocale(config.appearance?.locale),
+    },
+  }
+}
+
 interface AppConfigController {
   config: AppConfig
   configLoaded: boolean
   configLoadFailed: boolean
   autostartError: string | null
+  autostartStatus: AutostartSyncEvent | null
   updateConfig: (config: AppConfig) => Promise<void>
 }
 
@@ -21,6 +33,7 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
   const [configLoaded, setConfigLoaded] = useState(false)
   const [configLoadFailed, setConfigLoadFailed] = useState(false)
   const [autostartError, setAutostartError] = useState<string | null>(null)
+  const [autostartStatus, setAutostartStatus] = useState<AutostartSyncEvent | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -28,7 +41,7 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
     getConfig()
       .then((nextConfig) => {
         if (!mounted) return
-        setConfig(nextConfig)
+        setConfig(withNormalizedLocale(nextConfig))
         setConfigLoaded(true)
       })
       .catch(() => {
@@ -45,7 +58,7 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
 
   useEffect(() => {
     let cleanup: () => void = () => undefined
-    void onConfigChanged(setConfig).then((unlisten) => {
+    void onConfigChanged((next) => setConfig(withNormalizedLocale(next))).then((unlisten) => {
       cleanup = unlisten
     })
     return () => cleanup()
@@ -54,6 +67,7 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
   useEffect(() => {
     let cleanup: () => void = () => undefined
     void onAutostartSync((event) => {
+      setAutostartStatus(event)
       if (event.ok || !event.enabled) {
         setAutostartError(null)
         return
@@ -66,9 +80,16 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
   }, [])
 
   const updateConfig = useCallback(async (nextConfig: AppConfig) => {
-    const saved = await saveConfig(nextConfig)
-    setConfig(saved)
+    const saved = await saveConfig(withNormalizedLocale(nextConfig))
+    setConfig(withNormalizedLocale(saved))
   }, [])
 
-  return { config, configLoaded, configLoadFailed, autostartError, updateConfig }
+  return {
+    config,
+    configLoaded,
+    configLoadFailed,
+    autostartError,
+    autostartStatus,
+    updateConfig,
+  }
 }

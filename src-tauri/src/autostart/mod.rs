@@ -11,6 +11,7 @@ pub struct AutostartStatus {
     pub enabled: bool,
     pub entry_name: String,
     pub command: Option<String>,
+    pub exe_path: Option<String>,
     pub path_updated: bool,
     pub shortcut_path: Option<String>,
 }
@@ -21,6 +22,7 @@ impl AutostartStatus {
             enabled: false,
             entry_name: ENTRY_NAME.to_string(),
             command: None,
+            exe_path: None,
             path_updated: false,
             shortcut_path: None,
         }
@@ -66,6 +68,7 @@ mod windows {
     };
     use std::env::current_exe;
     use std::fs;
+    use std::os::windows::process::CommandExt;
     use std::path::{Path, PathBuf};
     use std::process::Command;
     use winreg::enums::RegType::REG_BINARY;
@@ -78,6 +81,7 @@ mod windows {
     const STARTUP_APPROVED_ENABLED: [u8; 12] = [
         0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     ];
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
     pub fn sync(enabled: bool) -> Result<AutostartStatus, String> {
         cleanup_legacy_entries()?;
@@ -91,16 +95,26 @@ mod windows {
 
     fn enable_current_exe() -> Result<AutostartStatus, String> {
         let exe = resolve_exe_path()?;
+        let exe_path = normalize_path_display(&exe);
         let command = format_startup_command(&exe);
         let previous = read_entry(ENTRY_NAME)?;
         let path_updated = previous.as_deref() != Some(command.as_str());
-        write_entry(ENTRY_NAME, &command)?;
-        let shortcut_path = write_startup_shortcut(&exe)?;
+        if path_updated {
+            write_entry(ENTRY_NAME, &command)?;
+        }
+
+        let shortcut_path = startup_shortcut_path()?;
+        let need_shortcut = path_updated || !shortcut_path.is_file();
+        if need_shortcut {
+            write_startup_shortcut(&exe)?;
+        }
+
         Ok(AutostartStatus {
             enabled: true,
             entry_name: ENTRY_NAME.to_string(),
             command: Some(command),
-            path_updated,
+            exe_path: Some(exe_path),
+            path_updated: path_updated || need_shortcut,
             shortcut_path: Some(shortcut_path.display().to_string()),
         })
     }
@@ -167,7 +181,15 @@ mod windows {
             cwd = escape_ps(&working_dir),
         );
         let output = Command::new("powershell")
-            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-WindowStyle",
+                "Hidden",
+                "-Command",
+                &script,
+            ])
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
             .map_err(|error| format!("failed to create startup shortcut: {error}"))?;
         if !output.status.success() {

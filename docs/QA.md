@@ -51,7 +51,7 @@
 
 ## Settings preview
 
-- Header contains only “Настройки”; no subtitle, version eyebrow or decorative background blobs.
+- Header contains the settings title plus Ru/En locale toggle on the right; no subtitle, version eyebrow or decorative background blobs.
 - Sections and actions use the same borderless translucent-white glass language as the overlay.
 - Minimize reaches the taskbar; Close hides; tray/gear reopens the same settings state.
 - Title-bar action hit targets never become drag regions.

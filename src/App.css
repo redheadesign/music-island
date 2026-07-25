@@ -759,6 +759,42 @@
   letter-spacing: -0.05em;
 }
 
+.locale-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-elevated, rgba(255, 255, 255, 0.08)) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-secondary, rgba(255, 255, 255, 0.35)) 28%, transparent);
+}
+
+.locale-switch__btn {
+  min-width: 44px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.locale-switch__btn--active {
+  background: color-mix(in srgb, var(--accent, #8fb8ff) 28%, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #fff);
+}
+
+.locale-switch__btn:focus-visible {
+  outline: 2px solid var(--accent, #8fb8ff);
+  outline-offset: 2px;
+}
+
 .settings-control-row small,
 .protocol-card small {
   margin: 0;
@@ -1087,6 +1123,84 @@
 
 .settings-note--error {
   color: #ffb1b1;
+}
+
+.autostart-status {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.autostart-status strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.autostart-status small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autostart-status--ok strong {
+  color: #9fe1bd;
+}
+
+.autostart-status--error strong {
+  color: #ffb1b1;
+}
+
+.about-block {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0 2px;
+}
+
+.about-block > strong {
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.about-block p,
+.about-block small {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.about-block small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.about-link {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 650;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.about-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .consent-backdrop {

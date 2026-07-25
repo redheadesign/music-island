@@ -1,6 +1,6 @@
 # Yandex Music integration options
 
-Status reviewed for v0.9.6 (July 2026).
+Status reviewed for v0.9.8 open beta (July 2026).
 
 ## Chosen path: local CDP control
 

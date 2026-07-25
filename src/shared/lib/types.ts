@@ -112,6 +112,7 @@ export interface DirectYandexStatus {
 }
 
 export type Theme = 'liquid-glass-dark' | 'soft-light' | 'ru-flow-inspired'
+export type Locale = 'ru' | 'en'
 export type WidgetSize = 'small' | 'medium' | 'large'
 export type Density = 'buttons-only' | 'minimal' | 'balanced' | 'rich'
 export type LayoutPreset = 'clean-controls' | 'album-pill' | 'now-playing-rich' | 'focus-mode'
@@ -125,6 +126,7 @@ export interface AppConfig {
     blurStrength: number
     cornerRadius: number
     reducedMotion: boolean
+    locale: Locale
   }
   layout: {
     size: WidgetSize
@@ -175,4 +177,6 @@ export interface AutostartSyncEvent {
   ok: boolean
   message: string | null
   enabled: boolean
+  exePath: string | null
+  command: string | null
 }

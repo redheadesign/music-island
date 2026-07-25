@@ -368,36 +368,48 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
         .and_then(Value::as_f64)
         .map(|v| (v * 1_000.0) as i64);
     let track_id = validated_dom_id(string_field(&value, "trackId"));
-    let title = string_field(&value, "title");
-    let mut artist = string_field(&value, "artist");
-    let mut cover = string_field(&value, "cover");
+    let mut title = string_field(&value, "title").and_then(collapse_repeated_title);
+    let mut artist = string_field(&value, "artist").and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
+    let mut cover = string_field(&value, "cover").and_then(|value| {
+        if value.trim().is_empty() {
+            None
+        } else {
+            Some(value)
+        }
+    });
     {
         let previous = metadata_lock()
             .read()
             .expect("Yandex metadata lock poisoned")
             .clone();
-        let same_track = previous.as_ref().is_some_and(|previous| {
-            previous.track_id == track_id
-                && (title.is_none() || previous.title == title)
-                && (duration_ms.is_none() || previous.duration_ms == duration_ms)
-        });
+        let same_track_id = match (&track_id, previous.as_ref().and_then(|item| item.track_id.as_ref())) {
+            (Some(current), Some(prior)) => current == prior,
+            _ => false,
+        };
+        let same_title = match (&title, previous.as_ref().and_then(|item| item.title.as_ref())) {
+            (Some(current), Some(prior)) => current == prior,
+            _ => false,
+        };
+        // Prefer track id; fall back to title only when DOM has no stable id yet.
+        let same_track = same_track_id || (track_id.is_none() && same_title);
         if same_track {
-            artist = artist
-                .filter(|value| !value.is_empty())
-                .or_else(|| previous.as_ref().and_then(|item| item.artist.clone()));
-            cover = cover
-                .filter(|value| !value.is_empty())
-                .or_else(|| previous.as_ref().and_then(|item| item.cover.clone()));
+            title = title.or_else(|| previous.as_ref().and_then(|item| item.title.clone()));
+            artist = artist.or_else(|| previous.as_ref().and_then(|item| item.artist.clone()));
+            cover = cover.or_else(|| previous.as_ref().and_then(|item| item.cover.clone()));
         }
         if title.is_some() || track_id.is_some() {
-            let retained_title = title
-                .clone()
-                .or_else(|| previous.as_ref().and_then(|item| item.title.clone()));
             *metadata_lock()
                 .write()
                 .expect("Yandex metadata lock poisoned") = Some(DirectMetadata {
                 track_id: track_id.clone(),
-                title: retained_title,
+                title: title.clone(),
                 artist: artist.clone(),
                 cover: cover.clone(),
                 duration_ms,
@@ -590,6 +602,32 @@ fn string_field(value: &Value, key: &str) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
+}
+
+/// Collapse accidental DOM concatenations like "TitleTitle" / "TitleTitleTitle".
+fn collapse_repeated_title(title: String) -> Option<String> {
+    let trimmed = title.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let chars: Vec<char> = trimmed.chars().collect();
+    for n in 2..=4 {
+        if chars.len() % n != 0 {
+            continue;
+        }
+        let chunk_len = chars.len() / n;
+        if chunk_len == 0 {
+            continue;
+        }
+        let chunk: String = chars[..chunk_len].iter().collect();
+        if chunk.chars().cycle().take(chars.len()).eq(chars.iter().copied()) {
+            let collapsed = chunk.trim();
+            if !collapsed.is_empty() {
+                return Some(collapsed.to_string());
+            }
+        }
+    }
+    Some(trimmed.to_string())
 }
 
 fn reserve_local_port() -> anyhow::Result<u16> {
@@ -920,33 +958,51 @@ const STATE_EXPRESSION: &str = r#"
   };
   const root=findRoot();
   const pq = (...s) => { if(!root)return null; for(const x of s){const e=root.querySelector(x);if(e)return e;}return null; };
+  const dedupeTitle = (value) => {
+    const t = String(value||'').replace(/\s+/g,' ').trim();
+    if (t.length < 2) return t;
+    for (let n = 2; n <= 4; n += 1) {
+      if (t.length % n !== 0) continue;
+      const chunk = t.slice(0, t.length / n);
+      if (chunk && chunk.repeat(n) === t) return chunk.trim();
+    }
+    return t;
+  };
   const play=pq("[data-test-id='PAUSE_BUTTON']","[data-test-id='PLAY_BUTTON']");
-  const titleRoot=pq("[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']");
+  const titleRoot=pq("[data-test-id='VIBE_PLAYERBAR_TRACK_NAME']","[class*='PlayerBarTitle_root']","[class*='PlayerBarDesktop_title']");
   const stableTitle=titleRoot?.querySelector(":scope > [aria-hidden='true']");
-  const title=pq("[data-test-id='TRACK_TITLE']","a[href*='/track/']","[class*='PlayerBarTitle_title']","[class*='TrackName']")||stableTitle||titleRoot;
+  const titleLeaf=pq("[data-test-id='TRACK_TITLE']","a[href*='/track/']","[class*='PlayerBarTitle_title']","[class*='TrackName']")||stableTitle||null;
+  const title=titleLeaf||titleRoot;
   const trackLink=pq("a[href*='/track/']");
   const trackId=trackLink?.getAttribute('href')?.match(/\/track\/([A-Za-z0-9_.:-]+)/)?.[1]||titleRoot?.getAttribute('data-track-id')||'';
-  const artist=pq(
-    "[data-test-id='SEPARATED_ARTIST_TITLE']",
-    "[class*='PlayerBarTitle_artist']",
-    "[class*='SeparatedArtists']",
-    "[data-test-id='VIBE_PLAYERBAR_TRACK_NAME'] [class*='artists']",
-    "a[href*='/artist/']"
-  );
-  let artistText=text(artist).replace(/\s*[—–-]\s*$/,'').trim();
+  const artistScope = root || document;
+  const artistPrimary=[...artistScope.querySelectorAll(
+    "[data-test-id='SEPARATED_ARTIST_TITLE'],a[href*='/artist/']"
+  )].filter((e)=>e!==titleLeaf && !(titleLeaf&&titleLeaf.contains(e)));
+  const artistFallback=artistPrimary.length ? [] : [...artistScope.querySelectorAll(
+    "[class*='PlayerBarTitle_artist'],[class*='SeparatedArtists'] a,[class*='SeparatedArtists'],[data-test-id='VIBE_PLAYERBAR_TRACK_NAME'] [class*='artists'] a"
+  )].filter((e)=>e!==titleLeaf && !(titleLeaf&&titleLeaf.contains(e)));
+  let artistText=[...new Set([...artistPrimary,...artistFallback].map((e)=>text(e).replace(/\s*[—–-]\s*$/,'').trim()).filter(Boolean))].join(', ');
   let titleText=(()=>{
     if(!title)return '';
-    const copy=title.cloneNode(true);
-    copy.querySelectorAll("[class*='artists'],[data-test-id='SEPARATED_ARTIST_TITLE'],a[href*='/artist/']").forEach(e=>e.remove());
-    return text(copy);
+    // Prefer a single leaf: Yandex often mounts visible + aria-hidden copies under one parent.
+    const node = titleLeaf || stableTitle || title;
+    const copy=node.cloneNode(true);
+    copy.querySelectorAll("[class*='artists'],[data-test-id='SEPARATED_ARTIST_TITLE'],a[href*='/artist/'],[class*='PlayerBarTitle_artist'],[class*='SeparatedArtists']").forEach(e=>e.remove());
+    const directHidden=copy.querySelector(':scope > [aria-hidden="true"]');
+    if(directHidden && copy.children.length>1){
+      return dedupeTitle(text(directHidden));
+    }
+    return dedupeTitle(text(copy));
   })();
   if(!artistText && titleText){
     const split=titleText.split(/\s+[—–-]\s+/);
     if(split.length>=2){
       artistText=split[0].trim();
-      titleText=split.slice(1).join(' — ').trim();
+      titleText=dedupeTitle(split.slice(1).join(' — ').trim());
     }
   }
+  titleText=dedupeTitle(titleText);
   const cover=pq(
     "[data-test-id='VIBE_ALBUM_COVER'] img",
     "img[data-test-id='ENTITY_COVER_IMAGE']",
@@ -1071,7 +1127,24 @@ mod tests {
         assert!(STATE_EXPRESSION.contains("PlayerBarDesktopWithBackgroundProgressBar"));
         assert!(STATE_EXPRESSION.contains("metadataReady"));
         assert!(STATE_EXPRESSION.contains("split(/\\s+[—–-]\\s+/)"));
+        assert!(STATE_EXPRESSION.contains("dedupeTitle"));
         assert!(click_expression(&["PLAY_BUTTON"]).contains("PlayerBarDesktop"));
+    }
+
+    #[test]
+    fn collapses_concatenated_track_titles() {
+        assert_eq!(
+            collapse_repeated_title("Эмо хардкорЭмо хардкор".into()).as_deref(),
+            Some("Эмо хардкор")
+        );
+        assert_eq!(
+            collapse_repeated_title("TrackTrackTrack".into()).as_deref(),
+            Some("Track")
+        );
+        assert_eq!(
+            collapse_repeated_title("Normal Title".into()).as_deref(),
+            Some("Normal Title")
+        );
     }
 
     #[test]

@@ -30,12 +30,20 @@
 - Multi-layout Direct player-bar rediscovery for track/artist across SPA routes.
 - Portable autostart: Run key + Startup `.lnk`, error surfaced in Settings.
 
+## 0.9.8 open beta
+
+- Ru/En locale in Settings; frontend-owned i18n, opaque `locale` in config.
+- Direct title dedupe + artist stability on rapid skip (`trackId`-aware merge).
+- About section; leaner public README; `docs/media/` placeholders for screenshots/video.
+- Stays open source (GPL-3.0).
+
 ## Next
 
 - Improve automatic Direct recovery after long client downtime without requiring a button.
 - Optional My Wave carousel as a settings-gated feature.
 - Better DPI and fullscreen app detection.
 - Signed GitHub Releases and Tauri auto-update.
+- README screenshots + video overview once assets land in `docs/media/`.
 
 ## Future Modules
 

@@ -749,6 +749,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 showProgress={config.layout.showProgress && (windowPhase === 'open' || windowPhase === 'opening')}
                 showSource={config.layout.showSource}
                 showPreviousNext={config.layout.showPreviousNext}
+                locale={config.appearance.locale}
                 onCommand={(command) => void sendCommand(command)}
                 showDirectReload={showDirectReload}
                 directReloadBusy={directReloadBusy}

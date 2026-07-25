@@ -2334,7 +2334,7 @@ dependencies = [
 
 [[package]]
 name = "music-island"
-version = "0.9.6"
+version = "0.9.8"
 dependencies = [
  "anyhow",
  "base64 0.22.1",

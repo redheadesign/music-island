@@ -161,6 +161,8 @@ struct AutostartSyncEvent {
     ok: bool,
     message: Option<String>,
     enabled: bool,
+    exe_path: Option<String>,
+    command: Option<String>,
 }
 
 fn emit_autostart_sync(app: &tauri::AppHandle, enabled: bool) {
@@ -169,15 +171,21 @@ fn emit_autostart_sync(app: &tauri::AppHandle, enabled: bool) {
             if status.path_updated {
                 logging::append_event(&format!(
                     "autostart entry refreshed at {}",
-                    status.command.unwrap_or_default()
+                    status.command.clone().unwrap_or_default()
                 ));
             }
             let _ = app.emit(
                 "autostart:sync",
                 AutostartSyncEvent {
                     ok: true,
-                    message: None,
+                    message: if status.enabled {
+                        Some("Автозапуск прописан успешно".into())
+                    } else {
+                        Some("Автозапуск выключен".into())
+                    },
                     enabled: status.enabled,
+                    exe_path: status.exe_path,
+                    command: status.command,
                 },
             );
         }
@@ -189,6 +197,8 @@ fn emit_autostart_sync(app: &tauri::AppHandle, enabled: bool) {
                     ok: false,
                     message: Some(error),
                     enabled,
+                    exe_path: None,
+                    command: None,
                 },
             );
         }

@@ -1,87 +1,64 @@
 # Music Island
 
-Windows top-edge media controller with a compact “island” UI. It works with any player registered in Windows SMTC and offers an explicit opt-in direct connection to Yandex Music Desktop.
+Windows top-edge media island. Works with any SMTC player; optional Direct mode for Yandex Music Desktop.
 
-> **Status:** 0.9.6 beta · Windows 10/11 · local-first · no telemetry
-
-## Highlights
-
-- Hover-reveal island at the top center of the screen
-- Live track metadata, artwork, progress, play/pause, previous/next
-- Live width, scale and open-delay controls in a focused glass settings UI
-- Stable multi-session arbitration, preferred-source selection and SMTC health diagnostics
-- Automatic SMTC backoff when the Windows broker is degraded or unavailable
-- Experimental low-latency Yandex Music Desktop control with like/dislike state
-- Active My Wave selection chip (optional wave carousel planned later)
-- Portable “launch with Windows” that refreshes the exe path after moves
-- Authoritative provider routing: Direct and SMTC health never overwrite each other's playback state
-- System tray shortcuts for settings, update checks and quit
-- Settings stored locally in `%APPDATA%\Music Island\`
+**0.9.8 · open beta** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
 
 ## Download
 
-Download the latest build from [GitHub Releases](https://github.com/redheadesign/music-island/releases) — **v0.9.6 beta**.
+[GitHub Releases](https://github.com/redheadesign/music-island/releases) → `music-island.exe` (portable, unsigned — SmartScreen may warn).
 
-- `music-island.exe` is a portable Windows executable; no installer is required.
+## Preview
 
-The build is currently unsigned and can trigger Windows SmartScreen until Authenticode signing is set up.
+<!-- Drop a YouTube / Telegram / Loom link below when the review is ready -->
 
-## Known limitations
+**Video overview** — *coming soon*
 
-- **Direct Yandex connection is experimental** — first connection may restart the installed desktop client with a random loopback-only CDP port after explicit confirmation. Later launches reattach to the validated endpoint without restarting the client. Desktop client updates can change its internal controls; switch to Windows SMTC explicitly if needed.
-- **Direct on non-home routes** — 0.9.6 rediscovers common PlayerBar layouts; if a client restyle still breaks metadata, use overlay **Быстрая перезагрузка** or Settings **Перезапустить**.
-- **Long downtime can leave Direct degraded** — use overlay **Быстрая перезагрузка** (auto-Play after reconnect) or Settings **Перезапустить**. Fully automatic recovery is still incomplete.
-- **Seek audio spike** — a brief click or stutter when scrubbing the timeline is common with Windows SMTC/GSMTC. Music Island sends a single seek command; the artifact usually comes from the media player re-buffering after `PlaybackPositionChangeRequested` (Electron/Chromium apps, Spotify desktop, and others). Compare with the native Windows media flyout on the same track — if it sounds the same, it is a protocol/player limitation, not a duplicate command from this app.
-- **SMTC is a lowest-common-denominator API** — not every player exposes every command; behavior varies by app.
+```text
+[ video placeholder ]
+Paste embed or link here → docs/media/README.md
+```
 
-## Quick start (development)
+### Screenshots
 
-**Requirements:** Windows 10/11, WebView2, Node.js, Rust, MSVC Build Tools.
+*Coming soon — drop PNGs into [`docs/media/`](docs/media/) using these names:*
+
+1. `screenshot-01-island.png` — expanded island  
+2. `screenshot-02-settings.png` — settings  
+3. `screenshot-03-direct.png` — Direct / reactions  
+4. `screenshot-04-wave.png` — wave chip  
+
+Then replace this list with a markdown image grid (see `docs/media/README.md`).
+
+## Features
+
+- Hover island: artwork, title/artist, progress, play/pause, prev/next
+- Settings: width, scale, open delay, SMTC source, Direct, autostart, **Ru / En**
+- SMTC health + preferred source
+- Opt-in Direct Yandex (like/dislike, wave chip, quick reload)
+- Tray: settings / quit · config in `%APPDATA%\Music Island\`
+
+## Limitations
+
+- Direct is experimental (local CDP, may restart the client once, can break after Yandex updates)
+- After long downtime use overlay **Quick reload** / Settings **Restart**
+- Seek click/stutter is usually the player/SMTC, not a double-seek from Music Island
+- SMTC capabilities vary by app
+
+## Develop
+
+Windows 10/11, WebView2, Node.js, Rust, MSVC Build Tools.
 
 ```powershell
 npm install
-npm run dev          # browser preview with demo data
-npm run tauri:dev    # native SMTC integration
-npm run tauri:build  # release build → copied to release/
+npm run tauri:dev
+npm run tauri:build   # → release/music-island.exe
 ```
 
-```powershell
-npm run test
-npm run lint
-npm run build
-```
+Docs: [Architecture](docs/ARCHITECTURE.md) · [Media](docs/MEDIA_ARCHITECTURE.md) · [Direct](docs/YANDEX_MUSIC_API.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Releases](docs/RELEASES.md)
 
-## Architecture
+## Author
 
-```mermaid
-flowchart LR
-  WindowsSMTC[Windows SMTC] --> RustMedia[Rust media watcher]
-  YandexDesktop[Yandex Music Desktop] <-->|Local CDP, opt-in| DirectProvider[Rust direct provider]
-  DirectProvider --> RustMedia
-  RustMedia --> TauriEvents[Tauri events]
-  ReactStore[React app store] --> OverlayShell[Overlay shell]
-  TauriEvents --> ReactStore
-  OverlayShell --> MusicModule[Music module]
-  OverlayShell --> SettingsModule[Settings]
-```
+Telegram [@redheadesigner](https://t.me/redheadesigner) · contact [@redheadesign](https://t.me/redheadesign)
 
-Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/MEDIA_ARCHITECTURE.md`](docs/MEDIA_ARCHITECTURE.md) · [`docs/YANDEX_MUSIC_API.md`](docs/YANDEX_MUSIC_API.md) · [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) · [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
-
-## Support & author
-
-- **Telegram channel (Russian):** [@redheadesigner](https://t.me/redheadesigner) — updates, design notes, dev log
-- **Contact:** [@redheadesign](https://t.me/redheadesign) — Russian & English
-
-## License
-
-[GNU General Public License v3.0](LICENSE) (GPL-3.0).
-
-You may use, study, modify, and share this project under GPL terms. Donations are welcome but do not change your rights or obligations under the license. If you distribute modified versions, you must provide corresponding source under the same license.
-
-## Privacy
-
-No telemetry by default. Settings and logs stay on your machine. Direct integration communicates only with the local desktop client through `127.0.0.1`.
-
-## Disclaimer
-
-Unofficial community project. Not affiliated with Apple, Microsoft, Spotify, Yandex, or any music streaming service.
+Unofficial project — not affiliated with Apple, Microsoft, Spotify, or Yandex.

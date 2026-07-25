@@ -55,7 +55,7 @@ SMTC seek audio spikes remain a player/protocol limitation. Music Island sends o
 8. On later Music Island launches, the persisted port is a hint for safe reattach; absence/rejection reports `restart-required` and does not restart the client automatically.
 9. Returning to SMTC restarts the desktop client without debugging flags only after an explicit user action.
 
-The 0.9.1 adapter supports metadata, artwork, playback state, previous/next, seek, like/dislike capabilities and pressed states. Reaction controls remain available while the desktop client is still initializing timeline duration.
+The Direct adapter (through 0.9.8) supports metadata, artwork, playback state, previous/next, seek, like/dislike capabilities and pressed states. Titles are deduped when the DOM concatenates visible copies; artist/cover are retained per track id across brief DOM gaps. Reaction controls remain available while the desktop client is still initializing timeline duration.
 
 ## UI and window interaction
 

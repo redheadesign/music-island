@@ -15,7 +15,9 @@ npm run tauri:build -- --no-bundle
 5. Upload `release/music-island.exe` to GitHub Releases.
 6. Include the changelog, verification summary and known limitations.
 
-The 0.9.x beta ships as a single portable `.exe`. Installer and updater artifacts are intentionally deferred until signing and update distribution are ready.
+The 0.9.x **open beta** ships as a single portable `.exe` under GPL-3.0. Installer and updater artifacts are intentionally deferred until signing and update distribution are ready.
+
+Also bump `APP_VERSION` in `src/features/settings/SettingsPanel.tsx` and refresh `CHANGELOG.md` / public `README.md` status line.
 
 If you already built the app and only need to refresh `release/`, run:
 

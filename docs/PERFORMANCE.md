@@ -1,6 +1,6 @@
 # Performance budget
 
-Music Island 0.9.5 keeps the 0.9.1 performance model and adds UI-only work that must stay off the media path:
+Music Island 0.9.8 keeps the 0.9.1 performance model. Locale switching and Settings copy are frontend-only and must stay off the media path. UI-only work from 0.9.5+ also stays off that path:
 
 - active Direct timeline IPC: about 1 compact update/second;
 - idle SMTC polling: once every 2 seconds;

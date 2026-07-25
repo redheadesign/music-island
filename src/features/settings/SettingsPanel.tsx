@@ -1,5 +1,5 @@
-import { Activity, CheckCircle2, Copy, Music2, Power, RadioTower, RotateCcw, TriangleAlert } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Activity, CheckCircle2, Copy, Info, Music2, Power, RadioTower, RotateCcw, TriangleAlert } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -9,13 +9,19 @@ import {
   onDirectYandexStatus,
   previewConfig,
   getDefaultConfig,
+  openExternalUrl,
 } from '../../app/tauriApi'
+
+const APP_VERSION = '0.9.8'
 import type {
   AppConfig,
+  AutostartSyncEvent,
   DirectYandexStatus,
+  Locale,
   MediaSessionInfo,
   SmtcHealthSnapshot,
 } from '../../shared/lib/types'
+import { createTranslator, directStatusMessage, normalizeLocale } from '../../shared/i18n/messages'
 import { GlassSurface } from '../../shared/ui/GlassSurface'
 import { StatusChip } from '../../shared/ui/StatusChip'
 
@@ -27,6 +33,7 @@ interface SettingsPanelProps {
   onCopyDiagnostics: () => void
   onRefreshSources: () => void
   autostartError?: string | null
+  autostartStatus?: AutostartSyncEvent | null
 }
 
 export function SettingsPanel({
@@ -37,6 +44,7 @@ export function SettingsPanel({
   onCopyDiagnostics,
   onRefreshSources,
   autostartError = null,
+  autostartStatus = null,
 }: SettingsPanelProps) {
   const [draft, setDraft] = useState(config)
   const [showConsent, setShowConsent] = useState(false)
@@ -51,7 +59,13 @@ export function SettingsPanel({
   const connectAttempt = useRef(0)
   const lastSourceRefreshAt = useRef(0)
 
+  const locale = normalizeLocale(draft.appearance.locale)
+  const t = useMemo(() => createTranslator(locale), [locale])
+
   useEffect(() => setDraft(config), [config])
+  useEffect(() => {
+    document.documentElement.lang = locale
+  }, [locale])
   useEffect(() => {
     let active = true
     let cleanup: () => void = () => undefined
@@ -91,6 +105,13 @@ export function SettingsPanel({
     previewAndSave({ ...draft, behavior: { ...draft.behavior, ...behavior } })
   const patchMedia = (media: Partial<AppConfig['media']>) =>
     previewAndSave({ ...draft, media: { ...draft.media, ...media } })
+  const patchAppearance = (appearance: Partial<AppConfig['appearance']>) =>
+    previewAndSave({ ...draft, appearance: { ...draft.appearance, ...appearance } })
+
+  const setLocale = (next: Locale) => {
+    if (normalizeLocale(draft.appearance.locale) === next) return
+    patchAppearance({ locale: next })
+  }
 
   const resetIslandSettings = () => {
     const defaults = getDefaultConfig()
@@ -185,27 +206,46 @@ export function SettingsPanel({
   const directConnected = directActive && (
     directStatus.state === 'connected' || directStatus.state === 'degraded'
   )
+  const directMessage = directStatusMessage(directStatus.state, directStatus.message, t)
 
   return (
-    <section className="settings-panel" aria-label="Island settings">
+    <section className="settings-panel" aria-label={t('settings.title')}>
       <header className="settings-hero">
-        <h1>Настройки</h1>
+        <h1>{t('settings.title')}</h1>
+        <div className="locale-switch" role="group" aria-label="Language">
+          <button
+            type="button"
+            className={`locale-switch__btn ${locale === 'ru' ? 'locale-switch__btn--active' : ''}`}
+            aria-pressed={locale === 'ru'}
+            onClick={() => setLocale('ru')}
+          >
+            Ru
+          </button>
+          <button
+            type="button"
+            className={`locale-switch__btn ${locale === 'en' ? 'locale-switch__btn--active' : ''}`}
+            aria-pressed={locale === 'en'}
+            onClick={() => setLocale('en')}
+          >
+            En
+          </button>
+        </div>
       </header>
 
       <SettingsSection
-        title="Островок"
+        title={t('settings.island')}
         icon={<Music2 />}
         action={(
           <button type="button" className="settings-section-reset" onClick={resetIslandSettings}>
             <RotateCcw aria-hidden="true" />
-            Сбросить
+            {t('settings.reset')}
           </button>
         )}
       >
         <label className="settings-control-row">
           <span>
-            <strong>Ширина</strong>
-            <small>Ширина раскрытого островка</small>
+            <strong>{t('settings.width')}</strong>
+            <small>{t('settings.widthHint')}</small>
           </span>
           <div className="range-control">
             <input type="range" min="80" max="125" value={draft.layout.width} onChange={(event) => patchLayout({ width: Number(event.currentTarget.value), size: 'medium' })} />
@@ -215,8 +255,8 @@ export function SettingsPanel({
 
         <label className="settings-control-row">
           <span>
-            <strong>Масштаб</strong>
-            <small>Пропорционально уменьшает весь интерфейс</small>
+            <strong>{t('settings.scale')}</strong>
+            <small>{t('settings.scaleHint')}</small>
           </span>
           <div className="range-control">
             <input type="range" min="70" max="120" value={draft.layout.scale} onChange={(event) => patchLayout({ scale: Number(event.currentTarget.value) })} />
@@ -226,8 +266,8 @@ export function SettingsPanel({
 
         <label className="settings-control-row">
           <span>
-            <strong>Задержка открытия</strong>
-            <small>Как долго удерживать каплю до раскрытия</small>
+            <strong>{t('settings.hoverDelay')}</strong>
+            <small>{t('settings.hoverDelayHint')}</small>
           </span>
           <div className="range-control">
             <input type="range" min="80" max="1200" step="20" value={draft.behavior.hoverDelayMs} onChange={(event) => patchBehavior({ hoverDelayMs: Number(event.currentTarget.value) })} />
@@ -236,11 +276,11 @@ export function SettingsPanel({
         </label>
       </SettingsSection>
 
-      <SettingsSection title="Источник музыки" icon={<Activity />}>
+      <SettingsSection title={t('settings.source')} icon={<Activity />}>
         {draft.media.protocol === 'smtc' ? <label className="settings-control-row">
           <span>
-            <strong>Предпочитаемый источник</strong>
-            <small>Auto сохраняет текущий играющий источник</small>
+            <strong>{t('settings.preferredSource')}</strong>
+            <small>{t('settings.preferredSourceHint')}</small>
           </span>
           <select value={draft.media.preferredSourceAppId ?? ''} onFocus={refreshSources} onChange={(event) => patchMedia({ preferredSourceAppId: event.currentTarget.value || null })}>
             <option value="">Auto</option>
@@ -253,7 +293,7 @@ export function SettingsPanel({
             <span className="protocol-icon"><RadioTower /></span>
             <div className="protocol-copy">
               <strong>Windows SMTC</strong>
-              <small>Универсальный системный протокол</small>
+              <small>{t('settings.smtcHint')}</small>
             </div>
             <div className="protocol-state">
               <StatusChip
@@ -263,18 +303,18 @@ export function SettingsPanel({
                 {smtcHealth.status === 'healthy' ? <CheckCircle2 /> : <TriangleAlert />}
                 {smtcHealth.status}
               </StatusChip>
-              <small>{smtcHealth.lastProbeMs} ms · {smtcHealth.sessionCount} сесс.</small>
+              <small>{smtcHealth.lastProbeMs} ms · {smtcHealth.sessionCount} {t('settings.sessions')}</small>
             </div>
             {draft.media.protocol !== 'smtc' ? (
-              <button type="button" className="secondary-button" disabled={directBusy} onClick={() => void switchToLegacy()}>Использовать</button>
-            ) : <span className="active-protocol-label">Активен</span>}
+              <button type="button" className="secondary-button" disabled={directBusy} onClick={() => void switchToLegacy()}>{t('settings.use')}</button>
+            ) : <span className="active-protocol-label">{t('settings.active')}</span>}
           </article>
 
           <article className={`protocol-row ${draft.media.protocol === 'yandex-direct' ? 'protocol-row--selected' : ''}`}>
             <span className="protocol-icon protocol-icon--yandex"><Music2 /></span>
             <div className="protocol-copy">
               <strong>Direct Yandex Music</strong>
-              <small>{directStatus.message}</small>
+              <small>{directMessage}</small>
             </div>
             <div className="protocol-state">
               <StatusChip
@@ -291,24 +331,65 @@ export function SettingsPanel({
                 <>
                   {directNeedsRecovery ? (
                     <button type="button" className="primary-button" disabled={directBusy} onClick={() => void restartDirect()}>
-                      {directBusy ? 'Перезапуск…' : 'Перезапустить'}
+                      {directBusy ? t('settings.restarting') : t('settings.restart')}
                     </button>
                   ) : null}
-                  <button type="button" className="secondary-button" disabled={directBusy} onClick={() => void switchToLegacy()}>Отключить</button>
+                  <button type="button" className="secondary-button" disabled={directBusy} onClick={() => void switchToLegacy()}>{t('settings.disconnect')}</button>
                 </>
               ) : (
-                <button type="button" className="primary-button" disabled={directBusy} onClick={() => setShowConsent(true)}>Подключить</button>
+                <button type="button" className="primary-button" disabled={directBusy} onClick={() => setShowConsent(true)}>{t('settings.connect')}</button>
               )}
             </div>
           </article>
         </div>
       </SettingsSection>
 
-      <SettingsSection title="Система" icon={<Power />}>
-        <Toggle label="Запускать вместе с Windows" checked={draft.behavior.launchAtStartup} onChange={(launchAtStartup) => patchBehavior({ launchAtStartup })} />
+      <SettingsSection title={t('settings.system')} icon={<Power />}>
+        <Toggle label={t('settings.launchAtStartup')} checked={draft.behavior.launchAtStartup} onChange={(launchAtStartup) => patchBehavior({ launchAtStartup })} />
         {autostartError ? <p className="settings-note settings-note--error">{autostartError}</p> : null}
+        {!autostartError && autostartStatus ? (
+          <div className={`autostart-status ${autostartStatus.ok ? 'autostart-status--ok' : 'autostart-status--error'}`}>
+            <strong>{autostartStatus.message ?? (autostartStatus.ok ? t('settings.autostartOk') : t('settings.autostartFail'))}</strong>
+            {autostartStatus.enabled && autostartStatus.exePath ? (
+              <small title={autostartStatus.command ?? autostartStatus.exePath}>
+                {t('settings.autostartFile')}: {autostartStatus.exePath}
+              </small>
+            ) : null}
+          </div>
+        ) : null}
         <div className="settings-actions">
-          <button type="button" onClick={onCopyDiagnostics}><Copy /> Скопировать диагностику</button>
+          <button type="button" onClick={onCopyDiagnostics}><Copy /> {t('settings.copyDiagnostics')}</button>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title={t('settings.about')} icon={<Info />}>
+        <div className="about-block">
+          <strong>Music Island v{APP_VERSION}</strong>
+          <p>{t('settings.aboutBody')}</p>
+          <div className="about-links">
+            <button
+              type="button"
+              className="about-link"
+              onClick={() => void openExternalUrl('https://t.me/redheadesigner')}
+            >
+              Telegram · @redheadesigner
+            </button>
+            <button
+              type="button"
+              className="about-link"
+              onClick={() => void openExternalUrl('https://github.com/redheadesign/music-island')}
+            >
+              {t('settings.githubSource')}
+            </button>
+            <button
+              type="button"
+              className="about-link"
+              onClick={() => void openExternalUrl('https://github.com/redheadesign/music-island/blob/master/LICENSE')}
+            >
+              {t('settings.license')}
+            </button>
+          </div>
+          <small>{t('settings.aboutLicense')}</small>
         </div>
       </SettingsSection>
 
@@ -316,16 +397,16 @@ export function SettingsPanel({
         <div className="consent-backdrop" role="presentation">
           <section className="consent-dialog" role="dialog" aria-modal="true" aria-labelledby="direct-title">
             <TriangleAlert size={28} />
-            <h2 id="direct-title">Прямое подключение к Yandex Music</h2>
-            <p>Music Island сначала подключится к уже открытому локальному endpoint. Перезапуск клиента нужен только если endpoint отсутствует.</p>
+            <h2 id="direct-title">{t('consent.title')}</h2>
+            <p>{t('consent.body')}</p>
             <ul>
-              <li>endpoint доступен только через 127.0.0.1;</li>
-              <li>интеграция экспериментальная и может сломаться после обновления клиента;</li>
-              <li>вернуться на Windows SMTC можно в любой момент.</li>
+              <li>{t('consent.li1')}</li>
+              <li>{t('consent.li2')}</li>
+              <li>{t('consent.li3')}</li>
             </ul>
             <div className="consent-actions">
-              <button type="button" className="secondary-button" onClick={dismissConsent}>{directBusy ? 'Закрыть' : 'Отмена'}</button>
-              <button type="button" className="primary-button" disabled={directBusy} onClick={() => void connectDirect()}>{directBusy ? 'Подключение…' : 'Подключить'}</button>
+              <button type="button" className="secondary-button" onClick={dismissConsent}>{directBusy ? t('consent.close') : t('consent.cancel')}</button>
+              <button type="button" className="primary-button" disabled={directBusy} onClick={() => void connectDirect()}>{directBusy ? t('consent.connecting') : t('settings.connect')}</button>
             </div>
           </section>
         </div>

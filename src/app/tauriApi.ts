@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import type {
   AutostartSyncEvent,
   AppConfig,
@@ -332,6 +333,14 @@ export function getDefaultConfig(): AppConfig {
   return defaultConfig
 }
 
+export async function openExternalUrl(url: string): Promise<void> {
+  if (!isTauriRuntime()) {
+    window.open(url, '_blank', 'noopener,noreferrer')
+    return
+  }
+  await openUrl(url)
+}
+
 function isTauriRuntime(): boolean {
   return '__TAURI_INTERNALS__' in window
 }
@@ -345,6 +354,7 @@ const defaultConfig: AppConfig = {
     blurStrength: 28,
     cornerRadius: 30,
     reducedMotion: false,
+    locale: 'ru',
   },
   layout: {
     size: 'medium',

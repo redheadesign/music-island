@@ -102,6 +102,42 @@ describe('playbackClock', () => {
     expect(mergeMediaSnapshot(previous, next).artist).toBe('Artist')
   })
 
+  it('does not keep the previous artist when track id changes during rapid skips', () => {
+    const previous = snapshot({
+      provider: 'yandex-direct',
+      trackId: 'track-1',
+      title: 'Old',
+      artist: 'Artist A',
+    })
+    const next = snapshot({
+      provider: 'yandex-direct',
+      trackId: 'track-2',
+      title: 'New',
+      artist: null,
+      durationMs: 180_000,
+    })
+
+    expect(mergeMediaSnapshot(previous, next).artist).toBeNull()
+    expect(mergeMediaSnapshot(previous, next).title).toBe('New')
+  })
+
+  it('preserves artist for the same track id when a later probe omits it', () => {
+    const previous = snapshot({
+      provider: 'yandex-direct',
+      trackId: 'track-9',
+      title: 'Same',
+      artist: 'Kept Artist',
+    })
+    const next = snapshot({
+      provider: 'yandex-direct',
+      trackId: 'track-9',
+      title: 'Same',
+      artist: null,
+    })
+
+    expect(mergeMediaSnapshot(previous, next).artist).toBe('Kept Artist')
+  })
+
   it('never re-anchors backward when SMTC position lags by ten seconds', () => {
     const previous = snapshot({ positionMs: 60_000, updatedAt: '2026-07-08T12:00:00.000Z' })
     const next = snapshot({ positionMs: 60_000, updatedAt: '2026-07-08T12:00:10.000Z' })

@@ -10,7 +10,7 @@ Build a Windows top-edge overlay that surfaces the active media session and beha
 - Hover-driven compact and expanded states.
 - SMTC metadata: source app, title, artist, album, playback status, timeline and capabilities.
 - Controls: play/pause, previous, next and stop where the active session supports them.
-- Settings: live width, scale, open delay, preferred SMTC source, protocol status, Direct reconnect, portable autostart and island reset.
+- Settings: live width, scale, open delay, preferred SMTC source, protocol status, Direct reconnect, portable autostart, island reset, and Ru/En locale.
 - Tray menu: settings, update check and quit.
 - Local settings persistence in app data.
 - Portable Windows executable and GitHub Releases documentation.

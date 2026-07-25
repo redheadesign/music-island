@@ -1,7 +1,8 @@
 import { Heart, HeartCrack, Pause, Play } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
-import type { MediaCommand, MediaSnapshot } from '../../shared/lib/types'
+import type { Locale, MediaCommand, MediaSnapshot } from '../../shared/lib/types'
+import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import { formatTime } from '../../shared/lib/format'
 import { MarqueeText } from '../../shared/ui/MarqueeText'
 
@@ -16,10 +17,22 @@ interface MusicModuleProps {
   showProgress: boolean
   showSource: boolean
   showPreviousNext: boolean
+  locale?: Locale
   onCommand: (command: MediaCommand) => void
   showDirectReload?: boolean
   directReloadBusy?: boolean
   onDirectReload?: () => void
+}
+
+function collapseRepeatedTitle(value: string): string {
+  const t = value.replace(/\s+/g, ' ').trim()
+  if (t.length < 2) return t
+  for (let n = 2; n <= 4; n += 1) {
+    if (t.length % n !== 0) continue
+    const chunk = t.slice(0, t.length / n)
+    if (chunk && chunk.repeat(n) === t) return chunk.trim()
+  }
+  return t
 }
 
 export function MusicModule({
@@ -32,6 +45,7 @@ export function MusicModule({
   showArtist,
   showProgress,
   showPreviousNext,
+  locale = 'ru',
   onCommand,
   showDirectReload = false,
   directReloadBusy = false,
@@ -41,13 +55,14 @@ export function MusicModule({
   const scrubbingRef = useRef(false)
   const seekGestureIdRef = useRef<number | null>(null)
   const seekSentRef = useRef(false)
+  const t = useMemo(() => createTranslator(normalizeLocale(locale)), [locale])
 
   if (media?.provider === 'smtc' && media.smtcHealth === 'unavailable') {
     return (
-      <section className="music-module music-module--empty music-module--warning" aria-label="SMTC unavailable">
+      <section className="music-module music-module--empty music-module--warning" aria-label={t('music.smtcUnavailable')}>
         <div className="track-copy">
-          <strong>SMTC недоступен</strong>
-          <span>Windows media protocol завис. Перезагрузите Windows.</span>
+          <strong>{t('music.smtcUnavailable')}</strong>
+          <span>{t('music.smtcUnavailableHint')}</span>
         </div>
       </section>
     )
@@ -56,10 +71,10 @@ export function MusicModule({
   if (!media?.hasSession) {
     const isDirect = media?.provider === 'yandex-direct'
     return (
-      <section className="music-module music-module--empty" aria-label="No media session">
+      <section className="music-module music-module--empty" aria-label={t('music.noSession')}>
         <div className="track-copy">
-          <strong>{isDirect ? 'Direct переподключается' : 'No music playing'}</strong>
-          <span>{isDirect ? 'Можно быстро перезагрузить протокол прямо здесь.' : 'Start any Windows media source.'}</span>
+          <strong>{isDirect ? t('music.directOffline') : t('music.noSession')}</strong>
+          <span>{isDirect ? t('music.directOfflineHint') : t('music.noSessionHint')}</span>
         </div>
         {isDirect && onDirectReload ? (
           <button
@@ -68,7 +83,7 @@ export function MusicModule({
             disabled={directReloadBusy}
             onClick={() => onDirectReload()}
           >
-            {directReloadBusy ? 'Перезагрузка…' : 'Быстрая перезагрузка'}
+            {directReloadBusy ? t('music.reloading') : t('music.quickReload')}
           </button>
         ) : null}
       </section>
@@ -76,11 +91,12 @@ export function MusicModule({
   }
 
   const isPlaying = media.playbackStatus === 'playing'
-  const title = media.title || 'Unknown track'
+  const title = collapseRepeatedTitle(media.title || t('music.unknownTrack'))
+  const artist = media.artist ? collapseRepeatedTitle(media.artist) : null
   const isButtonsOnly = density === 'buttons-only'
   const canShowSeek = showProgress && !isButtonsOnly && Boolean(media.durationMs)
   const trackLabel = [
-    showArtist ? media.artist : null,
+    showArtist ? artist : null,
     showTitle ? title : null,
   ].filter(Boolean).join(' · ') || title
   const activeRatio = scrubRatio ?? progressPercent / 100
@@ -90,14 +106,14 @@ export function MusicModule({
       : progressMs
   const recoveryBanner = showDirectReload && onDirectReload ? (
     <div className="direct-reload-banner">
-      <span>Direct нужно перезагрузить</span>
+      <span>{t('music.directDropped')}</span>
       <button
         type="button"
         className="direct-reload-button"
         disabled={directReloadBusy}
         onClick={() => onDirectReload()}
       >
-        {directReloadBusy ? 'Перезагрузка…' : 'Быстрая перезагрузка'}
+        {directReloadBusy ? t('music.reloading') : t('music.quickReload')}
       </button>
     </div>
   ) : null
