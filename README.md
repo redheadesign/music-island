@@ -4,9 +4,16 @@ Windows top-edge media island. Works with any SMTC player; optional Direct mode 
 
 **0.9.8 · open beta** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
 
-<video src="docs/media/preview.mp4" poster="docs/media/preview-poster.jpg" controls playsinline preload="metadata" width="100%"></video>
+<video
+  src="https://github.com/redheadesign/music-island/releases/download/v0.9.8/preview.mp4"
+  poster="docs/media/preview-poster.jpg"
+  controls
+  playsinline
+  preload="metadata"
+  width="100%"
+></video>
 
-<p align="center"><a href="docs/media/preview.mp4">Download preview (MP4)</a></p>
+<p align="center"><a href="https://github.com/redheadesign/music-island/releases/download/v0.9.8/preview.mp4">Download preview (MP4)</a> · also in <a href="docs/media/preview.mp4"><code>docs/media/</code></a></p>
 
 <p align="center">
   <img src="docs/media/screenshot-01-island.png" alt="Expanded island with track and artist" width="48%">
