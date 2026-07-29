@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.9 — 2026-07-29
+
+Open beta. Still **GPL-3.0**.
+
+### Docs / positioning
+
+- README and GitHub repo description highlight **direct connection to the native Yandex Music desktop app** (opt-in local CDP), alongside Windows SMTC.
+- Clarified Direct consent flow and SMTC fallback in the public README.
+
+### Known issues
+
+- Long-downtime auto-recovery without a button remains incomplete (#19).
+- SMTC seek click remains a protocol/player limitation (#3).
+- Builds are still unsigned (SmartScreen).
+
 ## 0.9.8 — 2026-07-25
 
 Open beta release. Project stays **GPL-3.0**.

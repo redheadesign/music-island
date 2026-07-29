@@ -12,7 +12,7 @@ import {
   openExternalUrl,
 } from '../../app/tauriApi'
 
-const APP_VERSION = '0.9.8'
+const APP_VERSION = '0.9.9'
 import type {
   AppConfig,
   AutostartSyncEvent,

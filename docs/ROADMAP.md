@@ -37,6 +37,11 @@
 - About section; leaner public README; `docs/media/` placeholders for screenshots/video.
 - Stays open source (GPL-3.0).
 
+## 0.9.9 open beta
+
+- Public README / repo description call out Direct Yandex Music (native desktop app, opt-in local CDP) next to SMTC.
+- Portable release packaging for 0.9.9.
+
 ## Next
 
 - Improve automatic Direct recovery after long client downtime without requiring a button.

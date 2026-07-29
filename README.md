@@ -1,22 +1,26 @@
+https://github.com/user-attachments/assets/28c65a1f-1fee-4ee0-a4f6-2fb89cf8c78e
+
 # Music Island
 
-Windows top-edge media island. Works with any SMTC player; optional Direct mode for Yandex Music Desktop.
+Windows top-edge media island for any SMTC player, plus an optional **direct connection to the native Yandex Music desktop app**.
 
-**0.9.8 · open beta** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
-
-https://github.com/user-attachments/assets/28c65a1f-1fee-4ee0-a4f6-2fb89cf8c78e
+**0.9.9 · open beta** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
 
 ## Download
 
-[GitHub Releases](https://github.com/redheadesign/music-island/releases) → `music-island.exe` (portable, unsigned — SmartScreen may warn).
+[GitHub Releases](https://github.com/redheadesign/music-island/releases) → `music-island.exe` (portable, unsigned – SmartScreen may warn).
 
 ## Features
 
 - Hover island: artwork, title/artist, progress, play/pause, prev/next
-- Settings: width, scale, open delay, SMTC source, Direct, autostart, **Ru / En**
-- SMTC health + preferred source
-- Opt-in Direct Yandex (like/dislike, wave chip, quick reload)
+- **Windows SMTC** – works with Spotify, browsers, and other system media sessions
+- **Direct Yandex Music** – opt-in link to the installed desktop client over a local debug endpoint (127.0.0.1): lower latency, like/dislike, active wave chip, seek, and quick reload when the client drops
+- Settings: width, scale, open delay, preferred SMTC source, protocol switch, autostart, **Ru / En**
 - Tray: settings / quit · config in `%APPDATA%\Music Island\`
+
+### Direct Yandex Music
+
+In Settings → Music source, connect **Direct Yandex Music** (explicit consent). Music Island attaches to the already running desktop app when possible; the first connect may restart the client with a loopback-only CDP port. This is unofficial and can break after a Yandex client update – you can always switch back to SMTC.
 
 ## Architecture
 
@@ -55,4 +59,4 @@ npm run tauri:build   # → release/music-island.exe
 
 Telegram [@redheadesigner](https://t.me/redheadesigner) · contact [@redheadesign](https://t.me/redheadesign)
 
-Unofficial project — not affiliated with Apple, Microsoft, Spotify, or Yandex.
+Unofficial project – not affiliated with Apple, Microsoft, Spotify, or Yandex.

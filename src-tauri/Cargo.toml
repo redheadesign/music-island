@@ -1,6 +1,6 @@
 [package]
 name = "music-island"
-version = "0.9.8"
+version = "0.9.9"
 description = "Windows top-edge media controller with SMTC and opt-in direct desktop integration."
 authors = ["Music Island contributors"]
 edition = "2021"
