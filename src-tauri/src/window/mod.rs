@@ -13,8 +13,8 @@ use tokio::time::{sleep, Duration};
 const COLLAPSED_HIT_HEIGHT: f64 = 120.0;
 const COLLAPSED_STRIP_HEIGHT: f64 = 24.0;
 const DEFAULT_HIT_WIDTH: f64 = 612.0;
-/// Keep a thin gap on every monitor edge so the Shell does not treat the overlay as
-/// fullscreen and auto-hide taskbars (bottom / left / right / top) still get edge hover.
+/// Leave a thin gap on left/right/bottom so auto-hide taskbars still get edge hover.
+/// Do NOT inset the top — the island lives on the top edge and needs y=0 of the monitor.
 const MONITOR_EDGE_GAP_PX: i32 = 2;
 
 static BOUNDS_REQUESTS: AtomicU64 = AtomicU64::new(0);
@@ -70,9 +70,9 @@ pub fn setup_overlay_window(app: &AppHandle) -> tauri::Result<()> {
         window.set_skip_taskbar(true)?;
         window.set_decorations(false)?;
         fit_overlay_to_monitor(app)?;
-        // Fullscreen overlay stays click-through until the cursor enters the island band.
-        set_overlay_clickthrough(app, true)?;
         window.show()?;
+        // Apply click-through AFTER show/geometry — those calls drop WS_EX_TRANSPARENT.
+        set_overlay_clickthrough_ex(app, true, true)?;
         set_overlay_bounds(app, false, DEFAULT_HIT_WIDTH, COLLAPSED_STRIP_HEIGHT)?;
     }
 
@@ -80,7 +80,8 @@ pub fn setup_overlay_window(app: &AppHandle) -> tauri::Result<()> {
 }
 
 pub fn reset_overlay_position(app: &AppHandle) -> tauri::Result<()> {
-    fit_overlay_to_monitor(app)
+    fit_overlay_to_monitor(app)?;
+    sync_clickthrough_from_cursor_ex(app, true)
 }
 
 fn fit_overlay_to_monitor(app: &AppHandle) -> tauri::Result<()> {
@@ -93,12 +94,13 @@ fn fit_overlay_to_monitor(app: &AppHandle) -> tauri::Result<()> {
         let size = monitor.size();
         let position = monitor.position();
         let gap = MONITOR_EDGE_GAP_PX as u32;
+        // Inset left/right/bottom only — keep the top flush with the monitor.
         let width = size.width.saturating_sub(gap.saturating_mul(2)).max(1);
-        let height = size.height.saturating_sub(gap.saturating_mul(2)).max(1);
+        let height = size.height.saturating_sub(gap).max(1);
         window.set_size(PhysicalSize::new(width, height))?;
         window.set_position(PhysicalPosition::new(
             position.x + MONITOR_EDGE_GAP_PX,
-            position.y + MONITOR_EDGE_GAP_PX,
+            position.y,
         ))?;
     }
 
@@ -138,41 +140,55 @@ pub fn set_overlay_bounds(
         *layout = next;
     }
 
-    // Keep fullscreen coverage if the user moved monitors / DPI changed.
+    // Keep monitor coverage if the user moved monitors / DPI changed.
     fit_overlay_to_monitor(app)?;
 
-    // Refresh click-through from the current cursor immediately.
-    let _ = sync_clickthrough_from_cursor(app);
+    // Geometry changes drop WS_EX_TRANSPARENT — force re-apply, don't trust the cache.
+    let _ = sync_clickthrough_from_cursor_ex(app, true);
 
     BOUNDS_APPLIED.fetch_add(1, Ordering::Relaxed);
     Ok(())
 }
 
 pub fn set_overlay_clickthrough(app: &AppHandle, clickthrough: bool) -> tauri::Result<()> {
+    set_overlay_clickthrough_ex(app, clickthrough, false)
+}
+
+fn set_overlay_clickthrough_ex(
+    app: &AppHandle,
+    clickthrough: bool,
+    force: bool,
+) -> tauri::Result<()> {
     let Some(window) = app.get_webview_window("main") else {
         return Ok(());
     };
 
-    if CLICKTHROUGH.swap(clickthrough, Ordering::Relaxed) == clickthrough {
+    if !force && CLICKTHROUGH.load(Ordering::Relaxed) == clickthrough {
         return Ok(());
     }
 
+    CLICKTHROUGH.store(clickthrough, Ordering::Relaxed);
     window.set_ignore_cursor_events(clickthrough)?;
     Ok(())
 }
 
 fn sync_clickthrough_from_cursor(app: &AppHandle) -> tauri::Result<()> {
+    sync_clickthrough_from_cursor_ex(app, false)
+}
+
+fn sync_clickthrough_from_cursor_ex(app: &AppHandle, force: bool) -> tauri::Result<()> {
     let expanded = hit_layout()
         .lock()
         .map(|layout| layout.expanded)
         .unwrap_or(false);
     // Collapsed: always pass clicks through (native gesture poll still works).
     // Expanded: only capture when the cursor is over the island hit-band.
-    if !expanded {
-        return set_overlay_clickthrough(app, true);
-    }
-    let state = get_collapsed_gesture_state(app)?;
-    set_overlay_clickthrough(app, !state.active)
+    let clickthrough = if !expanded {
+        true
+    } else {
+        !get_collapsed_gesture_state(app)?.active
+    };
+    set_overlay_clickthrough_ex(app, clickthrough, force)
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
