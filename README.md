@@ -36,7 +36,6 @@ flowchart LR
   DirectProvider --> MediaWatcher
   MediaWatcher --> Events[Tauri events]
   Commands[Tauri commands] --> MediaWatcher
-  VoiceEngine[Rust voice engine] --> VoiceCmds[voice commands]
   Events --> AppFacade[useIslandApp facade]
   AppFacade --> ConfigController[Config controller]
   AppFacade --> MediaController[Media controller]
@@ -46,6 +45,9 @@ flowchart LR
   Overlay --> Settings[Settings]
   Settings --> BetterVoice[Better Voice UI]
   Overlay --> Registry[Module registry]
+  BetterVoice -->|voice_invoke| VoiceCmds[voice commands]
+  VoiceCmds --> VoiceEngine[Rust voice engine]
+  VoiceEngine -->|meters / status| BetterVoice
 ```
 
 - **Native:** SMTC + Direct Yandex arbitration, window/tray, portable updater, in-process Better Voice engine, config under `%APPDATA%\Music Island\`
