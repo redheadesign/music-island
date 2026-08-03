@@ -150,10 +150,6 @@ pub fn set_overlay_bounds(
     Ok(())
 }
 
-pub fn set_overlay_clickthrough(app: &AppHandle, clickthrough: bool) -> tauri::Result<()> {
-    set_overlay_clickthrough_ex(app, clickthrough, false)
-}
-
 fn set_overlay_clickthrough_ex(
     app: &AppHandle,
     clickthrough: bool,
