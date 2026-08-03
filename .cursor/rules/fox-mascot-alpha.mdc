@@ -1,0 +1,40 @@
+---
+description: Fox mascot WebM must punch Magnific black BG via frame flood-fill — never remux opaque variants
+globs: src/features/plugins/voice/assets/fox-*.webm,src/features/plugins/voice/VoiceFoxVideoMascot.tsx,.local/process_fox_alpha.py
+alwaysApply: false
+---
+
+# Fox mascot alpha (do not regress)
+
+Magnific / Kling always export **solid black** backgrounds. UI needs **true transparency**.
+
+## Required pipeline
+
+Use `.local/process_fox_alpha.py` (or the same steps):
+
+1. Raw MP4 under `.local/magnific-raw/`
+2. Scale to 640×640 (live: optional `minterpolate` → 30 fps)
+3. Extract PNG frames
+4. **Flood-fill near-black from image borders → RGBA** (keeps black tie / dark headphones)
+5. Encode WebM VP9 `yuva420p` with `-auto-alt-ref 0`
+
+Local notes: `.local/magnific-fox-mascot.md`
+
+## NEVER do this
+
+- Do **not** create `fox-live-b.webm` / `fox-live-c.webm` (or any new clip) with plain `ffmpeg -vf reverse|setpts` on a WebM **without** decoding alpha and **without** going through punched RGBA frames.
+- `alpha_mode=1` / `-pix_fmt yuva420p` alone does **not** remove a baked black plate if the source frames are opaque RGB black.
+- Default ffmpeg VP9 decode often **drops** the alpha plane — verify with:
+  `ffmpeg -c:v libvpx-vp9 -i fox-….webm -frames:v 1 -pix_fmt rgba out.png`
+  then check `(alpha==0).sum() > 100000`.
+
+## Live variants only
+
+Random / alternate idle clips are **only** for the active live pack (`fox-live*.webm`).
+
+- Build `live-b` / `live-c` from **already punched** `fox-alpha-work/live/frames` (reverse / faster fps), then encode — do not remux opaque intermediates.
+- Do **not** replace sleep / wake / to-sleep with experimental variants unless the user asks; those stay on the punched base clips.
+
+## After any fox asset change
+
+Verify every shipped `fox-*.webm` has real transparent pixels (libvpx decode), then rebuild the portable.

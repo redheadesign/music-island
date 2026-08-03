@@ -19,3 +19,9 @@
 - Run `npm test`, `npm run build`, and `npm run lint` for frontend changes.
 - Add characterization tests before changing timing, seek, session, or overlay-mode behavior.
 - Do not commit generated release artifacts.
+
+## Fox mascot videos
+
+- Magnific exports always have a **black plate**. Ship only WebMs that went through frame flood-fill → RGBA → VP9 alpha (`.local/process_fox_alpha.py`).
+- Never invent live variants by remuxing WebM with `reverse` / `setpts` alone — that re-bakes the black background. Build variants from **already punched** PNG frames.
+- See `.cursor/rules/fox-mascot-alpha.mdc` and `.local/magnific-fox-mascot.md`.

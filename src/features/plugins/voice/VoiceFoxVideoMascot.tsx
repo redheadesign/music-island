@@ -10,7 +10,12 @@ import foxSleepPoster from './assets/fox-sleep-poster.png'
 
 type Phase = 'sleep' | 'wake' | 'live' | 'toSleep'
 
-/** Active-fox idle variants only (sleep/wake/to-sleep stay on the base clips). */
+/**
+ * Active-fox idle variants only (sleep/wake/to-sleep stay on the base clips).
+ * Any new live-*.webm MUST be built from flood-filled RGBA frames
+ * (`.local/process_fox_alpha.py`) — never ffmpeg remux of opaque Magnific plates.
+ * See `.cursor/rules/fox-mascot-alpha.mdc`.
+ */
 const LIVE_PACK = [foxLiveWebmUrl, foxLiveBWebmUrl, foxLiveCWebmUrl] as const
 
 function playFromStart(video: HTMLVideoElement | null) {
