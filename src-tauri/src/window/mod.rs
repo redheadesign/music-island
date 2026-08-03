@@ -3,11 +3,14 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
     Mutex, OnceLock,
 };
-use tauri::{window::Color, AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
+use tauri::{
+    window::Color, AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl,
+    WebviewWindowBuilder,
+};
 use tokio::time::{sleep, Duration};
 
 const OVERLAY_WIDTH: i32 = 1_100;
-const OVERLAY_HEIGHT: u32 = 320;
+const OVERLAY_HEIGHT: u32 = 460;
 const OVERLAY_TOP_OFFSET: i32 = -1;
 const COLLAPSED_HEIGHT: u32 = 20;
 static BOUNDS_REQUESTS: AtomicU64 = AtomicU64::new(0);
@@ -245,6 +248,89 @@ pub fn setup_settings_window(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+pub fn setup_already_running_window(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window("already-running") {
+        window.set_background_color(Some(Color(9, 11, 16, 255)))?;
+        window.hide()?;
+    }
+
+    Ok(())
+}
+
+/// Full-monitor transparent intro layer. Isolated from the island overlay so
+/// splash motion never touches overlay bounds / gestures.
+///
+/// Skipped when launched via Windows autostart (`--startup`).
+pub fn setup_intro_window(app: &AppHandle) -> tauri::Result<()> {
+    let Some(window) = app.get_webview_window("intro") else {
+        return Ok(());
+    };
+
+    let is_autostart = std::env::args().any(|arg| arg == crate::autostart::STARTUP_ARG);
+    if is_autostart {
+        let _ = window.destroy();
+        crate::logging::append_event("intro skipped (autostart --startup)");
+        return Ok(());
+    }
+
+    window.set_background_color(Some(Color(0, 0, 0, 0)))?;
+    window.set_decorations(false)?;
+    window.set_always_on_top(true)?;
+    window.set_skip_taskbar(true)?;
+    // Purely visual — do not steal clicks from the desktop or the island.
+    window.set_ignore_cursor_events(true)?;
+
+    let monitor = window.current_monitor()?.or(window.primary_monitor()?);
+    if let Some(monitor) = monitor {
+        let size = monitor.size();
+        let position = monitor.position();
+        window.set_size(PhysicalSize::new(size.width, size.height))?;
+        window.set_position(PhysicalPosition::new(position.x, position.y))?;
+    }
+
+    window.show()?;
+    Ok(())
+}
+
+pub fn close_intro_window(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window("intro") {
+        window.destroy()?;
+    }
+    Ok(())
+}
+
+/// Recreate and play the startup intro (dev preview / settings button).
+pub fn replay_intro_window(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window("intro") {
+        let _ = window.destroy();
+    }
+
+    let window = WebviewWindowBuilder::new(app, "intro", WebviewUrl::App("index.html".into()))
+        .title("Music Island")
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .visible(false)
+        .build()?;
+
+    window.set_background_color(Some(Color(0, 0, 0, 0)))?;
+    window.set_ignore_cursor_events(true)?;
+
+    let monitor = window.current_monitor()?.or(window.primary_monitor()?);
+    if let Some(monitor) = monitor {
+        let size = monitor.size();
+        let position = monitor.position();
+        window.set_size(PhysicalSize::new(size.width, size.height))?;
+        window.set_position(PhysicalPosition::new(position.x, position.y))?;
+    }
+
+    window.show()?;
+    crate::logging::append_event("intro window replayed");
+    Ok(())
+}
+
 pub fn open_settings_window(app: &AppHandle) -> tauri::Result<()> {
     if let Some(window) = app.get_webview_window("settings") {
         if window.is_minimized().unwrap_or(false) {
@@ -257,6 +343,19 @@ pub fn open_settings_window(app: &AppHandle) -> tauri::Result<()> {
             window.show()?;
             window.set_focus()?;
         }
+    }
+
+    Ok(())
+}
+
+pub fn show_already_running_notice(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window("already-running") {
+        if window.is_minimized().unwrap_or(false) {
+            window.unminimize()?;
+        }
+        window.center()?;
+        window.show()?;
+        window.set_focus()?;
     }
 
     Ok(())

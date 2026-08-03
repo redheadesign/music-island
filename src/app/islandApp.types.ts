@@ -6,7 +6,6 @@ import type {
   MediaSessionInfo,
   MediaSnapshot,
   SmtcHealthSnapshot,
-  UpdateCheckResult,
   WaveContext,
   WavePreset,
 } from '../shared/lib/types'
@@ -17,7 +16,6 @@ export interface IslandAppState {
   config: AppConfig
   media: MediaSnapshot | null
   mode: OverlayMode
-  updateMessage: string | null
   autostartError: string | null
   autostartStatus: AutostartSyncEvent | null
   progressMs: number | null
@@ -34,7 +32,6 @@ export interface IslandAppState {
   clearWaveSelection: () => Promise<void>
   resetPosition: () => Promise<void>
   openSettingsWindow: () => Promise<void>
-  checkUpdates: () => Promise<UpdateCheckResult>
   directNeedsRecovery: boolean
   directReloadBusy: boolean
   restartDirect: () => Promise<DirectYandexStatus>

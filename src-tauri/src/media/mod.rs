@@ -9,7 +9,7 @@ use std::{
     },
     time::Instant,
 };
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::{sleep, timeout, Duration};
 
 const ACTIVE_POLL_MS: u64 = 1_000;
@@ -329,6 +329,7 @@ pub fn start_watcher(app: AppHandle) {
                             &format!("direct Yandex probe failed; retaining direct state: {error}"),
                             Duration::from_secs(15),
                         );
+                        maybe_soft_recover_direct(&app, &mut last_direct_status).await;
                         emit_direct_status_if_changed(&app, &mut last_direct_status);
                         if !retain_direct_stale(
                             last_good_at,
@@ -359,6 +360,7 @@ pub fn start_watcher(app: AppHandle) {
                             "direct Yandex probe timed out; retaining direct state",
                             Duration::from_secs(15),
                         );
+                        maybe_soft_recover_direct(&app, &mut last_direct_status).await;
                         emit_direct_status_if_changed(&app, &mut last_direct_status);
                         if !retain_direct_stale(
                             last_good_at,
@@ -531,6 +533,33 @@ fn emit_direct_status_if_changed(
     if previous.as_ref() != Some(&next) {
         let _ = app.emit("direct:status", next.clone());
         *previous = Some(next);
+    }
+}
+
+async fn maybe_soft_recover_direct(
+    app: &AppHandle,
+    previous: &mut Option<crate::yandex::DirectYandexStatus>,
+) {
+    let Some(recovered) = crate::yandex::try_soft_recover().await else {
+        return;
+    };
+    emit_direct_status_if_changed(app, previous);
+    if recovered.state != crate::yandex::DirectYandexState::Connected {
+        return;
+    }
+    let Some(port) = recovered.port else {
+        return;
+    };
+    let Some(config_state) = app.try_state::<crate::config::ConfigState>() else {
+        return;
+    };
+    if let Ok(mut current) = config_state.load() {
+        if current.media.direct_yandex_port != Some(port) {
+            current.media.direct_yandex_port = Some(port);
+            if let Ok(saved) = config_state.save(current) {
+                let _ = app.emit("config:changed", saved);
+            }
+        }
     }
 }
 

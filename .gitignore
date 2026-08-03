@@ -19,6 +19,8 @@ debug-capture*.png
 *.key
 *.key.pub
 *.local
+.local/
+src-tauri/resources-optional/
 
 # Editor directories and files
 .vscode/*

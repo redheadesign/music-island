@@ -9,12 +9,19 @@ import {
   saveConfig,
 } from '../tauriApi'
 
-function withNormalizedLocale(config: AppConfig): AppConfig {
+function withNormalizedConfig(config: AppConfig): AppConfig {
+  const defaults = getDefaultConfig()
   return {
     ...config,
     appearance: {
       ...config.appearance,
       locale: normalizeLocale(config.appearance?.locale),
+    },
+    plugins: {
+      enabled: Array.isArray(config.plugins?.enabled) ? config.plugins.enabled : defaults.plugins.enabled,
+      settings: config.plugins?.settings && typeof config.plugins.settings === 'object'
+        ? config.plugins.settings
+        : defaults.plugins.settings,
     },
   }
 }
@@ -41,7 +48,7 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
     getConfig()
       .then((nextConfig) => {
         if (!mounted) return
-        setConfig(withNormalizedLocale(nextConfig))
+        setConfig(withNormalizedConfig(nextConfig))
         setConfigLoaded(true)
       })
       .catch(() => {
@@ -58,7 +65,7 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
 
   useEffect(() => {
     let cleanup: () => void = () => undefined
-    void onConfigChanged((next) => setConfig(withNormalizedLocale(next))).then((unlisten) => {
+    void onConfigChanged((next) => setConfig(withNormalizedConfig(next))).then((unlisten) => {
       cleanup = unlisten
     })
     return () => cleanup()
@@ -80,8 +87,8 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
   }, [])
 
   const updateConfig = useCallback(async (nextConfig: AppConfig) => {
-    const saved = await saveConfig(withNormalizedLocale(nextConfig))
-    setConfig(withNormalizedLocale(saved))
+    const saved = await saveConfig(withNormalizedConfig(nextConfig))
+    setConfig(withNormalizedConfig(saved))
   }, [])
 
   return {

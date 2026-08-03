@@ -64,7 +64,8 @@ export function getOverlayBounds(
     // Controls sit 44px outside the card. Reserve symmetric native space so
     // Windows can hit-test them while the visual card remains screen-centered.
     cardWidth: (500 * width + ACTIONS_GUTTER_PER_SIDE * 2) * scale,
-    expandedHeight: 300 * scale,
+    // Card + under-island update rail + action gutters need extra vertical room.
+    expandedHeight: 400 * scale,
     collapsedWidth: 220 * scale,
     collapsedHeight: 20 * scale,
   }

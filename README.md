@@ -4,18 +4,21 @@ https://github.com/user-attachments/assets/28c65a1f-1fee-4ee0-a4f6-2fb89cf8c78e
 
 Windows top-edge media island for any SMTC player, plus an optional **direct connection to the native Yandex Music desktop app**.
 
-**0.9.9 · open beta** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
+**1.3.0** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
 
 ## Download
 
-[GitHub Releases](https://github.com/redheadesign/music-island/releases) → `music-island.exe` (portable, unsigned – SmartScreen may warn).
+[GitHub Releases](https://github.com/redheadesign/music-island/releases) → `music-island.exe` (portable; unsigned builds may trigger SmartScreen).
 
 ## Features
 
 - Hover island: artwork, title/artist, progress, play/pause, prev/next
 - **Windows SMTC** – works with Spotify, browsers, and other system media sessions
 - **Direct Yandex Music** – opt-in link to the installed desktop client over a local debug endpoint (127.0.0.1): lower latency, like/dislike, active wave chip, seek, and quick reload when the client drops
-- Settings: width, scale, open delay, preferred SMTC source, protocol switch, autostart, **Ru / En**
+- **Better Voice (Beta)** – local mic cleanup → virtual microphone (VB-Cable); see [`docs/BETTER_VOICE.md`](docs/BETTER_VOICE.md)
+- Settings: Music Island / Better Voice scopes, accent color, width, scale, open delay, preferred SMTC source, protocol switch, autostart, **Ru / En**
+- Portable updates from GitHub Releases (check on start + About → download/replace exe)
+- Startup intro splash (skipped on Windows autostart)
 - Tray: settings / quit · config in `%APPDATA%\Music Island\`
 
 ### Direct Yandex Music
@@ -36,14 +39,16 @@ flowchart LR
   OverlayShell --> SettingsModule[Settings]
 ```
 
-Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/MEDIA_ARCHITECTURE.md`](docs/MEDIA_ARCHITECTURE.md) · [`docs/YANDEX_MUSIC_API.md`](docs/YANDEX_MUSIC_API.md) · [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
+Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/MEDIA_ARCHITECTURE.md`](docs/MEDIA_ARCHITECTURE.md) · [`docs/YANDEX_MUSIC_API.md`](docs/YANDEX_MUSIC_API.md) · [`docs/BETTER_VOICE.md`](docs/BETTER_VOICE.md) · [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 
 ## Limitations
 
+- **Better Voice** is Beta (UI/onboarding still evolving; needs VB-Cable)
 - Direct is experimental (local CDP, may restart the client once, can break after Yandex updates)
 - After long downtime use overlay **Quick reload** / Settings **Restart**
 - Seek click/stutter is usually the player/SMTC, not a double-seek from Music Island
 - SMTC capabilities vary by app
+- Portable exe may be unsigned (SmartScreen)
 
 ## Develop
 

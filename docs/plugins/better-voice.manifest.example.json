@@ -1,0 +1,20 @@
+{
+  "id": "better-voice",
+  "name": "Better Voice",
+  "version": "0.3.0",
+  "icon": "mic",
+  "entryExe": "meowmic.exe",
+  "entryArgs": ["--island-sidecar", "--hidden"],
+  "ipc": {
+    "kind": "tcp",
+    "host": "127.0.0.1",
+    "port": 38472
+  },
+  "island": {
+    "railActions": ["toggle", "open-settings"],
+    "maxButtons": 2
+  },
+  "settings": {
+    "panel": "voice"
+  }
+}

@@ -2,20 +2,13 @@ use crate::window;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, Emitter, Manager,
+    App,
 };
 
 pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
-    let updates = MenuItem::with_id(
-        app,
-        "check_updates",
-        "Check for updates",
-        true,
-        None::<&str>,
-    )?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&settings, &updates, &quit])?;
+    let menu = Menu::with_items(app, &[&settings, &quit])?;
 
     let mut builder = TrayIconBuilder::new().menu(&menu).tooltip("Music Island");
 
@@ -37,11 +30,6 @@ pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "settings" => {
                 let _ = window::open_settings_window(app);
-            }
-            "check_updates" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.emit("overlay:check-updates", ());
-                }
             }
             "quit" => {
                 app.exit(0);

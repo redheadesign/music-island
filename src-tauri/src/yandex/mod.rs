@@ -133,7 +133,6 @@ struct DirectMetadata {
     title: Option<String>,
     artist: Option<String>,
     cover: Option<String>,
-    duration_ms: Option<i64>,
 }
 
 fn metadata_lock() -> &'static RwLock<Option<DirectMetadata>> {
@@ -191,6 +190,101 @@ pub fn record_probe_failure(message: &str) {
             message: format!("Reconnecting direct endpoint ({failures}): {message}"),
             ..current
         });
+    }
+}
+
+const SOFT_RECOVER_MIN_INTERVAL: Duration = Duration::from_secs(20);
+const SOFT_RECOVER_FAILURE_THRESHOLD: u32 = 3;
+const RESTART_REQUIRED_FAILURE_THRESHOLD: u32 = 8;
+
+fn last_soft_recover_at() -> &'static RwLock<Option<Instant>> {
+    static LAST: OnceLock<RwLock<Option<Instant>>> = OnceLock::new();
+    LAST.get_or_init(|| RwLock::new(None))
+}
+
+/// Soft recovery for long downtime: rediscover a debug-enabled client and reattach.
+/// Does **not** kill/relaunch Yandex Music — that stays behind explicit Quick reload / Settings.
+pub async fn try_soft_recover() -> Option<DirectYandexStatus> {
+    let failures = PROBE_FAILURES.load(Ordering::Relaxed);
+    if failures < SOFT_RECOVER_FAILURE_THRESHOLD {
+        return None;
+    }
+
+    let current = status();
+    if !matches!(
+        current.state,
+        DirectYandexState::Connected
+            | DirectYandexState::Degraded
+            | DirectYandexState::RestartRequired
+            | DirectYandexState::Connecting
+    ) {
+        return None;
+    }
+
+    {
+        let last = last_soft_recover_at()
+            .read()
+            .expect("soft recover timestamp lock poisoned");
+        if let Some(at) = *last {
+            if at.elapsed() < SOFT_RECOVER_MIN_INTERVAL {
+                return None;
+            }
+        }
+    }
+    *last_soft_recover_at()
+        .write()
+        .expect("soft recover timestamp lock poisoned") = Some(Instant::now());
+
+    crate::logging::append_event(&format!(
+        "direct Yandex soft recover attempted after {failures} probe failures"
+    ));
+
+    let Some((port, executable)) = find_running_debug_endpoint() else {
+        if failures >= RESTART_REQUIRED_FAILURE_THRESHOLD
+            && matches!(
+                current.state,
+                DirectYandexState::Connected | DirectYandexState::Degraded
+            )
+        {
+            set_status(DirectYandexStatus {
+                state: DirectYandexState::RestartRequired,
+                message: "Direct endpoint is not running. Use Quick reload or reconnect in Settings."
+                    .into(),
+                port: current.port,
+                executable_path: current
+                    .executable_path
+                    .or_else(|| find_executable().map(|path| path.to_string_lossy().into_owned())),
+            });
+            return Some(status());
+        }
+        return None;
+    };
+
+    *actor_lock().lock().await = None;
+    match attach_existing(port, executable).await {
+        Ok(next) => {
+            crate::logging::append_event(&format!(
+                "direct Yandex soft recover succeeded on port={port}"
+            ));
+            Some(next)
+        }
+        Err(error) => {
+            crate::logging::append_event(&format!(
+                "direct Yandex soft recover attach failed: {error:#}"
+            ));
+            if failures >= RESTART_REQUIRED_FAILURE_THRESHOLD {
+                set_status(DirectYandexStatus {
+                    state: DirectYandexState::RestartRequired,
+                    message: format!(
+                        "Existing endpoint was rejected ({error:#}). Use Quick reload or reconnect in Settings."
+                    ),
+                    port: Some(port),
+                    executable_path: current.executable_path,
+                });
+                return Some(status());
+            }
+            None
+        }
     }
 }
 
@@ -412,7 +506,6 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
                 title: title.clone(),
                 artist: artist.clone(),
                 cover: cover.clone(),
-                duration_ms,
             });
         }
     }

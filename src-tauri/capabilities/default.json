@@ -2,13 +2,14 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default permissions for Music Island windows.",
-  "windows": ["main", "settings"],
+  "windows": ["main", "settings", "already-running", "intro"],
   "permissions": [
     "core:default",
     "core:window:allow-hide",
     "core:window:allow-minimize",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
     "opener:default",
-    "shell:default",
     "autostart:default",
     "log:default",
     "updater:default"

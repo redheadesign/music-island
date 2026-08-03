@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{
+    collections::HashMap,
     fs,
     path::PathBuf,
     sync::{Arc, RwLock},
@@ -18,6 +20,17 @@ pub struct AppConfig {
     pub privacy: PrivacyConfig,
     #[serde(default)]
     pub media: MediaConfig,
+    #[serde(default)]
+    pub plugins: PluginsConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginsConfig {
+    #[serde(default)]
+    pub enabled: Vec<String>,
+    #[serde(default)]
+    pub settings: HashMap<String, Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,7 +170,7 @@ impl Default for AppConfig {
             schema_version: 2,
             appearance: AppearanceConfig {
                 theme: Theme::LiquidGlassDark,
-                accent_color: "#8fb8ff".to_string(),
+                accent_color: "#F76100".to_string(),
                 opacity: 0.92,
                 blur_strength: 28,
                 corner_radius: 30,
@@ -195,6 +208,7 @@ impl Default for AppConfig {
                 write_detailed_logs: false,
             },
             media: MediaConfig::default(),
+            plugins: PluginsConfig::default(),
         }
     }
 }

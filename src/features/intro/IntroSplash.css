@@ -1,0 +1,94 @@
+html.intro-root,
+body.intro-root,
+#root:has(.intro-splash) {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+.intro-splash {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+}
+
+.intro-stage {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  transform: translate3d(0, 0, 0);
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  background: transparent;
+  backface-visibility: hidden;
+}
+
+.intro-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(88px, 9vw);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: transparent;
+}
+
+.intro-logo__mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.94;
+  filter: none;
+}
+
+.intro-edge {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity;
+  background: transparent;
+}
+
+.intro-edge,
+.intro-edge > *,
+.intro-edge canvas {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.intro-edge canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.intro-edge__bloom {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(320px, 22vw);
+  height: min(96px, 12vh);
+  transform: translate(-50%, -8%);
+  border-radius: 999px;
+  background: radial-gradient(
+    ellipse 70% 90% at 50% 0%,
+    rgba(247, 97, 0, 0.88) 0%,
+    rgba(255, 138, 51, 0.42) 38%,
+    rgba(255, 208, 168, 0.14) 62%,
+    transparent 78%
+  );
+  filter: blur(6px);
+}

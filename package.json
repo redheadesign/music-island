@@ -1,7 +1,7 @@
 {
   "name": "music-island",
   "private": false,
-  "version": "0.9.9",
+  "version": "1.3.0",
   "description": "Windows top-edge media controller with SMTC and opt-in direct desktop integration.",
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -12,6 +12,7 @@
     "tauri:build": "tauri build",
     "posttauri:build": "node scripts/copy-release-artifacts.mjs",
     "release:copy": "node scripts/copy-release-artifacts.mjs",
+    "plugin:pack-voice": "node scripts/package-better-voice-plugin.mjs",
     "icons:generate": "node scripts/generate-icons.mjs",
     "logs:open": "explorer \"%APPDATA%\\Music Island\\logs\"",
     "build": "tsc -b && vite build",
@@ -22,16 +23,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@paper-design/shaders-react": "^0.0.78",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-autostart": "^2.5.1",
     "@tauri-apps/plugin-log": "^2.8.0",
     "@tauri-apps/plugin-opener": "^2.5.4",
-    "@tauri-apps/plugin-shell": "^2.3.5",
     "@tauri-apps/plugin-updater": "^2.10.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.23.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",

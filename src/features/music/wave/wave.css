@@ -86,7 +86,7 @@
   align-items: center;
   gap: 7px;
   border-radius: 999px;
-  color: #ffff00;
+  color: var(--accent, #f76100);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035)),
     radial-gradient(circle at 18% 0%, rgba(var(--artwork-primary), 0.42), transparent 42%),
@@ -116,14 +116,15 @@
   height: 22px;
   padding: 0;
   place-items: center;
+  border: 0;
   border-radius: 50%;
-  color: rgba(10, 12, 16, 0.9);
-  background: #ffff00;
+  color: #fff;
+  background: var(--accent, #f76100);
   cursor: pointer;
 }
 
 .wave-selection-chip button:hover {
-  background: #ffff66;
+  filter: brightness(1.06);
 }
 
 .wave-selection-chip svg {

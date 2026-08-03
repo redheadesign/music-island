@@ -10,12 +10,23 @@ import {
 } from '../../app/tauriApi'
 import { MusicModule } from '../music/MusicModule'
 import { ActiveSelectionChip } from '../music/wave/ActiveSelectionChip'
+import { useAppUpdater } from '../settings/useAppUpdater'
 import {
   cancelOverlayWindowOperations,
   getOverlayBounds,
   syncOverlayWindow,
   type OverlayWindowPhase,
 } from './overlayWindow'
+import { buildAccentTokens } from '../../shared/lib/accentTheme'
+import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
+import {
+  getUiPrefs,
+  islandUpdateSnoozePatch,
+  shouldShowIslandUpdateBanner,
+  trackUpdateFirstSeen,
+  withUiPrefs,
+} from '../../shared/lib/uiPrefs'
+import { UpdateBanner } from '../../shared/ui/UpdateBanner'
 
 interface OverlayShellProps {
   app: IslandAppState
@@ -51,6 +62,31 @@ export function OverlayShell({ app }: OverlayShellProps) {
     directReloadBusy,
     restartDirect,
   } = app
+  const updater = useAppUpdater(true)
+  const locale = normalizeLocale(config?.appearance.locale)
+  const t = useMemo(() => createTranslator(locale), [locale])
+  const uiPrefs = getUiPrefs(config)
+  const latestVersion = updater.result?.latestVersion ?? null
+  const showIslandUpdate = shouldShowIslandUpdateBanner({
+    hasUpdate: Boolean(updater.result?.hasUpdate) || uiPrefs.forceIslandUpdateBanner === true,
+    latestVersion: latestVersion ?? (uiPrefs.forceIslandUpdateBanner ? 'dev' : null),
+    prefs: uiPrefs,
+  })
+
+  useEffect(() => {
+    if (!config || !updater.result?.hasUpdate || !updater.result.latestVersion) return
+    const patch = trackUpdateFirstSeen(getUiPrefs(config), updater.result.latestVersion)
+    if (!patch) return
+    void updateConfig(withUiPrefs(config, patch))
+  }, [config, updateConfig, updater.result?.hasUpdate, updater.result?.latestVersion])
+
+  const dismissIslandUpdate = () => {
+    if (!config) return
+    void updateConfig(
+      withUiPrefs(config, islandUpdateSnoozePatch(latestVersion ?? 'dev')),
+    )
+  }
+
   const isPinned = Boolean(config?.behavior.pinExpanded)
   const directEnabled = config?.media.protocol === 'yandex-direct'
   const showDirectReload = Boolean(
@@ -343,6 +379,11 @@ export function OverlayShell({ app }: OverlayShellProps) {
     }
   }, [expandedVisible, windowPhase])
 
+  const accentTokens = useMemo(
+    () => buildAccentTokens(config?.appearance.accentColor ?? '#F76100'),
+    [config?.appearance.accentColor],
+  )
+
   const style = useMemo(() => {
     if (!config) {
       return undefined
@@ -356,11 +397,17 @@ export function OverlayShell({ app }: OverlayShellProps) {
       '--island-width': config.layout.width / 100,
       '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,
       '--island-hit-width': `${(500 * (config.layout.width / 100) + 112) * (config.layout.scale / 100)}px`,
-      '--accent': config.appearance.accentColor,
+      '--accent': accentTokens.accent,
+      '--accent-soft': accentTokens.accentSoft,
+      '--accent-strong': accentTokens.accentStrong,
+      '--accent-rgb': accentTokens.accentRgb,
+      '--accent-glow': accentTokens.accentGlow,
+      '--accent-muted': accentTokens.accentMuted,
+      '--accent-ink': accentTokens.accentInk,
       '--artwork-primary': artworkTheme.primary,
       '--artwork-secondary': artworkTheme.secondary,
     } as CSSProperties
-  }, [artworkTheme.primary, artworkTheme.secondary, config])
+  }, [accentTokens, artworkTheme.primary, artworkTheme.secondary, config])
 
   const clearCloseTimer = () => {
     if (closeTimerRef.current) {
@@ -756,6 +803,19 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 onDirectReload={() => void handleDirectReload()}
               />
             </section>
+            {showIslandUpdate ? (
+              <UpdateBanner
+                variant="island"
+                title={t('island.updateTitle')}
+                primaryLabel={t('island.updateNow')}
+                laterLabel={t('island.updateLater')}
+                onPrimary={() => {
+                  void openSettingsWindow()
+                  void updater.install()
+                }}
+                onLater={dismissIslandUpdate}
+              />
+            ) : null}
             {waveContext?.active ? (
               <ActiveSelectionChip
                 selection={waveContext.active}
@@ -842,7 +902,7 @@ function isPointerOverExpandedSurface(
   const viewportY = localY * (window.innerHeight / windowHeight)
   const element = document.elementFromPoint(viewportX, viewportY)
   return Boolean(element?.closest(
-    '.island-hover-zone, .island-actions, .island-card, .wave-wheel, .wave-selection-chip',
+    '.island-hover-zone, .island-actions, .island-plugins, .island-card, .island-update-rail, .wave-wheel, .wave-selection-chip',
   ))
 }
 

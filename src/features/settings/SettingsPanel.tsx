@@ -1,4 +1,4 @@
-import { Activity, CheckCircle2, Copy, Info, Music2, Power, RadioTower, RotateCcw, TriangleAlert } from 'lucide-react'
+import { Activity, CheckCircle2, Copy, Info, Music2, Power, RadioTower, RotateCcw, TriangleAlert, Wrench } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -10,9 +10,11 @@ import {
   previewConfig,
   getDefaultConfig,
   openExternalUrl,
+  replayIntroWindow,
 } from '../../app/tauriApi'
-
-const APP_VERSION = '0.9.9'
+import { VoiceSettingsView } from '../plugins/voice/VoiceSettingsView'
+import { AccentColorPicker } from './AccentColorPicker'
+import { useAppUpdater } from './useAppUpdater'
 import type {
   AppConfig,
   AutostartSyncEvent,
@@ -22,8 +24,20 @@ import type {
   SmtcHealthSnapshot,
 } from '../../shared/lib/types'
 import { createTranslator, directStatusMessage, normalizeLocale } from '../../shared/i18n/messages'
+import { applyAccentTheme, normalizeHexColor } from '../../shared/lib/accentTheme'
+import {
+  getUiPrefs,
+  shouldShowSettingsUpdateBanner,
+  trackUpdateFirstSeen,
+  withUiPrefs,
+} from '../../shared/lib/uiPrefs'
+import { GitHubBrandIcon, TelegramBrandIcon } from '../../shared/ui/BrandIcons'
 import { GlassSurface } from '../../shared/ui/GlassSurface'
+import { RangeSlider } from '../../shared/ui/RangeSlider'
 import { StatusChip } from '../../shared/ui/StatusChip'
+import { UpdateBanner } from '../../shared/ui/UpdateBanner'
+
+const APP_VERSION = '1.3.0'
 
 interface SettingsPanelProps {
   config: AppConfig
@@ -47,6 +61,8 @@ export function SettingsPanel({
   autostartStatus = null,
 }: SettingsPanelProps) {
   const [draft, setDraft] = useState(config)
+  const uiPrefs = getUiPrefs(draft)
+  const updater = useAppUpdater(true, Boolean(uiPrefs.forceSameVersionUpdate))
   const [showConsent, setShowConsent] = useState(false)
   const [directStatus, setDirectStatus] = useState<DirectYandexStatus>({
     state: 'disabled',
@@ -61,11 +77,26 @@ export function SettingsPanel({
 
   const locale = normalizeLocale(draft.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
+  const [settingsScope, setSettingsScope] = useState<'island' | 'voice'>('island')
+  const latestVersion = updater.result?.latestVersion ?? null
+  const showSettingsUpdateBanner = shouldShowSettingsUpdateBanner({
+    hasUpdate: Boolean(updater.result?.hasUpdate) || uiPrefs.forceSettingsUpdateBanner === true,
+    latestVersion: latestVersion ?? (uiPrefs.forceSettingsUpdateBanner ? 'dev' : null),
+    prefs: uiPrefs,
+  })
 
   useEffect(() => setDraft(config), [config])
   useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])
+
+  useEffect(() => {
+    applyAccentTheme(draft.appearance.accentColor)
+    const root = document.querySelector('.settings-window-root')
+    if (root instanceof HTMLElement) {
+      applyAccentTheme(draft.appearance.accentColor, root)
+    }
+  }, [draft.appearance.accentColor])
   useEffect(() => {
     let active = true
     let cleanup: () => void = () => undefined
@@ -98,6 +129,14 @@ export function SettingsPanel({
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => onChange(next), 280)
   }
+
+  useEffect(() => {
+    if (!updater.result?.hasUpdate || !updater.result.latestVersion) return
+    const patch = trackUpdateFirstSeen(getUiPrefs(draft), updater.result.latestVersion)
+    if (!patch) return
+    previewAndSave(withUiPrefs(draft, patch))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- track first-seen once per version
+  }, [updater.result?.hasUpdate, updater.result?.latestVersion])
 
   const patchLayout = (layout: Partial<AppConfig['layout']>) =>
     previewAndSave({ ...draft, layout: { ...draft.layout, ...layout } })
@@ -211,7 +250,27 @@ export function SettingsPanel({
   return (
     <section className="settings-panel" aria-label={t('settings.title')}>
       <header className="settings-hero">
-        <h1>{t('settings.title')}</h1>
+        <div className="settings-scope-switch" role="tablist" aria-label={t('settings.scope')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={settingsScope === 'island'}
+            className={`settings-scope-switch__btn ${settingsScope === 'island' ? 'settings-scope-switch__btn--active' : ''}`}
+            onClick={() => setSettingsScope('island')}
+          >
+            {t('settings.scopeIsland')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={settingsScope === 'voice'}
+            className={`settings-scope-switch__btn settings-scope-switch__btn--voice ${settingsScope === 'voice' ? 'settings-scope-switch__btn--active' : ''}`}
+            onClick={() => setSettingsScope('voice')}
+          >
+            <span className="settings-scope-switch__label">{t('settings.scopeVoice')}</span>
+            <span className="settings-scope-badge">{t('settings.scopeVoiceBeta')}</span>
+          </button>
+        </div>
         <div className="locale-switch" role="group" aria-label="Language">
           <button
             type="button"
@@ -232,6 +291,53 @@ export function SettingsPanel({
         </div>
       </header>
 
+      {settingsScope === 'voice' ? (
+        <VoiceSettingsView
+          locale={locale}
+          showExperimentalBanner={
+            Boolean(uiPrefs.forceVoiceExperimentalBanner)
+            || !uiPrefs.dismissedVoiceExperimentalBanner
+          }
+          onDismissExperimentalBanner={() =>
+            previewAndSave(
+              withUiPrefs(draft, {
+                dismissedVoiceExperimentalBanner: true,
+                forceVoiceExperimentalBanner: false,
+              }),
+            )
+          }
+        />
+      ) : null}
+
+      {settingsScope === 'island' ? (
+      <>
+      {showSettingsUpdateBanner ? (
+        <UpdateBanner
+          variant="settings"
+          title={
+            latestVersion
+              ? `${t('settings.updateBannerTitleVersion')} ${latestVersion}`
+              : t('settings.updateBannerTitle')
+          }
+          releaseNotes={updater.result?.releaseNotes}
+          emptyNotesLabel={t('settings.updateNotesEmpty')}
+          expandLabel={t('settings.updateNotesExpand')}
+          collapseLabel={t('settings.updateNotesCollapse')}
+          primaryLabel={t('settings.updateNow')}
+          laterLabel={t('settings.updateLater')}
+          onPrimary={() => void updater.install()}
+          onLater={() =>
+            previewAndSave(
+              withUiPrefs(draft, {
+                dismissedUpdateVersion: latestVersion ?? 'dev',
+                forceSettingsUpdateBanner: false,
+              }),
+            )
+          }
+          onOpenUrl={(url) => void openExternalUrl(url)}
+        />
+      ) : null}
+
       <SettingsSection
         title={t('settings.island')}
         icon={<Music2 />}
@@ -242,13 +348,20 @@ export function SettingsPanel({
           </button>
         )}
       >
+        <AccentColorPicker
+          value={draft.appearance.accentColor}
+          label={t('settings.accentColor')}
+          customLabel={t('settings.accentCustom')}
+          onChange={(hex) => patchAppearance({ accentColor: normalizeHexColor(hex) })}
+        />
+
         <label className="settings-control-row">
           <span>
             <strong>{t('settings.width')}</strong>
             <small>{t('settings.widthHint')}</small>
           </span>
           <div className="range-control">
-            <input type="range" min="80" max="125" value={draft.layout.width} onChange={(event) => patchLayout({ width: Number(event.currentTarget.value), size: 'medium' })} />
+            <RangeSlider min={80} max={125} value={draft.layout.width} onChange={(event) => patchLayout({ width: Number(event.currentTarget.value), size: 'medium' })} />
             <output>{draft.layout.width}%</output>
           </div>
         </label>
@@ -259,7 +372,7 @@ export function SettingsPanel({
             <small>{t('settings.scaleHint')}</small>
           </span>
           <div className="range-control">
-            <input type="range" min="70" max="120" value={draft.layout.scale} onChange={(event) => patchLayout({ scale: Number(event.currentTarget.value) })} />
+            <RangeSlider min={70} max={120} value={draft.layout.scale} onChange={(event) => patchLayout({ scale: Number(event.currentTarget.value) })} />
             <output>{draft.layout.scale}%</output>
           </div>
         </label>
@@ -270,7 +383,7 @@ export function SettingsPanel({
             <small>{t('settings.hoverDelayHint')}</small>
           </span>
           <div className="range-control">
-            <input type="range" min="80" max="1200" step="20" value={draft.behavior.hoverDelayMs} onChange={(event) => patchBehavior({ hoverDelayMs: Number(event.currentTarget.value) })} />
+            <RangeSlider min={80} max={1200} step={20} value={draft.behavior.hoverDelayMs} onChange={(event) => patchBehavior({ hoverDelayMs: Number(event.currentTarget.value) })} />
             <output>{draft.behavior.hoverDelayMs} ms</output>
           </div>
         </label>
@@ -371,39 +484,186 @@ export function SettingsPanel({
 
       <SettingsSection title={t('settings.about')} icon={<Info />}>
         <div className="about-block">
-          <strong>Music Island v{APP_VERSION}</strong>
-          <p>{t('settings.aboutBody')}</p>
+          <p className="about-block__body">
+            {t('settings.aboutBody')}{' '}
+            <button
+              type="button"
+              className="about-inline-link"
+              onClick={() =>
+                void openExternalUrl('https://github.com/redheadesign/music-island/blob/master/LICENSE')
+              }
+            >
+              {t('settings.aboutGplLink')}
+            </button>
+            {t('settings.aboutBodyAfterLicense')}
+          </p>
+
+          <div className="about-update about-update--elevated">
+            <strong className="about-update__version">Music Island v{APP_VERSION}</strong>
+            <div className="about-update-row">
+              <span className={`about-update-status about-update-status--${updater.status}`}>
+                {updater.status === 'checking'
+                  ? t('settings.checkingUpdates')
+                  : updater.status === 'upToDate'
+                    ? t('settings.upToDate')
+                    : updater.status === 'available'
+                      ? `${t('settings.updateAvailable')}${
+                          updater.result?.latestVersion ? ` · v${updater.result.latestVersion}` : ''
+                        }`
+                      : updater.status === 'downloading'
+                        ? t('settings.downloadingUpdate')
+                        : updater.status === 'installing'
+                          ? t('settings.installingUpdate')
+                          : updater.status === 'error'
+                            ? t('settings.updateError')
+                            : updater.result?.message ?? t('settings.checkForUpdates')}
+              </span>
+              {updater.status === 'available' ? (
+                <button
+                  type="button"
+                  className="about-link about-link--accent"
+                  onClick={() => void updater.install()}
+                >
+                  {t('settings.downloadUpdate')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="about-link"
+                  disabled={
+                    updater.status === 'checking'
+                    || updater.status === 'downloading'
+                    || updater.status === 'installing'
+                  }
+                  onClick={() => void updater.check(true)}
+                >
+                  {t('settings.checkForUpdates')}
+                </button>
+              )}
+            </div>
+            {(updater.status === 'downloading' || updater.status === 'installing') && (
+              <div
+                className="about-update-progress"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={updater.progress?.percent ?? 0}
+              >
+                <div className="about-update-progress__track">
+                  <div
+                    className="about-update-progress__fill"
+                    style={{
+                      width: `${updater.progress?.percent ?? (updater.status === 'installing' ? 100 : 0)}%`,
+                    }}
+                  />
+                </div>
+                <small>
+                  {t('settings.updateProgress')}
+                  {updater.progress?.percent != null ? ` · ${updater.progress.percent}%` : ''}
+                  {updater.progress?.message ? ` — ${updater.progress.message}` : ''}
+                </small>
+              </div>
+            )}
+            {updater.error ? <p className="about-update-error">{updater.error}</p> : null}
+          </div>
+
           <div className="about-links">
             <button
               type="button"
-              className="about-link"
+              className="about-social about-social--telegram"
               onClick={() => void openExternalUrl('https://t.me/redheadesigner')}
             >
-              Telegram · @redheadesigner
+              <TelegramBrandIcon size={20} />
+              <span>Telegram</span>
             </button>
             <button
               type="button"
-              className="about-link"
+              className="about-social about-social--github"
               onClick={() => void openExternalUrl('https://github.com/redheadesign/music-island')}
             >
-              {t('settings.githubSource')}
-            </button>
-            <button
-              type="button"
-              className="about-link"
-              onClick={() => void openExternalUrl('https://github.com/redheadesign/music-island/blob/master/LICENSE')}
-            >
-              {t('settings.license')}
+              <GitHubBrandIcon size={20} />
+              <span>GitHub</span>
             </button>
           </div>
-          <small>{t('settings.aboutLicense')}</small>
         </div>
       </SettingsSection>
+
+      </>
+      ) : null}
+
+      {uiPrefs.developerMode ? (
+        <SettingsSection title={t('settings.devPreview')} icon={<Wrench />}>
+          <div className="settings-dev-panel">
+            <Switch
+              label={t('settings.devForceSettingsUpdate')}
+              checked={Boolean(uiPrefs.forceSettingsUpdateBanner)}
+              onChange={(checked) =>
+                previewAndSave(withUiPrefs(draft, { forceSettingsUpdateBanner: checked }))
+              }
+            />
+            <Switch
+              label={t('settings.devForceIslandUpdate')}
+              checked={Boolean(uiPrefs.forceIslandUpdateBanner)}
+              onChange={(checked) =>
+                previewAndSave(withUiPrefs(draft, { forceIslandUpdateBanner: checked }))
+              }
+            />
+            <Switch
+              label={t('settings.devForceVoiceBanner')}
+              checked={Boolean(uiPrefs.forceVoiceExperimentalBanner)}
+              onChange={(checked) =>
+                previewAndSave(
+                  withUiPrefs(draft, {
+                    forceVoiceExperimentalBanner: checked,
+                    ...(checked ? { dismissedVoiceExperimentalBanner: false } : {}),
+                  }),
+                )
+              }
+            />
+            <Switch
+              label={t('settings.devForceSameVersionUpdate')}
+              checked={Boolean(uiPrefs.forceSameVersionUpdate)}
+              onChange={(checked) =>
+                previewAndSave(withUiPrefs(draft, { forceSameVersionUpdate: checked }))
+              }
+            />
+            <button
+              type="button"
+              className="secondary-button settings-dev-replay"
+              onClick={() => void replayIntroWindow()}
+            >
+              {t('settings.devReplayIntro')}
+            </button>
+          </div>
+        </SettingsSection>
+      ) : null}
 
       <footer className="settings-footer">
         <button type="button" className="settings-footer-action" onClick={onCopyDiagnostics}>
           <Copy />
           {t('settings.copyDiagnostics')}
+        </button>
+        <button
+          type="button"
+          className="settings-footer-action settings-footer-action--dev"
+          onClick={() =>
+            previewAndSave(
+              withUiPrefs(draft, {
+                developerMode: !uiPrefs.developerMode,
+                ...(uiPrefs.developerMode
+                  ? {
+                      forceSettingsUpdateBanner: false,
+                      forceIslandUpdateBanner: false,
+                      forceVoiceExperimentalBanner: false,
+                      forceSameVersionUpdate: false,
+                    }
+                  : {}),
+              }),
+            )
+          }
+        >
+          <Wrench />
+          {uiPrefs.developerMode ? t('settings.devModeOn') : t('settings.devMode')}
         </button>
       </footer>
 

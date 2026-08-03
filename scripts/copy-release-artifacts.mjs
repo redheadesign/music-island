@@ -15,6 +15,8 @@ const artifactPatterns = [
 await mkdir(releaseDir, { recursive: true })
 await rm(path.join(releaseDir, 'music-island.exe'), { force: true })
 await rm(path.join(releaseDir, 'README.txt'), { force: true })
+// Voice assets live inside the exe → AppData; never ship a sibling resources/ folder.
+await rm(path.join(releaseDir, 'resources'), { recursive: true, force: true })
 
 const copied = []
 
@@ -42,7 +44,8 @@ if (copied.length === 0) {
 const readme = [
   'Music Island release artifacts',
   '',
-  'Portable Windows build. No installer is required.',
+  'Portable Windows build. Single executable — no installer, no resources folder.',
+  'Better Voice assets extract once to %APPDATA%\\Music Island\\voice\\ on first use.',
   '',
   ...copied.map((artifact) => `- ${artifact.label}: ${artifact.fileName} (${artifact.sizeMb} MB)`),
   '',

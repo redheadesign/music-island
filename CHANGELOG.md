@@ -1,5 +1,110 @@
 # Changelog
 
+## 1.3.0 — 2026-08-03
+
+Public portable release. **GPL-3.0**. Distribution stays a single `music-island.exe` forever (GitHub Releases → download/replace).
+
+### Highlights
+
+- **Better Voice (Beta)** built into Music Island (in-process): denoise, gain/AGC, EQ, FX, meters, fox mascot, in-app guide; needs VB-Cable once.
+- **Portable updates** from GitHub Releases: check on start, About progress UI, download → swap running exe → relaunch.
+- **Startup intro** splash (skipped on `--startup` autostart).
+- **Settings IA:** Music Island | Better Voice scope switch; titlebar «Settings»; primary accent color.
+- Single-instance lock + already-running notice.
+
+### Better Voice
+
+- Settings tab marked **Beta**; dismissible beta notice + full guide page.
+- Devices, noise models (DeepFilter / RNNoise), AGC, EQ presets, FX chips, live meters/spectrum.
+- Sleep / wake / live / to-sleep fox WebM mascot; Start/Stop waits for transitions.
+- Engine auto-resume after quit; High process priority + MMCSS Pro Audio while running.
+- Voice runtime/models embedded and extracted to `%APPDATA%\Music Island\voice\`.
+- VB-Cable not embedded — install via official download + guide.
+
+### Updates UX
+
+- About: version + check/install status on an elevated card; social links with brand icons; GPL mentioned inline in the description.
+- Settings update banner: full GitHub release markdown, «See all» expand, Update / Later (no close X).
+- Island nag: «Update available» + Update / Later only; Later snoozes for 30 days, then can return.
+
+### App shell / appearance
+
+- Accent swatches + custom picker (default `#F76100`); section titles tinted from accent.
+- Intro window; settings window title shows localized Settings.
+
+### Known issues
+
+- Better Voice remains **Beta** (UI/onboarding still evolving; heavy CPU may glitch audio).
+- Direct Yandex Music stays opt-in / experimental.
+- Builds are unsigned (SmartScreen may warn) — Authenticode is optional later; does not change the portable update model.
+- SMTC seek click remains a protocol/player limitation (#3).
+- No signed in-house virtual microphone driver (VB-Cable required).
+
+### Development history
+
+Entries **0.9.10–0.9.12** below are intermediate local builds rolled into this public release.
+
+## 0.9.12 — 2026-08-03
+
+Local build toward 1.3.0. **GPL-3.0**.
+
+### Startup intro
+
+- Separate transparent `intro` window; single SVG mark (hold → spin → dip → fly → orange top flash).
+- Skipped on Windows autostart (`--startup`); always plays on manual exe launch.
+- Brand splash tones from `#F76100`.
+
+### Appearance
+
+- Primary color setting (swatches + custom picker); UI accents derive from it. Default `#F76100`.
+
+### Better Voice
+
+- Remembers whether the engine was running and auto-resumes it on the next app launch.
+- VB-Cable driver is no longer embedded — install guide + official download link only.
+- Portable still embeds DeepFilter / voice models (one-file delivery); that is most of the size vs pre-voice builds.
+
+### Portable updates (GitHub Releases)
+
+- On every app start, Music Island checks `redheadesign/music-island` latest release.
+- About section: **Check for updates**, status text (up to date / available / errors), download progress bar, **Download and install**.
+- Portable replace: download to temp → swap running `music-island.exe` → relaunch → delete `.old` and temp staging (no leftover clutter on success or failed download).
+
+### Better Voice UI
+
+- First control block: centered composition — FX chips on top, mascot, Start under it; card substrate removed; more bottom padding.
+
+## 0.9.11 — 2026-08-03
+
+Open beta. Still **GPL-3.0**. Local portable build for testing (not pushed to GitHub yet).
+
+### Better Voice (experimental / in-process)
+
+- Better Voice is built into Music Island (no sidecar plugin process).
+- Settings tab **Better Voice** marked **Beta**, with an experimental banner in the panel.
+- Voice runtime files are embedded in the exe and extracted once to `%APPDATA%\\Music Island\\voice\\` — no `resources/` folder next to the portable build.
+- Control block: fox mascot (sleep / live) + primary Start/Stop.
+- Spectrum + level meters, dark custom dropdowns, section headers aligned with Island settings.
+- While voice is running: process priority **High** + MMCSS **Pro Audio / Critical** on capture, DSP, and render threads (helps under screen-share / heavy browser load).
+- Virtual mic path: VB-Cable (Windows needs a driver; Krisp-style convenience needs a signed in-house driver — not shipped yet).
+
+### Fixes (carried from 0.9.10)
+
+- Tray: removed **Check for updates** (#25).
+- Single-instance lock + centered already-running notice (#24).
+- Direct soft recovery after long downtime (#19).
+
+### Known issues
+
+- Better Voice UI/UX still rough; quality under extreme CPU load may still glitch.
+- SMTC seek click remains a protocol/player limitation (#3).
+- Presence animation (#23) and themes (#26) still open.
+- Builds are still unsigned (SmartScreen).
+
+## 0.9.10 — 2026-08-02
+
+Local work toward plugin host (superseded by in-process Better Voice in 0.9.11).
+
 ## 0.9.9 — 2026-07-29
 
 Open beta. Still **GPL-3.0**.

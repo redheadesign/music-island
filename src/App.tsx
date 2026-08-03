@@ -1,8 +1,11 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Minus, X } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
-import { copyDiagnostics } from './app/tauriApi'
+import { checkForUpdates, copyDiagnostics } from './app/tauriApi'
 import { useIslandApp } from './app/useIslandApp'
+import { IntroSplash } from './features/intro/IntroSplash'
+import { resumeVoiceEngineIfNeeded } from './features/plugins/voice/resumeVoiceEngine'
+import { AlreadyRunningNotice } from './features/notice/AlreadyRunningNotice'
 import { OverlayShell } from './features/overlay/OverlayShell'
 import { SettingsPanel } from './features/settings/SettingsPanel'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
@@ -11,13 +14,36 @@ import './App.css'
 
 function App() {
   const windowLabel = isTauriRuntime() ? getCurrentWindow().label : 'main'
-  const app = useIslandApp({ mediaEnabled: windowLabel !== 'settings' })
+
+  // Intro is a separate Tauri window — keep it free of island hooks/state.
+  if (windowLabel === 'intro') {
+    return <IntroSplash />
+  }
+
+  return <IslandWindows windowLabel={windowLabel} />
+}
+
+function IslandWindows({ windowLabel }: { windowLabel: string }) {
+  const mediaEnabled = windowLabel === 'main'
+  const app = useIslandApp({ mediaEnabled })
   const locale = normalizeLocale(app.config?.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
 
   useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])
+
+  useEffect(() => {
+    if (windowLabel !== 'main' || !isTauriRuntime()) return
+    void checkForUpdates().catch((error) => {
+      console.warn('Startup update check failed', error)
+    })
+    void resumeVoiceEngineIfNeeded()
+  }, [windowLabel])
+
+  if (windowLabel === 'already-running') {
+    return <AlreadyRunningNotice locale={locale} />
+  }
 
   if (windowLabel === 'settings') {
     if (!app.config) {
@@ -27,7 +53,7 @@ function App() {
     return (
       <main className="settings-window-root">
         <header className="settings-titlebar" data-tauri-drag-region>
-          <strong className="settings-titlebar-drag">Music Island</strong>
+          <strong className="settings-titlebar-drag">{t('settings.title')}</strong>
           <div className="settings-window-actions" data-tauri-drag-region="false">
             <IconButton data-tauri-drag-region="false" aria-label={t('settings.minimize')} onClick={() => void runWindowAction('minimize')}><Minus /></IconButton>
             <IconButton data-tauri-drag-region="false" aria-label={t('settings.close')} onClick={() => void runWindowAction('hide')}><X /></IconButton>

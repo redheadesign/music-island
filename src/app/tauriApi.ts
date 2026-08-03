@@ -8,9 +8,11 @@ import type {
   MediaCommand,
   MediaSessionInfo,
   MediaSnapshot,
+  PluginRuntimeInfo,
   SmtcHealthSnapshot,
   TimelineUpdate,
   UpdateCheckResult,
+  UpdateProgressEvent,
   WaveCatalogResult,
   WaveSelectionResult,
 } from '../shared/lib/types'
@@ -246,6 +248,14 @@ export async function openSettingsWindow(): Promise<void> {
   await invoke('open_settings_window')
 }
 
+export async function replayIntroWindow(): Promise<void> {
+  if (!isTauriRuntime()) {
+    return
+  }
+
+  await invoke('replay_intro_window')
+}
+
 export async function copyDiagnostics(): Promise<string> {
   if (!isTauriRuntime()) {
     return 'Diagnostics are available in the installed Tauri application.'
@@ -254,17 +264,36 @@ export async function copyDiagnostics(): Promise<string> {
   return invoke<string>('copy_diagnostics')
 }
 
-export async function checkForUpdates(): Promise<UpdateCheckResult> {
+export async function checkForUpdates(forceSameVersion = false): Promise<UpdateCheckResult> {
   if (!isTauriRuntime()) {
     return {
       enabled: false,
       hasUpdate: false,
       currentVersion: 'dev',
+      latestVersion: null,
+      downloadUrl: null,
+      releaseNotes: null,
       message: 'Updater is disabled in browser preview.',
     }
   }
 
-  return invoke<UpdateCheckResult>('check_for_updates')
+  return invoke<UpdateCheckResult>('check_for_updates', { forceSameVersion })
+}
+
+export async function downloadAndInstallUpdate(forceSameVersion = false): Promise<void> {
+  if (!isTauriRuntime()) {
+    throw new Error('Updater is disabled in browser preview.')
+  }
+  await invoke('download_and_install_update', { forceSameVersion })
+}
+
+export async function onUpdaterProgress(
+  callback: (event: UpdateProgressEvent) => void,
+): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
+  }
+  return listen<UpdateProgressEvent>('updater:progress', (event) => callback(event.payload))
 }
 
 export async function onMediaUpdate(callback: (snapshot: MediaSnapshot) => void): Promise<() => void> {
@@ -321,7 +350,7 @@ export async function onAutostartSync(callback: (event: AutostartSyncEvent) => v
   return listen<AutostartSyncEvent>('autostart:sync', (event) => callback(event.payload))
 }
 
-export async function onOverlayAction(action: 'open-settings' | 'check-updates', callback: () => void): Promise<() => void> {
+export async function onOverlayAction(action: 'open-settings', callback: () => void): Promise<() => void> {
   if (!isTauriRuntime()) {
     return () => undefined
   }
@@ -334,22 +363,62 @@ export function getDefaultConfig(): AppConfig {
 }
 
 export async function openExternalUrl(url: string): Promise<void> {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    throw new Error('Invalid URL')
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Only http(s) URLs can be opened')
+  }
+
   if (!isTauriRuntime()) {
-    window.open(url, '_blank', 'noopener,noreferrer')
+    window.open(parsed.toString(), '_blank', 'noopener,noreferrer')
     return
   }
-  await openUrl(url)
+  await openUrl(parsed.toString())
 }
 
 function isTauriRuntime(): boolean {
   return '__TAURI_INTERNALS__' in window
 }
 
+export async function listPlugins(): Promise<PluginRuntimeInfo[]> {
+  if (!isTauriRuntime()) return []
+  return invoke<PluginRuntimeInfo[]>('list_plugins')
+}
+
+export async function setPluginEnabled(id: string, enabled: boolean): Promise<PluginRuntimeInfo[]> {
+  if (!isTauriRuntime()) return []
+  return invoke<PluginRuntimeInfo[]>('set_plugin_enabled', { id, enabled })
+}
+
+export async function pluginInvoke<T = unknown>(
+  id: string,
+  method: string,
+  params?: unknown,
+): Promise<T> {
+  if (!isTauriRuntime()) {
+    throw new Error('Plugins require the desktop app')
+  }
+  return invoke<T>('plugin_invoke', { id, method, params: params ?? null })
+}
+
+export async function onPluginsChanged(
+  callback: (plugins: PluginRuntimeInfo[]) => void,
+): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
+  }
+  return listen<PluginRuntimeInfo[]>('plugins:changed', (event) => callback(event.payload))
+}
+
 const defaultConfig: AppConfig = {
   schemaVersion: 2,
   appearance: {
     theme: 'liquid-glass-dark',
-    accentColor: '#8fb8ff',
+    accentColor: '#F76100',
     opacity: 0.92,
     blurStrength: 28,
     cornerRadius: 30,
@@ -391,5 +460,9 @@ const defaultConfig: AppConfig = {
     preferredSourceAppId: null,
     directYandexConsent: false,
     directYandexPort: null,
+  },
+  plugins: {
+    enabled: [],
+    settings: {},
   },
 }

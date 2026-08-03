@@ -3,8 +3,10 @@ mod config;
 mod diagnostics;
 mod logging;
 mod media;
+mod plugins;
 mod tray;
 mod updater;
+mod voice;
 mod window;
 mod yandex;
 
@@ -142,6 +144,16 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn close_intro_window(app: tauri::AppHandle) -> Result<(), String> {
+    window::close_intro_window(&app).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn replay_intro_window(app: tauri::AppHandle) -> Result<(), String> {
+    window::replay_intro_window(&app).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn copy_diagnostics(app: tauri::AppHandle) -> Result<String, String> {
     diagnostics::collect(&app)
         .await
@@ -149,8 +161,21 @@ async fn copy_diagnostics(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn check_for_updates(app: tauri::AppHandle) -> Result<updater::UpdateCheckResult, String> {
-    updater::check_for_updates(app)
+async fn check_for_updates(
+    app: tauri::AppHandle,
+    force_same_version: Option<bool>,
+) -> Result<updater::UpdateCheckResult, String> {
+    updater::check_for_updates(app, force_same_version.unwrap_or(false))
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn download_and_install_update(
+    app: tauri::AppHandle,
+    force_same_version: Option<bool>,
+) -> Result<(), String> {
+    updater::download_and_install_update(app, force_same_version.unwrap_or(false))
         .await
         .map_err(|error| error.to_string())
 }
@@ -209,14 +234,18 @@ pub fn run() {
     logging::install_panic_hook();
     logging::append_event("app bootstrap started");
     let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            logging::append_event("second instance blocked; showing already-running notice");
+            let _ = window::show_already_running_notice(app);
+        }))
         .plugin(tauri_plugin_log::Builder::new().build())
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--startup"]),
         ))
         .manage(ConfigState::new())
+        .manage(voice::VoiceEngineState::new())
         .invoke_handler(tauri::generate_handler![
             get_config,
             save_config,
@@ -235,11 +264,20 @@ pub fn run() {
             set_overlay_bounds,
             get_collapsed_gesture_state,
             open_settings_window,
+            close_intro_window,
+            replay_intro_window,
             copy_diagnostics,
-            check_for_updates
+            check_for_updates,
+            download_and_install_update,
+            plugins::list_plugins,
+            plugins::set_plugin_enabled,
+            plugins::plugin_invoke,
+            plugins::get_plugin_settings_blob,
+            plugins::save_plugin_settings_blob,
+            voice::voice_invoke
         ])
         .on_window_event(|window, event| {
-            if window.label() == "settings" {
+            if matches!(window.label(), "settings" | "already-running") {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window.hide();
@@ -248,6 +286,7 @@ pub fn run() {
         })
         .setup(|app| {
             logging::append_event("setup started");
+            updater::cleanup_stale_artifacts();
             let handle = app.handle().clone();
             match window::setup_overlay_window(&handle) {
                 Ok(()) => logging::append_event("overlay window setup ok"),
@@ -260,6 +299,16 @@ pub fn run() {
                 Err(error) => {
                     logging::append_event(&format!("settings window setup failed: {error}"))
                 }
+            }
+            match window::setup_already_running_window(&handle) {
+                Ok(()) => logging::append_event("already-running window setup ok"),
+                Err(error) => logging::append_event(&format!(
+                    "already-running window setup failed: {error}"
+                )),
+            }
+            match window::setup_intro_window(&handle) {
+                Ok(()) => logging::append_event("intro window setup ok"),
+                Err(error) => logging::append_event(&format!("intro window setup failed: {error}")),
             }
             match tray::setup_tray(app) {
                 Ok(()) => logging::append_event("tray setup ok"),
@@ -302,6 +351,7 @@ pub fn run() {
             }
             media::start_watcher(handle.clone());
             window::start_gesture_watcher(app.handle().clone());
+            plugins::bootstrap(&handle);
             logging::append_event("media watcher started");
             Ok(())
         });

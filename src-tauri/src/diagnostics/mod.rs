@@ -1,6 +1,6 @@
-use crate::{config, logging, media, window, yandex};
+use crate::{config, logging, media, plugins, window, yandex};
 use serde::Serialize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,10 +16,16 @@ struct DiagnosticsReport {
     media_metrics: media::MediaMetrics,
     direct_metrics: yandex::DirectMetrics,
     window_metrics: window::WindowMetrics,
+    plugins: Vec<plugins::PluginRuntimeInfo>,
 }
 
 pub async fn collect(app: &AppHandle) -> anyhow::Result<String> {
     let package = app.package_info();
+    let plugins_runtime = if let Ok(config) = app.state::<config::ConfigState>().load() {
+        plugins::list_runtime(&config.plugins.enabled)
+    } else {
+        plugins::runtime_snapshot()
+    };
     let report = DiagnosticsReport {
         app_version: package.version.to_string(),
         os: std::env::consts::OS.to_string(),
@@ -33,6 +39,7 @@ pub async fn collect(app: &AppHandle) -> anyhow::Result<String> {
         media_metrics: media::metrics(),
         direct_metrics: yandex::metrics().await,
         window_metrics: window::metrics(),
+        plugins: plugins_runtime,
     };
 
     Ok(serde_json::to_string_pretty(&report)?)

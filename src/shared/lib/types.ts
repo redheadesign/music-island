@@ -164,12 +164,51 @@ export interface AppConfig {
     directYandexConsent: boolean
     directYandexPort: number | null
   }
+  plugins: {
+    enabled: string[]
+    settings: Record<string, unknown>
+  }
+}
+
+export type PluginRuntimeState =
+  | 'stopped'
+  | 'starting'
+  | 'running'
+  | 'unhealthy'
+  | 'missing'
+  | 'error'
+
+export interface PluginRuntimeInfo {
+  id: string
+  name: string
+  version: string
+  icon: string | null
+  enabled: boolean
+  state: PluginRuntimeState
+  message: string
+  rootDir: string
+  entryPath: string
+  source: string
+  railActions: string[]
+  settingsPanel: string | null
+  logPath: string
 }
 
 export interface UpdateCheckResult {
   enabled: boolean
   hasUpdate: boolean
   currentVersion: string
+  latestVersion?: string | null
+  downloadUrl?: string | null
+  releaseNotes?: string | null
+  message: string
+}
+
+export interface UpdateProgressEvent {
+  phase: string
+  downloaded: number
+  total: number
+  percent: number
   message: string
 }
 

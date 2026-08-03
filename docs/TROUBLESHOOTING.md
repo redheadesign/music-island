@@ -67,15 +67,15 @@ The overlay is automatically centered on the selected monitor. Reset Position is
 
 ## SmartScreen Warning
 
-Early builds are unsigned. This is expected until Authenticode signing is configured.
+Portable builds may be unsigned. Windows SmartScreen can warn until you (or we) apply Authenticode. That is independent of how updates work.
 
 ## WebView2 Missing
 
 Tauri uses Microsoft Edge WebView2. Windows 11 usually includes it. Older Windows installs may need the WebView2 runtime from Microsoft.
 
-## Auto-Update Is Disabled
+## Updates
 
-MVP builds update by installing a newer `.exe` over the old one. Signed auto-update will be enabled only after release signing keys are configured.
+Music Island updates as a portable app: Settings → About → check/download, or the update banner. The new `music-island.exe` replaces the old one; settings stay in `%APPDATA%\Music Island\`. Manual download from [GitHub Releases](https://github.com/redheadesign/music-island/releases) is the same channel.
 
 ## Nothing Appears After Launch
 

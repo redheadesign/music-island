@@ -1,23 +1,22 @@
 # Releases
 
-## Beta manual release
+Music Island ships as a **portable** `music-island.exe` under GPL-3.0. That remains the forever distribution model: users download or auto-update the same single file from GitHub Releases. There is no installer requirement.
+
+## Manual release checklist
 
 1. Install prerequisites: Node.js, Rust, Microsoft C++ Build Tools and WebView2 runtime.
-2. Bump versions in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`.
-3. Build the app:
+2. Bump versions in `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `APP_VERSION` in `src/features/settings/SettingsPanel.tsx`, and the updater `USER_AGENT` in `src-tauri/src/updater/mod.rs`.
+3. Refresh `CHANGELOG.md` and the public `README.md` status line.
+4. Build:
 
 ```powershell
 npm install
 npm run tauri:build -- --no-bundle
 ```
 
-4. Use the root `release/` folder. The `posttauri:build` script copies the portable executable there after a successful build.
-5. Upload `release/music-island.exe` to GitHub Releases.
-6. Include the changelog, verification summary and known limitations.
-
-The 0.9.x **open beta** ships as a single portable `.exe` under GPL-3.0. Installer and updater artifacts are intentionally deferred until signing and update distribution are ready.
-
-Also bump `APP_VERSION` in `src/features/settings/SettingsPanel.tsx` and refresh `CHANGELOG.md` / public `README.md` status line.
+5. Use the root `release/` folder. The `posttauri:build` script copies the portable executable there after a successful build.
+6. Upload `release/music-island.exe` to GitHub Releases (tag like `v1.3.0`).
+7. Put the changelog body on the GitHub Release (the in-app update banner renders that markdown).
 
 If you already built the app and only need to refresh `release/`, run:
 
@@ -25,24 +24,18 @@ If you already built the app and only need to refresh `release/`, run:
 npm run release:copy
 ```
 
-## Updating Over Previous Versions
+## Portable auto-update (shipped)
 
-Keep `identifier`, `productName` and bundle identity stable. User config is stored in app data, not next to the portable executable, so replacing the executable preserves settings.
+On start and from Settings → About, the app:
 
-## Future Auto-Update
+1. Queries `https://api.github.com/repos/redheadesign/music-island/releases/latest`.
+2. Compares versions and, when newer, downloads the `music-island.exe` asset.
+3. Checks PE magic, stages in temp, replaces the running exe, relaunches, and cleans `.old` / staging.
 
-Tauri updater requires signed update artifacts. Before enabling it:
+Config lives in `%APPDATA%\Music Island\`, so replacing the exe preserves settings. Keep `identifier` and `productName` stable across releases.
 
-1. Generate a Tauri signing key.
-2. Put the public key into `tauri.conf.json`.
-3. Store `TAURI_SIGNING_PRIVATE_KEY` and password in GitHub Secrets.
-4. Enable `createUpdaterArtifacts`.
-5. Publish signed bundles and `latest.json` through GitHub Releases.
+## Optional later: Authenticode
 
-The planned endpoint is:
+Code-signing the portable exe reduces SmartScreen friction. It does **not** change the update model (still GitHub → replace exe). Optional SHA256 notes on the Release page are also fine as a nicety.
 
-```text
-https://github.com/<user>/music-island/releases/latest/download/latest.json
-```
-
-Unsigned updater builds should not be shipped.
+The Tauri plugin updater with signed `latest.json` bundles is **not** required for Music Island’s portable channel.
