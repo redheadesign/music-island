@@ -10,7 +10,7 @@ import foxSleepPoster from './assets/fox-sleep-poster.png'
 
 type Phase = 'sleep' | 'wake' | 'live' | 'toSleep'
 
-/** Distinct ~5s live idle cycles; round-robin each time a live clip starts/restarts. */
+/** Active-fox idle variants only (sleep/wake/to-sleep stay on the base clips). */
 const LIVE_PACK = [foxLiveWebmUrl, foxLiveBWebmUrl, foxLiveCWebmUrl] as const
 
 function playFromStart(video: HTMLVideoElement | null) {
@@ -43,7 +43,7 @@ function waitUntilClipEnds(video: HTMLVideoElement): Promise<void> {
 
 /**
  * Sleep/live loops + one-shot wake & fall-asleep.
- * Live phase cycles through LIVE_PACK (round-robin) instead of one infinite loop.
+ * Live phase cycles LIVE_PACK (round-robin); other states use the base clips only.
  */
 export function VoiceFoxVideoMascot({ live }: { live: boolean }) {
   const sleepRef = useRef<HTMLVideoElement>(null)
@@ -57,31 +57,20 @@ export function VoiceFoxVideoMascot({ live }: { live: boolean }) {
   const liveCycleActiveRef = useRef(false)
   const [phase, setPhase] = useState<Phase>('sleep')
   const [liveSrc, setLiveSrc] = useState<string>(LIVE_PACK[0])
+  /** Bumps even when the next pack URL equals the current one, so playback restarts. */
+  const [liveGen, setLiveGen] = useState(0)
 
   const go = (next: Phase) => {
     phaseRef.current = next
     setPhase(next)
   }
 
-  const pickNextLiveSrc = () => {
+  const startLiveCycle = () => {
+    liveCycleActiveRef.current = true
     const next = liveIndexRef.current % LIVE_PACK.length
     liveIndexRef.current = next + 1
-    return LIVE_PACK[next]
-  }
-
-  const startLiveCycle = () => {
-    const liveEl = liveRef.current
-    if (!liveEl) return
-    liveCycleActiveRef.current = true
-    const src = pickNextLiveSrc()
-    setLiveSrc(src)
-    liveEl.loop = false
-    // src may update async via React; set attribute + load for immediate swap
-    if (liveEl.getAttribute('src') !== src) {
-      liveEl.src = src
-      liveEl.load()
-    }
-    playFromStart(liveEl)
+    setLiveSrc(LIVE_PACK[next])
+    setLiveGen((value) => value + 1)
   }
 
   useEffect(() => {
@@ -91,19 +80,45 @@ export function VoiceFoxVideoMascot({ live }: { live: boolean }) {
     playFromStart(sleep)
   }, [])
 
+  // Drive live playback from React src changes so load + play stay in sync.
   useEffect(() => {
+    if (phase !== 'live' || !liveCycleActiveRef.current) return
     const liveEl = liveRef.current
     if (!liveEl) return
 
+    let cancelled = false
+    liveEl.loop = false
+
+    const playWhenReady = () => {
+      if (cancelled || !liveCycleActiveRef.current || phaseRef.current !== 'live') return
+      if (!wantLiveRef.current) return
+      try {
+        liveEl.currentTime = 0
+      } catch {
+        /* ignore */
+      }
+      void liveEl.play().catch(() => {})
+    }
+
+    if (liveEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      playWhenReady()
+    } else {
+      liveEl.addEventListener('loadeddata', playWhenReady, { once: true })
+    }
+
     const onEnded = () => {
-      if (!liveCycleActiveRef.current || phaseRef.current !== 'live') return
+      if (cancelled || !liveCycleActiveRef.current || phaseRef.current !== 'live') return
       if (!wantLiveRef.current) return
       startLiveCycle()
     }
-
     liveEl.addEventListener('ended', onEnded)
-    return () => liveEl.removeEventListener('ended', onEnded)
-  }, [])
+
+    return () => {
+      cancelled = true
+      liveEl.removeEventListener('loadeddata', playWhenReady)
+      liveEl.removeEventListener('ended', onEnded)
+    }
+  }, [liveSrc, liveGen, phase])
 
   useEffect(() => {
     wantLiveRef.current = live
