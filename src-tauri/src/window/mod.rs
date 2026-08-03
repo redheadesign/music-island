@@ -13,6 +13,9 @@ use tokio::time::{sleep, Duration};
 const COLLAPSED_HIT_HEIGHT: f64 = 120.0;
 const COLLAPSED_STRIP_HEIGHT: f64 = 24.0;
 const DEFAULT_HIT_WIDTH: f64 = 612.0;
+/// Keep a thin gap on every monitor edge so the Shell does not treat the overlay as
+/// fullscreen and auto-hide taskbars (bottom / left / right / top) still get edge hover.
+const MONITOR_EDGE_GAP_PX: i32 = 2;
 
 static BOUNDS_REQUESTS: AtomicU64 = AtomicU64::new(0);
 static BOUNDS_APPLIED: AtomicU64 = AtomicU64::new(0);
@@ -89,14 +92,23 @@ fn fit_overlay_to_monitor(app: &AppHandle) -> tauri::Result<()> {
     if let Some(monitor) = monitor {
         let size = monitor.size();
         let position = monitor.position();
-        window.set_size(PhysicalSize::new(size.width, size.height))?;
-        window.set_position(PhysicalPosition::new(position.x, position.y))?;
+        let gap = MONITOR_EDGE_GAP_PX as u32;
+        let width = size.width.saturating_sub(gap.saturating_mul(2)).max(1);
+        let height = size.height.saturating_sub(gap.saturating_mul(2)).max(1);
+        window.set_size(PhysicalSize::new(width, height))?;
+        window.set_position(PhysicalPosition::new(
+            position.x + MONITOR_EDGE_GAP_PX,
+            position.y + MONITOR_EDGE_GAP_PX,
+        ))?;
     }
+
+    #[cfg(windows)]
+    platform::mark_non_rude_hwnd(&window);
 
     Ok(())
 }
 
-/// Updates interaction layout only — the HWND stays fullscreen.
+/// Updates interaction layout only — the HWND stays monitor-sized (minus edge gaps).
 /// `visual_width` / `visual_height` describe the centered hit target (card + chrome).
 pub fn set_overlay_bounds(
     app: &AppHandle,
@@ -236,8 +248,25 @@ pub fn start_gesture_watcher(app: AppHandle) {
 mod platform {
     use super::{hit_layout, CollapsedGestureState, COLLAPSED_STRIP_HEIGHT};
     use tauri::WebviewWindow;
-    use windows::Win32::Foundation::{HWND, POINT, RECT};
-    use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetWindowRect};
+    use windows::core::w;
+    use windows::Win32::Foundation::{HANDLE, HWND, POINT, RECT};
+    use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetWindowRect, SetPropW};
+
+    /// Tell Explorer this HWND is not a rude/fullscreen window so auto-hide
+    /// taskbars keep their normal edge-trigger behaviour.
+    pub fn mark_non_rude_hwnd(window: &WebviewWindow) {
+        let Ok(native) = window.hwnd() else {
+            return;
+        };
+        let hwnd = HWND(native.0);
+        unsafe {
+            let _ = SetPropW(
+                hwnd,
+                w!("NonRudeHWND"),
+                Some(HANDLE(std::ptr::without_provenance_mut(1))),
+            );
+        }
+    }
 
     pub fn collapsed_gesture_state(window: &WebviewWindow) -> tauri::Result<CollapsedGestureState> {
         let native = window.hwnd()?;
@@ -312,6 +341,8 @@ mod platform {
 mod platform {
     use super::CollapsedGestureState;
     use tauri::WebviewWindow;
+
+    pub fn mark_non_rude_hwnd(_window: &WebviewWindow) {}
 
     pub fn collapsed_gesture_state(
         _window: &WebviewWindow,
