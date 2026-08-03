@@ -22,6 +22,8 @@ export interface UiPrefs {
   dismissedVoiceExperimentalBanner?: boolean
   /** Dev: allow download/install when latest == current */
   forceSameVersionUpdate?: boolean
+  /** Post-intro hover coach finished (first successful open) */
+  hoverCoachCompleted?: boolean
 }
 
 export const ISLAND_NAG_MS = 30 * 24 * 60 * 60 * 1000

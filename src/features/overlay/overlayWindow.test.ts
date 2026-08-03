@@ -8,13 +8,13 @@ describe('overlayWindow', () => {
     expect(bounds.cardWidth).toBe(612)
     expect(bounds.collapsedWidth).toBe(220)
     expect(bounds.collapsedHeight).toBe(20)
-    expect(bounds.expandedHeight).toBe(400)
+    expect(bounds.expandedHeight).toBe(420)
   })
 
   it('separates width from whole-widget scaling', () => {
     expect(getOverlayBounds(120, 80)).toEqual({
       cardWidth: 569.6,
-      expandedHeight: 320,
+      expandedHeight: 336,
       collapsedWidth: 176,
       collapsedHeight: 16,
     })

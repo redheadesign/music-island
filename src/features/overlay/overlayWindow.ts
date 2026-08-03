@@ -61,11 +61,11 @@ export function getOverlayBounds(
   const width = widthPercent / 100
   const scale = scalePercent / 100
   return {
-    // Controls sit 44px outside the card. Reserve symmetric native space so
-    // Windows can hit-test them while the visual card remains screen-centered.
+    // Hit-band width for native cursor sampling (card + Settings/Pin gutters).
+    // The HWND itself is fullscreen; these values only describe the interactive center band.
     cardWidth: (500 * width + ACTIONS_GUTTER_PER_SIDE * 2) * scale,
-    // Card + under-island update rail + action gutters need extra vertical room.
-    expandedHeight: 400 * scale,
+    // Card + under-island update rail + action chrome.
+    expandedHeight: 420 * scale,
     collapsedWidth: 220 * scale,
     collapsedHeight: 20 * scale,
   }

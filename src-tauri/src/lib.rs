@@ -1,6 +1,7 @@
 mod autostart;
 mod config;
 mod diagnostics;
+mod install;
 mod logging;
 mod media;
 mod plugins;
@@ -154,6 +155,33 @@ async fn replay_intro_window(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn get_install_handoff(
+    state: State<'_, install::InstallState>,
+) -> Option<install::NewerHandoff> {
+    state
+        .newer_handoff
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
+}
+
+#[tauri::command]
+fn open_newer_install(
+    app: tauri::AppHandle,
+    state: State<'_, install::InstallState>,
+) -> Result<(), String> {
+    let handoff = state
+        .newer_handoff
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
+        .ok_or_else(|| "No newer install recorded".to_string())?;
+    install::open_path(&handoff.path)?;
+    app.exit(0);
+    Ok(())
+}
+
+#[tauri::command]
 async fn copy_diagnostics(app: tauri::AppHandle) -> Result<String, String> {
     diagnostics::collect(&app)
         .await
@@ -246,6 +274,7 @@ pub fn run() {
         ))
         .manage(ConfigState::new())
         .manage(voice::VoiceEngineState::new())
+        .manage(install::InstallState::default())
         .invoke_handler(tauri::generate_handler![
             get_config,
             save_config,
@@ -266,6 +295,8 @@ pub fn run() {
             open_settings_window,
             close_intro_window,
             replay_intro_window,
+            get_install_handoff,
+            open_newer_install,
             copy_diagnostics,
             check_for_updates,
             download_and_install_update,
@@ -288,6 +319,18 @@ pub fn run() {
             logging::append_event("setup started");
             updater::cleanup_stale_artifacts();
             let handle = app.handle().clone();
+            let current_version = app.package_info().version.to_string();
+            let defer_newer = match install::reconcile(&current_version) {
+                install::ReconcileResult::Continue => false,
+                install::ReconcileResult::DeferToNewer(handoff) => {
+                    let state = app.state::<install::InstallState>();
+                    *state
+                        .newer_handoff
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(handoff);
+                    true
+                }
+            };
             match window::setup_overlay_window(&handle) {
                 Ok(()) => logging::append_event("overlay window setup ok"),
                 Err(error) => {
@@ -306,6 +349,14 @@ pub fn run() {
                     "already-running window setup failed: {error}"
                 )),
             }
+            if defer_newer {
+                logging::append_event("install: deferring to newer build; showing handoff notice");
+                if let Some(main) = handle.get_webview_window("main") {
+                    let _ = main.hide();
+                }
+                let _ = window::show_already_running_notice(&handle);
+                return Ok(());
+            }
             match window::setup_intro_window(&handle) {
                 Ok(()) => logging::append_event("intro window setup ok"),
                 Err(error) => logging::append_event(&format!("intro window setup failed: {error}")),
@@ -321,9 +372,8 @@ pub fn run() {
                     config::MediaProtocol::Smtc => media::MediaProvider::Smtc,
                     config::MediaProtocol::YandexDirect => media::MediaProvider::YandexDirect,
                 });
-                if config.behavior.pin_expanded {
-                    let _ = window::set_overlay_clickthrough(&handle, false);
-                }
+                // Pin keeps the island open; click-through is driven by the cursor
+                // hit-band watcher (fullscreen HWND), not forced off for the whole monitor.
                 if matches!(config.media.protocol, config::MediaProtocol::YandexDirect)
                     && config.media.direct_yandex_consent
                 {

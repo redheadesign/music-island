@@ -85,6 +85,9 @@ const ru = {
   'notice.alreadyRunningTitle': 'Уже запущено',
   'notice.alreadyRunningBody': 'Music Island уже работает в фоне.',
   'notice.alreadyRunningHint': 'Подведите курсор к верхнему краю экрана, чтобы открыть островок.',
+  'notice.newerTitle': 'Уже есть более новая версия',
+  'notice.newerBody': 'На этом компьютере установлена Music Island v{version}. Откройте её вместо этой копии.',
+  'notice.openNewer': 'Открыть новую версию',
   'notice.ok': 'Понятно',
   'settings.plugins': 'Плагины',
   'settings.pluginsEmpty': 'Плагины не найдены. Положите пакет в %APPDATA%\\Music Island\\plugins\\ или рядом с exe.',
@@ -112,6 +115,7 @@ const ru = {
   'island.updateTitle': 'Доступно обновление',
   'island.updateNow': 'Обновить',
   'island.updateLater': 'Позже',
+  'island.hoverCoach': 'Наведите курсор на верхний край',
 } as const
 
 type MessageKey = keyof typeof ru
@@ -201,6 +205,9 @@ const en: Record<MessageKey, string> = {
   'notice.alreadyRunningTitle': 'Already running',
   'notice.alreadyRunningBody': 'Music Island is already running in the background.',
   'notice.alreadyRunningHint': 'Move the pointer to the top of the screen to open the island.',
+  'notice.newerTitle': 'A newer version is already installed',
+  'notice.newerBody': 'Music Island v{version} is already on this PC. Open that copy instead of this one.',
+  'notice.openNewer': 'Open newer version',
   'notice.ok': 'OK',
   'settings.plugins': 'Plugins',
   'settings.pluginsEmpty': 'No plugins found. Unpack a package into %APPDATA%\\Music Island\\plugins\\ or next to the exe.',
@@ -228,6 +235,7 @@ const en: Record<MessageKey, string> = {
   'island.updateTitle': 'Update available',
   'island.updateNow': 'Update',
   'island.updateLater': 'Later',
+  'island.hoverCoach': 'Move the cursor to the top edge',
 }
 
 const catalogs: Record<Locale, Record<MessageKey, string>> = { ru, en }

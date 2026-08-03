@@ -344,12 +344,87 @@
 }
 
 .island-actions .icon-button svg {
-  opacity: 0.66;
+  /* Contrast on light and dark wallpaper without an underlay surface (#30). */
+  opacity: 0.92;
+  mix-blend-mode: difference;
+  color: #ffffff;
   transition: opacity 140ms ease;
 }
 
 .island-actions .icon-button:hover svg {
-  opacity: 0.9;
+  opacity: 1;
+}
+
+/* Post-intro hover coach (#28) */
+.hover-coach {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(320px, 70vw);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.hover-coach__band {
+  width: calc(200px * var(--island-scale, 1));
+  height: calc(14px * var(--island-scale, 1));
+  border-radius: 0 0 999px 999px;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.18);
+  animation: hover-coach-band 1.6s ease-in-out infinite;
+}
+
+.hover-coach__cursor {
+  margin-top: 18px;
+  color: #fff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+  animation: hover-coach-cursor 1.5s ease-in-out infinite;
+}
+
+.hover-coach__label {
+  margin: 10px 0 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(12, 14, 20, 0.72);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+@keyframes hover-coach-cursor {
+  0%,
+  100% {
+    transform: translateY(10px);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+@keyframes hover-coach-band {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scaleX(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.reduced-motion .hover-coach__cursor,
+.reduced-motion .hover-coach__band {
+  animation: none;
 }
 
 .icon-button:disabled {
@@ -803,6 +878,23 @@
 
 .notice-window-root .notice-hint {
   color: var(--text-muted);
+}
+
+.notice-window-root .notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.notice-window-root .notice-secondary {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
 }
 
 .notice-window-root .notice-ok {

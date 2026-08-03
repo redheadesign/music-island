@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
     Mutex, OnceLock,
 };
 use tauri::{
@@ -9,14 +9,38 @@ use tauri::{
 };
 use tokio::time::{sleep, Duration};
 
-const OVERLAY_WIDTH: i32 = 1_100;
-const OVERLAY_HEIGHT: u32 = 460;
-const OVERLAY_TOP_OFFSET: i32 = -1;
-const COLLAPSED_HEIGHT: u32 = 20;
+/// Extra vertical room below the collapsed strip so pull-to-open still receives samples.
+const COLLAPSED_HIT_HEIGHT: f64 = 120.0;
+const COLLAPSED_STRIP_HEIGHT: f64 = 24.0;
+const DEFAULT_HIT_WIDTH: f64 = 612.0;
+
 static BOUNDS_REQUESTS: AtomicU64 = AtomicU64::new(0);
 static BOUNDS_APPLIED: AtomicU64 = AtomicU64::new(0);
 static GESTURE_POLLS: AtomicU64 = AtomicU64::new(0);
 static GESTURE_EVENTS: AtomicU64 = AtomicU64::new(0);
+static CLICKTHROUGH: AtomicBool = AtomicBool::new(true);
+
+#[derive(Debug, Clone, Copy)]
+struct OverlayHitLayout {
+    expanded: bool,
+    hit_width: f64,
+    hit_height: f64,
+}
+
+impl Default for OverlayHitLayout {
+    fn default() -> Self {
+        Self {
+            expanded: false,
+            hit_width: DEFAULT_HIT_WIDTH,
+            hit_height: COLLAPSED_HIT_HEIGHT,
+        }
+    }
+}
+
+fn hit_layout() -> &'static Mutex<OverlayHitLayout> {
+    static LAYOUT: OnceLock<Mutex<OverlayHitLayout>> = OnceLock::new();
+    LAYOUT.get_or_init(|| Mutex::new(OverlayHitLayout::default()))
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,28 +60,27 @@ pub fn metrics() -> WindowMetrics {
     }
 }
 
-fn stage_width(card_visual_width: f64) -> u32 {
-    (card_visual_width.ceil() as u32 + 64).clamp(300, OVERLAY_WIDTH as u32)
-}
-
 pub fn setup_overlay_window(app: &AppHandle) -> tauri::Result<()> {
-    reset_overlay_position(app)?;
-
     if let Some(window) = app.get_webview_window("main") {
         window.set_background_color(Some(Color(0, 0, 0, 0)))?;
-        let width = stage_width(500.0);
-        window.set_size(PhysicalSize::new(width, COLLAPSED_HEIGHT))?;
         window.set_always_on_top(true)?;
         window.set_skip_taskbar(true)?;
         window.set_decorations(false)?;
+        fit_overlay_to_monitor(app)?;
+        // Fullscreen overlay stays click-through until the cursor enters the island band.
+        set_overlay_clickthrough(app, true)?;
         window.show()?;
-        set_overlay_bounds(app, false, 500.0, COLLAPSED_HEIGHT as f64)?;
+        set_overlay_bounds(app, false, DEFAULT_HIT_WIDTH, COLLAPSED_STRIP_HEIGHT)?;
     }
 
     Ok(())
 }
 
 pub fn reset_overlay_position(app: &AppHandle) -> tauri::Result<()> {
+    fit_overlay_to_monitor(app)
+}
+
+fn fit_overlay_to_monitor(app: &AppHandle) -> tauri::Result<()> {
     let Some(window) = app.get_webview_window("main") else {
         return Ok(());
     };
@@ -66,15 +89,15 @@ pub fn reset_overlay_position(app: &AppHandle) -> tauri::Result<()> {
     if let Some(monitor) = monitor {
         let size = monitor.size();
         let position = monitor.position();
-        let current_size = window.outer_size()?;
-        let x = position.x + ((size.width as i32 - current_size.width as i32) / 2).max(0);
-        let y = position.y + OVERLAY_TOP_OFFSET;
-        window.set_position(PhysicalPosition::new(x, y))?;
+        window.set_size(PhysicalSize::new(size.width, size.height))?;
+        window.set_position(PhysicalPosition::new(position.x, position.y))?;
     }
 
     Ok(())
 }
 
+/// Updates interaction layout only — the HWND stays fullscreen.
+/// `visual_width` / `visual_height` describe the centered hit target (card + chrome).
 pub fn set_overlay_bounds(
     app: &AppHandle,
     expanded: bool,
@@ -82,41 +105,34 @@ pub fn set_overlay_bounds(
     visual_height: f64,
 ) -> tauri::Result<()> {
     BOUNDS_REQUESTS.fetch_add(1, Ordering::Relaxed);
-    let Some(window) = app.get_webview_window("main") else {
-        return Ok(());
+
+    let hit_width = visual_width.max(160.0);
+    let hit_height = if expanded {
+        visual_height.max(96.0)
+    } else {
+        COLLAPSED_HIT_HEIGHT
     };
 
-    let width = stage_width(visual_width);
-    let height = if expanded {
-        (visual_height.ceil() as u32).clamp(96, OVERLAY_HEIGHT)
-    } else {
-        (visual_height.ceil() as u32).clamp(8, 24)
-    };
-    let key = (expanded, width, height);
-    static LAST_BOUNDS: OnceLock<Mutex<Option<(bool, u32, u32)>>> = OnceLock::new();
-    let last_bounds = LAST_BOUNDS.get_or_init(|| Mutex::new(None));
     {
-        let mut previous = last_bounds.lock().expect("overlay bounds lock poisoned");
-        if previous.as_ref() == Some(&key) {
+        let mut layout = hit_layout().lock().expect("overlay hit layout lock poisoned");
+        let next = OverlayHitLayout {
+            expanded,
+            hit_width,
+            hit_height,
+        };
+        if *layout == next {
             return Ok(());
         }
-        *previous = Some(key);
+        *layout = next;
     }
 
-    window.set_size(PhysicalSize::new(width, height))?;
+    // Keep fullscreen coverage if the user moved monitors / DPI changed.
+    fit_overlay_to_monitor(app)?;
 
-    let monitor = window.current_monitor()?.or(window.primary_monitor()?);
-    if let Some(monitor) = monitor {
-        let size = monitor.size();
-        let position = monitor.position();
-        let x = position.x + ((size.width as i32 - width as i32) / 2).max(0);
-        let y = position.y + OVERLAY_TOP_OFFSET;
-        window.set_position(PhysicalPosition::new(x, y))?;
-    }
+    // Refresh click-through from the current cursor immediately.
+    let _ = sync_clickthrough_from_cursor(app);
 
-    set_overlay_clickthrough(app, !expanded)?;
     BOUNDS_APPLIED.fetch_add(1, Ordering::Relaxed);
-
     Ok(())
 }
 
@@ -125,8 +141,18 @@ pub fn set_overlay_clickthrough(app: &AppHandle, clickthrough: bool) -> tauri::R
         return Ok(());
     };
 
+    if CLICKTHROUGH.swap(clickthrough, Ordering::Relaxed) == clickthrough {
+        return Ok(());
+    }
+
     window.set_ignore_cursor_events(clickthrough)?;
     Ok(())
+}
+
+fn sync_clickthrough_from_cursor(app: &AppHandle) -> tauri::Result<()> {
+    let state = get_collapsed_gesture_state(app)?;
+    // Over the island band → receive clicks; elsewhere → pass through.
+    set_overlay_clickthrough(app, !state.active)
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -157,6 +183,14 @@ impl CollapsedGestureState {
     }
 }
 
+impl PartialEq for OverlayHitLayout {
+    fn eq(&self, other: &Self) -> bool {
+        self.expanded == other.expanded
+            && (self.hit_width - other.hit_width).abs() < 0.5
+            && (self.hit_height - other.hit_height).abs() < 0.5
+    }
+}
+
 pub fn get_collapsed_gesture_state(app: &AppHandle) -> tauri::Result<CollapsedGestureState> {
     let Some(window) = app.get_webview_window("main") else {
         return Ok(CollapsedGestureState::inactive());
@@ -172,6 +206,10 @@ pub fn start_gesture_watcher(app: AppHandle) {
             GESTURE_POLLS.fetch_add(1, Ordering::Relaxed);
             let next = get_collapsed_gesture_state(&app)
                 .unwrap_or_else(|_| CollapsedGestureState::inactive());
+
+            // Drive click-through from the hit band — not from expanded/collapsed alone.
+            let _ = set_overlay_clickthrough(&app, !next.active);
+
             if next != previous {
                 let _ = app.emit("overlay:gesture-state", next.clone());
                 GESTURE_EVENTS.fetch_add(1, Ordering::Relaxed);
@@ -189,7 +227,7 @@ pub fn start_gesture_watcher(app: AppHandle) {
 
 #[cfg(windows)]
 mod platform {
-    use super::CollapsedGestureState;
+    use super::{hit_layout, CollapsedGestureState, COLLAPSED_STRIP_HEIGHT};
     use tauri::WebviewWindow;
     use windows::Win32::Foundation::{HWND, POINT, RECT};
     use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetWindowRect};
@@ -209,14 +247,49 @@ mod platform {
         let local_y = (point.y - bounds.top) as f64;
         let width = (bounds.right - bounds.left).max(0) as f64;
         let height = (bounds.bottom - bounds.top).max(0) as f64;
-        let active = local_x >= 0.0 && local_y >= 0.0 && local_x <= width && local_y <= height;
-        if !active {
+
+        if width <= 0.0 || height <= 0.0 {
             return Ok(CollapsedGestureState::inactive());
         }
-        let in_top_edge = active && local_y <= 3.0;
+
+        // Outside the fullscreen HWND (other monitor) → inactive.
+        if local_x < 0.0 || local_y < 0.0 || local_x > width || local_y > height {
+            return Ok(CollapsedGestureState::inactive());
+        }
+
+        let layout = *hit_layout()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        let hit_w = layout.hit_width.clamp(120.0, width);
+        let hit_h = if layout.expanded {
+            layout.hit_height.clamp(96.0, height)
+        } else {
+            layout.hit_height.clamp(COLLAPSED_STRIP_HEIGHT, height)
+        };
+        let left = ((width - hit_w) / 2.0).max(0.0);
+        let right = left + hit_w;
+        let top = 0.0;
+        let bottom = hit_h;
+
+        let active = local_x >= left && local_x <= right && local_y >= top && local_y <= bottom;
+        if !active {
+            return Ok(CollapsedGestureState {
+                active: false,
+                local_x,
+                local_y,
+                client_x: point.x,
+                client_y: point.y,
+                in_top_edge: false,
+                window_width: width,
+                window_height: height,
+            });
+        }
+
+        let in_top_edge = local_y <= 3.0;
 
         Ok(CollapsedGestureState {
-            active,
+            active: true,
             local_x,
             local_y,
             client_x: point.x,
@@ -296,6 +369,8 @@ pub fn close_intro_window(app: &AppHandle) -> tauri::Result<()> {
     if let Some(window) = app.get_webview_window("intro") {
         window.destroy()?;
     }
+    // Main overlay listens and may start the one-shot hover coach (#28).
+    let _ = app.emit("intro:closed", ());
     Ok(())
 }
 

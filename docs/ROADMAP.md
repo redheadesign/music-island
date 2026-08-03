@@ -1,6 +1,6 @@
 # Roadmap
 
-## Shipped (through 1.3.1)
+## Shipped (through 1.3.2)
 
 - Music module with SMTC metadata and controls; top-edge hover island.
 - Live width, scale, hover-delay, accent color; Ru/En; About.

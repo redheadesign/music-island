@@ -256,6 +256,32 @@ export async function replayIntroWindow(): Promise<void> {
   await invoke('replay_intro_window')
 }
 
+export async function onIntroClosed(callback: () => void): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
+  }
+  return listen('intro:closed', () => callback())
+}
+
+export interface InstallHandoff {
+  path: string
+  version: string
+}
+
+export async function getInstallHandoff(): Promise<InstallHandoff | null> {
+  if (!isTauriRuntime()) {
+    return null
+  }
+  return invoke<InstallHandoff | null>('get_install_handoff')
+}
+
+export async function openNewerInstall(): Promise<void> {
+  if (!isTauriRuntime()) {
+    return
+  }
+  await invoke('open_newer_install')
+}
+
 export async function copyDiagnostics(): Promise<string> {
   if (!isTauriRuntime()) {
     return 'Diagnostics are available in the installed Tauri application.'

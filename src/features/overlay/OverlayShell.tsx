@@ -6,6 +6,7 @@ import type { IslandAppState } from '../../app/useIslandApp'
 import {
   getCollapsedGestureState,
   onCollapsedGestureState,
+  onIntroClosed,
   type CollapsedGestureState,
 } from '../../app/tauriApi'
 import { MusicModule } from '../music/MusicModule'
@@ -17,6 +18,7 @@ import {
   syncOverlayWindow,
   type OverlayWindowPhase,
 } from './overlayWindow'
+import { HoverCoach } from './HoverCoach'
 import { buildAccentTokens } from '../../shared/lib/accentTheme'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import {
@@ -117,11 +119,47 @@ export function OverlayShell({ app }: OverlayShellProps) {
   const [windowPhase, setWindowPhase] = useState<OverlayWindowPhase>('collapsed')
   const [expandedVisible, setExpandedVisible] = useState(false)
   const [, setIsHoveringIsland] = useState(false)
+  const [hoverCoachActive, setHoverCoachActive] = useState(false)
   const [peekProgress, setPeekProgress] = useState(0)
   const [peekX, setPeekX] = useState(110)
   const [hideCollapsedProgress, setHideCollapsedProgress] = useState(false)
   const [isPeekGesture, setIsPeekGesture] = useState(false)
   const [chromePeek, setChromePeek] = useState({ progress: 0, peekX: 110 })
+
+  useEffect(() => {
+    if (!isTauriRuntime() || !config) return
+    if (getUiPrefs(config).hoverCoachCompleted) return
+
+    let active = true
+    let cleanup: () => void = () => {}
+    void onIntroClosed(() => {
+      if (!active || getUiPrefs(config).hoverCoachCompleted) return
+      setHoverCoachActive(true)
+      setPeekProgress(0.42)
+      setPeekX(110)
+      setIsPeekGesture(true)
+    }).then((unlisten) => {
+      if (active) cleanup = unlisten
+      else unlisten()
+    })
+
+    return () => {
+      active = false
+      cleanup()
+    }
+  }, [config])
+
+  useEffect(() => {
+    if (!hoverCoachActive || !config) return
+    if (windowPhase !== 'opening' && windowPhase !== 'open') return
+
+    setHoverCoachActive(false)
+    setIsPeekGesture(false)
+    if (!getUiPrefs(config).hoverCoachCompleted) {
+      void updateConfig(withUiPrefs(config, { hoverCoachCompleted: true }))
+    }
+  }, [config, hoverCoachActive, updateConfig, windowPhase])
+
   const closeTimerRef = useRef<number | null>(null)
   const pressureTimerRef = useRef<number | null>(null)
   const peekResetTimerRef = useRef<number | null>(null)
@@ -727,6 +765,9 @@ export function OverlayShell({ app }: OverlayShellProps) {
       style={style}
     >
       <div className="island-stage">
+      {hoverCoachActive && windowPhase === 'collapsed' ? (
+        <HoverCoach label={t('island.hoverCoach')} />
+      ) : null}
       {showTopChrome ? (
         <div
           className={[

@@ -4,7 +4,6 @@ export const DEFAULT_ACCENT = '#F76100'
 const PRESET_ACCENTS = [
   '#F76100',
   '#ff8a33',
-  '#e85d04',
   '#8fb8ff',
   '#6bd8ff',
   '#9fe1bd',

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.2 — 2026-08-03
+
+### Critical
+
+- Overlay window is **fullscreen transparent** with cursor-band click-through — Settings/Pin no longer clipped by a tight HWND (#32).
+- Settings/Pin icons use `mix-blend-mode: difference` so they stay visible on light wallpapers (#30).
+
+### UI
+
+- Removed duplicate third accent preset (`#e85d04`) (#31).
+- Post-intro one-shot hover coach (peek + cursor hint); dismissed permanently after first open (#28).
+- Better Voice fox live phase cycles through a pack of short loops (#27).
+
+### Portable
+
+- Newer builds supersede older copies (kill/delete + `install.json`); older builds show **Open newer version** (#29).
+- Autostart path refresh on move remains as before.
+
 ## 1.3.1 — 2026-08-03
 
 ### Fixes
