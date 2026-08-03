@@ -118,12 +118,13 @@
   place-items: center;
   border: 0;
   border-radius: 50%;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.62);
   background: var(--accent, #f76100);
   cursor: pointer;
 }
 
 .wave-selection-chip button:hover {
+  color: rgba(255, 255, 255, 0.88);
   filter: brightness(1.06);
 }
 
@@ -131,6 +132,7 @@
   width: 13px;
   height: 13px;
   stroke-width: 2.5;
+  opacity: 0.9;
 }
 
 .wave-selection-chip button:disabled {

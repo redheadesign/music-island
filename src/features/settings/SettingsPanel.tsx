@@ -79,11 +79,16 @@ export function SettingsPanel({
   const t = useMemo(() => createTranslator(locale), [locale])
   const [settingsScope, setSettingsScope] = useState<'island' | 'voice'>('island')
   const latestVersion = updater.result?.latestVersion ?? null
-  const showSettingsUpdateBanner = shouldShowSettingsUpdateBanner({
-    hasUpdate: Boolean(updater.result?.hasUpdate) || uiPrefs.forceSettingsUpdateBanner === true,
-    latestVersion: latestVersion ?? (uiPrefs.forceSettingsUpdateBanner ? 'dev' : null),
-    prefs: uiPrefs,
-  })
+  const updaterBusy =
+    updater.status === 'downloading' || updater.status === 'installing'
+  const showSettingsUpdateBanner =
+    updaterBusy
+    || updater.status === 'error'
+    || shouldShowSettingsUpdateBanner({
+      hasUpdate: Boolean(updater.result?.hasUpdate) || uiPrefs.forceSettingsUpdateBanner === true,
+      latestVersion: latestVersion ?? (uiPrefs.forceSettingsUpdateBanner ? 'dev' : null),
+      prefs: uiPrefs,
+    })
 
   useEffect(() => setDraft(config), [config])
   useEffect(() => {
@@ -325,6 +330,22 @@ export function SettingsPanel({
           collapseLabel={t('settings.updateNotesCollapse')}
           primaryLabel={t('settings.updateNow')}
           laterLabel={t('settings.updateLater')}
+          status={
+            updater.status === 'downloading'
+            || updater.status === 'installing'
+            || updater.status === 'error'
+              ? updater.status
+              : 'available'
+          }
+          progressPercent={updater.progress?.percent ?? null}
+          progressLabel={
+            updater.status === 'downloading'
+              ? t('settings.downloadingUpdate')
+              : updater.status === 'installing'
+                ? t('settings.installingUpdate')
+                : undefined
+          }
+          error={updater.error}
           onPrimary={() => void updater.install()}
           onLater={() =>
             previewAndSave(

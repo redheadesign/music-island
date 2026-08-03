@@ -180,8 +180,8 @@
   left: auto;
   flex: 0 0 auto;
   width: var(--island-hit-width, 612px);
-  min-height: calc(400px * var(--island-scale, 1));
-  padding: 0 0 48px;
+  min-height: calc(480px * var(--island-scale, 1));
+  padding: 0 0 56px;
   pointer-events: auto;
   transform: none;
   transform-origin: top center;
@@ -235,6 +235,13 @@
   pointer-events: auto;
 }
 
+.island-update-rail__copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .island-update-rail__title {
   margin: 0;
   min-width: 0;
@@ -245,6 +252,41 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.island-update-rail__error {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #ffb1b1;
+}
+
+.island-update-rail__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.island-update-rail__progress-track {
+  flex: 1 1 auto;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.island-update-rail__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-soft, #ff9a55), var(--accent, #f76100));
+  transition: width 160ms ease;
+}
+
+.island-update-rail__progress-meta {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 650;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .island-update-rail__actions {
@@ -1489,6 +1531,41 @@
 .update-banner__ghost {
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.update-banner__progress {
+  display: grid;
+  gap: 6px;
+}
+
+.update-banner__progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.update-banner__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    var(--accent-soft, #ff9a55) 0%,
+    var(--accent, #f76100) 100%
+  );
+  transition: width 160ms ease;
+}
+
+.update-banner__progress small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.update-banner__error {
+  margin: 0;
+  color: #ffb1b1;
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 
 .release-notes-md {

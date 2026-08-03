@@ -64,16 +64,21 @@ export function OverlayShell({ app }: OverlayShellProps) {
     directReloadBusy,
     restartDirect,
   } = app
-  const updater = useAppUpdater(true)
+  const uiPrefs = getUiPrefs(config)
+  const updater = useAppUpdater(true, Boolean(uiPrefs.forceSameVersionUpdate))
   const locale = normalizeLocale(config?.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
-  const uiPrefs = getUiPrefs(config)
   const latestVersion = updater.result?.latestVersion ?? null
-  const showIslandUpdate = shouldShowIslandUpdateBanner({
-    hasUpdate: Boolean(updater.result?.hasUpdate) || uiPrefs.forceIslandUpdateBanner === true,
-    latestVersion: latestVersion ?? (uiPrefs.forceIslandUpdateBanner ? 'dev' : null),
-    prefs: uiPrefs,
-  })
+  const updaterBusy =
+    updater.status === 'downloading' || updater.status === 'installing'
+  const showIslandUpdate =
+    updaterBusy
+    || updater.status === 'error'
+    || shouldShowIslandUpdateBanner({
+      hasUpdate: Boolean(updater.result?.hasUpdate) || uiPrefs.forceIslandUpdateBanner === true,
+      latestVersion: latestVersion ?? (uiPrefs.forceIslandUpdateBanner ? 'dev' : null),
+      prefs: uiPrefs,
+    })
 
   useEffect(() => {
     if (!config || !updater.result?.hasUpdate || !updater.result.latestVersion) return
@@ -850,8 +855,23 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 title={t('island.updateTitle')}
                 primaryLabel={t('island.updateNow')}
                 laterLabel={t('island.updateLater')}
+                status={
+                  updater.status === 'downloading'
+                  || updater.status === 'installing'
+                  || updater.status === 'error'
+                    ? updater.status
+                    : 'available'
+                }
+                progressPercent={updater.progress?.percent ?? null}
+                progressLabel={
+                  updater.status === 'downloading'
+                    ? t('settings.downloadingUpdate')
+                    : updater.status === 'installing'
+                      ? t('settings.installingUpdate')
+                      : undefined
+                }
+                error={updater.error}
                 onPrimary={() => {
-                  void openSettingsWindow()
                   void updater.install()
                 }}
                 onLater={dismissIslandUpdate}

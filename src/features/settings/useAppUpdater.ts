@@ -29,7 +29,8 @@ export function useAppUpdater(autoCheck: boolean, forceSameVersion = false): App
   const [result, setResult] = useState<UpdateCheckResult | null>(null)
   const [progress, setProgress] = useState<UpdateProgressEvent | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const busyRef = useRef(false)
+  const checkBusyRef = useRef(false)
+  const installBusyRef = useRef(false)
   const upToDateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const forceRef = useRef(forceSameVersion)
   forceRef.current = forceSameVersion
@@ -50,8 +51,8 @@ export function useAppUpdater(autoCheck: boolean, forceSameVersion = false): App
   }, [])
 
   const check = useCallback(async (manual = false) => {
-    if (busyRef.current) return
-    busyRef.current = true
+    if (checkBusyRef.current || installBusyRef.current) return
+    checkBusyRef.current = true
     setError(null)
     setStatus('checking')
     if (upToDateTimer.current) {
@@ -73,13 +74,18 @@ export function useAppUpdater(autoCheck: boolean, forceSameVersion = false): App
       setError(formatUpdaterError(err))
       setStatus('error')
     } finally {
-      busyRef.current = false
+      checkBusyRef.current = false
     }
   }, [])
 
   const install = useCallback(async () => {
-    if (busyRef.current) return
-    busyRef.current = true
+    if (installBusyRef.current) return
+    installBusyRef.current = true
+    // Don't drop Update clicks that land while the background check is still in flight.
+    const started = Date.now()
+    while (checkBusyRef.current && Date.now() - started < 15000) {
+      await new Promise((resolve) => window.setTimeout(resolve, 40))
+    }
     setError(null)
     setStatus('downloading')
     setProgress({
@@ -97,7 +103,7 @@ export function useAppUpdater(autoCheck: boolean, forceSameVersion = false): App
       setStatus('error')
       setProgress(null)
     } finally {
-      busyRef.current = false
+      installBusyRef.current = false
     }
   }, [])
 
