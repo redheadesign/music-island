@@ -2,9 +2,9 @@ https://github.com/user-attachments/assets/28c65a1f-1fee-4ee0-a4f6-2fb89cf8c78e
 
 # Music Island
 
-Windows top-edge media island for any SMTC player, plus an optional **direct connection to the native Yandex Music desktop app**.
+Windows top-edge media island for any SMTC player, plus an optional **direct connection to the native Yandex Music desktop app** and built-in **Better Voice (Beta)** mic cleanup.
 
-**1.3.0** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
+**1.3.1** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
 
 ## Download
 
@@ -15,9 +15,9 @@ Windows top-edge media island for any SMTC player, plus an optional **direct con
 - Hover island: artwork, title/artist, progress, play/pause, prev/next
 - **Windows SMTC** – works with Spotify, browsers, and other system media sessions
 - **Direct Yandex Music** – opt-in link to the installed desktop client over a local debug endpoint (127.0.0.1): lower latency, like/dislike, active wave chip, seek, and quick reload when the client drops
-- **Better Voice (Beta)** – local mic cleanup → virtual microphone (VB-Cable); see [`docs/BETTER_VOICE.md`](docs/BETTER_VOICE.md)
+- **Better Voice (Beta)** – in-process denoise / AGC / EQ / FX → virtual microphone (VB-Cable); fox mascot + in-app guide — see [`docs/BETTER_VOICE.md`](docs/BETTER_VOICE.md)
 - Settings: Music Island / Better Voice scopes, accent color, width, scale, open delay, preferred SMTC source, protocol switch, autostart, **Ru / En**
-- Portable updates from GitHub Releases (check on start + About → download/replace exe)
+- Portable updates from GitHub Releases (check on start + About → download/replace exe; Unicode-safe relaunch)
 - Startup intro splash (skipped on Windows autostart)
 - Tray: settings / quit · config in `%APPDATA%\Music Island\`
 
@@ -27,19 +27,31 @@ In Settings → Music source, connect **Direct Yandex Music** (explicit consent)
 
 ## Architecture
 
+Same layers as [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md):
+
 ```mermaid
 flowchart LR
-  WindowsSMTC[Windows SMTC] --> RustMedia[Rust media watcher]
-  YandexDesktop[Yandex Music Desktop] <-->|Local CDP, opt-in| DirectProvider[Rust direct provider]
-  DirectProvider --> RustMedia
-  RustMedia --> TauriEvents[Tauri events]
-  ReactStore[React app store] --> OverlayShell[Overlay shell]
-  TauriEvents --> ReactStore
-  OverlayShell --> MusicModule[Music module]
-  OverlayShell --> SettingsModule[Settings]
+  SMTC[Windows SMTC] --> MediaWatcher[Rust media watcher]
+  Yandex[Yandex Music Desktop] <-->|Opt-in local CDP| DirectProvider[Rust direct provider]
+  DirectProvider --> MediaWatcher
+  MediaWatcher --> Events[Tauri events]
+  Commands[Tauri commands] --> MediaWatcher
+  VoiceEngine[Rust voice engine] --> VoiceCmds[voice commands]
+  Events --> AppFacade[useIslandApp facade]
+  AppFacade --> ConfigController[Config controller]
+  AppFacade --> MediaController[Media controller]
+  AppFacade --> WindowController[Window controller]
+  AppFacade --> Overlay[Overlay shell]
+  Overlay --> Music[Music module]
+  Overlay --> Settings[Settings]
+  Settings --> BetterVoice[Better Voice UI]
+  Overlay --> Registry[Module registry]
 ```
 
-Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/MEDIA_ARCHITECTURE.md`](docs/MEDIA_ARCHITECTURE.md) · [`docs/YANDEX_MUSIC_API.md`](docs/YANDEX_MUSIC_API.md) · [`docs/BETTER_VOICE.md`](docs/BETTER_VOICE.md) · [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
+- **Native:** SMTC + Direct Yandex arbitration, window/tray, portable updater, in-process Better Voice engine, config under `%APPDATA%\Music Island\`
+- **Frontend:** `useIslandApp` facade → overlay / music / settings; Better Voice UI under Settings scope; shared glass UI + i18n
+
+More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/MEDIA_ARCHITECTURE.md`](docs/MEDIA_ARCHITECTURE.md) · [`docs/YANDEX_MUSIC_API.md`](docs/YANDEX_MUSIC_API.md) · [`docs/BETTER_VOICE.md`](docs/BETTER_VOICE.md) · [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) · [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Limitations
 

@@ -1,4 +1,4 @@
-# QA Checklist (1.3.0)
+# QA Checklist (1.3.1)
 
 ## Operating Systems
 

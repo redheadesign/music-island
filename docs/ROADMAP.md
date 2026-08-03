@@ -1,13 +1,13 @@
 # Roadmap
 
-## Shipped (through 1.3.0)
+## Shipped (through 1.3.1)
 
 - Music module with SMTC metadata and controls; top-edge hover island.
 - Live width, scale, hover-delay, accent color; Ru/En; About.
 - SMTC health/backoff, multi-session arbitration, preferred source.
 - Opt-in Direct Yandex (local CDP) with reactions and soft recovery paths.
 - Single-instance lock + already-running notice.
-- Portable Windows release + **portable GitHub auto-update** (download/replace exe).
+- Portable Windows release + **portable GitHub auto-update** (download/replace exe; Unicode-safe relaunch from 1.3.1).
 - Startup intro splash (skipped on autostart `--startup`).
 - **Better Voice (Beta)** in-process: denoise/AGC/EQ/FX, fox mascot, guide, VB-Cable external.
 - Settings scope switch: Music Island | Better Voice.

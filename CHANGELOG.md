@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.1 — 2026-08-03
+
+### Fixes
+
+- Portable updater relaunch no longer breaks on non-ASCII install paths (e.g. Cyrillic folder names). The post-replace helper now uses PowerShell `-EncodedCommand` instead of a UTF-8 `.cmd` misread by `cmd.exe` as OEM.
+
+### Docs
+
+- README architecture diagram aligned with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (facade, voice engine, Better Voice UI).
+
 ## 1.3.0 — 2026-08-03
 
 Public portable release. **GPL-3.0**. Distribution stays a single `music-island.exe` forever (GitHub Releases → download/replace).

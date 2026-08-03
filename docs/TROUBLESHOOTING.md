@@ -77,6 +77,8 @@ Tauri uses Microsoft Edge WebView2. Windows 11 usually includes it. Older Window
 
 Music Island updates as a portable app: Settings → About → check/download, or the update banner. The new `music-island.exe` replaces the old one; settings stay in `%APPDATA%\Music Island\`. Manual download from [GitHub Releases](https://github.com/redheadesign/music-island/releases) is the same channel.
 
+From **1.3.1**, relaunch after replace is Unicode-safe (non-ASCII folder names such as Cyrillic). On **1.3.0**, updating from a path with non-ASCII characters could show a Windows “file not found” dialog with a garbled path — update manually once to 1.3.1+, or move the portable folder to an ASCII-only path.
+
 ## Nothing Appears After Launch
 
 Check the startup log:

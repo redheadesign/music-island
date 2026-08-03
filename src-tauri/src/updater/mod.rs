@@ -9,7 +9,7 @@ use tauri::{AppHandle, Emitter};
 const GITHUB_OWNER: &str = "redheadesign";
 const GITHUB_REPO: &str = "music-island";
 const PREFERRED_ASSET: &str = "music-island.exe";
-const USER_AGENT: &str = "MusicIsland-Updater/1.3.0";
+const USER_AGENT: &str = "MusicIsland-Updater/1.3.1";
 const TEMP_ROOT_NAME: &str = "MusicIslandUpdate";
 
 #[derive(Debug, Clone, Serialize)]
@@ -64,7 +64,9 @@ pub fn cleanup_stale_artifacts() {
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name = name.to_string_lossy();
-            if name.starts_with("music-island-finish-") && name.ends_with(".cmd") {
+            if name.starts_with("music-island-finish-")
+                && (name.ends_with(".cmd") || name.ends_with(".ps1"))
+            {
                 let _ = fs::remove_file(entry.path());
             }
         }
@@ -275,7 +277,6 @@ fn apply_portable_replace(app: &AppHandle, staged_exe: &Path, latest: &str) -> a
     }
 
     let pid = std::process::id();
-    let helper = write_cleanup_helper(&current_dir, &current, &old_path, pid)?;
 
     emit_progress(
         app,
@@ -288,15 +289,11 @@ fn apply_portable_replace(app: &AppHandle, staged_exe: &Path, latest: &str) -> a
 
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        if let Err(error) = std::process::Command::new("cmd")
-            .args(["/C", helper.to_string_lossy().as_ref()])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-        {
+        if let Err(error) = spawn_cleanup_helper(&current_dir, &current, &old_path, pid) {
             // New exe is already in place — try a direct relaunch fallback.
-            let _ = std::process::Command::new(&current).spawn();
+            let _ = std::process::Command::new(&current)
+                .current_dir(&current_dir)
+                .spawn();
             app.exit(0);
             return Err(anyhow::anyhow!(
                 "Updater helper failed ({error}); attempted direct relaunch"
@@ -306,7 +303,7 @@ fn apply_portable_replace(app: &AppHandle, staged_exe: &Path, latest: &str) -> a
 
     #[cfg(not(windows))]
     {
-        let _ = helper;
+        let _ = (current_dir, pid);
         anyhow::bail!("Portable self-update is only supported on Windows");
     }
 
@@ -315,42 +312,61 @@ fn apply_portable_replace(app: &AppHandle, staged_exe: &Path, latest: &str) -> a
     Ok(())
 }
 
-fn write_cleanup_helper(
+/// Wait for this process to exit, delete leftovers, relaunch the new exe.
+///
+/// Uses PowerShell `-EncodedCommand` (UTF-16LE base64) so paths with non-ASCII
+/// folders (e.g. Cyrillic `АТB`) survive. A `.cmd` helper written as UTF-8 is
+/// misread by `cmd.exe` as OEM and breaks `start` with a "file not found" dialog.
+#[cfg(windows)]
+fn spawn_cleanup_helper(
     current_dir: &Path,
     new_exe: &Path,
     old_exe: &Path,
     pid: u32,
-) -> anyhow::Result<PathBuf> {
-    // Keep the helper outside MusicIslandUpdate so rmdir of the staging root
-    // cannot delete the running script mid-flight.
-    let helper = std::env::temp_dir().join(format!("music-island-finish-{pid}.cmd"));
+) -> anyhow::Result<()> {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use std::os::windows::process::CommandExt;
 
-    let new_exe_s = new_exe.display().to_string();
-    let old_exe_s = old_exe.display().to_string();
-    let staging_root = std::env::temp_dir().join(TEMP_ROOT_NAME);
-    let staging_s = staging_root.display().to_string();
-    let cwd_s = current_dir.display().to_string();
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
+    fn ps_literal(path: &Path) -> String {
+        path.to_string_lossy().replace('\'', "''")
+    }
+
+    let new_exe_s = ps_literal(new_exe);
+    let old_exe_s = ps_literal(old_exe);
+    let staging_s = ps_literal(&std::env::temp_dir().join(TEMP_ROOT_NAME));
+    let cwd_s = ps_literal(current_dir);
+
+    // Single-line script: EncodedCommand has a practical length limit; keep it short.
     let script = format!(
-        r#"@echo off
-setlocal
-set "PID={pid}"
-:wait
-tasklist /FI "PID eq %PID%" 2>nul | find "%PID%" >nul
-if not errorlevel 1 (
-  timeout /t 1 /nobreak >nul
-  goto wait
-)
-if exist "{old_exe_s}" del /F /Q "{old_exe_s}" >nul 2>&1
-if exist "{staging_s}" rmdir /S /Q "{staging_s}" >nul 2>&1
-cd /D "{cwd_s}"
-start "" "{new_exe_s}"
-del /F /Q "%~f0" >nul 2>&1
-"#
+        "$ErrorActionPreference='SilentlyContinue'; \
+$p={pid}; \
+while (Get-Process -Id $p -ErrorAction SilentlyContinue) {{ Start-Sleep -Milliseconds 400 }}; \
+if (Test-Path -LiteralPath '{old_exe_s}') {{ Remove-Item -LiteralPath '{old_exe_s}' -Force }}; \
+if (Test-Path -LiteralPath '{staging_s}') {{ Remove-Item -LiteralPath '{staging_s}' -Recurse -Force }}; \
+Start-Process -FilePath '{new_exe_s}' -WorkingDirectory '{cwd_s}'"
     );
 
-    fs::write(&helper, script)?;
-    Ok(helper)
+    let encoded = STANDARD.encode(
+        script
+            .encode_utf16()
+            .flat_map(|unit| unit.to_le_bytes())
+            .collect::<Vec<u8>>(),
+    );
+
+    std::process::Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-EncodedCommand",
+            &encoded,
+        ])
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+        .map_err(|error| anyhow::anyhow!("Failed to spawn updater helper: {error}"))?;
+    Ok(())
 }
 
 fn staging_dir() -> anyhow::Result<PathBuf> {
