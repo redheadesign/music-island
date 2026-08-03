@@ -150,8 +150,16 @@ pub fn set_overlay_clickthrough(app: &AppHandle, clickthrough: bool) -> tauri::R
 }
 
 fn sync_clickthrough_from_cursor(app: &AppHandle) -> tauri::Result<()> {
+    let expanded = hit_layout()
+        .lock()
+        .map(|layout| layout.expanded)
+        .unwrap_or(false);
+    // Collapsed: always pass clicks through (native gesture poll still works).
+    // Expanded: only capture when the cursor is over the island hit-band.
+    if !expanded {
+        return set_overlay_clickthrough(app, true);
+    }
     let state = get_collapsed_gesture_state(app)?;
-    // Over the island band → receive clicks; elsewhere → pass through.
     set_overlay_clickthrough(app, !state.active)
 }
 
@@ -207,8 +215,7 @@ pub fn start_gesture_watcher(app: AppHandle) {
             let next = get_collapsed_gesture_state(&app)
                 .unwrap_or_else(|_| CollapsedGestureState::inactive());
 
-            // Drive click-through from the hit band — not from expanded/collapsed alone.
-            let _ = set_overlay_clickthrough(&app, !next.active);
+            let _ = sync_clickthrough_from_cursor(&app);
 
             if next != previous {
                 let _ = app.emit("overlay:gesture-state", next.clone());

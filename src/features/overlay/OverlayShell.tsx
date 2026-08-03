@@ -863,10 +863,17 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 onClear={() => void clearWaveSelection()}
               />
             ) : null}
+            </div>
 
+            {/* Outside scale() so mix-blend-mode: difference can see past the card. */}
             <header
               className="island-actions"
               aria-label="Overlay actions"
+              style={
+                {
+                  '--actions-scale': config.layout.scale / 100,
+                } as CSSProperties
+              }
             >
               <button
                 type="button"
@@ -899,7 +906,6 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 {config.behavior.pinExpanded ? <PinOff size={16} /> : <Pin size={16} />}
               </button>
             </header>
-            </div>
             </motion.div>
           </div>
         ) : null}

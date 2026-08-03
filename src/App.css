@@ -278,16 +278,15 @@
 
 .island-actions {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: calc(12px * var(--actions-scale, var(--island-scale, 1)));
+  right: calc(12px * var(--actions-scale, var(--island-scale, 1)));
   z-index: 2;
   display: flex;
   pointer-events: auto;
   flex-direction: column;
-  gap: 8px;
-  transition:
-    opacity 160ms ease,
-    transform 160ms ease;
+  gap: calc(8px * var(--actions-scale, var(--island-scale, 1)));
+  /* No transform/isolation here — they trap mix-blend-mode away from the desktop. */
+  transition: opacity 160ms ease;
 }
 
 .island-plugins {
@@ -343,11 +342,29 @@
   color: rgba(255, 255, 255, 1);
 }
 
-.island-actions .icon-button svg {
-  /* Contrast on light and dark wallpaper without an underlay surface (#30). */
-  opacity: 0.92;
-  mix-blend-mode: difference;
+/* Settings/Pin: difference on the whole control (not just the glyph over glass). */
+.island-actions .icon-button {
+  width: calc(38px * var(--actions-scale, var(--island-scale, 1)));
+  height: calc(38px * var(--actions-scale, var(--island-scale, 1)));
   color: #ffffff;
+  background: transparent;
+  mix-blend-mode: difference;
+}
+
+.island-actions .icon-button:hover {
+  color: #ffffff;
+  background: transparent;
+}
+
+.island-actions .icon-button svg {
+  width: calc(16px * var(--actions-scale, var(--island-scale, 1)));
+  height: calc(16px * var(--actions-scale, var(--island-scale, 1)));
+  opacity: 1;
+  color: inherit;
+  /* Halo when WebView treats transparent backdrop as black (difference alone fails). */
+  filter:
+    drop-shadow(0 0 0.8px #fff)
+    drop-shadow(0 0 1.2px #000);
   transition: opacity 140ms ease;
 }
 
