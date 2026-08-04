@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.21 — 2026-08-04
+
+### Fixes
+
+- **Small / high-DPI monitors:** moving the cursor from the island card to Settings/Pin no longer closes the island mid-path.
+- **What was wrong:** keep-alive used DOM `elementFromPoint` / `pointerleave` in addition to the native hit-band. On some DPI/scale setups those DOM checks miss in the gutter between the card and the action buttons, so the island closed even though the cursor was still inside the interactive band. Layout/button positions are unchanged — only the close logic now trusts the native hit-band (and ignores Tauri `pointerleave` races).
+
 ## 1.3.2 — 2026-08-03
 
 ### Critical

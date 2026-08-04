@@ -390,6 +390,8 @@ export function OverlayShell({ app }: OverlayShellProps) {
       if (phase === 'opening' && !expandedVisible) {
         return
       }
+      // Keep-alive is the native hit-band only. DOM elementFromPoint is unreliable across
+      // DPI/scale (false misses in the card→Settings gutter close the island on some monitors).
       if (!state.active) {
         if (phase === 'opening') {
           abortOpeningRef.current()
@@ -398,15 +400,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
         }
         return
       }
-      if (isPointerOverExpandedSurface(state.localX, state.localY, state.windowWidth, state.windowHeight)) {
-        setIsHoveringIsland(true)
-        return
-      }
-      if (phase === 'opening') {
-        abortOpeningRef.current()
-      } else {
-        scheduleCloseRef.current()
-      }
+      setIsHoveringIsland(true)
     }
 
     let cleanup: () => void = () => undefined
@@ -743,6 +737,11 @@ export function OverlayShell({ app }: OverlayShellProps) {
   }
 
   const handleExpandedHoverLeave = () => {
+    // In Tauri the native hit-band watcher owns close. DOM pointerleave fires on gaps /
+    // transform quirks before the cursor reaches Settings/Pin on some DPI setups.
+    if (isTauriRuntime()) {
+      return
+    }
     scheduleClose()
   }
 
@@ -953,24 +952,6 @@ function toViewportY(localY: number, windowHeight: number): number {
   }
 
   return localY * (window.innerHeight / windowHeight)
-}
-
-function isPointerOverExpandedSurface(
-  localX: number,
-  localY: number,
-  windowWidth: number,
-  windowHeight: number,
-): boolean {
-  if (windowWidth <= 0 || windowHeight <= 0) {
-    return false
-  }
-
-  const viewportX = localX * (window.innerWidth / windowWidth)
-  const viewportY = localY * (window.innerHeight / windowHeight)
-  const element = document.elementFromPoint(viewportX, viewportY)
-  return Boolean(element?.closest(
-    '.island-hover-zone, .island-actions, .island-plugins, .island-card, .island-update-rail, .wave-wheel, .wave-selection-chip',
-  ))
 }
 
 function isTauriRuntime(): boolean {
