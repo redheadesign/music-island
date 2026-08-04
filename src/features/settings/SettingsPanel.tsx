@@ -37,7 +37,7 @@ import { RangeSlider } from '../../shared/ui/RangeSlider'
 import { StatusChip } from '../../shared/ui/StatusChip'
 import { UpdateBanner } from '../../shared/ui/UpdateBanner'
 
-const APP_VERSION = '1.3.21'
+const APP_VERSION = '1.3.22'
 
 interface SettingsPanelProps {
   config: AppConfig

@@ -16,6 +16,7 @@ import { useAppUpdater } from '../settings/useAppUpdater'
 import {
   cancelOverlayWindowOperations,
   getOverlayBounds,
+  measureExpandedHitBand,
   syncOverlayWindow,
   type OverlayWindowPhase,
 } from './overlayWindow'
@@ -296,7 +297,8 @@ export function OverlayShell({ app }: OverlayShellProps) {
     }
   }, [config.layout.scale, config.layout.width, mode, setMode, windowPhase])
 
-  // Native keep-alive height hugs real chrome (card + banner + wave chip), not a fixed ~2× band.
+  // Native keep-alive band must cover Settings/Pin in *physical* px (DPR-aware).
+  // 1.3.21 only hugged height in CSS px — on 125%/150% the band was too narrow and mid-path closed.
   useEffect(() => {
     if (!config || !expandedVisible || (windowPhase !== 'open' && windowPhase !== 'opening')) {
       return
@@ -310,20 +312,9 @@ export function OverlayShell({ app }: OverlayShellProps) {
       return
     }
 
-    const HIT_PAD_PX = 16
     const publish = () => {
-      const top = zone.getBoundingClientRect().top
-      let bottom = zone.getBoundingClientRect().bottom
-      zone
-        .querySelectorAll(
-          '.island-card, .island-actions, .island-update-rail, .wave-selection-chip, .wave-wheel',
-        )
-        .forEach((node) => {
-          bottom = Math.max(bottom, node.getBoundingClientRect().bottom)
-        })
-      const height = Math.max(bottom - top + HIT_PAD_PX, 96)
-      const { cardWidth } = getOverlayBounds(config.layout.width, config.layout.scale)
-      void setOverlayBounds(true, cardWidth, height)
+      const { width, height } = measureExpandedHitBand(zone)
+      void setOverlayBounds(true, width, height)
     }
 
     publish()

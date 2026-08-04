@@ -1,12 +1,14 @@
 # Changelog
 
-## 1.3.21 — 2026-08-04
+## 1.3.22 — 2026-08-04
 
 ### Fixes
 
-- **Small / high-DPI monitors:** moving the cursor from the island card to Settings/Pin no longer closes the island mid-path.
-- **What was wrong:** keep-alive used DOM `elementFromPoint` / `pointerleave` in addition to the native hit-band. On some DPI/scale setups those DOM checks miss in the gutter between the card and the action buttons, so the island closed even though the cursor was still inside the interactive band. Layout/button positions are unchanged — only the close logic now trusts the native hit-band (and ignores Tauri `pointerleave` races).
-- **Keep-alive height hugs content:** the interactive band under the island no longer stays ~2× taller than the card (it blocked clicks when pinned). Height now follows the real chrome (card + update banner + wave chip) plus a small pad via ResizeObserver.
+- **Small / high-DPI monitors (Settings path):** native keep-alive band is now sized in **physical pixels** (`CSS × devicePixelRatio`) and measured from the real chrome including Settings/Pin. On 125%/150% scaling the old CSS-sized band was too narrow, so moving toward Settings left the hit-band and closed the island. 1.3.21’s “trust hit-band only” change could not help while that band was undersized.
+
+## 1.3.21 — 2026-08-04 (broken — use 1.3.22)
+
+Yanked from GitHub. Did **not** fix the Settings hover path on small/high-DPI monitors: the keep-alive band was still sized in CSS pixels while the native hit-test uses physical pixels, so the band stayed too narrow under Windows scaling. Replaced by **1.3.22**.
 
 ## 1.3.2 — 2026-08-03
 

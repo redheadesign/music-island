@@ -9,7 +9,7 @@ use tauri::{AppHandle, Emitter};
 const GITHUB_OWNER: &str = "redheadesign";
 const GITHUB_REPO: &str = "music-island";
 const PREFERRED_ASSET: &str = "music-island.exe";
-const USER_AGENT: &str = "MusicIsland-Updater/1.3.21";
+const USER_AGENT: &str = "MusicIsland-Updater/1.3.22";
 const TEMP_ROOT_NAME: &str = "MusicIslandUpdate";
 
 #[derive(Debug, Clone, Serialize)]

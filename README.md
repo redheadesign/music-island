@@ -4,7 +4,7 @@ https://github.com/user-attachments/assets/28c65a1f-1fee-4ee0-a4f6-2fb89cf8c78e
 
 Windows top-edge media island for any SMTC player, plus an optional **direct connection to the native Yandex Music desktop app** and built-in **Better Voice (Beta)** mic cleanup.
 
-**1.3.21** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
+**1.3.22** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
 
 ## Download
 
