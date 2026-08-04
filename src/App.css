@@ -180,8 +180,9 @@
   left: auto;
   flex: 0 0 auto;
   width: var(--island-hit-width, 612px);
-  min-height: calc(480px * var(--island-scale, 1));
-  padding: 0 0 56px;
+  /* Hug content — oversized min-height made the keep-alive band ~2× the island (blocked clicks when pinned). */
+  min-height: 0;
+  padding: 0 0 20px;
   pointer-events: auto;
   transform: none;
   transform-origin: top center;

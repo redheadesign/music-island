@@ -6,6 +6,7 @@
 
 - **Small / high-DPI monitors:** moving the cursor from the island card to Settings/Pin no longer closes the island mid-path.
 - **What was wrong:** keep-alive used DOM `elementFromPoint` / `pointerleave` in addition to the native hit-band. On some DPI/scale setups those DOM checks miss in the gutter between the card and the action buttons, so the island closed even though the cursor was still inside the interactive band. Layout/button positions are unchanged — only the close logic now trusts the native hit-band (and ignores Tauri `pointerleave` races).
+- **Keep-alive height hugs content:** the interactive band under the island no longer stays ~2× taller than the card (it blocked clicks when pinned). Height now follows the real chrome (card + update banner + wave chip) plus a small pad via ResizeObserver.
 
 ## 1.3.2 — 2026-08-03
 

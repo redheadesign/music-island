@@ -7,6 +7,7 @@ import {
   getCollapsedGestureState,
   onCollapsedGestureState,
   onIntroClosed,
+  setOverlayBounds,
   type CollapsedGestureState,
 } from '../../app/tauriApi'
 import { MusicModule } from '../music/MusicModule'
@@ -183,6 +184,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
   const scheduleCloseRef = useRef<() => void>(() => undefined)
   const abortOpeningRef = useRef<() => void>(() => undefined)
   const resetPeekVisualsRef = useRef<() => void>(() => undefined)
+  const hoverZoneRef = useRef<HTMLDivElement | null>(null)
   const gestureHandlersRef = useRef({
     beginPeekGesture: (_clientX: number, _clientY: number, _localX: number, _stripWidth: number) => {},
     processGestureSample: (
@@ -293,6 +295,48 @@ export function OverlayShell({ app }: OverlayShellProps) {
       cancelled = true
     }
   }, [config.layout.scale, config.layout.width, mode, setMode, windowPhase])
+
+  // Native keep-alive height hugs real chrome (card + banner + wave chip), not a fixed ~2× band.
+  useEffect(() => {
+    if (!config || !expandedVisible || (windowPhase !== 'open' && windowPhase !== 'opening')) {
+      return
+    }
+    if (!isTauriRuntime()) {
+      return
+    }
+
+    const zone = hoverZoneRef.current
+    if (!zone) {
+      return
+    }
+
+    const HIT_PAD_PX = 16
+    const publish = () => {
+      const top = zone.getBoundingClientRect().top
+      let bottom = zone.getBoundingClientRect().bottom
+      zone
+        .querySelectorAll(
+          '.island-card, .island-actions, .island-update-rail, .wave-selection-chip, .wave-wheel',
+        )
+        .forEach((node) => {
+          bottom = Math.max(bottom, node.getBoundingClientRect().bottom)
+        })
+      const height = Math.max(bottom - top + HIT_PAD_PX, 96)
+      const { cardWidth } = getOverlayBounds(config.layout.width, config.layout.scale)
+      void setOverlayBounds(true, cardWidth, height)
+    }
+
+    publish()
+    const observer = new ResizeObserver(() => publish())
+    observer.observe(zone)
+    return () => observer.disconnect()
+  }, [
+    config,
+    expandedVisible,
+    windowPhase,
+    showIslandUpdate,
+    waveContext?.active,
+  ])
 
   useEffect(() => {
     if (!isTauriRuntime() || windowPhase !== 'collapsed') {
@@ -816,6 +860,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
         {expandedVisible ? (
           <div className="island-expanded-layer">
             <motion.div
+              ref={hoverZoneRef}
               className="island-hover-zone"
               key="island-expanded"
               onPointerEnter={handleExpandedHoverEnter}

@@ -64,8 +64,8 @@ export function getOverlayBounds(
     // Hit-band width for native cursor sampling (card + Settings/Pin gutters).
     // The HWND itself is fullscreen; these values only describe the interactive center band.
     cardWidth: (500 * width + ACTIONS_GUTTER_PER_SIDE * 2) * scale,
-    // Card + under-island update rail (with progress) + wave chip + action chrome.
-    expandedHeight: 520 * scale,
+    // Fallback until ResizeObserver measures the real hover-zone (hugs card + chrome + pad).
+    expandedHeight: 300 * scale,
     collapsedWidth: 220 * scale,
     collapsedHeight: 20 * scale,
   }
