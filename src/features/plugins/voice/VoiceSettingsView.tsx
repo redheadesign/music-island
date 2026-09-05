@@ -7,12 +7,12 @@ import {
   Waves,
   X,
 } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { AGC_CALLS_RMS, AGC_CONTENT_RMS, dbToLinear, linearToDb } from './levels'
 import { EXPLODE_EFFECTS, sceneLabel } from './presets'
 import { DarkSelect } from './DarkSelect'
 import { useIslandVoiceApp } from './useIslandVoiceApp'
-import { VoiceFoxMascot } from './VoiceFoxMascot'
+import { FOX_CLIP_CATALOG, VoiceFoxMascot, type FoxClipId } from './VoiceFoxMascot'
 import { VoiceGuidePage } from './VoiceGuidePage'
 import { VoiceLiveMeters } from './VoiceLiveMeters'
 import { GlassSurface } from '../../../shared/ui/GlassSurface'
@@ -23,6 +23,9 @@ import type { Locale } from '../../../shared/lib/types'
 
 interface VoiceSettingsViewProps {
   locale: Locale
+  /** False while Settings is hidden or another tab is active — pause fox / meters. */
+  active?: boolean
+  developerMode?: boolean
   showExperimentalBanner?: boolean
   onDismissExperimentalBanner?: () => void
 }
@@ -32,13 +35,20 @@ const CABLE_SITE = 'https://vb-audio.com/Cable/'
 
 export function VoiceSettingsView({
   locale,
+  active = true,
+  developerMode = false,
   showExperimentalBanner = true,
   onDismissExperimentalBanner,
 }: VoiceSettingsViewProps) {
-  const app = useIslandVoiceApp(locale)
+  const app = useIslandVoiceApp(locale, { active })
   const { t } = app
   const ti = createTranslator(locale)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [foxPreviewId, setFoxPreviewId] = useState<FoxClipId | null>(null)
+  const foxPreviewLabel = useMemo(
+    () => FOX_CLIP_CATALOG.find((clip) => clip.id === foxPreviewId)?.label ?? null,
+    [foxPreviewId],
+  )
   const agcDb = linearToDb(app.agcTarget)
   const freqs = app.eqFreqs.length
     ? app.eqFreqs
@@ -72,7 +82,7 @@ export function VoiceSettingsView({
   }
 
   return (
-    <div className="voice-settings">
+    <div className="voice-settings" aria-busy={!app.hydrated}>
       <section className="voice-control-hero" aria-label={t.start}>
         <div className="voice-fx-row voice-fx-row--center">
           {EXPLODE_EFFECTS.map((fx) => (
@@ -116,12 +126,61 @@ export function VoiceSettingsView({
           </label>
         ) : null}
 
-        <VoiceFoxMascot live={app.running} />
+        <VoiceFoxMascot
+          live={app.running}
+          active={active}
+          previewClipId={developerMode ? foxPreviewId : null}
+        />
+
+        {developerMode ? (
+          <div className="fox-dev-preview" data-tauri-drag-region="false">
+            <code className="fox-dev-preview__name" title={foxPreviewLabel ?? undefined}>
+              {foxPreviewLabel ?? ti('settings.devFoxClipDefault')}
+            </code>
+            <label className="fox-dev-preview__field">
+              <span>{ti('settings.devFoxClip')}</span>
+              <select
+                className="fox-dev-preview__select"
+                value={foxPreviewId ?? ''}
+                onChange={(e) => {
+                  const next = e.currentTarget.value
+                  setFoxPreviewId(next ? (next as FoxClipId) : null)
+                }}
+              >
+                <option value="">{ti('settings.devFoxClipAuto')}</option>
+                <optgroup label={ti('settings.devFoxGroupLive')}>
+                  {FOX_CLIP_CATALOG.filter((clip) => clip.group === 'live').map((clip) => (
+                    <option key={clip.id} value={clip.id}>{clip.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label={ti('settings.devFoxGroupSleep')}>
+                  {FOX_CLIP_CATALOG.filter((clip) => clip.group === 'sleep').map((clip) => (
+                    <option key={clip.id} value={clip.id}>{clip.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label={ti('settings.devFoxGroupTransition')}>
+                  {FOX_CLIP_CATALOG.filter((clip) => clip.group === 'transition').map((clip) => (
+                    <option key={clip.id} value={clip.id}>{clip.label}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+            {foxPreviewId ? (
+              <button
+                type="button"
+                className="secondary-button fox-dev-preview__reset"
+                onClick={() => setFoxPreviewId(null)}
+              >
+                {ti('settings.devFoxClipReset')}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
         <button
           type="button"
           className={['voice-control-cta', app.running ? 'voice-control-cta--stop' : 'voice-control-cta--start'].join(' ')}
-          disabled={app.busy}
+          disabled={app.busy || !app.hydrated}
           onClick={() => void (app.running ? app.stop() : app.start())}
         >
           {app.running ? t.stop : t.start}
@@ -164,6 +223,7 @@ export function VoiceSettingsView({
 
         <VoiceLiveMeters
           running={app.running}
+          active={active}
           targetKind={meterTarget}
           overloadLabel={t.inputOverload}
           comfortTip={t.meterComfortTip}

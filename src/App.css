@@ -1111,6 +1111,58 @@
   background: transparent;
 }
 
+.fox-dev-preview {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(100%, 320px);
+  margin-top: -4px;
+  pointer-events: auto;
+}
+
+.fox-dev-preview__name {
+  display: block;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fox-dev-preview__field {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.fox-dev-preview__select {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.fox-dev-preview__reset {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
 .voice-control-hero .voice-status {
   justify-content: center;
 }

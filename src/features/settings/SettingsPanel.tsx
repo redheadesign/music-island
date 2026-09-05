@@ -15,6 +15,7 @@ import {
 import { VoiceSettingsView } from '../plugins/voice/VoiceSettingsView'
 import { AccentColorPicker } from './AccentColorPicker'
 import { useAppUpdater } from './useAppUpdater'
+import { useWindowVisible } from './useWindowVisible'
 import type {
   AppConfig,
   AutostartSyncEvent,
@@ -78,17 +79,20 @@ export function SettingsPanel({
   const locale = normalizeLocale(draft.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
   const [settingsScope, setSettingsScope] = useState<'island' | 'voice'>('island')
+  const [voiceMounted, setVoiceMounted] = useState(false)
+  const settingsVisible = useWindowVisible()
   const latestVersion = updater.result?.latestVersion ?? null
   const updaterBusy =
     updater.status === 'downloading' || updater.status === 'installing'
+  // Network/check errors stay in the About update field — not the top “update available” banner.
   const showSettingsUpdateBanner =
     updaterBusy
-    || updater.status === 'error'
     || shouldShowSettingsUpdateBanner({
       hasUpdate: Boolean(updater.result?.hasUpdate) || uiPrefs.forceSettingsUpdateBanner === true,
       latestVersion: latestVersion ?? (uiPrefs.forceSettingsUpdateBanner ? 'dev' : null),
       prefs: uiPrefs,
     })
+  const voiceActive = settingsVisible && settingsScope === 'voice'
 
   useEffect(() => setDraft(config), [config])
   useEffect(() => {
@@ -270,7 +274,10 @@ export function SettingsPanel({
             role="tab"
             aria-selected={settingsScope === 'voice'}
             className={`settings-scope-switch__btn settings-scope-switch__btn--voice ${settingsScope === 'voice' ? 'settings-scope-switch__btn--active' : ''}`}
-            onClick={() => setSettingsScope('voice')}
+            onClick={() => {
+              setVoiceMounted(true)
+              setSettingsScope('voice')
+            }}
           >
             <span className="settings-scope-switch__label">{t('settings.scopeVoice')}</span>
             <span className="settings-scope-badge">{t('settings.scopeVoiceBeta')}</span>
@@ -296,22 +303,26 @@ export function SettingsPanel({
         </div>
       </header>
 
-      {settingsScope === 'voice' ? (
-        <VoiceSettingsView
-          locale={locale}
-          showExperimentalBanner={
-            Boolean(uiPrefs.forceVoiceExperimentalBanner)
-            || !uiPrefs.dismissedVoiceExperimentalBanner
-          }
-          onDismissExperimentalBanner={() =>
-            previewAndSave(
-              withUiPrefs(draft, {
-                dismissedVoiceExperimentalBanner: true,
-                forceVoiceExperimentalBanner: false,
-              }),
-            )
-          }
-        />
+      {voiceMounted ? (
+        <div hidden={settingsScope !== 'voice'} aria-hidden={settingsScope !== 'voice'}>
+          <VoiceSettingsView
+            locale={locale}
+            active={voiceActive}
+            developerMode={Boolean(uiPrefs.developerMode)}
+            showExperimentalBanner={
+              Boolean(uiPrefs.forceVoiceExperimentalBanner)
+              || !uiPrefs.dismissedVoiceExperimentalBanner
+            }
+            onDismissExperimentalBanner={() =>
+              previewAndSave(
+                withUiPrefs(draft, {
+                  dismissedVoiceExperimentalBanner: true,
+                  forceVoiceExperimentalBanner: false,
+                }),
+              )
+            }
+          />
+        </div>
       ) : null}
 
       {settingsScope === 'island' ? (
@@ -331,9 +342,7 @@ export function SettingsPanel({
           primaryLabel={t('settings.updateNow')}
           laterLabel={t('settings.updateLater')}
           status={
-            updater.status === 'downloading'
-            || updater.status === 'installing'
-            || updater.status === 'error'
+            updater.status === 'downloading' || updater.status === 'installing'
               ? updater.status
               : 'available'
           }
@@ -522,7 +531,11 @@ export function SettingsPanel({
           <div className="about-update about-update--elevated">
             <strong className="about-update__version">Music Island v{APP_VERSION}</strong>
             <div className="about-update-row">
-              <span className={`about-update-status about-update-status--${updater.status}`}>
+              <span
+                className={`about-update-status about-update-status--${
+                  updater.error && updater.status === 'idle' ? 'error' : updater.status
+                }`}
+              >
                 {updater.status === 'checking'
                   ? t('settings.checkingUpdates')
                   : updater.status === 'upToDate'
@@ -535,7 +548,7 @@ export function SettingsPanel({
                         ? t('settings.downloadingUpdate')
                         : updater.status === 'installing'
                           ? t('settings.installingUpdate')
-                          : updater.status === 'error'
+                          : updater.status === 'error' || updater.error
                             ? t('settings.updateError')
                             : updater.result?.message ?? t('settings.checkForUpdates')}
               </span>

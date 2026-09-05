@@ -73,9 +73,9 @@ export function OverlayShell({ app }: OverlayShellProps) {
   const latestVersion = updater.result?.latestVersion ?? null
   const updaterBusy =
     updater.status === 'downloading' || updater.status === 'installing'
+  // Check failures (offline / GitHub) must not surface on the island — only in Settings About.
   const showIslandUpdate =
     updaterBusy
-    || updater.status === 'error'
     || shouldShowIslandUpdateBanner({
       hasUpdate: Boolean(updater.result?.hasUpdate) || uiPrefs.forceIslandUpdateBanner === true,
       latestVersion: latestVersion ?? (uiPrefs.forceIslandUpdateBanner ? 'dev' : null),
@@ -891,9 +891,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 primaryLabel={t('island.updateNow')}
                 laterLabel={t('island.updateLater')}
                 status={
-                  updater.status === 'downloading'
-                  || updater.status === 'installing'
-                  || updater.status === 'error'
+                  updater.status === 'downloading' || updater.status === 'installing'
                     ? updater.status
                     : 'available'
                 }
@@ -905,7 +903,6 @@ export function OverlayShell({ app }: OverlayShellProps) {
                       ? t('settings.installingUpdate')
                       : undefined
                 }
-                error={updater.error}
                 onPrimary={() => {
                   void updater.install()
                 }}

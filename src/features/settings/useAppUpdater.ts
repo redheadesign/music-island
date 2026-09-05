@@ -72,7 +72,9 @@ export function useAppUpdater(autoCheck: boolean, forceSameVersion = false): App
       }
     } catch (err) {
       setError(formatUpdaterError(err))
-      setStatus('error')
+      // Manual check: surface error in Settings About. Auto-check: keep error text for About
+      // but leave status idle so island/settings banners never treat a failed probe as an update.
+      setStatus(manual ? 'error' : 'idle')
     } finally {
       checkBusyRef.current = false
     }

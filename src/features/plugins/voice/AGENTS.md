@@ -1,8 +1,6 @@
----
-description: Fox mascot WebM must punch Magnific black BG via frame flood-fill — never remux opaque variants
-globs: src/features/plugins/voice/assets/fox-*.webm,src/features/plugins/voice/VoiceFoxVideoMascot.tsx,.local/process_fox_alpha.py
-alwaysApply: false
----
+# Better Voice guidance
+
+The fox rules below were copied from `.cursor/rules/fox-mascot-alpha.mdc` without changing their body. Maintain this file as the Codex source of truth. All paths in these rules are relative to the repository root. They apply when changing fox assets, mascot playback or the local alpha-processing pipeline; unrelated voice changes do not require regenerating assets.
 
 # Fox mascot alpha (do not regress)
 

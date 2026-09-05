@@ -21,6 +21,7 @@ const emptyStats: AudioStats = {
 /** Isolated polling so spectrum/meters don't re-render the whole settings tree. */
 export function VoiceLiveMeters({
   running,
+  active = true,
   targetKind,
   overloadLabel,
   comfortTip,
@@ -28,6 +29,8 @@ export function VoiceLiveMeters({
   targetTip,
 }: {
   running: boolean
+  /** Pause polling when the voice tab / settings window is not visible. */
+  active?: boolean
   targetKind: GainTargetKind
   overloadLabel: string
   comfortTip: string
@@ -38,9 +41,11 @@ export function VoiceLiveMeters({
   const [peakHoldDb, setPeakHoldDb] = useState<number | null>(null)
 
   useEffect(() => {
-    if (!running) {
-      setStats(emptyStats)
-      setPeakHoldDb(null)
+    if (!running || !active) {
+      if (!running) {
+        setStats(emptyStats)
+        setPeakHoldDb(null)
+      }
       return
     }
     let cancelled = false
@@ -65,7 +70,7 @@ export function VoiceLiveMeters({
       cancelled = true
       window.clearInterval(id)
     }
-  }, [running])
+  }, [running, active])
 
   return (
     <div className="voice-meters-elevated">
@@ -73,11 +78,11 @@ export function VoiceLiveMeters({
         <SpectrumVisualizer
           spectrumIn={stats.spectrum}
           spectrumOut={stats.spectrum_out}
-          active={running}
+          active={running && active}
         />
         <LevelMeter
           stats={stats}
-          running={running}
+          running={running && active}
           overloadLabel={overloadLabel}
           comfortTip={comfortTip}
           yellTip={yellTip}

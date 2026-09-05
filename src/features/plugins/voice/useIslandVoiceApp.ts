@@ -32,9 +32,25 @@ const defaultSettings: AppSettings = {
   language: "en",
 };
 
-export function useIslandVoiceApp(islandLocale: "ru" | "en") {
+/** Survives VoiceSettingsView remounts so the fox does not flash sleep while BV is live. */
+let cachedEngineRunning = false;
+
+function readSeedRunning(): boolean {
+  if (cachedEngineRunning) return true;
+  try {
+    return Boolean(loadSession()?.engineRunning);
+  } catch {
+    return false;
+  }
+}
+
+export function useIslandVoiceApp(
+  islandLocale: "ru" | "en",
+  options?: { active?: boolean },
+) {
+  const uiActive = options?.active ?? true;
   const [view, setView] = useState<PanelView>("main");
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState(() => readSeedRunning());
   const [enabled, setEnabled] = useState(true);
   const [strength, setStrength] = useState(55);
   const [model, setModel] = useState("rnnoise");
@@ -165,7 +181,11 @@ export function useIslandVoiceApp(islandLocale: "ru" | "en") {
         // Engine may still be running after tab switch / settings reopen.
         try {
           const status = await voicePluginApi.getStatus();
-          if (!cancelled) setRunning(Boolean(status.running));
+          if (!cancelled) {
+            const next = Boolean(status.running);
+            cachedEngineRunning = next;
+            setRunning(next);
+          }
         } catch {
           /* ignore */
         }
@@ -222,11 +242,14 @@ export function useIslandVoiceApp(islandLocale: "ru" | "en") {
     const syncRunning = async () => {
       try {
         const status = await voicePluginApi.getStatus();
-        setRunning(Boolean(status.running));
+        const next = Boolean(status.running);
+        cachedEngineRunning = next;
+        setRunning(next);
       } catch {
         /* ignore */
       }
     };
+    if (uiActive) void syncRunning();
     const onFocus = () => {
       void syncRunning();
     };
@@ -236,7 +259,7 @@ export function useIslandVoiceApp(islandLocale: "ru" | "en") {
       document.removeEventListener('visibilitychange', onFocus);
       window.removeEventListener('focus', onFocus);
     };
-  }, [hydrated]);
+  }, [hydrated, uiActive]);
 
   // Persist panel state between sessions
   useEffect(() => {
@@ -282,10 +305,11 @@ export function useIslandVoiceApp(islandLocale: "ru" | "en") {
   ]);
 
   useEffect(() => {
+    if (!uiActive) return;
     void refreshVirtualRoute();
     const id = window.setInterval(() => void refreshVirtualRoute(), 4000);
     return () => window.clearInterval(id);
-  }, [refreshVirtualRoute, outputs.length]);
+  }, [refreshVirtualRoute, outputs.length, uiActive]);
 
 
   /** EQ presets only — enable EQ and load bands. */
@@ -322,11 +346,13 @@ export function useIslandVoiceApp(islandLocale: "ru" | "en") {
         await voicePluginApi.setExplodeEffect(fxEffect);
         await voicePluginApi.setExplodeMode(true, fxIntensity);
       }
+      cachedEngineRunning = true;
       setRunning(true);
     } catch (e) {
       const msg = String(e);
       // Stale UI after reopen — engine already live.
       if (/already running/i.test(msg)) {
+        cachedEngineRunning = true;
         setRunning(true);
         setError(null);
       } else {
@@ -358,6 +384,7 @@ export function useIslandVoiceApp(islandLocale: "ru" | "en") {
     try {
       await voicePluginApi.setExplodeMode(false, fxIntensity);
       await voicePluginApi.stopDenoising();
+      cachedEngineRunning = false;
       setRunning(false);
       setFxEnabled(false);
     } catch (e) {
@@ -569,6 +596,7 @@ export function useIslandVoiceApp(islandLocale: "ru" | "en") {
     view,
     setView,
     openHelp,
+    hydrated,
     running,
     busy,
     error,
