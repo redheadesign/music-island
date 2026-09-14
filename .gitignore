@@ -10,7 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-release
+storybook-static/
+/release/
 artifacts
 src-tauri/target
 src-tauri/gen
@@ -32,3 +33,8 @@ src-tauri/resources-optional/
 *.njsproj
 *.sln
 *.sw?
+
+# Local development caches and working-session notes
+.pnpm-store/
+docs/SESSION_HANDOFF.md
+docs/DESIGN_PREFERENCES.md

@@ -16,6 +16,8 @@
 
 ## Media
 
+- Taskbar mini-player: use the [Windows taskbar checks](TASKBAR.md#windows-verification), including simultaneous operation with the top island.
+
 - Spotify / browser / other SMTC sources.
 - SMTC seek: compare with Win+A flyout (player limitation is OK).
 - Direct Yandex: consent, connect, play/pause/seek/like, quick reload, return to SMTC.

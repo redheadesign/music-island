@@ -1,0 +1,7 @@
+.brand-logo {
+  display: block;
+  flex: 0 0 auto;
+  width: var(--brand-logo-size);
+  height: var(--brand-logo-size);
+  color: inherit;
+}

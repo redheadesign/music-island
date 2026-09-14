@@ -7,18 +7,21 @@ import { useWaveController } from './media/useWaveController'
 import { useWindowController } from './window/useWindowController'
 
 export type { IslandAppState, OverlayMode, UseIslandAppOptions } from './islandApp.types'
+export type { UsageController } from './usage/useUsageController'
+export { getUsagePreferences, withUsageProviderEnabled, enabledUsageProviders } from './usage/usagePreferences'
 
-export function useIslandApp({ mediaEnabled = true }: UseIslandAppOptions = {}): IslandAppState {
+export function useIslandApp({ mediaEnabled = true, timelineEnabled = true, windowEventsEnabled = true }: UseIslandAppOptions = {}): IslandAppState {
   const [mode, setMode] = useState<OverlayMode>('idle')
   const noSessionTimerRef = useRef<number | null>(null)
   const initialMediaModeSetRef = useRef(false)
   const configController = useAppConfig(mediaEnabled)
   const mediaController = useMediaController({
     enabled: mediaEnabled,
+    timelineEnabled,
     configLoaded: configController.configLoaded,
     protocol: configController.config.media.protocol,
   })
-  const windowController = useWindowController(mediaEnabled, setMode)
+  const windowController = useWindowController(mediaEnabled && windowEventsEnabled, setMode)
   const waveController = useWaveController(mediaController.media)
   const directController = useDirectStatus(
     mediaEnabled && configController.config.media.protocol === 'yandex-direct',

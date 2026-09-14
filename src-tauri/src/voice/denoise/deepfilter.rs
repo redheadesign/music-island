@@ -54,9 +54,14 @@ impl DeepFilterFFI {
     }
 
     pub fn new(resource_dir: &std::path::Path) -> Result<Self, String> {
-        let dll_path = resource_dir.join("deepfilter").join("deepfilter_runtime_bridge.dll");
+        let dll_path = resource_dir
+            .join("deepfilter")
+            .join("deepfilter_runtime_bridge.dll");
         if !dll_path.exists() {
-            return Err(format!("DeepFilterNet DLL not found: {}", dll_path.display()));
+            return Err(format!(
+                "DeepFilterNet DLL not found: {}",
+                dll_path.display()
+            ));
         }
 
         let lib = unsafe {
@@ -65,17 +70,23 @@ impl DeepFilterFFI {
         };
 
         unsafe {
-            let create: FnCreate = *lib.get(b"dfgui_create")
+            let create: FnCreate = *lib
+                .get(b"dfgui_create")
                 .map_err(|e| format!("dfgui_create not found: {}", e))?;
-            let get_frame_len: FnGetFrameLength = *lib.get(b"dfgui_get_frame_length")
+            let get_frame_len: FnGetFrameLength = *lib
+                .get(b"dfgui_get_frame_length")
                 .map_err(|e| format!("dfgui_get_frame_length not found: {}", e))?;
-            let get_sr: FnGetSampleRate = *lib.get(b"dfgui_get_sample_rate")
+            let get_sr: FnGetSampleRate = *lib
+                .get(b"dfgui_get_sample_rate")
                 .map_err(|e| format!("dfgui_get_sample_rate not found: {}", e))?;
-            let get_ch: FnGetChannelCount = *lib.get(b"dfgui_get_channel_count")
+            let get_ch: FnGetChannelCount = *lib
+                .get(b"dfgui_get_channel_count")
                 .map_err(|e| format!("dfgui_get_channel_count not found: {}", e))?;
-            let set_atten_lim: FnSetAttenLim = *lib.get(b"dfgui_set_atten_lim")
+            let set_atten_lim: FnSetAttenLim = *lib
+                .get(b"dfgui_set_atten_lim")
                 .map_err(|e| format!("dfgui_set_atten_lim not found: {}", e))?;
-            let set_post_filter_beta: FnSetPostFilterBeta = *lib.get(b"dfgui_set_post_filter_beta")
+            let set_post_filter_beta: FnSetPostFilterBeta = *lib
+                .get(b"dfgui_set_post_filter_beta")
                 .map_err(|e| format!("dfgui_set_post_filter_beta not found: {}", e))?;
 
             // ══════════════════════════════════════════════════════════════
@@ -120,7 +131,9 @@ impl DeepFilterFFI {
 
             log::info!(
                 "DeepFilterNet FFI loaded: frame_size={}, sr={}, ch={}",
-                frame_size, sample_rate, channels
+                frame_size,
+                sample_rate,
+                channels
             );
 
             Ok(Self {
@@ -162,7 +175,9 @@ impl DenoiseModel for DeepFilterFFI {
         if input.len() < expected_len || output.len() < expected_len {
             log::warn!(
                 "DeepFilterNet: frame size mismatch, input={} output={} expected={}",
-                input.len(), output.len(), expected_len
+                input.len(),
+                output.len(),
+                expected_len
             );
         }
 
@@ -170,8 +185,10 @@ impl DenoiseModel for DeepFilterFFI {
 
         unsafe {
             let process: FnProcessFrame = std::mem::transmute(
-                *self._lib.get::<FnProcessFrame>(b"dfgui_process_frame")
-                    .expect("dfgui_process_frame not found")
+                *self
+                    ._lib
+                    .get::<FnProcessFrame>(b"dfgui_process_frame")
+                    .expect("dfgui_process_frame not found"),
             );
 
             // ══════════════════════════════════════════════════════════════
@@ -191,7 +208,11 @@ impl DenoiseModel for DeepFilterFFI {
             for i in 0..len {
                 self.norm_input[i] = input[i];
             }
-            let _attenuation = process(self.state, self.norm_input.as_ptr(), self.norm_output.as_mut_ptr());
+            let _attenuation = process(
+                self.state,
+                self.norm_input.as_ptr(),
+                self.norm_output.as_mut_ptr(),
+            );
             for i in 0..len {
                 output[i] = self.norm_output[i];
             }

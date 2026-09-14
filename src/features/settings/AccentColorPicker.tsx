@@ -9,6 +9,7 @@ import {
   type RefObject,
 } from 'react'
 import { ACCENT_PRESETS, normalizeHexColor } from '../../shared/lib/accentTheme'
+import './AccentColorPicker.css'
 
 interface AccentColorPickerProps {
   value: string
@@ -148,15 +149,15 @@ export function AccentColorPicker({
       <div className="accent-picker__copy">
         <strong>{label}</strong>
       </div>
-      <div className="accent-picker__row" role="listbox" aria-label={label}>
+      <div className="accent-picker__row" role="group" aria-label={label}>
         {ACCENT_PRESETS.map((hex) => {
           const active = normalizeHexColor(hex) === current
           return (
             <button
               key={hex}
               type="button"
-              role="option"
-              aria-selected={active}
+              aria-pressed={active}
+              aria-label={`${label} ${hex}`}
               className={['accent-picker__swatch', active ? 'accent-picker__swatch--active' : ''].join(' ')}
               style={{ background: hex }}
               title={hex}
@@ -169,8 +170,8 @@ export function AccentColorPicker({
         })}
         <button
           type="button"
-          role="option"
-          aria-selected={!isPreset}
+          aria-pressed={!isPreset}
+          aria-label={customLabel}
           aria-expanded={open}
           aria-controls={panelId}
           className={[
@@ -232,14 +233,16 @@ export function AccentColorPicker({
                   setHexDraft(next)
                   if (/^#?[0-9a-fA-F]{6}$/.test(next) || /^#?[0-9a-fA-F]{3}$/.test(next)) {
                     const hex = normalizeHexColor(next.startsWith('#') ? next : `#${next}`)
-                    setHsv(hexToHsv(hex))
+                    hsvRef.current = hexToHsv(hex)
+                    setHsv(hsvRef.current)
                     onChange(hex)
                   }
                 }}
                 onBlur={() => {
                   const hex = normalizeHexColor(hexDraft.startsWith('#') ? hexDraft : `#${hexDraft}`, preview)
                   setHexDraft(hex.toUpperCase())
-                  setHsv(hexToHsv(hex))
+                  hsvRef.current = hexToHsv(hex)
+                  setHsv(hsvRef.current)
                   onChange(hex)
                 }}
               />

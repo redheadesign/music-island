@@ -21,6 +21,11 @@ flowchart LR
   BetterVoice -->|voice_invoke| VoiceCmds[voice commands]
   VoiceCmds --> VoiceEngine[Rust voice engine]
   VoiceEngine -->|meters / status| BetterVoice
+  Codex[Codex app-server] --> UsageRuntime[Rust usage runtime]
+  Claude[Claude OAuth usage] --> UsageRuntime
+  UsageRuntime -->|usage:snapshot| UsageController[Usage controller]
+  UsageController --> Overlay
+  UsageController --> Settings
 ```
 
 ## Native Layer
@@ -30,8 +35,10 @@ flowchart LR
 - `src-tauri/src/yandex`: explicit opt-in CDP discovery, renderer validation and a fixed command/state adapter for the installed desktop client.
 - `src-tauri/src/config`: schema-versioned JSON config in `%APPDATA%\Music Island`.
 - `src-tauri/src/window`: top-center bounds, native cursor gesture watcher, click-through state, settings / intro / already-running window lifecycle.
+- `src-tauri/src/window/taskbar`: opt-in same-process Win32 player attached to the primary taskbar. A layered `STATIC` host and owner-drawn `BUTTON` children use buffered diff painting and direct native input; the supportedOS manifest keeps layered child behavior available. It measures occupied space, uses parent-relative placement, inherits taskbar movement/clipping and recreates on Explorer or DPI changes. It never injects into or resizes Explorer.
 - `src-tauri/src/tray`: settings and quit actions.
 - `src-tauri/src/logging`: local startup, protocol-health and direct-provider diagnostics.
+- `src-tauri/src/usage`: opt-in Codex and Claude quota probes, one generation-guarded polling task per enabled provider, backoff-aware retries and the shared native snapshot used by every window. Codex talks to the installed official `codex.exe app-server`; provider credentials are never returned to React.
 - `src-tauri/src/updater`: **portable GitHub Releases updater** — check latest release, download `music-island.exe`, PE sanity check, replace running exe and relaunch. This is the intended forever update channel (always portable).
 - `src-tauri/src/voice`: in-process Better Voice engine (capture → DSP/denoise → virtual route / VB-Cable), asset extract to `%APPDATA%\Music Island\voice\`, meters IPC.
 - `src-tauri/src/plugins`: optional sidecar plugin discovery/host (legacy path; Better Voice ships in-process).
@@ -43,10 +50,12 @@ flowchart LR
 - `src/app/config`: configuration loading, change subscription and persistence. Autostart is synchronized from the Rust save/startup path for portable path refresh.
 - `src/app/media`: media snapshot/timeline subscriptions, local progress interpolation, session discovery, command dispatch and wave-chip state (catalog carousel disabled).
 - `src/app/window`: settings-window and overlay action lifecycle.
+- `src/app/usage`: the shared usage snapshot adapter and controller. A window registers `usage:snapshot` before reading the native cache, so a provider transition during startup cannot be missed; revision guards reject late initial reads.
 - `src/app/tauriApi.ts`: the frontend's native adapter; native command/event details stop here.
 - `src/features/overlay`: top-edge shell, native gesture events, hit-tested action controls, island update nag, animation orchestration.
 - `src/features/music`: capability-driven playback, timeline and direct-provider reaction controls; optional wave chip UI.
-- `src/features/settings`: live-saved layout controls, protocol health/status, Direct reconnect/consent, About/updater UI, MI | BV scope switch.
+- `src/features/taskbar`: the React reference presentation used by the taskbar layout editor and Storybook. The actual Windows taskbar player is the native renderer described above; both consume the same ordered layout and capability-driven command contract.
+- `src/features/settings`: live-saved layout controls, protocol health/status, Direct reconnect/consent, assistant usage opt-ins, About/updater UI, MI | BV scope switch. `IslandPreview` renders the production music controls and usage chips inside a scaled desktop inset; `TaskbarLayoutEditor` renders the shared React taskbar presentation. Preview callbacks are inert and never simulate native media or window behavior.
 - `src/features/plugins/voice`: Better Voice settings, guide page, fox mascot, meters.
 - `src/features/intro`: startup splash WebView (`intro` window label).
 - `src/features/notice`: already-running notice window.
@@ -61,11 +70,15 @@ Overlay modes: `idle`, `peek`, `compact`, `expanded`, `pinned`, `settings`, `no-
 
 The normalized `MediaSnapshot` identifies its provider (`smtc` or `yandex-direct`) and carries capability flags, timeline data, artwork, reaction state and SMTC health. The frontend does not need provider-specific command logic.
 
+The watcher caches each authoritative snapshot, including timeline-only updates and cleared sessions. A newly opened media window reads this cache instead of starting another Windows probe. Provider and preferred-source generations invalidate older entries; concurrent first reads share initialization.
+
 Native events are intentionally low frequency. Timeline events are compact and the UI interpolates progress locally while playback is active. The hidden Settings WebView has no media subscription or progress timer. SMTC uses active, idle, degraded and unavailable polling intervals; metadata and artwork are not re-read on every timeline probe.
 
 The facade preserves one public state contract for both overlay and Settings windows. Passing `mediaEnabled: false` keeps the Settings WebView out of media snapshot/timeline subscriptions while retaining config, health and source-discovery behavior.
 
 UI preferences for banners/snooze/dev previews live under `config.plugins.settings.ui` (`uiPrefs`).
+
+Island layout and taskbar layout are normalized persisted models. The island editor supports ordered controls, reactions, usage providers and actions with required-element and no-duplicate guards. Width and scale use a local pointer draft and are saved only when the gesture commits. The native taskbar consumes its own ordered layout, keeps transport mandatory and guards every dispatch with the latest provider capabilities.
 
 ## Provider lifecycle
 
@@ -74,6 +87,13 @@ Windows SMTC is the default provider. The configured provider is authoritative: 
 Direct Yandex is enabled only after user confirmation. Music Island first reattaches to a validated running process and loopback endpoint. Only an explicit connection action may restart the installed Electron client with a random `127.0.0.1` debugging port. A serialized actor keeps one CDP WebSocket open for state and commands. Returning to SMTC closes the debug-enabled process and launches it normally after an explicit user action.
 
 The direct provider uses fixed selectors and commands only. It never accepts arbitrary JavaScript from the frontend, stores account tokens or creates a second playback session.
+
+## Schedulers and lifecycle
+
+- The media watcher is the single owner of provider polling. It uses separate active, idle, degraded, unavailable and passive-SMTC intervals, publishes compact timeline events and keeps metadata reads out of timeline-only ticks.
+- The taskbar worker coalesces refresh and placement requests, reuses cached media snapshots and bounds slower UI Automation scans behind a native geometry fast path. Artwork decoding is cancellable, revision-checked and limited to one blocking decode at a time.
+- Each enabled usage provider owns one cancellable generation. Successful probes return to the five-minute interval; transient failures retry when their shorter backoff expires, rate limits retain the longer backoff, and an explicit Refresh may bypass automatic backoff. Disabling or reconnecting a provider invalidates late results.
+- React controllers clean up delayed native subscriptions after unmount. The Settings window disables media and timeline work; the taskbar path has no React timeline timer; the main window alone owns overlay window events.
 
 ## Better Voice
 

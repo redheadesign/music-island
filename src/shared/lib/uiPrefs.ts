@@ -1,8 +1,21 @@
 import type { AppConfig } from './types'
+import type { TaskbarLayoutV1 } from './taskbarLayout'
 
 export const UI_PREFS_KEY = 'ui'
 
+export type SettingsColorScheme = 'dark' | 'light'
+
 export interface UiPrefs {
+  /** Ordered controls rendered in the native taskbar player. */
+  taskbarLayout?: TaskbarLayoutV1
+  /** Keep quota satellites visible while the main island is collapsed. */
+  usageAlwaysVisible?: boolean
+  /** Independent visual scale for quota satellites. */
+  usageWidgetScale?: number
+  /** Render quota satellites with their compact presentation. */
+  usageWidgetCompact?: boolean
+  /** Explicit Settings window color scheme. Missing values keep the established dark theme. */
+  settingsColorScheme?: SettingsColorScheme
   /** Settings update banner dismissed for this latest version */
   dismissedUpdateVersion?: string | null
   /** @deprecated Prefer islandUpdateSnoozedUntil — kept for migration */
@@ -24,6 +37,27 @@ export interface UiPrefs {
   forceSameVersionUpdate?: boolean
   /** Post-intro hover coach finished (first successful open) */
   hoverCoachCompleted?: boolean
+}
+
+export function normalizeSettingsColorScheme(value: unknown): SettingsColorScheme {
+  return value === 'light' ? 'light' : 'dark'
+}
+
+export function getSettingsColorScheme(config: AppConfig | null | undefined): SettingsColorScheme {
+  return normalizeSettingsColorScheme(getUiPrefs(config).settingsColorScheme)
+}
+
+export function normalizeUsageWidgetScale(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 1
+  return Math.min(1.35, Math.max(0.65, value))
+}
+
+export function getUsageWidgetScale(config: AppConfig | null | undefined): number {
+  return normalizeUsageWidgetScale(getUiPrefs(config).usageWidgetScale)
+}
+
+export function getUsageWidgetCompact(config: AppConfig | null | undefined): boolean {
+  return getUiPrefs(config).usageWidgetCompact !== false
 }
 
 export const ISLAND_NAG_MS = 30 * 24 * 60 * 60 * 1000

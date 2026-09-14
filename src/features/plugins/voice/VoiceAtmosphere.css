@@ -1,0 +1,10 @@
+.voice-atmosphere {
+  /* One uniform material level across the entire card. */
+  opacity: .14;
+  transition: opacity 700ms ease;
+}
+.voice-atmosphere[data-running='true'] { opacity: .30; }
+@media (prefers-reduced-motion: reduce) {
+  .voice-atmosphere { transition: none; }
+}
+.settings-panel[data-reduced-motion='true'] .voice-atmosphere { transition: none; }

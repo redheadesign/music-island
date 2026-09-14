@@ -91,7 +91,11 @@ pub fn resolve_resource_dir(_app: &AppHandle) -> Option<PathBuf> {
     }
     // Dev / CI fallback: read from the crate tree without copying.
     let mut candidates = Vec::new();
-    candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join("voice"));
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("resources")
+            .join("voice"),
+    );
     candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources"));
     for candidate in candidates {
         if candidate.join("models").exists()
@@ -128,7 +132,8 @@ fn list_devices(direction: wasapi::Direction) -> Result<Value, String> {
     for i in 0..count {
         if let Ok(device) = collection.get_device_at_index(i) {
             if let Ok(name) = device.get_friendlyname() {
-                if matches!(direction, wasapi::Direction::Capture) && name.contains("CABLE Output") {
+                if matches!(direction, wasapi::Direction::Capture) && name.contains("CABLE Output")
+                {
                     continue;
                 }
                 devices.push(name);
@@ -140,7 +145,11 @@ fn list_devices(direction: wasapi::Direction) -> Result<Value, String> {
 
 /// Single entry used by the frontend (`voice_invoke`) — same method names as the old IPC.
 #[tauri::command]
-pub fn voice_invoke(app: AppHandle, method: String, params: Option<Value>) -> Result<Value, String> {
+pub fn voice_invoke(
+    app: AppHandle,
+    method: String,
+    params: Option<Value>,
+) -> Result<Value, String> {
     let params = params.unwrap_or(Value::Null);
     let state = app.state::<VoiceEngineState>();
 
@@ -218,7 +227,10 @@ pub fn voice_invoke(app: AppHandle, method: String, params: Option<Value>) -> Re
         "list_output_devices" => list_devices(wasapi::Direction::Render),
         "list_denoise_models" => ok_json(denoise::list_models()),
         "set_monitor_mode" => {
-            let enabled = params.get("enabled").and_then(Value::as_bool).unwrap_or(false);
+            let enabled = params
+                .get("enabled")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
             state.engine.lock().set_monitor_enabled(enabled);
             Ok(json!({ "ok": true }))
         }
@@ -254,8 +266,14 @@ pub fn voice_invoke(app: AppHandle, method: String, params: Option<Value>) -> Re
         ),
         "get_eq_frequencies" => ok_json(EQ_FREQUENCIES.to_vec()),
         "set_explode_mode" => {
-            let enabled = params.get("enabled").and_then(Value::as_bool).unwrap_or(false);
-            let intensity = params.get("intensity").and_then(Value::as_u64).map(|v| v as u32);
+            let enabled = params
+                .get("enabled")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let intensity = params
+                .get("intensity")
+                .and_then(Value::as_u64)
+                .map(|v| v as u32);
             let engine = state.engine.lock();
             engine.set_explode_mode(enabled);
             if let Some(i) = intensity {

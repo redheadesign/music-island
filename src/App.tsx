@@ -3,12 +3,15 @@ import { Minus, X } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { checkForUpdates, copyDiagnostics } from './app/tauriApi'
 import { useIslandApp } from './app/useIslandApp'
+import { useUsageController } from './app/usage/useUsageController'
 import { IntroSplash } from './features/intro/IntroSplash'
 import { resumeVoiceEngineIfNeeded } from './features/plugins/voice/resumeVoiceEngine'
 import { AlreadyRunningNotice } from './features/notice/AlreadyRunningNotice'
 import { OverlayShell } from './features/overlay/OverlayShell'
 import { SettingsPanel } from './features/settings/SettingsPanel'
+import { TaskbarPlayer } from './features/taskbar/TaskbarPlayer'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
+import { getSettingsColorScheme } from './shared/lib/uiPrefs'
 import { IconButton } from './shared/ui/IconButton'
 import './App.css'
 
@@ -24,8 +27,9 @@ function App() {
 }
 
 function IslandWindows({ windowLabel }: { windowLabel: string }) {
-  const mediaEnabled = windowLabel === 'main'
-  const app = useIslandApp({ mediaEnabled })
+  const mediaEnabled = windowLabel === 'main' || windowLabel === 'taskbar'
+  const app = useIslandApp({ mediaEnabled, timelineEnabled: windowLabel !== 'taskbar', windowEventsEnabled: windowLabel === 'main' })
+  const usage = useUsageController(windowLabel === 'main' || windowLabel === 'settings')
   const locale = normalizeLocale(app.config?.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
 
@@ -45,13 +49,21 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
     return <AlreadyRunningNotice locale={locale} />
   }
 
+  if (windowLabel === 'taskbar') {
+    return <TaskbarPlayer snapshot={app.media} locale={locale}
+      reducedMotion={app.config.appearance.reducedMotion}
+      unavailable={app.config.media.protocol === 'yandex-direct' && app.directNeedsRecovery}
+      onCommand={(command) => void app.sendCommand(command)}
+      scale={app.config.taskbar?.scale} showLike={app.config.taskbar?.showLike} />
+  }
+
   if (windowLabel === 'settings') {
     if (!app.config) {
-      return <main className="settings-window-root">{t('settings.loading')}</main>
+      return <main className="settings-window-root" data-color-scheme={getSettingsColorScheme(app.config)}>{t('settings.loading')}</main>
     }
 
     return (
-      <main className="settings-window-root">
+      <main className="settings-window-root" data-color-scheme={getSettingsColorScheme(app.config)}>
         <header className="settings-titlebar" data-tauri-drag-region>
           <strong className="settings-titlebar-drag">{t('settings.title')}</strong>
           <div className="settings-window-actions" data-tauri-drag-region="false">
@@ -61,6 +73,7 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
         </header>
         <div className="settings-scroll">
           <SettingsPanel
+            usage={usage}
             config={app.config}
             smtcHealth={app.smtcHealth}
             mediaSessions={app.mediaSessions}
@@ -75,7 +88,7 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
     )
   }
 
-  return <OverlayShell app={app} />
+  return <OverlayShell app={app} usage={usage} />
 }
 
 function isTauriRuntime(): boolean {

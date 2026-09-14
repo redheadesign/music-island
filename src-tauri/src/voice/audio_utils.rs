@@ -65,8 +65,7 @@ pub fn compute_spectrum_into(samples: &[f32], output: &mut [f32]) {
             if bin >= half_n {
                 break;
             }
-            let mag =
-                (buffer[bin].re * buffer[bin].re + buffer[bin].im * buffer[bin].im).sqrt();
+            let mag = (buffer[bin].re * buffer[bin].re + buffer[bin].im * buffer[bin].im).sqrt();
             let normalized = mag / n as f32;
             if normalized > peak_mag {
                 peak_mag = normalized;
@@ -314,9 +313,8 @@ pub fn bytes_to_f32_samples_into(
         (64, SampleType::Float) => {
             let len = (buf.len() / 8).min(output.len());
             for (i, c) in buf.chunks_exact(8).take(len).enumerate() {
-                output[i] = f64::from_le_bytes([
-                    c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7],
-                ]) as f32
+                output[i] = f64::from_le_bytes([c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]])
+                    as f32
                     * 32767.0;
             }
             len

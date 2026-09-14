@@ -1,0 +1,25 @@
+.island-preview { position: relative; isolation: isolate; display: grid; place-items: center; width: 100%; min-width: 0; min-height: 238px; padding-block: 28px; overflow: visible; background: #171412; border-radius: 20px; box-sizing: border-box; }
+.island-preview__frame.island-root { z-index: 1; display: grid; grid-template-columns: var(--preview-left) minmax(0,1fr) var(--preview-right); align-items: start; height: auto; pointer-events: auto; }
+.island-preview__body { position: relative; min-width: 0; }
+.island-preview__body > .island-card { box-sizing: border-box; }
+.island-preview__body > .island-actions { top: 12px; right: -44px; }
+.island-preview__satellite { display: flex; min-width: 0; padding-top: 12px; }
+.island-preview__satellite--left { justify-content: flex-end; padding-right: 12px; }
+.island-preview__satellite--right { padding-left: 12px; padding-top: 84px; }
+.island-preview__satellite .usage-chip { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .island-preview * { transition: none !important; } }
+.island-preview .island-preview__frame.island-root { min-height: 0; }
+.island-preview[data-resizable] { padding-block: 34px 48px; }
+.island-preview__resize-edge, .island-preview__resize-corner { position: absolute; z-index: 3; touch-action: none; color: #fff7; outline: none; }
+.island-preview__resize-edge { top: 15%; bottom: 20%; width: 14px; cursor: ew-resize; }
+.island-preview__resize-edge--left { left: -13px; }
+.island-preview__resize-edge--right { right: -13px; }
+.island-preview__resize-edge::after { content: ''; position: absolute; width: 3px; height: 30px; border-radius: 3px; top: 50%; left: 5px; transform: translateY(-50%); background: currentColor; }
+.island-preview__resize-corner { width: 30px; height: 30px; right: -12px; bottom: -12px; cursor: nwse-resize; }
+.island-preview__resize-corner svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.island-preview :is(.island-preview__resize-edge,.island-preview__resize-corner):is(:hover,:focus-visible), .island-preview[data-resizing] :is(.island-preview__resize-edge,.island-preview__resize-corner) { color: #fffd; }
+.island-preview :is(.island-preview__resize-edge,.island-preview__resize-corner):focus-visible { outline: 2px solid #fffa; outline-offset: 2px; border-radius: 5px; }
+.island-preview__dimensions { position: absolute; bottom: 14px; display: flex; gap: 22px; font-size: 11px; line-height: 1.4; color: #d3d3d9; pointer-events: none; }
+.island-preview__dimensions span { display: flex; gap: 7px; }
+.island-preview__dimensions output { min-width: 32px; font-variant-numeric: tabular-nums; color: #ececf1; }
+.island-preview__dimensions [data-active='true'] { color: white; }

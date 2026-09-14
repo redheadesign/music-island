@@ -17,6 +17,9 @@ import { loadSession, saveSession } from "./session";
 
 export type PanelView = "main" | "presetEdit" | "help";
 
+// Voice effects are switches. Legacy saved intensity is intentionally ignored.
+const FX_INTENSITY = 100;
+
 const defaultSettings: AppSettings = {
   hotkey: "Ctrl+Shift+D",
   hotkeyEnabled: true,
@@ -69,7 +72,6 @@ export function useIslandVoiceApp(
   const [micGain, setMicGain] = useState(1);
   const [fxEnabled, setFxEnabled] = useState(false);
   const [fxEffect, setFxEffect] = useState(4);
-  const [fxIntensity, setFxIntensity] = useState(50);
   const [customPresets, setCustomPresets] = useState<ScenePreset[]>([]);
   /** null = nothing selected (factory defaults). "custom" = user tweaked. */
   const [presetId, setPresetId] = useState<string | null>(null);
@@ -202,7 +204,6 @@ export function useIslandVoiceApp(
           setAgcTarget(saved.agcTarget);
           setMicGain(saved.micGain);
           setPresetId(saved.presetId);
-          setFxIntensity(saved.fxIntensity);
           if (saved.model && (ms.includes(saved.model) || ms.length === 0)) {
             setModel(saved.model);
           } else if (ms.length) {
@@ -280,7 +281,7 @@ export function useIslandVoiceApp(
         agcTarget,
         micGain,
         presetId,
-        fxIntensity,
+        fxIntensity: FX_INTENSITY,
         engineRunning: running,
       });
     }, 250);
@@ -300,7 +301,6 @@ export function useIslandVoiceApp(
     agcTarget,
     micGain,
     presetId,
-    fxIntensity,
     running,
   ]);
 
@@ -331,7 +331,7 @@ export function useIslandVoiceApp(
     try {
       await voicePluginApi.startDenoising(inputDevice || undefined, outputDevice || undefined, model, monitorEnabled);
       // Explicit clean chain — never leave FX on by accident
-      await voicePluginApi.setExplodeMode(false, fxIntensity);
+      await voicePluginApi.setExplodeMode(false, FX_INTENSITY);
       await voicePluginApi.updateDenoiseConfig({
         enabled,
         strength: strength / 100,
@@ -344,7 +344,7 @@ export function useIslandVoiceApp(
       await voicePluginApi.setMonitorPoint(monitorPoint);
       if (fxEnabled) {
         await voicePluginApi.setExplodeEffect(fxEffect);
-        await voicePluginApi.setExplodeMode(true, fxIntensity);
+        await voicePluginApi.setExplodeMode(true, FX_INTENSITY);
       }
       cachedEngineRunning = true;
       setRunning(true);
@@ -376,13 +376,12 @@ export function useIslandVoiceApp(
     monitorPoint,
     fxEnabled,
     fxEffect,
-    fxIntensity,
   ]);
 
   const stop = useCallback(async () => {
     setBusy(true);
     try {
-      await voicePluginApi.setExplodeMode(false, fxIntensity);
+      await voicePluginApi.setExplodeMode(false, FX_INTENSITY);
       await voicePluginApi.stopDenoising();
       cachedEngineRunning = false;
       setRunning(false);
@@ -392,7 +391,7 @@ export function useIslandVoiceApp(
     } finally {
       setBusy(false);
     }
-  }, [fxIntensity]);
+  }, []);
 
   // If Better Voice was live when the app quit, bring it back up after hydrate.
   useEffect(() => {
@@ -494,13 +493,13 @@ export function useIslandVoiceApp(
       if (running) {
         if (value) {
           await voicePluginApi.setExplodeEffect(fxEffect);
-          await voicePluginApi.setExplodeMode(true, fxIntensity);
+          await voicePluginApi.setExplodeMode(true, FX_INTENSITY);
         } else {
-          await voicePluginApi.setExplodeMode(false, fxIntensity);
+          await voicePluginApi.setExplodeMode(false, FX_INTENSITY);
         }
       }
     },
-    [running, fxEffect, fxIntensity],
+    [running, fxEffect],
   );
 
   const applyFxEffect = useCallback(
@@ -516,25 +515,17 @@ export function useIslandVoiceApp(
     async (value: number) => {
       if (fxEnabled && fxEffect === value) {
         setFxEnabled(false);
-        if (running) await voicePluginApi.setExplodeMode(false, fxIntensity);
+        if (running) await voicePluginApi.setExplodeMode(false, FX_INTENSITY);
         return;
       }
       setFxEffect(value);
       setFxEnabled(true);
       if (running) {
         await voicePluginApi.setExplodeEffect(value);
-        await voicePluginApi.setExplodeMode(true, fxIntensity);
+        await voicePluginApi.setExplodeMode(true, FX_INTENSITY);
       }
     },
-    [running, fxEnabled, fxEffect, fxIntensity],
-  );
-
-  const applyFxIntensity = useCallback(
-    async (value: number) => {
-      setFxIntensity(value);
-      if (running && fxEnabled) await voicePluginApi.setExplodeMode(true, value);
-    },
-    [running, fxEnabled],
+    [running, fxEnabled, fxEffect],
   );
 
   const openPresetEditor = useCallback(
@@ -618,7 +609,6 @@ export function useIslandVoiceApp(
     micGain,
     fxEnabled,
     fxEffect,
-    fxIntensity,
     presets,
     presetId,
     editingPreset,
@@ -643,7 +633,6 @@ export function useIslandVoiceApp(
     applyFxEnabled,
     applyFxEffect,
     toggleFx,
-    applyFxIntensity,
     openPresetEditor,
     saveEditingPreset,
     deleteCustomPreset,

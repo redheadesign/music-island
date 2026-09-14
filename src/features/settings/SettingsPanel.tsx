@@ -1,5 +1,6 @@
-import { Activity, CheckCircle2, Copy, Info, Music2, Power, RadioTower, RotateCcw, TriangleAlert, Wrench } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Activity, CheckCircle2, Copy, Info, Moon, Music2, PanelBottom, Pause, Power, RadioTower, SlidersHorizontal, SquareTerminal, Sun, TriangleAlert, Wrench } from 'lucide-react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -9,13 +10,27 @@ import {
   onDirectYandexStatus,
   previewConfig,
   getDefaultConfig,
+  getTaskbarStatus,
+  onTaskbarStatus,
   openExternalUrl,
+  openSpotify,
   replayIntroWindow,
 } from '../../app/tauriApi'
 import { VoiceSettingsView } from '../plugins/voice/VoiceSettingsView'
+import { TaskbarLayoutEditor } from './TaskbarLayoutEditor'
+import { IslandLayoutEditor } from './IslandLayoutEditor'
+import { getLegacyIslandLayout, withIslandLayout } from '../../shared/lib/islandLayout'
+import { BrandLogo } from '../../shared/ui/BrandLogo'
+import { WarpMaterial } from '../../shared/ui/WarpMaterial'
+import { UsageStatusChip } from '../usage/UsageStatusChip'
+import { UsageSettingsSection } from '../usage/UsageSettingsSection'
+import { getUsagePreferences, withUsageProviderEnabled, type UsageController } from '../../app/useIslandApp'
+import type { UsageProvider } from '../../shared/lib/usageTypes'
 import { AccentColorPicker } from './AccentColorPicker'
+import { DirectConnectionDialog } from './DirectConnectionDialog'
 import { useAppUpdater } from './useAppUpdater'
 import { useWindowVisible } from './useWindowVisible'
+import { useResetSettingsScrollOnChange } from './useResetSettingsScroll'
 import type {
   AppConfig,
   AutostartSyncEvent,
@@ -23,11 +38,15 @@ import type {
   Locale,
   MediaSessionInfo,
   SmtcHealthSnapshot,
+  TaskbarStatus,
 } from '../../shared/lib/types'
 import { createTranslator, directStatusMessage, normalizeLocale } from '../../shared/i18n/messages'
 import { applyAccentTheme, normalizeHexColor } from '../../shared/lib/accentTheme'
 import {
   getUiPrefs,
+  getUsageWidgetCompact,
+  getUsageWidgetScale,
+  getSettingsColorScheme,
   shouldShowSettingsUpdateBanner,
   trackUpdateFirstSeen,
   withUiPrefs,
@@ -37,10 +56,13 @@ import { GlassSurface } from '../../shared/ui/GlassSurface'
 import { RangeSlider } from '../../shared/ui/RangeSlider'
 import { StatusChip } from '../../shared/ui/StatusChip'
 import { UpdateBanner } from '../../shared/ui/UpdateBanner'
+import './settings.css'
+export { IslandPreview as AppearancePreview } from './IslandPreview'
 
-const APP_VERSION = '1.3.22'
+const APP_VERSION = '2.0.0'
 
 interface SettingsPanelProps {
+  usage?: UsageController
   config: AppConfig
   smtcHealth: SmtcHealthSnapshot
   mediaSessions: MediaSessionInfo[]
@@ -52,6 +74,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({
+  usage,
   config,
   smtcHealth,
   mediaSessions,
@@ -62,7 +85,13 @@ export function SettingsPanel({
   autostartStatus = null,
 }: SettingsPanelProps) {
   const [draft, setDraft] = useState(config)
+  const selectionId = useId()
+  const prefersReducedMotion = useReducedMotion()
+  const reducedMotion = Boolean(draft.appearance.reducedMotion || prefersReducedMotion)
   const uiPrefs = getUiPrefs(draft)
+  const settingsColorScheme = getSettingsColorScheme(draft)
+  const usageCompact = getUsageWidgetCompact(draft)
+  const usageScale = getUsageWidgetScale(draft)
   const updater = useAppUpdater(true, Boolean(uiPrefs.forceSameVersionUpdate))
   const [showConsent, setShowConsent] = useState(false)
   const [directStatus, setDirectStatus] = useState<DirectYandexStatus>({
@@ -72,15 +101,27 @@ export function SettingsPanel({
     executablePath: null,
   })
   const [directBusy, setDirectBusy] = useState(false)
+  const [sourceError, setSourceError] = useState<string | null>(null)
+  const panelRef = useRef<HTMLElement>(null)
   const saveTimer = useRef<number | null>(null)
   const connectAttempt = useRef(0)
   const lastSourceRefreshAt = useRef(0)
+  const consentRef = useRef<HTMLElement>(null)
 
   const locale = normalizeLocale(draft.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
   const [settingsScope, setSettingsScope] = useState<'island' | 'voice'>('island')
+  const [settingsPage, setSettingsPage] = useState<'appearance' | 'taskbar' | 'source' | 'usage' | 'system' | 'about'>('appearance')
+  useResetSettingsScrollOnChange(`${settingsScope}:${settingsPage}`, panelRef)
+  const [usageError, setUsageError] = useState(false)
   const [voiceMounted, setVoiceMounted] = useState(false)
   const settingsVisible = useWindowVisible()
+  const [taskbarStatus, setTaskbarStatus] = useState<TaskbarStatus>({ state: 'off' })
+  const isSpotifySource = (id: string | null | undefined) => Boolean(id && (/^spotify(?:\.exe)?$/i.test(id) || /^SpotifyAB\.SpotifyMusic_[^!]+!Spotify$/i.test(id)))
+  const spotifySession = mediaSessions.find((session) => isSpotifySource(session.sourceAppId))
+  const spotifySelected = draft.media.protocol === 'smtc' && isSpotifySource(draft.media.preferredSourceAppId)
+  const windowsSelected = draft.media.protocol === 'smtc' && !spotifySelected
+  const spotifyUnavailable = spotifySelected && smtcHealth.status === 'unavailable'
   const latestVersion = updater.result?.latestVersion ?? null
   const updaterBusy =
     updater.status === 'downloading' || updater.status === 'installing'
@@ -95,9 +136,36 @@ export function SettingsPanel({
   const voiceActive = settingsVisible && settingsScope === 'voice'
 
   useEffect(() => setDraft(config), [config])
+
+  useEffect(() => {
+    if (!settingsVisible || settingsScope !== 'island' || settingsPage !== 'source' || !spotifySelected) return
+    // The picker remains fresh if Spotify is opened while Settings is visible.
+    // No extra session enumeration for other pages or hidden windows.
+    const timer = window.setInterval(onRefreshSources, 3_000)
+    return () => window.clearInterval(timer)
+  }, [settingsVisible, settingsScope, settingsPage, spotifySelected, onRefreshSources])
+
+  useEffect(() => {
+    if (!settingsVisible || !draft.taskbar?.enabled) return
+    let active = true
+    let cleanup = () => {}
+    void onTaskbarStatus((status) => { if (active) setTaskbarStatus(status) }).then((unlisten) => {
+      if (!active) { unlisten(); return }
+      cleanup = unlisten
+      void getTaskbarStatus().then((status) => { if (active) setTaskbarStatus(status) })
+        .catch(() => { if (active) setTaskbarStatus({ state: 'error' }) })
+    }).catch(() => { if (active) setTaskbarStatus({ state: 'error' }) })
+    return () => { active = false; cleanup() }
+  }, [settingsVisible, draft.taskbar?.enabled])
   useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])
+
+  useEffect(() => {
+    const root = panelRef.current?.closest('.settings-window-root')
+    if (!(root instanceof HTMLElement)) return
+    root.dataset.colorScheme = settingsColorScheme
+  }, [settingsColorScheme])
 
   useEffect(() => {
     applyAccentTheme(draft.appearance.accentColor)
@@ -139,6 +207,23 @@ export function SettingsPanel({
     saveTimer.current = window.setTimeout(() => onChange(next), 280)
   }
 
+  const changeUsageConnection = async (provider: UsageProvider, enabled: boolean) => {
+    if (!usage) return
+    setUsageError(false)
+    // Persist explicit consent before connecting. Native configuration owns the
+    // shared polling lifecycle, so another window cannot revert this preference.
+    const next = withUsageProviderEnabled(draft, provider, enabled)
+    setDraft(next)
+    if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    try {
+      await onChange(next)
+      if (enabled) await usage.connect(provider)
+      else await usage.disconnect(provider)
+    } catch {
+      setUsageError(true)
+    }
+  }
+
   useEffect(() => {
     if (!updater.result?.hasUpdate || !updater.result.latestVersion) return
     const patch = trackUpdateFirstSeen(getUiPrefs(draft), updater.result.latestVersion)
@@ -147,8 +232,6 @@ export function SettingsPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- track first-seen once per version
   }, [updater.result?.hasUpdate, updater.result?.latestVersion])
 
-  const patchLayout = (layout: Partial<AppConfig['layout']>) =>
-    previewAndSave({ ...draft, layout: { ...draft.layout, ...layout } })
   const patchBehavior = (behavior: Partial<AppConfig['behavior']>) =>
     previewAndSave({ ...draft, behavior: { ...draft.behavior, ...behavior } })
   const patchMedia = (media: Partial<AppConfig['media']>) =>
@@ -163,7 +246,7 @@ export function SettingsPanel({
 
   const resetIslandSettings = () => {
     const defaults = getDefaultConfig()
-    previewAndSave({
+    previewAndSave(withIslandLayout({
       ...draft,
       layout: {
         ...draft.layout,
@@ -175,7 +258,8 @@ export function SettingsPanel({
         ...draft.behavior,
         hoverDelayMs: defaults.behavior.hoverDelayMs,
       },
-    })
+      appearance: { ...draft.appearance, accentColor: defaults.appearance.accentColor },
+    }, getLegacyIslandLayout(defaults)))
   }
 
   const connectDirect = async () => {
@@ -209,11 +293,50 @@ export function SettingsPanel({
     setShowConsent(false)
   }
 
-  const switchToLegacy = async () => {
+  useEffect(() => {
+    if (!showConsent) return
+    const previousFocus = document.activeElement
+    const dialog = consentRef.current
+    dialog?.querySelector<HTMLButtonElement>('button')?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        connectAttempt.current += 1
+        setDirectBusy(false)
+        setShowConsent(false)
+      }
+      if (event.key !== 'Tab' || !dialog) return
+      const buttons = [...dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]
+      const first = buttons[0]
+      const last = buttons.at(-1)
+      if (!buttons.some((button) => button === document.activeElement)) {
+        event.preventDefault()
+        const target = event.shiftKey ? last : first
+        target?.focus()
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previousFocus instanceof HTMLElement) previousFocus.focus()
+    }
+  }, [showConsent])
+
+  const switchToLegacy = async (preferredSourceAppId: string | null = null) => {
     setDirectBusy(true)
+    setSourceError(null)
     try {
-      setDirectStatus(await disableDirectYandex(true))
-      patchMedia({ protocol: 'smtc', directYandexPort: null })
+      if (draft.media.protocol !== 'smtc') setDirectStatus(await disableDirectYandex(true))
+      patchMedia({ protocol: 'smtc', directYandexPort: null, preferredSourceAppId })
+      if (preferredSourceAppId === 'spotify' && !spotifySession) await openSpotify()
+    } catch {
+      setSourceError(locale === 'ru' ? preferredSourceAppId === 'spotify' ? 'Не удалось открыть Spotify. Проверьте, что приложение установлено.' : 'Не удалось сменить источник. Попробуйте ещё раз.' : preferredSourceAppId === 'spotify' ? 'Could not open Spotify. Check that the app is installed.' : 'Could not switch source. Try again.')
     } finally {
       setDirectBusy(false)
     }
@@ -257,32 +380,41 @@ export function SettingsPanel({
   const directMessage = directStatusMessage(directStatus.state, directStatus.message, t)
 
   return (
-    <section className="settings-panel" aria-label={t('settings.title')}>
+    <section ref={panelRef} className="settings-panel" aria-label={t('settings.title')} data-color-scheme={settingsColorScheme} data-reduced-motion={reducedMotion || undefined}>
       <header className="settings-hero">
-        <div className="settings-scope-switch" role="tablist" aria-label={t('settings.scope')}>
+        <div className="settings-scope-switch" role="group" aria-label={t('settings.scope')}>
           <button
             type="button"
-            role="tab"
-            aria-selected={settingsScope === 'island'}
+            aria-pressed={settingsScope === 'island'}
             className={`settings-scope-switch__btn ${settingsScope === 'island' ? 'settings-scope-switch__btn--active' : ''}`}
             onClick={() => setSettingsScope('island')}
           >
-            {t('settings.scopeIsland')}
+            {settingsScope === 'island' ? <SelectionMarker id={`${selectionId}-scope`} reducedMotion={reducedMotion} /> : null}
+            <span className="settings-selection-label">{t('settings.scopeIsland')}</span>
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={settingsScope === 'voice'}
+            aria-pressed={settingsScope === 'voice'}
             className={`settings-scope-switch__btn settings-scope-switch__btn--voice ${settingsScope === 'voice' ? 'settings-scope-switch__btn--active' : ''}`}
             onClick={() => {
               setVoiceMounted(true)
               setSettingsScope('voice')
             }}
           >
+            {settingsScope === 'voice' ? <SelectionMarker id={`${selectionId}-scope`} reducedMotion={reducedMotion} /> : null}
             <span className="settings-scope-switch__label">{t('settings.scopeVoice')}</span>
             <span className="settings-scope-badge">{t('settings.scopeVoiceBeta')}</span>
           </button>
         </div>
+        <div className="settings-hero-tools">
+        <button type="button" className="settings-theme-toggle"
+          aria-label={locale === 'ru' ? settingsColorScheme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему' : settingsColorScheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={t('settings.colorScheme')}
+          onClick={() => previewAndSave(withUiPrefs(draft, { settingsColorScheme: settingsColorScheme === 'dark' ? 'light' : 'dark' }))}>
+          <motion.span key={settingsColorScheme} initial={reducedMotion ? false : { rotate: -40, opacity: 0, scale: .6 }} animate={{ rotate: 0, opacity: 1, scale: 1 }} transition={{ duration: .2 }}>
+            {settingsColorScheme === 'dark' ? <Moon size={17} /> : <Sun size={17} />}
+          </motion.span>
+        </button>
         <div className="locale-switch" role="group" aria-label="Language">
           <button
             type="button"
@@ -290,7 +422,8 @@ export function SettingsPanel({
             aria-pressed={locale === 'ru'}
             onClick={() => setLocale('ru')}
           >
-            Ru
+            {locale === 'ru' ? <SelectionMarker id={`${selectionId}-locale`} reducedMotion={reducedMotion} /> : null}
+            <span className="settings-selection-label">Ru</span>
           </button>
           <button
             type="button"
@@ -298,15 +431,18 @@ export function SettingsPanel({
             aria-pressed={locale === 'en'}
             onClick={() => setLocale('en')}
           >
-            En
+            {locale === 'en' ? <SelectionMarker id={`${selectionId}-locale`} reducedMotion={reducedMotion} /> : null}
+            <span className="settings-selection-label">En</span>
           </button>
+        </div>
         </div>
       </header>
 
       {voiceMounted ? (
-        <div hidden={settingsScope !== 'voice'} aria-hidden={settingsScope !== 'voice'}>
+        <div className="settings-scope-content" hidden={settingsScope !== 'voice'} aria-hidden={settingsScope !== 'voice'}>
           <VoiceSettingsView
             locale={locale}
+            reducedMotion={reducedMotion}
             active={voiceActive}
             developerMode={Boolean(uiPrefs.developerMode)}
             showExperimentalBanner={
@@ -327,6 +463,30 @@ export function SettingsPanel({
 
       {settingsScope === 'island' ? (
       <>
+      <div className="settings-layout">
+      <nav className="settings-navigation" aria-label={t('settings.navigation')}>
+        {([
+          ['appearance', 'settings.appearance', SlidersHorizontal],
+          ['taskbar', 'settings.taskbar', PanelBottom],
+          ['source', 'settings.source', RadioTower],
+          ['usage', 'settings.usage', SquareTerminal],
+          ['system', 'settings.system', Power],
+          ['about', 'settings.about', Info],
+        ] as const).map(([page, label, Icon]) => (
+          <button key={page} type="button" aria-current={settingsPage === page ? 'page' : undefined}
+            className={`settings-nav-item ${settingsPage === page ? 'settings-nav-item--active' : ''}`}
+            onClick={() => setSettingsPage(page)}>
+            {settingsPage === page ? <SelectionMarker id={`${selectionId}-navigation`} reducedMotion={reducedMotion} /> : null}
+            <Icon size={17} aria-hidden="true" /><span className="settings-selection-label">{t(label)}</span>
+          </button>
+        ))}
+        <span className="settings-navigation-version">Music Island <span>{APP_VERSION}</span></span>
+      </nav>
+      <div className="settings-content">
+      <h2 className="settings-page-heading">{t(({
+        appearance: 'settings.appearance', taskbar: 'settings.taskbar', source: 'settings.source',
+        usage: 'settings.usage', system: 'settings.system', about: 'settings.about',
+      } as const)[settingsPage])}</h2>
       {showSettingsUpdateBanner ? (
         <UpdateBanner
           variant="settings"
@@ -339,10 +499,10 @@ export function SettingsPanel({
           emptyNotesLabel={t('settings.updateNotesEmpty')}
           expandLabel={t('settings.updateNotesExpand')}
           collapseLabel={t('settings.updateNotesCollapse')}
-          primaryLabel={t('settings.updateNow')}
+          primaryLabel={t(updater.status === 'error' ? 'settings.updateRetry' : 'settings.updateNow')}
           laterLabel={t('settings.updateLater')}
           status={
-            updater.status === 'downloading' || updater.status === 'installing'
+            updater.status === 'downloading' || updater.status === 'installing' || updater.status === 'error'
               ? updater.status
               : 'available'
           }
@@ -369,15 +529,14 @@ export function SettingsPanel({
       ) : null}
 
       <SettingsSection
-        title={t('settings.island')}
+        hidden={settingsPage !== 'appearance'}
+        title={t('settings.appearance')}
         icon={<Music2 />}
-        action={(
-          <button type="button" className="settings-section-reset" onClick={resetIslandSettings}>
-            <RotateCcw aria-hidden="true" />
-            {t('settings.reset')}
-          </button>
-        )}
+        showTitle={false}
+        className="settings-appearance"
       >
+        <IslandLayoutEditor config={draft} onChange={previewAndSave} onReset={resetIslandSettings} usage={usage?.snapshot ?? null} showHeading={false} active={settingsVisible && settingsPage === 'appearance'} />
+
         <AccentColorPicker
           value={draft.appearance.accentColor}
           label={t('settings.accentColor')}
@@ -387,87 +546,123 @@ export function SettingsPanel({
 
         <label className="settings-control-row">
           <span>
-            <strong>{t('settings.width')}</strong>
-            <small>{t('settings.widthHint')}</small>
-          </span>
-          <div className="range-control">
-            <RangeSlider min={80} max={125} value={draft.layout.width} onChange={(event) => patchLayout({ width: Number(event.currentTarget.value), size: 'medium' })} />
-            <output>{draft.layout.width}%</output>
-          </div>
-        </label>
-
-        <label className="settings-control-row">
-          <span>
-            <strong>{t('settings.scale')}</strong>
-            <small>{t('settings.scaleHint')}</small>
-          </span>
-          <div className="range-control">
-            <RangeSlider min={70} max={120} value={draft.layout.scale} onChange={(event) => patchLayout({ scale: Number(event.currentTarget.value) })} />
-            <output>{draft.layout.scale}%</output>
-          </div>
-        </label>
-
-        <label className="settings-control-row">
-          <span>
             <strong>{t('settings.hoverDelay')}</strong>
             <small>{t('settings.hoverDelayHint')}</small>
           </span>
           <div className="range-control">
             <RangeSlider min={80} max={1200} step={20} value={draft.behavior.hoverDelayMs} onChange={(event) => patchBehavior({ hoverDelayMs: Number(event.currentTarget.value) })} />
-            <output>{draft.behavior.hoverDelayMs} ms</output>
+            <output>{draft.behavior.hoverDelayMs} {t('settings.milliseconds')}</output>
           </div>
         </label>
       </SettingsSection>
 
-      <SettingsSection title={t('settings.source')} icon={<Activity />}>
-        {draft.media.protocol === 'smtc' ? <label className="settings-control-row">
-          <span>
-            <strong>{t('settings.preferredSource')}</strong>
-            <small>{t('settings.preferredSourceHint')}</small>
-          </span>
-          <select value={draft.media.preferredSourceAppId ?? ''} onFocus={refreshSources} onChange={(event) => patchMedia({ preferredSourceAppId: event.currentTarget.value || null })}>
-            <option value="">Auto</option>
-            {mediaSessions.map((session) => <option key={session.sourceAppId} value={session.sourceAppId}>{session.sourceAppId}</option>)}
-          </select>
-        </label> : null}
+      {settingsPage === 'usage' ? (
+        <div className="settings-usage-page">
+          <SettingsSection title={locale === 'ru' ? 'Виджет лимитов' : 'Usage widget'} icon={<SquareTerminal />}>
+            <div className="usage-widget-preview" aria-label={locale === 'ru' ? 'Превью виджета лимитов' : 'Usage widget preview'}>
+              {settingsVisible ? <WarpMaterial className="preview-warp-material" reducedMotion={draft.appearance.reducedMotion} /> : null}
+              <div className="usage-widget-preview__content" style={{ zoom: usageScale }}><UsageStatusChip snapshot={usage?.snapshot ?? null} enabledProviders={['codex', 'claude']} compact={usageCompact} locale={locale} /></div>
+            </div>
+            <div className="settings-control-row settings-control-row--after-preview">
+              <span><strong>{locale === 'ru' ? 'Вид' : 'Style'}</strong></span>
+              <div className="settings-theme-choice" role="group" aria-label={locale === 'ru' ? 'Вид виджета' : 'Widget style'}>
+                {[false, true].map((compact) => <button key={String(compact)} type="button" aria-pressed={usageCompact === compact} className={`settings-theme-choice__button ${usageCompact === compact ? 'settings-theme-choice__button--active' : ''}`} onClick={() => previewAndSave(withUiPrefs(draft, { usageWidgetCompact: compact }))}>{locale === 'ru' ? compact ? 'Компактный' : 'Подробный' : compact ? 'Compact' : 'Detailed'}</button>)}
+              </div>
+            </div>
+            <label className="settings-control-row"><span><strong>{locale === 'ru' ? 'Масштаб виджета' : 'Widget scale'}</strong></span><div className="range-control">
+              <RangeSlider min={65} max={135} step={5} value={Math.round(usageScale * 100)} onChange={(event) => previewAndSave(withUiPrefs(draft, { usageWidgetScale: Number(event.currentTarget.value) / 100 }))} />
+              <output>{Math.round(usageScale * 100)}%</output>
+            </div></label>
+            <Switch label={locale === 'ru' ? 'Показывать при закрытом островке' : 'Show while the island is closed'} checked={uiPrefs.usageAlwaysVisible === true} onChange={(usageAlwaysVisible) => previewAndSave(withUiPrefs(draft, { usageAlwaysVisible }))} />
+          </SettingsSection>
+          <UsageSettingsSection
+            preferences={getUsagePreferences(draft)} snapshot={usage?.snapshot ?? null}
+            busyProvider={usage?.busyProvider ?? null} locale={locale}
+            onConnect={(provider) => void changeUsageConnection(provider, true)}
+            onDisconnect={(provider) => void changeUsageConnection(provider, false)}
+            onRefresh={(provider) => { setUsageError(false); void usage?.refresh(provider).catch(() => setUsageError(true)) }}
+          />
+          {usageError ? <p role="alert" className="settings-taskbar-note">{t('settings.usageError')}</p> : null}
+        </div>
+      ) : null}
 
+      <SettingsSection className="settings-taskbar" hidden={settingsPage !== 'taskbar'} title={t('settings.taskbar')} icon={<PanelBottom />} showTitle={false}>
+        <div className="settings-feature-control" data-enabled={Boolean(draft.taskbar?.enabled)}>
+          <span className="settings-feature-control__icon" aria-hidden="true"><PanelBottom size={23} strokeWidth={1.6} /></span>
+          <Switch
+            label={t('settings.taskbarEnabled')}
+            hint={locale === 'ru' ? 'Управление музыкой рядом с треем Windows' : 'Music controls beside the Windows system tray'}
+            checked={Boolean(draft.taskbar?.enabled)}
+            onChange={(enabled) => previewAndSave({ ...draft, taskbar: { ...draft.taskbar, enabled } })}
+          />
+        </div>
+        <TaskbarLayoutEditor config={draft} onChange={previewAndSave} active={settingsVisible && settingsPage === 'taskbar'} />
+        <label className="settings-control-row">
+          <span><strong>{locale === 'ru' ? 'Размер кнопок' : 'Button size'}</strong></span>
+          <div className="range-control">
+            <RangeSlider min={75} max={125} step={5} value={Math.round((draft.taskbar?.scale ?? 1) * 100)} onChange={(event) => previewAndSave({ ...draft, taskbar: { ...draft.taskbar, enabled: Boolean(draft.taskbar?.enabled), scale: Number(event.currentTarget.value) / 100 } })} />
+            <output>{Math.round((draft.taskbar?.scale ?? 1) * 100)}%</output>
+          </div>
+        </label>
+        {draft.taskbar?.enabled && ['no-space', 'unsupported', 'error'].includes(taskbarStatus.state) ? (
+          <p className="settings-taskbar-note" role="status">
+            {t(taskbarStatus.state === 'no-space' ? 'settings.taskbarNoSpace'
+              : taskbarStatus.state === 'unsupported' ? 'settings.taskbarUnsupported'
+              : 'settings.taskbarError')}
+          </p>
+        ) : null}
+      </SettingsSection>
+
+      <SettingsSection hidden={settingsPage !== 'source'} title={t('settings.source')} icon={<Activity />} showTitle={false}>
         <div className="protocol-list">
-          <article className={`protocol-row ${draft.media.protocol === 'smtc' ? 'protocol-row--selected' : ''}`}>
-            <span className="protocol-icon"><RadioTower /></span>
+          <article className={`protocol-row ${windowsSelected ? 'protocol-row--selected' : ''}`}>
+            <span className="protocol-icon"><BrandLogo brand="windows" size={30} /></span>
             <div className="protocol-copy">
-              <strong>Windows SMTC</strong>
-              <small>{t('settings.smtcHint')}</small>
-            </div>
-            <div className="protocol-state">
+              <div className="protocol-heading">
+              <strong>Windows</strong>
               <StatusChip
-                tone={smtcHealth.status === 'healthy' ? 'success' : 'warning'}
-                className={`status-pill status-pill--${smtcHealth.status}`}
+                tone={windowsSelected ? smtcHealth.status === 'healthy' ? 'success' : 'warning' : 'neutral'}
+                className={`status-pill ${windowsSelected ? `status-pill--${smtcHealth.status}` : ''}`}
               >
-                {smtcHealth.status === 'healthy' ? <CheckCircle2 /> : <TriangleAlert />}
-                {smtcHealth.status}
+                {windowsSelected && (smtcHealth.status === 'healthy' ? <CheckCircle2 /> : <TriangleAlert />)}
+                {windowsSelected ? t(smtcHealth.status === 'healthy' ? 'settings.active' : 'settings.needsAttention') : null}
               </StatusChip>
-              <small>{smtcHealth.lastProbeMs} ms · {smtcHealth.sessionCount} {t('settings.sessions')}</small>
+              </div>
+              <small>{t('settings.smtcHint')}</small>
+              {uiPrefs.developerMode ? <small>{smtcHealth.lastProbeMs} ms · {smtcHealth.sessionCount} {t('settings.sessions')}</small> : null}
             </div>
-            {draft.media.protocol !== 'smtc' ? (
+            {!windowsSelected ? (
               <button type="button" className="secondary-button" disabled={directBusy} onClick={() => void switchToLegacy()}>{t('settings.use')}</button>
-            ) : <span className="active-protocol-label">{t('settings.active')}</span>}
+            ) : null}
+          </article>
+
+          <article className={`protocol-row ${spotifySelected ? 'protocol-row--selected' : ''} ${spotifyUnavailable ? 'protocol-row--unavailable' : ''}`}>
+            <span className="protocol-icon"><BrandLogo brand="spotify" size={32} /></span>
+            <div className="protocol-copy">
+              <div className="protocol-heading"><strong>Spotify</strong>{spotifySelected ? <StatusChip tone={spotifyUnavailable ? 'warning' : spotifySession ? 'success' : 'neutral'} className="status-pill">{spotifyUnavailable ? <TriangleAlert /> : spotifySession ? <CheckCircle2 /> : null}{spotifyUnavailable ? t('settings.needsAttention') : spotifySession ? t('settings.connected') : locale === 'ru' ? 'Ожидание' : 'Waiting'}</StatusChip> : null}</div>
+              <small>{spotifyUnavailable ? locale === 'ru' ? 'Системное управление музыкой Windows недоступно.' : 'Windows media controls are unavailable.' : spotifySelected && !spotifySession ? locale === 'ru' ? 'Включите любой трек в приложении Spotify.' : 'Play a track in the Spotify app.' : locale === 'ru' ? 'Музыка из приложения Spotify' : 'Music from the Spotify app'}</small>
+            </div>
+            <div className="protocol-actions">
+              {!spotifySelected ? <button type="button" className="secondary-button" disabled={directBusy} onClick={() => void switchToLegacy('spotify')}>{t('settings.use')}</button>
+                : <button type="button" className="secondary-button" onClick={() => { setSourceError(null); void openSpotify().catch(() => setSourceError(locale === 'ru' ? 'Не удалось открыть Spotify. Проверьте, что приложение установлено.' : 'Could not open Spotify. Check that the app is installed.')) }}>{locale === 'ru' ? 'Открыть Spotify' : 'Open Spotify'}</button>}
+            </div>
           </article>
 
           <article className={`protocol-row ${draft.media.protocol === 'yandex-direct' ? 'protocol-row--selected' : ''}`}>
-            <span className="protocol-icon protocol-icon--yandex"><Music2 /></span>
+            <span className="protocol-icon protocol-icon--yandex"><BrandLogo brand="yandex-music" size={32} /></span>
             <div className="protocol-copy">
-              <strong>Direct Yandex Music</strong>
-              <small>{directMessage}</small>
-            </div>
-            <div className="protocol-state">
+              <div className="protocol-heading">
+              <strong>{locale === 'ru' ? 'Яндекс Музыка' : 'Yandex Music'}</strong>
               <StatusChip
                 tone={directStatus.state === 'connected' ? 'success' : directStatus.state === 'degraded' ? 'warning' : 'neutral'}
                 className={`status-pill status-pill--${directStatus.state}`}
               >
                 {directStatus.state === 'connected' ? <CheckCircle2 /> : <Activity />}
-                {directStatus.state}
+                {t(directStatus.state === 'connected' ? 'settings.connected' : directStatus.state === 'disabled' ? 'settings.optional' : directStatus.state === 'connecting' ? 'consent.connecting' : 'settings.needsAttention')}
               </StatusChip>
-              {directStatus.port ? <small>127.0.0.1:{directStatus.port}</small> : null}
+              </div>
+              <small>{directStatus.state === 'disabled' || directStatus.state === 'connected' ? t('settings.directHint') : directMessage}</small>
+              {uiPrefs.developerMode && directStatus.port ? <small>127.0.0.1:{directStatus.port}</small> : null}
             </div>
             <div className="protocol-actions">
               {directConnected || directNeedsRecovery ? (
@@ -485,9 +680,18 @@ export function SettingsPanel({
             </div>
           </article>
         </div>
+        {windowsSelected ? <label className="settings-control-row settings-source-picker">
+          <span><strong>{t('settings.preferredSource')}</strong></span>
+          <select value={draft.media.preferredSourceAppId ?? ''} onFocus={refreshSources} onChange={(event) => { setSourceError(null); patchMedia({ preferredSourceAppId: event.currentTarget.value || null }) }}>
+            <option value="">{t('settings.sourceAuto')}</option>
+            {draft.media.preferredSourceAppId && !mediaSessions.some((session) => session.sourceAppId === draft.media.preferredSourceAppId) ? <option value={draft.media.preferredSourceAppId}>{draft.media.preferredSourceAppId}</option> : null}
+            {mediaSessions.map((session) => <option key={session.sourceAppId} value={session.sourceAppId}>{isSpotifySource(session.sourceAppId) ? 'Spotify' : session.sourceAppId}</option>)}
+          </select>
+        </label> : null}
+        {sourceError ? <p className="settings-taskbar-note" role="alert">{sourceError}</p> : null}
       </SettingsSection>
 
-      <SettingsSection title={t('settings.system')} icon={<Power />}>
+      <SettingsSection hidden={settingsPage !== 'system'} title={t('settings.system')} icon={<Power />} showTitle={false}>
         <div className="autostart-block">
           <Switch
             label={t('settings.launchAtStartup')}
@@ -512,8 +716,13 @@ export function SettingsPanel({
         </div>
       </SettingsSection>
 
-      <SettingsSection title={t('settings.about')} icon={<Info />}>
+      <SettingsSection hidden={settingsPage !== 'about'} title={t('settings.about')} icon={<Info />} showTitle={false}>
         <div className="about-block">
+          <div className="about-identity">
+            <div className="about-identity__island" aria-hidden="true"><Music2 size={18} /><span className="about-identity__wave"><i /><i /><i /><i /><i /></span><Pause size={15} /></div>
+            <h3>Music Island</h3><span className="about-identity__version">{APP_VERSION}</span>
+            <p>{locale === 'ru' ? 'Музыка всегда рядом.' : 'Your music, within reach.'}</p>
+          </div>
           <p className="about-block__body">
             {t('settings.aboutBody')}{' '}
             <button
@@ -529,7 +738,7 @@ export function SettingsPanel({
           </p>
 
           <div className="about-update about-update--elevated">
-            <strong className="about-update__version">Music Island v{APP_VERSION}</strong>
+            <strong className="about-update__version">{locale === 'ru' ? 'Обновления' : 'Updates'}</strong>
             <div className="about-update-row">
               <span
                 className={`about-update-status about-update-status--${
@@ -550,7 +759,7 @@ export function SettingsPanel({
                           ? t('settings.installingUpdate')
                           : updater.status === 'error' || updater.error
                             ? t('settings.updateError')
-                            : updater.result?.message ?? t('settings.checkForUpdates')}
+                            : t('settings.updateDescription')}
               </span>
               {updater.status === 'available' ? (
                 <button
@@ -579,6 +788,7 @@ export function SettingsPanel({
               <div
                 className="about-update-progress"
                 role="progressbar"
+                aria-label={t('settings.updateProgress')}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={updater.progress?.percent ?? 0}
@@ -621,7 +831,8 @@ export function SettingsPanel({
           </div>
         </div>
       </SettingsSection>
-
+      </div>
+      </div>
       </>
       ) : null}
 
@@ -702,25 +913,27 @@ export function SettingsPanel({
       </footer>
 
       {showConsent ? createPortal((
-        <div className="consent-backdrop" role="presentation">
-          <section className="consent-dialog" role="dialog" aria-modal="true" aria-labelledby="direct-title">
-            <TriangleAlert size={28} />
-            <h2 id="direct-title">{t('consent.title')}</h2>
-            <p>{t('consent.body')}</p>
-            <ul>
-              <li>{t('consent.li1')}</li>
-              <li>{t('consent.li2')}</li>
-              <li>{t('consent.li3')}</li>
-            </ul>
-            <div className="consent-actions">
-              <button type="button" className="secondary-button" onClick={dismissConsent}>{directBusy ? t('consent.close') : t('consent.cancel')}</button>
-              <button type="button" className="primary-button" disabled={directBusy} onClick={() => void connectDirect()}>{directBusy ? t('consent.connecting') : t('settings.connect')}</button>
-            </div>
-          </section>
+        <div className="direct-connection-backdrop" role="presentation" data-color-scheme={settingsColorScheme} data-reduced-motion={reducedMotion || undefined}>
+          <DirectConnectionDialog
+            reducedMotion={reducedMotion}
+            ref={consentRef}
+            locale={locale}
+            busy={directBusy}
+            error={directStatus.state === 'error' ? directMessage : null}
+            onCancel={dismissConsent}
+            onConnect={() => void connectDirect()}
+          />
         </div>
       ), document.body) : null}
     </section>
   )
+}
+
+function SelectionMarker({ id, reducedMotion }: { id: string; reducedMotion: boolean }) {
+  return <motion.span className="settings-selection-marker" aria-hidden="true"
+    layoutId={reducedMotion ? undefined : id}
+    initial={false}
+    transition={{ duration: reducedMotion ? 0 : .2, ease: [.2, 0, 0, 1] }} />
 }
 
 function directStatusEqual(left: DirectYandexStatus, right: DirectYandexStatus): boolean {
@@ -731,22 +944,25 @@ function directStatusEqual(left: DirectYandexStatus, right: DirectYandexStatus):
 }
 
 interface SettingsSectionProps {
+  className?: string
   title: string
   icon: ReactNode
   children: ReactNode
   action?: ReactNode
+  hidden?: boolean
+  showTitle?: boolean
 }
 
-function SettingsSection({ title, icon, children, action }: SettingsSectionProps) {
+function SettingsSection({ title, icon, children, action, hidden, showTitle = true, className = '' }: SettingsSectionProps) {
   return (
-    <GlassSurface as="section" className="settings-section">
-      <header className="settings-section-header">
+    <GlassSurface as="section" className={`settings-section ${className}`.trim()} hidden={hidden} aria-label={title}>
+      {showTitle ? <header className="settings-section-header">
         <div className="settings-section-title">
           {icon}
           <h2>{title}</h2>
         </div>
         {action}
-      </header>
+      </header> : null}
       {children}
     </GlassSurface>
   )

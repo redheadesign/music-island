@@ -39,4 +39,8 @@ export interface IslandAppState {
 
 export interface UseIslandAppOptions {
   mediaEnabled?: boolean
+  /** Media-only surfaces can skip timeline events and the progress clock. */
+  timelineEnabled?: boolean
+  /** Only the top island handles tray/overlay window actions. */
+  windowEventsEnabled?: boolean
 }

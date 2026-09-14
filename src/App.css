@@ -206,11 +206,6 @@
   overflow: visible;
   border: 0;
   border-radius: 0 0 30px 30px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035)),
-    radial-gradient(circle at 18% 0%, rgba(var(--artwork-primary), 0.42), transparent 42%),
-    linear-gradient(180deg, rgba(var(--artwork-primary), 0.28), rgba(var(--artwork-secondary), 0.24)),
-    rgba(10, 12, 18, 0.84);
   box-shadow: var(--shadow);
   pointer-events: auto;
   transition: background 700ms ease;
@@ -342,6 +337,31 @@
   flex-direction: column;
   gap: 8px;
 }
+
+.island-usage-collapsed {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 3px;
+  pointer-events: none;
+  transform: scale(var(--usage-scale, 1));
+  transform-origin: top right;
+}
+.island-usage-collapsed--right { left: calc(100% + 12px); right: auto; transform-origin: top left; }
+.island-usage-rail {
+  position: absolute;
+  top: calc(12px * var(--island-scale, 1));
+  right: calc(50% + (250px * var(--island-width, 1) + 12px) * var(--island-scale, 1));
+  transform: scale(var(--usage-scale, 1));
+  transform-origin: top right;
+  pointer-events: auto;
+}
+.island-usage-rail--right {
+  left: calc(50% + (250px * var(--island-width, 1) + 12px) * var(--island-scale, 1));
+  right: auto;
+  top: calc(64px * var(--island-scale, 1));
+  transform-origin: top left;
+}
+.island-usage-rail .usage-chip--expanded { width: 124px; }
 
 .island-plugin-button--unhealthy {
   opacity: 0.72;
@@ -879,11 +899,11 @@
   --accent-glow: rgba(247, 97, 0, 0.34);
   --accent-muted: rgba(247, 97, 0, 0.18);
   --accent-ink: #1a1410;
-  --text-primary: rgba(255, 255, 255, 0.96);
-  --text-secondary: rgba(238, 243, 255, 0.68);
-  --text-muted: rgba(238, 243, 255, 0.46);
-  --control-bg: rgba(255, 255, 255, 0.07);
-  --control-bg-hover: rgba(255, 255, 255, 0.12);
+  --text-primary: var(--fg-primary);
+  --text-secondary: var(--fg-secondary);
+  --text-muted: var(--fg-muted);
+  --control-bg: var(--surface-raised);
+  --control-bg-hover: var(--surface-hover);
   --settings-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -895,7 +915,7 @@
   border: 0;
   border-radius: var(--settings-radius);
   color: var(--text-primary);
-  background: rgba(9, 11, 16, 1);
+  background: var(--surface-canvas);
   box-shadow: none;
 }
 
@@ -1269,7 +1289,7 @@
 
 .voice-settings {
   display: grid;
-  gap: 14px;
+  gap: var(--space-6);
 }
 
 .voice-cable-guide {
@@ -2126,7 +2146,7 @@
 }
 
 .settings-window-root .settings-panel {
-  max-width: 820px;
+  max-width: 960px;
   margin: 0 auto;
 }
 
@@ -3147,51 +3167,6 @@
 
 .about-social--github:hover {
   background: rgba(247, 129, 102, 0.18);
-}
-
-.consent-backdrop {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  padding: 24px;
-  place-items: center;
-  color: rgba(255, 255, 255, 0.96);
-  background: rgba(3, 5, 9, 0.72);
-  backdrop-filter: blur(16px);
-  z-index: 50;
-}
-
-.consent-dialog {
-  width: min(520px, 100%);
-  padding: 28px;
-  border: 0;
-  border-radius: 28px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.045)),
-    rgba(12, 14, 19, 0.96);
-  box-shadow: none;
-}
-
-.consent-dialog > svg {
-  color: #ffc978;
-}
-
-.consent-dialog h2 {
-  margin: 14px 0 8px;
-  font-size: 23px;
-}
-
-.consent-dialog p,
-.consent-dialog li {
-  color: rgba(238, 243, 255, 0.68);
-  line-height: 1.5;
-}
-
-.consent-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 22px;
 }
 
 @media (max-width: 720px) {

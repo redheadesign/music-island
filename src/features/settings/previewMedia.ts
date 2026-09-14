@@ -1,0 +1,33 @@
+import type { MediaSnapshot } from '../../shared/lib/types'
+import previewRecord from '../../assets/preview-record.svg'
+
+export const APPEARANCE_PREVIEW_MEDIA: MediaSnapshot = {
+  hasSession: true,
+  sourceAppId: 'YandexMusic.exe',
+  trackId: 'settings-preview',
+  title: 'Evening Light',
+  artist: 'Music Island',
+  albumTitle: null,
+  playbackStatus: 'playing',
+  positionMs: 73_000,
+  durationMs: 214_000,
+  canSeek: true,
+  canGoNext: true,
+  canGoPrevious: true,
+  canPlay: true,
+  canPause: true,
+  canLike: true,
+  canDislike: true,
+  canShuffle: true,
+  canRepeat: true,
+  isShuffleActive: false,
+  repeatMode: 'off',
+  isLiked: false,
+  isDisliked: false,
+  activeWaveId: null,
+  activeWaveTitle: null,
+  thumbnailDataUrl: previewRecord,
+  updatedAt: '2026-09-14T00:00:00Z',
+  provider: 'yandex-direct',
+  smtcHealth: 'healthy',
+}

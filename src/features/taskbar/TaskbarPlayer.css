@@ -1,0 +1,98 @@
+.taskbar-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  /* Matches the native taskbar reservation: 32 + 3×32 + 6 + 8 + 2. */
+  width: 144px;
+  min-width: 144px;
+  max-width: 144px;
+  height: var(--taskbar-player-height, 40px);
+  padding: 1px var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--fg-primary);
+  background: var(--surface-glass);
+  font-family: var(--font-sans);
+  user-select: none;
+}
+
+.taskbar-player__cover {
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--space-7);
+  width: var(--space-7);
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+}
+
+.taskbar-player__cover--button { cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }
+.taskbar-player__cover--button:hover { background: var(--surface-hover); }
+
+.taskbar-player__artwork {
+  display: grid;
+  flex: 0 0 auto;
+  width: calc(var(--taskbar-player-height, 40px) - var(--space-2));
+  height: calc(var(--taskbar-player-height, 40px) - var(--space-2));
+  overflow: hidden;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--fg-muted);
+  background: var(--surface-raised);
+}
+
+.taskbar-player__artwork img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.taskbar-player__controls { display: flex; align-items: center; flex: 0 0 auto; gap: 0; }
+
+.taskbar-player .taskbar-player__button {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: var(--space-7);
+  height: calc(var(--taskbar-player-height, 40px) - var(--space-1));
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: var(--fg-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+
+.taskbar-player .taskbar-player__button--play { color: var(--fg-primary); }
+.taskbar-player .taskbar-player__button:hover:not(:disabled) { color: var(--fg-primary); background: var(--surface-hover); }
+.taskbar-player .taskbar-player__button:active:not(:disabled) { background: var(--border-strong); }
+.taskbar-player .taskbar-player__button:disabled { color: var(--fg-muted); background: transparent; opacity: .4; cursor: default; }
+.taskbar-player button:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+.taskbar-player[data-reduced-motion='true'] * { transition: none; animation: none; }
+
+/* Native taskbar WebViews can be shorter than the standard 40px control. */
+@media (max-height: 36px) {
+  .taskbar-player { --taskbar-player-height: 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .taskbar-player .taskbar-player__button,
+  .taskbar-player .taskbar-player__cover--button { transition: none; animation: none; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .taskbar-player { background: var(--surface-panel); }
+}
+/* Compact controls and a single material shared with the native renderer. */
+.taskbar-player { width: calc(var(--taskbar-width,144px) * var(--taskbar-scale,1)); min-width: 0; max-width: none; gap: 0; padding: 0 calc(8px * var(--taskbar-scale,1)) 0 calc(4px * var(--taskbar-scale,1)); border: 0; border-radius: 10px; color: #b9bbc0; background: rgba(24,24,26,.82); }
+.taskbar-player > .taskbar-player__cover:not(:last-child), .taskbar-player > [data-taskbar-element='cover']:not(:last-child) { margin-right: calc(4px * var(--taskbar-scale,1)); }
+.taskbar-player__cover { width: calc(32px * var(--taskbar-scale,1)); flex-basis: calc(32px * var(--taskbar-scale,1)); }
+.taskbar-player__artwork { width: min(calc(28px * var(--taskbar-scale,1)),32px); height: min(calc(28px * var(--taskbar-scale,1)),32px); }
+.taskbar-player .taskbar-player__button { position: relative; flex-shrink: 0; width: calc(32px * var(--taskbar-scale,1)); height: min(calc(32px * var(--taskbar-scale,1)),38px); color: #b9bbc0; }
+.taskbar-player .taskbar-player__button svg { transform: scale(var(--taskbar-scale,1)); }
+.taskbar-player .taskbar-player__button:hover:not(:disabled) { color: #ebebef; background: rgba(255,255,255,.06); }
+.taskbar-player .taskbar-player__button[aria-pressed='true'] { color: #dcb5a1; }
+.taskbar-player__active-dot { position: absolute; bottom: 2px; width: 2px; height: 2px; border-radius: 50%; background: currentColor; }

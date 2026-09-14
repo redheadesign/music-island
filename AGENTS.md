@@ -7,6 +7,7 @@
 - Better Voice runs in-process in Rust; its React settings, meters and fox mascot live in `src/features/plugins/voice`.
 - Start with `README.md` and `docs/ARCHITECTURE.md`. Consult `docs/MEDIA_ARCHITECTURE.md`, `docs/YANDEX_MUSIC_API.md`, `docs/BETTER_VOICE.md`, `docs/QA.md` and `docs/RELEASES.md` for the relevant subsystem.
 - Use root and nested `AGENTS.md` files for Codex instructions. The original `.cursor/rules` files are retained for reference; do not rely on Cursor rule discovery in Codex.
+- When present, local unfinished work and the exact build/verification state are recorded in `docs/SESSION_HANDOFF.md`. Read it when available before resuming the taskbar work or creating a test build; update it when those outstanding checks are resolved.
 
 ## Scope
 
@@ -32,6 +33,17 @@
 - For native changes, run `cargo check --manifest-path src-tauri/Cargo.toml` and relevant Rust tests; use `docs/QA.md` for affected Windows behavior and report any checks that could not run.
 - `npm run tauri:build` creates the portable build and copies it to `release/music-island.exe`.
 - Do not commit generated release artifacts.
+
+## Component workshop
+
+- Before visual design or UX changes, read `docs/DESIGN_PREFERENCES.md` when available (local, ignored): it records the user's accepted direction and interpretation of open-ended requests such as “make it beautiful”. Keep accepted compositions unless the user asks to change them.
+- Use `npm run storybook` for component review without Tauri. Start with `docs/STORYBOOK.md`.
+- Keep stories, preview fixtures and mocks in `src/stories`; keep Storybook configuration in `.storybook`.
+- Organize the catalog into Foundations, Atoms, Molecules, Organisms and Screens. Render actual production components, not copies.
+- Keep native mocks restricted to Storybook. Never import stories or Storybook packages into production modules, and do not move provider or window logic to support a preview.
+- For new UI and changed visual states, add or update the relevant stories. Use stable English story IDs and descriptive Russian state names.
+- After workshop changes, run `npm run check:storybook` and `npm run build-storybook` in addition to the frontend checks. Verify affected stories in the browser.
+- Storybook is a development tool; its static output is ignored, and running or building it must not publish an application release.
 
 ## Fox mascot videos
 

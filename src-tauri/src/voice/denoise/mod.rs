@@ -1,8 +1,8 @@
-mod rnnoise;
 mod deepfilter;
+mod rnnoise;
 
-use rnnoise::RnnoiseModel;
 use deepfilter::DeepFilterFFI;
+use rnnoise::RnnoiseModel;
 
 /// 降噪模型统一接口
 ///
@@ -32,13 +32,17 @@ pub trait DenoiseModel: Send {
     /// 输出: normalized f32 [-1.0, 1.0]
     fn process_frame(&mut self, output: &mut [f32], input: &[f32]);
     /// 保存模型内部状态（归一化统计等），用于切换模型时保持适应性
-    fn save_state(&self) -> Option<Vec<u8>> { None }
+    fn save_state(&self) -> Option<Vec<u8>> {
+        None
+    }
     /// 恢复模型内部状态
     fn load_state(&mut self, _state: &[u8]) {}
     /// 更新降噪强度（0-1），仅 DeepFilterNet 支持
     fn update_strength(&mut self, _strength: f32) {}
     /// 是否由模型内部控制强度（如果是，外部不做 strength mixing）
-    fn has_internal_strength_control(&self) -> bool { false }
+    fn has_internal_strength_control(&self) -> bool {
+        false
+    }
 }
 
 /// 帧大小常量（480 samples = 10ms @ 48kHz）

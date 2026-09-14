@@ -1,0 +1,266 @@
+/* The same component owns its presentation in Settings, Island and Storybook. */
+.update-notice.update-banner--settings {
+  container: update-banner / inline-size;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--fg-primary);
+  background: var(--surface-panel);
+  box-shadow: inset 0 1px 0 var(--highlight-inset);
+}
+
+.update-notice .update-banner__main {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.update-banner__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.update-banner__icon {
+  display: grid;
+  flex: 0 0 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--fg-secondary);
+  background: var(--surface-raised);
+}
+
+.update-notice .update-banner__title {
+  min-width: 0;
+  margin: 0;
+  color: var(--fg-primary);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-label);
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.update-notice .update-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+}
+
+.update-notice :is(.update-banner__primary, .update-banner__ghost, .island-update-rail__primary, .island-update-rail__ghost) {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 36px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-label);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+
+.update-notice :is(.update-banner__primary, .island-update-rail__primary) {
+  color: var(--surface-canvas);
+  background: var(--fg-primary);
+}
+
+.update-notice :is(.update-banner__primary, .island-update-rail__primary):hover {
+  background: var(--control-primary-hover);
+}
+
+.update-notice :is(.update-banner__ghost, .island-update-rail__ghost) {
+  color: var(--fg-secondary);
+  background: transparent;
+  border-color: var(--border-subtle);
+}
+
+.update-notice :is(.update-banner__ghost, .island-update-rail__ghost):hover {
+  color: var(--fg-primary);
+  background: var(--surface-hover);
+}
+
+.update-notice button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.update-notice :is(.update-banner__progress, .island-update-rail__progress) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.update-notice :is(.update-banner__progress-track, .island-update-rail__progress-track) {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--surface-selected);
+}
+
+.update-notice :is(.update-banner__progress-fill, .island-update-rail__progress-fill) {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--fg-primary);
+  transition: width var(--motion-normal) var(--ease-standard);
+}
+
+.update-notice :is(.update-banner__progress-meta, .island-update-rail__progress-meta) {
+  flex: 0 0 38px;
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-caption);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.update-notice [data-indeterminate] > div {
+  width: 36%;
+  animation: update-notice-progress 1.6s ease-in-out infinite alternate;
+}
+
+.update-notice[data-status='error'] .update-banner__icon {
+  color: var(--status-danger);
+}
+
+.update-notice :is(.update-banner__error, .island-update-rail__error) {
+  margin: 0;
+  color: var(--status-danger);
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+
+.update-notice .release-notes-md {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+}
+
+.update-notice .release-notes-md__body,
+.update-notice .release-notes-md__fallback {
+  min-width: 0;
+  margin: 0;
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.update-notice .release-notes-md__body :is(h1, h2, h3, h4, h5, h6) {
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-label);
+  letter-spacing: 0;
+}
+
+.update-notice .release-notes-md__body :is(p, ul, ol, pre, table, blockquote) {
+  margin: 0 0 var(--space-3);
+}
+
+.update-notice .release-notes-md__body :is(ul, ol) { padding-left: 18px; }
+.update-notice .release-notes-md__body li + li { margin-top: var(--space-1); }
+.update-notice .release-notes-md__body > :first-child { margin-top: 0; }
+.update-notice .release-notes-md__body > :last-child { margin-bottom: 0; }
+.update-notice .release-notes-md__body img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
+.update-notice .release-notes-md__body pre { max-width: 100%; padding: var(--space-3); overflow: auto; border-radius: var(--radius-sm); background: var(--surface-canvas); }
+.update-notice .release-notes-md__body code { color: var(--fg-primary); font-family: var(--font-mono); font-size: 11px; }
+.update-notice .release-notes-md__body table { display: block; max-width: 100%; overflow: auto; border-collapse: collapse; }
+.update-notice .release-notes-md__body :is(td, th) { padding: var(--space-2); border: 1px solid var(--border-subtle); text-align: left; }
+.update-notice .release-notes-md__body blockquote { padding-left: var(--space-3); border-left: 2px solid var(--border-strong); }
+
+.update-notice .release-notes-md__link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--fg-muted);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.update-notice .release-notes-md__toggle {
+  min-height: var(--control-height-compact);
+  justify-self: start;
+  margin: 0;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--fg-primary);
+  background: transparent;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+  text-decoration-color: var(--fg-muted);
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.update-notice .release-notes-md__toggle:hover { background: transparent; text-decoration-color: var(--fg-primary); }
+
+/* Keep the island rail's external geometry; its contents may wrap at smaller sizes. */
+.update-notice.island-update-rail {
+  container: island-update / inline-size;
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  width: calc(500px * var(--island-width, 1));
+  max-width: 100%;
+  margin: var(--space-2) auto 0;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: rgba(24, 25, 28, .96);
+  box-shadow: inset 0 1px 0 #ffffff05;
+  pointer-events: auto;
+}
+
+.update-notice .island-update-rail__copy { display: grid; flex: 1 1 180px; min-width: 0; gap: var(--space-2); }
+.update-notice .island-update-rail__title { margin: 0; min-width: 0; color: var(--fg-primary); font-size: var(--text-caption); font-weight: var(--weight-medium); line-height: 1.5; letter-spacing: 0; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.update-notice .island-update-rail__actions { display: flex; flex-wrap: wrap; flex: 0 1 auto; align-items: center; gap: var(--space-2); }
+.update-notice :is(.island-update-rail__primary, .island-update-rail__ghost) { min-height: var(--control-height-compact); }
+
+@container update-banner (max-width: 280px) {
+  .update-banner__heading { align-items: flex-start; }
+  .update-notice .update-banner__actions > button { flex: 1 1 auto; }
+}
+
+@container island-update (max-width: 340px) {
+  .update-notice .island-update-rail__copy { flex-basis: 100%; }
+  .update-notice .island-update-rail__actions { width: 100%; }
+}
+
+@keyframes update-notice-progress { from { transform: translateX(0); } to { transform: translateX(178%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .update-notice *, .update-notice [data-indeterminate] > div { animation: none; transition: none; }
+}

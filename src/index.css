@@ -1,5 +1,6 @@
 @import './shared/styles/tokens.css';
 @import './shared/styles/primitives.css';
+@import './shared/styles/island-material.css';
 
 :root {
   color-scheme: dark;

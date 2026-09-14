@@ -1,0 +1,11 @@
+/* The island and its satellites share one material and opacity. The color is
+   resolved on each element so artwork variables follow their nearest island. */
+.island-surface {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.035)),
+    radial-gradient(circle at 18% 0%, rgba(var(--artwork-primary,22,23,25),.42), transparent 42%),
+    linear-gradient(180deg, rgba(var(--artwork-primary,22,23,25),.28), rgba(var(--artwork-secondary,22,23,25),.24)),
+    rgba(10,12,18,.84);
+}
+
+.preview-warp-material { opacity: .38; }

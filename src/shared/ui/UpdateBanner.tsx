@@ -1,4 +1,7 @@
+import { ArrowDownToLine, PackageCheck, TriangleAlert } from 'lucide-react'
+import { useId } from 'react'
 import { ReleaseNotesFallback, ReleaseNotesMarkdown } from './ReleaseNotesMarkdown'
+import './UpdateBanner.css'
 
 export type UpdateBannerStatus = 'available' | 'downloading' | 'installing' | 'error'
 
@@ -36,36 +39,26 @@ export function UpdateBanner({
   error?: string | null
 }) {
   const busy = status === 'downloading' || status === 'installing'
-  const percent = progressPercent ?? (status === 'installing' ? 100 : 0)
+  const titleId = useId()
+  const hasError = !busy && (status === 'error' || Boolean(error))
+  const heading = busy && progressLabel ? progressLabel : title
+  const percent = progressPercent != null && Number.isFinite(progressPercent)
+    ? Math.min(100, Math.max(0, Math.round(progressPercent)))
+    : undefined
+  const state = hasError ? 'error' : status
 
   if (variant === 'island') {
     return (
-      <div className="island-update-rail" role="status">
+      <div className="update-notice island-update-rail" data-status={state} role="region" aria-labelledby={titleId}>
         <div className="island-update-rail__copy">
-          <strong className="island-update-rail__title">
-            {busy && progressLabel ? progressLabel : title}
+          <strong className="island-update-rail__title" id={titleId} role="status">
+            {heading}
           </strong>
-          {status === 'error' && error ? (
-            <span className="island-update-rail__error">{error}</span>
+          {hasError && error ? (
+            <span className="island-update-rail__error" role="alert">{error}</span>
           ) : null}
           {busy ? (
-            <div
-              className="island-update-rail__progress"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={percent}
-            >
-              <div className="island-update-rail__progress-track">
-                <div
-                  className="island-update-rail__progress-fill"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-              <span className="island-update-rail__progress-meta">
-                {percent > 0 ? `${percent}%` : '…'}
-              </span>
-            </div>
+            <UpdateProgress variant="island" percent={percent} label={heading} />
           ) : null}
         </div>
         {!busy ? (
@@ -89,43 +82,29 @@ export function UpdateBanner({
   const notes = releaseNotes?.trim() ?? ''
 
   return (
-    <div className="update-banner update-banner--settings" role="status">
+    <div className="update-notice update-banner update-banner--settings" data-status={state} role="region" aria-labelledby={titleId}>
       <div className="update-banner__main">
-        <strong className="update-banner__title">
-          {busy && progressLabel ? progressLabel : title}
-        </strong>
-        {!busy && notes ? (
+        <div className="update-banner__heading">
+          <span className="update-banner__icon" aria-hidden="true">
+            {hasError ? <TriangleAlert size={18} /> : status === 'installing' ? <PackageCheck size={18} /> : <ArrowDownToLine size={18} />}
+          </span>
+          <strong className="update-banner__title" id={titleId} role="status">{heading}</strong>
+        </div>
+        {!busy && !hasError && notes ? (
           <ReleaseNotesMarkdown
             markdown={notes}
             expandLabel={expandLabel ?? 'See all'}
             collapseLabel={collapseLabel ?? 'Collapse'}
             onOpenUrl={onOpenUrl}
           />
-        ) : !busy && emptyNotesLabel ? (
+        ) : !busy && !hasError && emptyNotesLabel ? (
           <ReleaseNotesFallback>{emptyNotesLabel}</ReleaseNotesFallback>
         ) : null}
         {busy ? (
-          <div
-            className="update-banner__progress"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent}
-          >
-            <div className="update-banner__progress-track">
-              <div
-                className="update-banner__progress-fill"
-                style={{ width: `${percent}%` }}
-              />
-            </div>
-            <small>
-              {progressLabel ?? ''}
-              {progressPercent != null ? ` · ${progressPercent}%` : ''}
-            </small>
-          </div>
+          <UpdateProgress variant="settings" percent={percent} label={heading} />
         ) : null}
-        {status === 'error' && error ? (
-          <p className="update-banner__error">{error}</p>
+        {hasError && error ? (
+          <p className="update-banner__error" role="alert">{error}</p>
         ) : null}
         {!busy ? (
           <div className="update-banner__actions">
@@ -138,6 +117,32 @@ export function UpdateBanner({
           </div>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+function UpdateProgress({ variant, percent, label }: {
+  variant: 'settings' | 'island'
+  percent: number | undefined
+  label: string
+}) {
+  const prefix = variant === 'island' ? 'island-update-rail' : 'update-banner'
+  return (
+    <div className={`${prefix}__progress`}>
+      <div
+        className={`${prefix}__progress-track`}
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+        data-indeterminate={percent == null || undefined}
+      >
+        <div className={`${prefix}__progress-fill`} style={percent == null ? undefined : { width: `${percent}%` }} />
+      </div>
+      <span className={`${prefix}__progress-meta`} aria-hidden="true">
+        {percent == null ? '…' : `${percent}%`}
+      </span>
     </div>
   )
 }

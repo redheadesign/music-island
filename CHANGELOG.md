@@ -1,5 +1,79 @@
 # Changelog
 
+## 2.0.0 — 2026-09-14
+
+Music Island 2.0 is a major update to the island, taskbar player, media sources,
+usage widgets, Better Voice and Settings. It remains a portable Windows 10/11
+application; replacing `music-island.exe` preserves the configuration stored in
+`%APPDATA%\Music Island\`.
+
+### Customization and appearance
+
+- Added a live drag-and-drop island editor. Player controls, artwork, progress,
+  reactions, usage satellites and actions can be arranged within protected zones;
+  required controls remain safe from accidental removal.
+- Added direct resizing in the preview and persisted layout, scale and visibility
+  preferences.
+- Unified the island, assistant usage satellites and active My Wave chip on the
+  same artwork-aware surface material.
+- Fixed duplicate progress transitions when duration metadata arrives after track
+  identity, coalesced rapid navigation updates and settled cancelled animations
+  exactly once.
+- Reworked Settings with clearer navigation, refreshed light and dark themes,
+  accessible keyboard alternatives and reduced-motion behavior.
+- Expanded Storybook coverage for production components, layouts, themes and
+  interaction states.
+
+### Native taskbar player
+
+- Added an optional native Windows taskbar player beside the notification area.
+  Its ordered controls can include artwork, Previous, Play/Pause, Next, Like,
+  Shuffle and Repeat, with configurable scale.
+- Shuffle and Repeat appear and dispatch only when the active media session
+  reports support. Repeat reflects Off, All and One states.
+- The taskbar surface uses same-process native Windows controls and cached artwork
+  decoding, independent of the island WebView.
+
+### Media sources
+
+- Added Spotify selection through Windows SMTC. Music Island follows Spotify's
+  published Windows media session and does not require Spotify credentials.
+- Improved Windows SMTC source selection and capability-aware commands.
+- Direct Yandex Music remains a separate, explicit opt-in local connection to the
+  installed desktop client.
+
+### Codex and Claude usage
+
+- Added optional Codex and Claude usage widgets with compact and detailed styles,
+  independent scale and placement around the island.
+- Each provider requires a separate explicit connection from Settings. Codex runs
+  the installed local `codex.exe app-server` and relies on its login without
+  reading its auth files. Claude reads the existing local Claude Code OAuth
+  credential and queries Anthropic's usage endpoint directly, without a Music
+  Island proxy.
+- Credentials and raw responses never reach React or logs. The widgets do not
+  claim monetary cost or total ChatGPT usage.
+- Disabled providers perform no background polling. Cached states clearly show
+  loading, stale, unavailable and authentication conditions.
+
+### Better Voice
+
+- Refined the in-process Better Voice route, device flow, effects, level feedback
+  and guide while preserving the fox mascot states.
+- The accepted warm graphite Paper Warp material now pauses when hidden,
+  offscreen or under reduced motion.
+
+### Notes
+
+- The portable updater now requires `SHA256.txt`, verifies the downloaded
+  executable's SHA-256 and PE header, then performs the existing staged replacement.
+- The portable executable is unsigned, so Windows SmartScreen may show a warning.
+- Better Voice still requires a compatible virtual audio cable such as VB-Cable.
+- Player capabilities depend on what each Windows media session publishes.
+- See the [project repository](https://github.com/redheadesign/music-island) and
+  [issue tracker](https://github.com/redheadesign/music-island/issues) for source,
+  documentation and current limitations.
+
 ## 1.3.22 — 2026-08-04
 
 ### Fixes

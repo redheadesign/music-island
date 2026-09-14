@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+import { createReadStream } from 'node:fs'
 import { copyFile, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -14,6 +16,7 @@ const artifactPatterns = [
 
 await mkdir(releaseDir, { recursive: true })
 await rm(path.join(releaseDir, 'music-island.exe'), { force: true })
+await rm(path.join(releaseDir, 'SHA256.txt'), { force: true })
 await rm(path.join(releaseDir, 'README.txt'), { force: true })
 // Voice assets live inside the exe → AppData; never ship a sibling resources/ folder.
 await rm(path.join(releaseDir, 'resources'), { recursive: true, force: true })
@@ -41,6 +44,17 @@ if (copied.length === 0) {
   throw new Error('No release artifacts found. Run `npm run tauri:build` first.')
 }
 
+const portableExecutable = copied.find((artifact) => artifact.fileName === 'music-island.exe')
+if (!portableExecutable) {
+  throw new Error('Portable music-island.exe was not copied.')
+}
+const executableHash = await sha256File(path.join(releaseDir, portableExecutable.fileName))
+await writeFile(
+  path.join(releaseDir, 'SHA256.txt'),
+  `${executableHash}  ${portableExecutable.fileName}\n`,
+  'ascii',
+)
+
 const readme = [
   'Music Island release artifacts',
   '',
@@ -57,6 +71,7 @@ console.log(`Copied ${copied.length} release artifact(s) to ${releaseDir}`)
 for (const artifact of copied) {
   console.log(`- ${artifact.fileName} (${artifact.sizeMb} MB)`)
 }
+console.log('- SHA256.txt')
 
 async function safeReadDir(directory) {
   try {
@@ -67,4 +82,15 @@ async function safeReadDir(directory) {
     }
     throw error
   }
+}
+
+async function sha256File(filePath) {
+  const hash = createHash('sha256')
+  await new Promise((resolve, reject) => {
+    const stream = createReadStream(filePath)
+    stream.on('data', (chunk) => hash.update(chunk))
+    stream.on('error', reject)
+    stream.on('end', resolve)
+  })
+  return hash.digest('hex')
 }

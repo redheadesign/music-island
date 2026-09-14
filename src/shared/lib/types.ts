@@ -17,7 +17,11 @@ export type MediaCommand =
   | 'stop'
   | 'like'
   | 'dislike'
+  | 'toggle-shuffle'
+  | 'cycle-repeat'
   | { seek: { positionMs: number } }
+
+export type RepeatMode = 'off' | 'all' | 'one'
 
 export interface WaveSelection {
   id: string
@@ -72,6 +76,10 @@ export interface MediaSnapshot {
   canDislike: boolean
   isLiked: boolean
   isDisliked: boolean
+  canShuffle: boolean
+  isShuffleActive: boolean
+  canRepeat: boolean
+  repeatMode: RepeatMode
   activeWaveId: string | null
   activeWaveTitle: string | null
   thumbnailDataUrl: string | null
@@ -117,8 +125,17 @@ export type WidgetSize = 'small' | 'medium' | 'large'
 export type Density = 'buttons-only' | 'minimal' | 'balanced' | 'rich'
 export type LayoutPreset = 'clean-controls' | 'album-pill' | 'now-playing-rich' | 'focus-mode'
 
+export interface TaskbarStatus {
+  state: 'off' | 'visible' | 'hidden' | 'no-space' | 'unsupported' | 'error'
+}
+
 export interface AppConfig {
   schemaVersion: number
+  taskbar: {
+    enabled: boolean
+    scale?: number
+    showLike?: boolean
+  }
   appearance: {
     theme: Theme
     accentColor: string

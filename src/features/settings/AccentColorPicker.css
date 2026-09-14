@@ -1,0 +1,96 @@
+/* Component-owned presentation: identical in settings and the workshop. */
+.accent-picker.accent-picker {
+  position: relative;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.accent-picker .accent-picker__copy strong {
+  color: var(--fg-primary);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+}
+
+.accent-picker .accent-picker__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.accent-picker .accent-picker__swatch {
+  width: var(--control-height-compact);
+  height: var(--control-height-compact);
+  padding: 0;
+  border: calc(var(--space-1) + 1px) solid var(--surface-panel);
+  border-radius: var(--radius-pill);
+  outline: 1px solid transparent;
+  box-shadow: none;
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-standard), outline-color var(--motion-fast) var(--ease-standard);
+}
+
+.accent-picker .accent-picker__swatch--active {
+  outline-color: var(--fg-primary);
+  box-shadow: none;
+}
+
+.accent-picker .accent-picker__swatch:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.accent-picker .accent-picker__custom {
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  color: var(--fg-primary);
+  background: var(--surface-raised);
+}
+
+.accent-picker .accent-picker__panel {
+  z-index: 6;
+  display: grid;
+  box-sizing: border-box;
+  width: 320px;
+  max-width: 100%;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-panel);
+}
+
+.accent-picker .accent-picker__hex {
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+}
+
+.accent-picker .accent-picker__hex input {
+  height: var(--control-height-compact);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--fg-primary);
+  background: var(--surface-panel);
+  box-shadow: none;
+}
+
+.accent-picker .accent-picker__hex input:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.accent-picker .accent-picker__done {
+  color: var(--surface-canvas);
+  background: var(--fg-primary);
+  height: var(--control-height-compact);
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accent-picker .accent-picker__swatch:hover { transform: none; }
+}

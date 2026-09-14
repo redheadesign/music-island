@@ -2,80 +2,94 @@ https://github.com/user-attachments/assets/28c65a1f-1fee-4ee0-a4f6-2fb89cf8c78e
 
 # Music Island
 
-Windows top-edge media island for any SMTC player, plus an optional **direct connection to the native Yandex Music desktop app** and built-in **Better Voice (Beta)** mic cleanup.
+Music, voice and assistant limits — a compact workspace at the edge of your Windows desktop.
 
-**1.3.22** · Windows 10/11 · [GPL-3.0](LICENSE) · local-first · no telemetry
+**2.0.0** · Windows 10/11 · [GPL-3.0-or-later](LICENSE) · local-first · no telemetry
 
-## Download
+[**Download Music Island 2.0**](https://github.com/redheadesign/music-island/releases/tag/v2.0.0) · [What's new](CHANGELOG.md) · [Component workshop](docs/STORYBOOK.md)
 
-[GitHub Releases](https://github.com/redheadesign/music-island/releases) → `music-island.exe` (portable; unsigned builds may trigger SmartScreen).
+Portable: download `music-island.exe` and run it. Existing settings stay in `%APPDATA%\Music Island\`. The executable is unsigned; Windows may show SmartScreen.
 
-## Features
+## Your island, your layout
 
-- Hover island: artwork, title/artist, progress, play/pause, prev/next
-- **Windows SMTC** – works with Spotify, browsers, and other system media sessions
-- **Direct Yandex Music** – opt-in link to the installed desktop client over a local debug endpoint (127.0.0.1): lower latency, like/dislike, active wave chip, seek, and quick reload when the client drops
-- **Better Voice (Beta)** – in-process denoise / AGC / EQ / FX → virtual microphone (VB-Cable); fox mascot + in-app guide — see [`docs/BETTER_VOICE.md`](docs/BETTER_VOICE.md)
-- Settings: Music Island / Better Voice scopes, accent color, width, scale, open delay, preferred SMTC source, protocol switch, autostart, **Ru / En**
-- Portable updates from GitHub Releases (check on start + About → download/replace exe; Unicode-safe relaunch)
-- Startup intro splash (skipped on Windows autostart)
-- Tray: settings / quit · config in `%APPDATA%\Music Island\`
+![Music Island's live layout editor with a media player, assistant quota and a component tray](docs/media/v2/01-island.webp)
 
-### Direct Yandex Music
+Drag real controls into the preview: artwork, transport, progress, reactions and assistant widgets. Put both reactions on either side. Pull an edge to change width or a corner to change scale. Settings and play/pause always remain accessible.
 
-In Settings → Music source, connect **Direct Yandex Music** (explicit consent). Music Island attaches to the already running desktop app when possible; the first connect may restart the client with a loopback-only CDP port. This is unofficial and can break after a Yandex client update – you can always switch back to SMTC.
+## Music in the taskbar
+
+![Customizable compact player in a graphite taskbar preview](docs/media/v2/02-taskbar.webp)
+
+An optional native mini-player sits beside the Windows system tray and follows the taskbar as it appears and hides. Start with artwork and three playback buttons; add Like, Shuffle or Repeat, rearrange them and adjust their size. Available on the primary horizontal taskbar. [Details](docs/TASKBAR.md).
+
+## Better Voice
+
+![Better Voice processing card and microphone-to-output signal route](docs/media/v2/03-voice.webp)
+
+Clean up your microphone, hear the result and switch voice effects on or off. The signal route shows input, processing and output together. The fox and the warm graphite material respond to processing. Better Voice is **Beta**; routing audio into another app requires VB-Cable. [Setup and audio engine](docs/BETTER_VOICE.md).
+
+## Assistant limits at a glance
+
+![Compact and detailed Codex and Claude usage widgets with sample remaining percentages](docs/media/v2/04-usage.webp)
+
+Optional Codex and Claude widgets show remaining quota in compact rings or a detailed view. Choose their size and position, and whether they stay visible when the island closes. Each connection is off by default: Codex talks to the installed local app-server, while Claude uses the existing local Claude Code sign-in to query Anthropic directly. Screenshots use fictional data. [Connection and privacy details](docs/USAGE.md).
+
+## A clearer place for settings
+
+![Music Island settings in dark and light themes](docs/media/v2/05-settings.webp)
+
+Light and dark themes, live previews and consistent controls. Choose Windows SMTC, the Spotify desktop app via SMTC, or an explicit Direct Yandex Music connection. Shuffle, Repeat and reactions are available where the selected player supports them.
+
+## Media connections
+
+**Windows SMTC** is the default. Music Island follows the selected Windows media session; Spotify works through its desktop app, without a separate Spotify API login.
+
+**Direct Yandex Music** is an optional connection to the installed desktop client through a loopback-only CDP endpoint. Connect in Settings → Music source. The first connection may require restarting the client with your consent. This unofficial integration can change after a Yandex update; SMTC remains available as a separate choice. [Protocol details](docs/YANDEX_MUSIC_API.md).
+
+**Assistant limits** are off by default and enabled separately. Codex runs the installed `codex.exe app-server` and relies on its existing login without reading its auth files. Claude reads the existing local Claude Code OAuth sign-in only after you enable it, then queries Anthropic directly without a Music Island proxy. Credentials are never returned to the interface or sent to Music Island servers. Stale or unavailable data is labelled rather than presented as a current limit. [Usage architecture](docs/USAGE.md).
 
 ## Architecture
 
-Same layers as [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md):
+React 19 + TypeScript + Vite render the island and settings; Tauri 2 and Rust own native media, windows, audio, usage connections and updates.
 
 ```mermaid
 flowchart LR
-  SMTC[Windows SMTC] --> MediaWatcher[Rust media watcher]
-  Yandex[Yandex Music Desktop] <-->|Opt-in local CDP| DirectProvider[Rust direct provider]
-  DirectProvider --> MediaWatcher
-  MediaWatcher --> Events[Tauri events]
-  Commands[Tauri commands] --> MediaWatcher
-  Events --> AppFacade[useIslandApp facade]
-  AppFacade --> ConfigController[Config controller]
-  AppFacade --> MediaController[Media controller]
-  AppFacade --> WindowController[Window controller]
-  AppFacade --> Overlay[Overlay shell]
-  Overlay --> Music[Music module]
-  Overlay --> Settings[Settings]
-  Settings --> BetterVoice[Better Voice UI]
-  Overlay --> Registry[Module registry]
-  BetterVoice -->|voice_invoke| VoiceCmds[voice commands]
-  VoiceCmds --> VoiceEngine[Rust voice engine]
-  VoiceEngine -->|meters / status| BetterVoice
+  Players[Windows players / Spotify] --> SMTC[SMTC provider]
+  Yandex[Yandex Music Desktop] <-->|Opt-in loopback CDP| Direct[Direct provider]
+  SMTC --> Media[Rust media controller]
+  Direct --> Media
+  Media --> Native[Native taskbar player]
+  Media <-->|Tauri events / commands| App[useIslandApp]
+  App --> Island[Island / settings]
+  Usage[Opt-in usage workers] --> App
+  Voice[Rust voice engine] <-->|Meters / commands| BetterVoice[Better Voice UI]
 ```
 
-- **Native:** SMTC + Direct Yandex arbitration, window/tray, portable updater, in-process Better Voice engine, config under `%APPDATA%\Music Island\`
-- **Frontend:** `useIslandApp` facade → overlay / music / settings; Better Voice UI under Settings scope; shared glass UI + i18n
+- **Shared:** types, tokens, material, UI primitives and configuration normalization.
+- **App:** configuration, media, usage and window lifecycles behind `useIslandApp`.
+- **Features:** island, settings, native-player preview, assistant widgets and Better Voice.
+- **Native:** provider arbitration, a Win32 taskbar host, audio engine, local configuration and checksum-verifying portable updater. No WebView is embedded in the taskbar.
+- **Storybook:** production React components with isolated native mocks, including the scenes used for these screenshots.
 
-More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/MEDIA_ARCHITECTURE.md`](docs/MEDIA_ARCHITECTURE.md) · [`docs/YANDEX_MUSIC_API.md`](docs/YANDEX_MUSIC_API.md) · [`docs/BETTER_VOICE.md`](docs/BETTER_VOICE.md) · [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) · [`CHANGELOG.md`](CHANGELOG.md)
-
-## Limitations
-
-- **Better Voice** is Beta (UI/onboarding still evolving; needs VB-Cable)
-- Direct is experimental (local CDP, may restart the client once, can break after Yandex updates)
-- After long downtime use overlay **Quick reload** / Settings **Restart**
-- Seek click/stutter is usually the player/SMTC, not a double-seek from Music Island
-- SMTC capabilities vary by app
-- Portable exe may be unsigned (SmartScreen)
+[Architecture](docs/ARCHITECTURE.md) · [Media](docs/MEDIA_ARCHITECTURE.md) · [Better Voice](docs/BETTER_VOICE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ## Develop
 
-Windows 10/11, WebView2, Node.js, Rust, MSVC Build Tools.
+Windows 10/11, WebView2, Node.js, Rust and MSVC Build Tools.
 
 ```powershell
-npm install
+npm ci
 npm run tauri:dev
-npm run tauri:build   # → release/music-island.exe
+npm run storybook       # http://127.0.0.1:6006
+npm run tauri:build     # release/music-island.exe
 ```
+
+Browser previews do not test native input, media sessions or the audio engine. Run the checks in [QA](docs/QA.md) and [Releases](docs/RELEASES.md) before distributing a build.
+
+The [component workshop](docs/STORYBOOK.md) covers Foundations, Atoms, Molecules, Organisms and Screens. The five release scenes use production components and local sample data; their [capture files](docs/releases/2.0/README.md) also include portrait images for Telegram.
 
 ## Author
 
 Telegram [@redheadesigner](https://t.me/redheadesigner) · contact [@redheadesign](https://t.me/redheadesign)
 
-Unofficial project – not affiliated with Apple, Microsoft, Spotify, or Yandex.
+Unofficial project. Not affiliated with Apple, Microsoft, OpenAI, Anthropic, Spotify or Yandex. Product names and logos belong to their respective owners.

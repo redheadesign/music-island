@@ -4,7 +4,6 @@
 /// 默认截止频率 80Hz @ 48kHz 采样率。
 ///
 /// 算法：y[n] = α * (y[n-1] + x[n] - x[n-1])
-
 use super::DspModule;
 
 pub struct HighPassFilter {

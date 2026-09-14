@@ -1,4 +1,5 @@
 import type { CSSProperties, InputHTMLAttributes } from 'react'
+import './RangeSlider.css'
 
 type RangeSliderProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
   value: number
@@ -26,7 +27,7 @@ export function RangeSlider({
   return (
     <input
       type="range"
-      className={className}
+      className={['range-slider', className].filter(Boolean).join(' ')}
       min={min}
       max={max}
       value={value}

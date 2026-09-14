@@ -7,7 +7,6 @@
 /// - 阈值: 0.73（约 -2.7dB）
 /// - 压缩比: 10:1
 /// - 硬限幅: 0.92（约 -0.7dB）
-
 use super::DspModule;
 
 pub struct SoftLimiter {
@@ -46,8 +45,7 @@ impl DspModule for SoftLimiter {
             if sample.is_finite() {
                 let abs = sample.abs();
                 if abs > self.threshold {
-                    let compressed =
-                        self.threshold + (abs - self.threshold) / self.ratio;
+                    let compressed = self.threshold + (abs - self.threshold) / self.ratio;
                     *sample = sample.signum() * compressed.min(self.hard_limit);
                 }
                 if !sample.is_finite() {

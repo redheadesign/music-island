@@ -49,10 +49,15 @@ struct Biquad {
 impl Biquad {
     fn new() -> Self {
         Self {
-            b0: 1.0, b1: 0.0, b2: 0.0,
-            a1: 0.0, a2: 0.0,
-            x1: 0.0, x2: 0.0,
-            y1: 0.0, y2: 0.0,
+            b0: 1.0,
+            b1: 0.0,
+            b2: 0.0,
+            a1: 0.0,
+            a2: 0.0,
+            x1: 0.0,
+            x2: 0.0,
+            y1: 0.0,
+            y2: 0.0,
         }
     }
 
@@ -64,11 +69,10 @@ impl Biquad {
         self.y2 = 0.0;
     }
 
-
-
     fn process(&mut self, input: f32) -> f32 {
         let output = self.b0 * input + self.b1 * self.x1 + self.b2 * self.x2
-            - self.a1 * self.y1 - self.a2 * self.y2;
+            - self.a1 * self.y1
+            - self.a2 * self.y2;
         self.x2 = self.x1;
         self.x1 = input;
         self.y2 = self.y1;
@@ -78,15 +82,24 @@ impl Biquad {
             return 0.0;
         }
         // Denormal flush
-        if self.y1.abs() < 1e-10 { self.y1 = 0.0; }
-        if self.y2.abs() < 1e-10 { self.y2 = 0.0; }
+        if self.y1.abs() < 1e-10 {
+            self.y1 = 0.0;
+        }
+        if self.y2.abs() < 1e-10 {
+            self.y2 = 0.0;
+        }
         output
     }
 }
 
 /// 计算 peaking EQ 滤波器系数
 /// gain_db: 增益（dB），freq: 中心频率，sample_rate: 采样率，q: 品质因数
-fn peaking_eq_coefficients(gain_db: f32, freq: f32, sample_rate: f32, q: f32) -> (f32, f32, f32, f32, f32) {
+fn peaking_eq_coefficients(
+    gain_db: f32,
+    freq: f32,
+    sample_rate: f32,
+    q: f32,
+) -> (f32, f32, f32, f32, f32) {
     if gain_db.abs() < 0.01 {
         return (1.0, 0.0, 0.0, 0.0, 0.0);
     }
@@ -131,12 +144,8 @@ impl EqProcessor {
             return;
         }
         let q = 1.414; // Butterworth Q
-        let (b0, b1, b2, a1, a2) = peaking_eq_coefficients(
-            gain_db,
-            EQ_FREQUENCIES[index],
-            self.sample_rate,
-            q,
-        );
+        let (b0, b1, b2, a1, a2) =
+            peaking_eq_coefficients(gain_db, EQ_FREQUENCIES[index], self.sample_rate, q);
         let f = &mut self.filters[index];
         f.b0 = b0;
         f.b1 = b1;
@@ -189,24 +198,12 @@ impl crate::voice::dsp::DspModule for EqProcessor {
 /// 获取预设的 EQ 增益值
 pub fn get_preset(preset_name: &str) -> [f32; NUM_BANDS] {
     match preset_name {
-        "clear" => [
-            -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 3.0, 2.0, 1.0,
-        ],
-        "warm" => [
-            2.0, 3.0, 2.0, 1.0, 0.0, -1.0, -2.0, -3.0, -4.0, -5.0,
-        ],
-        "broadcast" => [
-            3.0, 4.0, 2.0, -1.0, -2.0, -1.0, 1.0, 3.0, 4.0, 3.0,
-        ],
-        "bass-boost" => [
-            4.0, 6.0, 5.0, 3.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        ],
-        "treble-boost" => [
-            0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 4.0,
-        ],
-        "podcast" => [
-            -3.0, -2.0, -1.0, 0.0, 2.0, 4.0, 5.0, 4.0, 2.0, 0.0,
-        ],
+        "clear" => [-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 3.0, 2.0, 1.0],
+        "warm" => [2.0, 3.0, 2.0, 1.0, 0.0, -1.0, -2.0, -3.0, -4.0, -5.0],
+        "broadcast" => [3.0, 4.0, 2.0, -1.0, -2.0, -1.0, 1.0, 3.0, 4.0, 3.0],
+        "bass-boost" => [4.0, 6.0, 5.0, 3.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        "treble-boost" => [0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 4.0],
+        "podcast" => [-3.0, -2.0, -1.0, 0.0, 2.0, 4.0, 5.0, 4.0, 2.0, 0.0],
         _ => [0.0; NUM_BANDS], // flat
     }
 }

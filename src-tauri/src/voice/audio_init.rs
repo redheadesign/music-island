@@ -3,7 +3,6 @@
 /// 音频设备初始化模块
 ///
 /// 负责 WASAPI 输入/输出/监听设备的初始化和配置。
-
 use crate::voice::debug::{debug_log, debug_log_dev};
 use crate::voice::device::find_device;
 use wasapi::*;
@@ -50,8 +49,14 @@ pub fn init_audio_devices(
     // 如果输入设备是 VB-Cable（用户未手动选设备时，安装 VB-Cable 会污染默认输入），自动跳过
     let input_name = input_device.get_friendlyname().unwrap_or_default();
     let input_device = if input_device_name.is_none() && is_virtual_cable(&input_name) {
-        log::warn!("Default input device is '{}', skipping virtual cable", input_name);
-        debug_log(&format!("Input: default '{}' is virtual cable, finding real input", input_name));
+        log::warn!(
+            "Default input device is '{}', skipping virtual cable",
+            input_name
+        );
+        debug_log(&format!(
+            "Input: default '{}' is virtual cable, finding real input",
+            input_name
+        ));
         find_first_real_capture_device()
             .map_err(|e| format!("Failed to find real input device: {}", e))?
     } else {
@@ -61,10 +66,22 @@ pub fn init_audio_devices(
     let output_device = find_device(output_device_name, false)
         .map_err(|e| format!("Failed to find output device: {}", e))?;
 
-    let input_friendly = input_device.get_friendlyname().unwrap_or_else(|_| "unknown".into());
-    let output_friendly = output_device.get_friendlyname().unwrap_or_else(|_| "unknown".into());
-    debug_log(&format!("Input device: '{}' id='{}'", input_friendly, input_device.get_id().unwrap_or_default()));
-    debug_log(&format!("Output device: '{}' id='{}'", output_friendly, output_device.get_id().unwrap_or_default()));
+    let input_friendly = input_device
+        .get_friendlyname()
+        .unwrap_or_else(|_| "unknown".into());
+    let output_friendly = output_device
+        .get_friendlyname()
+        .unwrap_or_else(|_| "unknown".into());
+    debug_log(&format!(
+        "Input device: '{}' id='{}'",
+        input_friendly,
+        input_device.get_id().unwrap_or_default()
+    ));
+    debug_log(&format!(
+        "Output device: '{}' id='{}'",
+        output_friendly,
+        output_device.get_id().unwrap_or_default()
+    ));
     log::info!("Input device: '{}'", input_friendly);
     log::info!("Output device: '{}'", output_friendly);
 
@@ -93,8 +110,16 @@ pub fn init_audio_devices(
     let (def_time, min_time) = input_client
         .get_device_period()
         .map_err(|e| format!("Failed to get input periods: {}", e))?;
-    log::info!("Input periods: default={}us, min={}us", def_time / 10, min_time / 10);
-    debug_log(&format!("Input periods: default={}us, min={}us", def_time / 10, min_time / 10));
+    log::info!(
+        "Input periods: default={}us, min={}us",
+        def_time / 10,
+        min_time / 10
+    );
+    debug_log(&format!(
+        "Input periods: default={}us, min={}us",
+        def_time / 10,
+        min_time / 10
+    ));
 
     // 输入用最小缓冲区，减少延迟
     let input_mode = StreamMode::EventsShared {
@@ -128,8 +153,16 @@ pub fn init_audio_devices(
     let (def_time, min_time) = output_client
         .get_device_period()
         .map_err(|e| format!("Failed to get output periods: {}", e))?;
-    log::info!("Output periods: default={}us, min={}us", def_time / 10, min_time / 10);
-    debug_log(&format!("Output periods: default={}us, min={}us", def_time / 10, min_time / 10));
+    log::info!(
+        "Output periods: default={}us, min={}us",
+        def_time / 10,
+        min_time / 10
+    );
+    debug_log(&format!(
+        "Output periods: default={}us, min={}us",
+        def_time / 10,
+        min_time / 10
+    ));
 
     // 输出用默认缓冲区（~10ms），输出线程通过 wait_event 与设备时钟同步
     let output_mode = StreamMode::EventsShared {
@@ -210,7 +243,10 @@ fn find_monitor_device(input_device_id: &str) -> Result<Device, String> {
             debug_log(&format!("Monitor: using default device '{}'", name));
             return Ok(default);
         }
-        debug_log(&format!("Monitor: default device '{}' skipped (virtual cable or same USB)", name));
+        debug_log(&format!(
+            "Monitor: default device '{}' skipped (virtual cable or same USB)",
+            name
+        ));
     }
 
     // 默认设备不可用，遍历所有设备找非 VB-Cable 的
@@ -219,13 +255,19 @@ fn find_monitor_device(input_device_id: &str) -> Result<Device, String> {
             let name = dev.get_friendlyname().unwrap_or_default();
             let id = dev.get_id().unwrap_or_default();
             if !is_virtual_cable(&name) && !is_same_usb_device(&id, input_device_id) {
-                debug_log(&format!("Monitor: fallback to device '{}' (index={})", name, i));
+                debug_log(&format!(
+                    "Monitor: fallback to device '{}' (index={})",
+                    name, i
+                ));
                 return Ok(dev);
             }
         }
     }
 
-    Err("No suitable monitor output device found (all devices are virtual cables or same USB)".into())
+    Err(
+        "No suitable monitor output device found (all devices are virtual cables or same USB)"
+            .into(),
+    )
 }
 
 /// 检查两个设备 ID 是否共享同一个 USB VID/PID
@@ -281,11 +323,13 @@ pub fn init_monitor(
         Ok(monitor_output) => {
             let device_id = monitor_output.get_id().unwrap_or_default();
             let device_name = monitor_output.get_friendlyname().unwrap_or_default();
-            debug_log(&format!("Monitor: selected device '{}' id='{}'", device_name, device_id));
+            debug_log(&format!(
+                "Monitor: selected device '{}' id='{}'",
+                device_name, device_id
+            ));
 
             if let Ok(mut m_client) = monitor_output.get_iaudioclient() {
-                let preferred =
-                    WaveFormat::new(32, 32, &SampleType::Float, 48000, 2, None);
+                let preferred = WaveFormat::new(32, 32, &SampleType::Float, 48000, 2, None);
                 let mix = m_client.get_mixformat().ok();
                 let (def_time, _) = m_client.get_device_period().unwrap_or((0, 0));
                 let monitor_mode = StreamMode::EventsShared {
@@ -329,8 +373,7 @@ pub fn init_monitor(
                         let evt = m_client.set_get_eventhandle();
 
                         let buf_size = m_client.get_buffer_size().unwrap_or(0);
-                        let frame_bytes =
-                            (used_bits as usize / 8).max(1) * used_channels as usize;
+                        let frame_bytes = (used_bits as usize / 8).max(1) * used_channels as usize;
                         let silent = vec![0u8; buf_size as usize * frame_bytes.max(1)];
                         let _ = render.write_to_device(buf_size as usize, &silent, None);
                         debug_log(&format!(
@@ -383,7 +426,10 @@ pub fn init_monitor(
                     ));
                 }
             } else {
-                debug_log(&format!("Monitor: failed to get AudioClient on '{}'", device_name));
+                debug_log(&format!(
+                    "Monitor: failed to get AudioClient on '{}'",
+                    device_name
+                ));
             }
         }
         Err(e) => {

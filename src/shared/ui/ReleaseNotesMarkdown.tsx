@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useId, useMemo, useState, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -13,9 +13,20 @@ function splitPreview(markdown: string): { preview: string; rest: string; trunca
     return { preview: normalized, rest: '', truncated: false }
   }
 
-  const preview = blocks.slice(0, PREVIEW_BLOCKS).join('\n\n')
-  const rest = blocks.slice(PREVIEW_BLOCKS).join('\n\n')
-  return { preview, rest, truncated: true }
+  // Keep a section heading with its body instead of leaving it above the toggle.
+  const isHeading = (block: string) => /^(?: {0,3}#{1,6}(?:[ \t]+[^\n]*)?(?:\n|$))+$/.test(block)
+    || /^[^\n]+\n {0,3}(?:=+|-+)[ \t]*$/.test(block)
+  let previewEnd = PREVIEW_BLOCKS
+  while (previewEnd > 0 && isHeading(blocks[previewEnd - 1])) previewEnd -= 1
+  if (previewEnd === 0) {
+    // If the opening is only headings, include their first body block.
+    previewEnd = PREVIEW_BLOCKS
+    while (previewEnd < blocks.length && isHeading(blocks[previewEnd - 1])) previewEnd += 1
+  }
+
+  const preview = blocks.slice(0, previewEnd).join('\n\n')
+  const rest = blocks.slice(previewEnd).join('\n\n')
+  return { preview, rest, truncated: Boolean(rest) }
 }
 
 function MarkdownBody({
@@ -64,13 +75,14 @@ export function ReleaseNotesMarkdown({
   onOpenUrl?: (url: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
+  const bodyId = useId()
   const { preview, rest, truncated } = useMemo(() => splitPreview(markdown), [markdown])
 
   if (!preview) return null
 
   return (
     <div className="release-notes-md">
-      <div className="release-notes-md__body">
+      <div className="release-notes-md__body" id={bodyId}>
         <MarkdownBody
           source={expanded || !truncated ? `${preview}${rest ? `\n\n${rest}` : ''}` : preview}
           onOpenUrl={onOpenUrl}
@@ -80,6 +92,8 @@ export function ReleaseNotesMarkdown({
         <button
           type="button"
           className="release-notes-md__toggle"
+          aria-controls={bodyId}
+          aria-expanded={expanded}
           onClick={() => setExpanded((value) => !value)}
         >
           {expanded ? collapseLabel : expandLabel}

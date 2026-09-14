@@ -1,0 +1,60 @@
+/* The public mascot component owns sizes and video geometry in every host. */
+.voice-fox-mascot {
+  --voice-fox-size-settings: 208px;
+  --voice-fox-size-settings-narrow: 176px;
+  --voice-fox-size-compact: 128px;
+  --voice-fox-size-preview: 255px;
+  --voice-fox-size: var(--voice-fox-size-settings);
+  position: relative;
+  width: var(--voice-fox-size);
+  max-width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
+  overflow: visible;
+  background: transparent;
+  user-select: none;
+  pointer-events: none;
+}
+
+.voice-fox-mascot--compact { --voice-fox-size: var(--voice-fox-size-compact); }
+.voice-fox-mascot--preview { --voice-fox-size: var(--voice-fox-size-preview); }
+
+.voice-fox-mascot > .voice-fox.voice-fox--video {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  margin: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+.voice-fox-mascot .voice-fox__stage,
+.voice-fox-mascot .voice-fox__figure {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.voice-fox-mascot .voice-fox__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  visibility: hidden;
+  background: transparent;
+  /* Keep clip swaps instantaneous; opacity transitions cause Start/Stop flicker. */
+}
+
+.voice-fox-mascot .voice-fox__video--active {
+  opacity: 1;
+  visibility: visible;
+}
+
+@container (max-width: 480px) {
+  .voice-fox-mascot--settings { --voice-fox-size: var(--voice-fox-size-settings-narrow); }
+}

@@ -1,6 +1,6 @@
 .glass-surface {
   border: 0;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--surface-glass-subtle);
   box-shadow: none;
   backdrop-filter: blur(18px) saturate(115%);
 }
@@ -11,15 +11,15 @@
   place-items: center;
   border: 0;
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.075);
+  color: var(--fg-on-glass);
+  background: var(--control-surface);
   cursor: pointer;
   transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
 }
 
 .glass-icon-button:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.14);
+  color: var(--fg-primary);
+  background: var(--control-surface-hover);
 }
 
 .glass-icon-button:disabled {
@@ -32,18 +32,18 @@
   align-items: center;
   border: 0;
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.78);
-  background: rgba(255, 255, 255, 0.075);
+  color: var(--fg-on-glass-secondary);
+  background: var(--control-surface);
 }
 
 .status-chip--success {
-  color: #9fe1bd;
+  color: var(--status-success);
 }
 
 .status-chip--warning {
-  color: #ffe09d;
+  color: var(--status-warning);
 }
 
 .status-chip--danger {
-  color: #ffb1b1;
+  color: var(--status-danger);
 }

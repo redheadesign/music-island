@@ -1,7 +1,6 @@
 /// 爆炸模式效果预设
 ///
 /// 每个预设定义不同的音频失真效果，用于游戏/直播中的趣味变声。
-
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 /// 爆炸模式效果类型
@@ -82,7 +81,10 @@ impl ExplodeAudioState {
     }
 
     pub fn next_noise(&mut self) -> f32 {
-        self.noise_state = self.noise_state.wrapping_mul(1103515245).wrapping_add(12345);
+        self.noise_state = self
+            .noise_state
+            .wrapping_mul(1103515245)
+            .wrapping_add(12345);
         let val = (self.noise_state >> 16) & 0x7FFF;
         (val as f32 / 16384.0) - 1.0
     }
@@ -95,7 +97,12 @@ impl ExplodeAudioState {
 }
 
 /// 处理爆炸模式效果（写入预分配的 output buffer，零堆分配）
-pub fn process_explode_into(samples: &[f32], output: &mut [f32], state: &ExplodeState, audio: &mut ExplodeAudioState) {
+pub fn process_explode_into(
+    samples: &[f32],
+    output: &mut [f32],
+    state: &ExplodeState,
+    audio: &mut ExplodeAudioState,
+) {
     if !state.enabled.load(Ordering::Relaxed) {
         audio.clear_delay();
         output[..samples.len()].copy_from_slice(samples);
@@ -136,7 +143,12 @@ fn process_classic(samples: &[f32], intensity: f32, output: &mut [f32]) {
 }
 
 /// 电流声：高频方波调制 + 噪音门限（滋滋声）
-fn process_electric(samples: &[f32], intensity: f32, audio: &mut ExplodeAudioState, output: &mut [f32]) {
+fn process_electric(
+    samples: &[f32],
+    intensity: f32,
+    audio: &mut ExplodeAudioState,
+    output: &mut [f32],
+) {
     let mix = intensity / 100.0;
     let sample_rate = 48000.0;
 
@@ -147,7 +159,11 @@ fn process_electric(samples: &[f32], intensity: f32, audio: &mut ExplodeAudioSta
 
     for (i, &s) in samples.iter().enumerate() {
         let t = i as f32 / sample_rate;
-        let square = if (mod_freq * t).sin() > 0.0 { 1.0 } else { -1.0 };
+        let square = if (mod_freq * t).sin() > 0.0 {
+            1.0
+        } else {
+            -1.0
+        };
         let modulated = s * (1.0 - mod_amount + mod_amount * square);
         let noise = if s.abs() < gate_threshold {
             audio.next_noise() * noise_inject
@@ -177,7 +193,12 @@ fn process_distortion(samples: &[f32], intensity: f32, output: &mut [f32]) {
 }
 
 /// 白噪音：均匀噪音叠加（像收音机无信号）
-fn process_white_noise(samples: &[f32], intensity: f32, audio: &mut ExplodeAudioState, output: &mut [f32]) {
+fn process_white_noise(
+    samples: &[f32],
+    intensity: f32,
+    audio: &mut ExplodeAudioState,
+    output: &mut [f32],
+) {
     let noise_amount = intensity / 100.0 * 12000.0;
 
     for (i, &s) in samples.iter().enumerate() {
@@ -201,7 +222,12 @@ fn process_robot(samples: &[f32], intensity: f32, output: &mut [f32]) {
 }
 
 /// 回音：简单延迟回声，强度控制延迟时间和反馈量
-fn process_echo(samples: &[f32], intensity: f32, audio: &mut ExplodeAudioState, output: &mut [f32]) {
+fn process_echo(
+    samples: &[f32],
+    intensity: f32,
+    audio: &mut ExplodeAudioState,
+    output: &mut [f32],
+) {
     // 60% 强度 = 最大效果
     let mix = (intensity / 60.0).min(1.0);
     let buf_len = audio.delay_buf.len();
@@ -235,7 +261,12 @@ fn process_echo(samples: &[f32], intensity: f32, audio: &mut ExplodeAudioState, 
 }
 
 /// 恶魔声：低沉沙哑 + 金属质感 + 延迟回声
-fn process_demon(samples: &[f32], intensity: f32, audio: &mut ExplodeAudioState, output: &mut [f32]) {
+fn process_demon(
+    samples: &[f32],
+    intensity: f32,
+    audio: &mut ExplodeAudioState,
+    output: &mut [f32],
+) {
     let mix = intensity / 100.0;
     let sample_rate = 48000.0;
     let buf_len = audio.delay_buf.len();

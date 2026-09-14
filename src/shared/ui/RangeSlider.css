@@ -1,0 +1,103 @@
+/* The repeated component class takes precedence over legacy contextual ranges. */
+input.range-slider.range-slider[type='range'] {
+  --range-track-size: var(--space-1);
+  --range-thumb-size: var(--space-4);
+  --range-track-color: var(--border-strong);
+  --range-fill-color: var(--accent, #f76100);
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  height: var(--control-height-compact);
+  min-height: var(--control-height-compact);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+input.range-slider.range-slider[type='range']::-webkit-slider-runnable-track {
+  height: var(--range-track-size);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to right,
+    var(--range-fill-color) 0%,
+    var(--range-fill-color) var(--range-fill, 0%),
+    var(--range-track-color) var(--range-fill, 0%));
+}
+
+input.range-slider.range-slider[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--range-thumb-size);
+  height: var(--range-thumb-size);
+  margin-top: calc((var(--range-track-size) - var(--range-thumb-size)) / 2);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-pill);
+  background: var(--fg-primary);
+  box-shadow: 0 1px var(--space-1) rgba(0, 0, 0, 0.3);
+  cursor: inherit;
+}
+
+input.range-slider.range-slider[type='range']::-moz-range-track {
+  height: var(--range-track-size);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to right,
+    var(--range-fill-color) 0%,
+    var(--range-fill-color) var(--range-fill, 0%),
+    var(--range-track-color) var(--range-fill, 0%));
+}
+
+input.range-slider.range-slider[type='range']::-moz-range-thumb {
+  width: var(--range-thumb-size);
+  height: var(--range-thumb-size);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--fg-primary);
+  box-shadow: 0 1px var(--space-1) rgba(0, 0, 0, 0.3);
+  cursor: inherit;
+}
+
+input.range-slider.range-slider[type='range']:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+input.range-slider.range-slider[type='range']:disabled {
+  --range-fill-color: var(--fg-muted);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+input.range-slider.range-slider--vertical[type='range'] {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: var(--control-height-compact);
+  height: 110px;
+}
+
+input.range-slider.range-slider--vertical[type='range']::-webkit-slider-runnable-track {
+  width: var(--range-track-size);
+  height: 100%;
+  background: linear-gradient(to top,
+    var(--range-fill-color) 0%,
+    var(--range-fill-color) var(--range-fill, 0%),
+    var(--range-track-color) var(--range-fill, 0%));
+}
+
+input.range-slider.range-slider--vertical[type='range']::-webkit-slider-thumb {
+  margin-top: 0;
+  margin-left: calc((var(--range-track-size) - var(--range-thumb-size)) / 2);
+}
+
+input.range-slider.range-slider--vertical[type='range']::-moz-range-track {
+  width: var(--range-track-size);
+  height: 100%;
+  background: linear-gradient(to top,
+    var(--range-fill-color) 0%,
+    var(--range-fill-color) var(--range-fill, 0%),
+    var(--range-track-color) var(--range-fill, 0%));
+}

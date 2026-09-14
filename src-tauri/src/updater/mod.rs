@@ -1,7 +1,8 @@
 use futures_util::StreamExt;
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
@@ -9,7 +10,9 @@ use tauri::{AppHandle, Emitter};
 const GITHUB_OWNER: &str = "redheadesign";
 const GITHUB_REPO: &str = "music-island";
 const PREFERRED_ASSET: &str = "music-island.exe";
-const USER_AGENT: &str = "MusicIsland-Updater/1.3.22";
+const CHECKSUM_ASSET: &str = "SHA256.txt";
+const MAX_CHECKSUM_BYTES: usize = 64 * 1024;
+const USER_AGENT: &str = "MusicIsland-Updater/2.0.0";
 const TEMP_ROOT_NAME: &str = "MusicIslandUpdate";
 
 #[derive(Debug, Clone, Serialize)]
@@ -22,6 +25,8 @@ pub struct UpdateCheckResult {
     pub download_url: Option<String>,
     pub release_notes: Option<String>,
     pub message: String,
+    #[serde(skip_serializing)]
+    checksum_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -73,21 +78,15 @@ pub fn cleanup_stale_artifacts() {
     }
 }
 
-pub async fn check_for_updates(app: AppHandle, force_same_version: bool) -> anyhow::Result<UpdateCheckResult> {
+pub async fn check_for_updates(
+    app: AppHandle,
+    force_same_version: bool,
+) -> anyhow::Result<UpdateCheckResult> {
     let current_version = app.package_info().version.to_string();
-    emit_progress(
-        &app,
-        "checking",
-        0,
-        0,
-        0,
-        "Checking GitHub Releases…",
-    );
+    emit_progress(&app, "checking", 0, 0, 0, "Checking GitHub Releases…");
 
     let client = http_client()?;
-    let url = format!(
-        "https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
-    );
+    let url = format!("https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest");
     let response = client
         .get(&url)
         .header("Accept", "application/vnd.github+json")
@@ -107,9 +106,10 @@ pub async fn check_for_updates(app: AppHandle, force_same_version: bool) -> anyh
         .map_err(|error| anyhow::anyhow!("Invalid GitHub release JSON: {error}"))?;
 
     let latest_version = normalize_version(&release.tag_name);
-    let asset = pick_asset(&release.assets).ok_or_else(|| {
-        anyhow::anyhow!("Latest release has no portable music-island.exe asset")
-    })?;
+    let asset = pick_asset(&release.assets, PREFERRED_ASSET)
+        .ok_or_else(|| anyhow::anyhow!("Latest release has no portable music-island.exe asset"))?;
+    let checksum_asset = pick_asset(&release.assets, CHECKSUM_ASSET)
+        .ok_or_else(|| anyhow::anyhow!("Latest release has no SHA256.txt checksum asset"))?;
 
     let newer = is_newer(&latest_version, &current_version);
     let same = latest_version == current_version;
@@ -139,10 +139,14 @@ pub async fn check_for_updates(app: AppHandle, force_same_version: bool) -> anyh
         download_url: Some(asset.browser_download_url.clone()),
         release_notes: release.body,
         message,
+        checksum_url: Some(checksum_asset.browser_download_url.clone()),
     })
 }
 
-pub async fn download_and_install_update(app: AppHandle, force_same_version: bool) -> anyhow::Result<()> {
+pub async fn download_and_install_update(
+    app: AppHandle,
+    force_same_version: bool,
+) -> anyhow::Result<()> {
     let check = check_for_updates(app.clone(), force_same_version).await?;
     if !check.has_update {
         anyhow::bail!(check.message);
@@ -150,6 +154,9 @@ pub async fn download_and_install_update(app: AppHandle, force_same_version: boo
     let download_url = check
         .download_url
         .ok_or_else(|| anyhow::anyhow!("Missing download URL"))?;
+    let checksum_url = check
+        .checksum_url
+        .ok_or_else(|| anyhow::anyhow!("Missing checksum URL"))?;
     let latest = check
         .latest_version
         .unwrap_or_else(|| "unknown".to_string());
@@ -157,12 +164,31 @@ pub async fn download_and_install_update(app: AppHandle, force_same_version: boo
     let staging = staging_dir()?;
     let staged_exe = staging.join(PREFERRED_ASSET);
 
+    let expected_sha256 = match download_checksum(&checksum_url).await {
+        Ok(hash) => hash,
+        Err(error) => {
+            cleanup_path(&staging);
+            return Err(error);
+        }
+    };
+
     if let Err(error) = download_exe(&app, &download_url, &staged_exe).await {
         cleanup_path(&staging);
         return Err(error);
     }
+    if let Err(error) = verify_file_sha256(&staged_exe, &expected_sha256) {
+        cleanup_path(&staging);
+        return Err(error);
+    }
 
-    emit_progress(&app, "installing", 0, 0, 100, "Preparing to replace portable exe…");
+    emit_progress(
+        &app,
+        "installing",
+        0,
+        0,
+        100,
+        "Preparing to replace portable exe…",
+    );
 
     match apply_portable_replace(&app, &staged_exe, &latest) {
         Ok(()) => Ok(()),
@@ -179,6 +205,36 @@ fn http_client() -> anyhow::Result<reqwest::Client> {
         .timeout(std::time::Duration::from_secs(120))
         .build()
         .map_err(|error| anyhow::anyhow!("HTTP client error: {error}"))
+}
+
+async fn download_checksum(url: &str) -> anyhow::Result<[u8; 32]> {
+    let response = http_client()?
+        .get(url)
+        .send()
+        .await
+        .map_err(|error| anyhow::anyhow!("Checksum download failed: {error}"))?;
+    if !response.status().is_success() {
+        anyhow::bail!("Checksum download HTTP {}", response.status());
+    }
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_CHECKSUM_BYTES as u64)
+    {
+        anyhow::bail!("SHA256.txt is too large");
+    }
+
+    let mut bytes = Vec::new();
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| anyhow::anyhow!("Checksum download failed: {error}"))?;
+        if bytes.len() + chunk.len() > MAX_CHECKSUM_BYTES {
+            anyhow::bail!("SHA256.txt is too large");
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    let text = std::str::from_utf8(&bytes)
+        .map_err(|_| anyhow::anyhow!("SHA256.txt is not valid UTF-8"))?;
+    parse_sha256_file(text).map_err(anyhow::Error::msg)
 }
 
 async fn download_exe(app: &AppHandle, url: &str, dest: &Path) -> anyhow::Result<()> {
@@ -203,8 +259,8 @@ async fn download_exe(app: &AppHandle, url: &str, dest: &Path) -> anyhow::Result
     let total = response.content_length().unwrap_or(0);
     emit_progress(app, "downloading", 0, total, 0, "Downloading update…");
 
-    let mut file = File::create(dest)
-        .map_err(|error| anyhow::anyhow!("Cannot create temp file: {error}"))?;
+    let mut file =
+        File::create(dest).map_err(|error| anyhow::anyhow!("Cannot create temp file: {error}"))?;
     let mut stream = response.bytes_stream();
     let mut downloaded: u64 = 0;
     let mut last_emit = 0u8;
@@ -245,7 +301,14 @@ async fn download_exe(app: &AppHandle, url: &str, dest: &Path) -> anyhow::Result
         anyhow::bail!("Download incomplete ({downloaded} / {total} bytes)");
     }
 
-    emit_progress(app, "downloaded", downloaded, total, 100, "Download complete");
+    emit_progress(
+        app,
+        "downloaded",
+        downloaded,
+        total,
+        100,
+        "Download complete",
+    );
     Ok(())
 }
 
@@ -262,9 +325,8 @@ fn apply_portable_replace(app: &AppHandle, staged_exe: &Path, latest: &str) -> a
     if old_path.exists() {
         let _ = fs::remove_file(&old_path);
     }
-    fs::rename(&current, &old_path).map_err(|error| {
-        anyhow::anyhow!("Cannot free current exe path for replace: {error}")
-    })?;
+    fs::rename(&current, &old_path)
+        .map_err(|error| anyhow::anyhow!("Cannot free current exe path for replace: {error}"))?;
 
     if let Err(error) = fs::copy(staged_exe, &current) {
         let _ = fs::rename(&old_path, &current);
@@ -398,21 +460,73 @@ fn sibling_with_suffix(path: &Path, suffix: &str) -> PathBuf {
     path.with_file_name(name)
 }
 
-fn pick_asset(assets: &[GhAsset]) -> Option<&GhAsset> {
-    assets
-        .iter()
-        .find(|asset| asset.name.eq_ignore_ascii_case(PREFERRED_ASSET))
-        .or_else(|| {
-            assets.iter().find(|asset| {
-                let lower = asset.name.to_ascii_lowercase();
-                lower.ends_with(".exe") && lower.contains("music-island")
-            })
-        })
-        .or_else(|| assets.iter().find(|asset| asset.name.to_ascii_lowercase().ends_with(".exe")))
+fn pick_asset<'a>(assets: &'a [GhAsset], exact_name: &str) -> Option<&'a GhAsset> {
+    assets.iter().find(|asset| asset.name == exact_name)
+}
+
+fn parse_sha256_file(contents: &str) -> Result<[u8; 32], String> {
+    for line in contents
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+    {
+        let mut fields = line.split_whitespace();
+        let Some(encoded_hash) = fields.next() else {
+            continue;
+        };
+        let Some(file_name) = fields.next() else {
+            continue;
+        };
+        if file_name.trim_start_matches('*') != PREFERRED_ASSET || fields.next().is_some() {
+            continue;
+        }
+        return decode_sha256(encoded_hash);
+    }
+    Err(format!(
+        "SHA256.txt has no checksum entry for {PREFERRED_ASSET}"
+    ))
+}
+
+fn decode_sha256(encoded: &str) -> Result<[u8; 32], String> {
+    if encoded.len() != 64 {
+        return Err("SHA-256 checksum must contain exactly 64 hexadecimal characters".into());
+    }
+    let mut output = [0u8; 32];
+    for (index, byte) in output.iter_mut().enumerate() {
+        let offset = index * 2;
+        *byte = u8::from_str_radix(&encoded[offset..offset + 2], 16)
+            .map_err(|_| "SHA-256 checksum contains non-hexadecimal characters".to_string())?;
+    }
+    Ok(output)
+}
+
+fn verify_file_sha256(path: &Path, expected: &[u8; 32]) -> anyhow::Result<()> {
+    let mut file = File::open(path).map_err(|error| {
+        anyhow::anyhow!("Cannot open downloaded update for verification: {error}")
+    })?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        let count = file.read(&mut buffer).map_err(|error| {
+            anyhow::anyhow!("Cannot read downloaded update for verification: {error}")
+        })?;
+        if count == 0 {
+            break;
+        }
+        hasher.update(&buffer[..count]);
+    }
+    let actual = hasher.finalize();
+    if actual.as_slice() != expected {
+        anyhow::bail!("Downloaded update SHA-256 does not match SHA256.txt");
+    }
+    Ok(())
 }
 
 fn normalize_version(raw: &str) -> String {
-    raw.trim().trim_start_matches('v').trim_start_matches('V').to_string()
+    raw.trim()
+        .trim_start_matches('v')
+        .trim_start_matches('V')
+        .to_string()
 }
 
 fn is_newer(latest: &str, current: &str) -> bool {
@@ -457,4 +571,73 @@ fn emit_progress(
         },
     );
     crate::logging::append_event(&format!("updater[{phase}]: {message}"));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn asset(name: &str) -> GhAsset {
+        GhAsset {
+            name: name.to_string(),
+            browser_download_url: format!("https://example.invalid/{name}"),
+        }
+    }
+
+    #[test]
+    fn asset_selection_requires_exact_release_names() {
+        let assets = [
+            asset("Music-Island.exe"),
+            asset("setup.exe"),
+            asset(PREFERRED_ASSET),
+            asset("sha256.txt"),
+            asset(CHECKSUM_ASSET),
+        ];
+        assert_eq!(
+            pick_asset(&assets, PREFERRED_ASSET).unwrap().name,
+            PREFERRED_ASSET
+        );
+        assert_eq!(
+            pick_asset(&assets, CHECKSUM_ASSET).unwrap().name,
+            CHECKSUM_ASSET
+        );
+        assert!(pick_asset(&assets, "MUSIC-ISLAND.EXE").is_none());
+        assert!(pick_asset(&assets[..2], PREFERRED_ASSET).is_none());
+    }
+
+    #[test]
+    fn checksum_parser_selects_only_the_portable_executable_entry() {
+        let expected = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        let manifest = format!(
+            "{}  setup.exe\n{} *{}\n",
+            "0".repeat(64),
+            expected.to_uppercase(),
+            PREFERRED_ASSET
+        );
+        assert_eq!(
+            parse_sha256_file(&manifest).unwrap(),
+            decode_sha256(expected).unwrap()
+        );
+        assert!(parse_sha256_file(&format!("{expected}  Music-Island.exe\n")).is_err());
+        assert!(parse_sha256_file("not-a-hash  music-island.exe\n").is_err());
+    }
+
+    #[test]
+    fn file_verification_rejects_a_mismatched_digest() {
+        let path = std::env::temp_dir().join(format!(
+            "music-island-updater-hash-test-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::write(&path, b"abc").unwrap();
+        let expected =
+            decode_sha256("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+                .unwrap();
+        assert!(verify_file_sha256(&path, &expected).is_ok());
+        assert!(verify_file_sha256(&path, &[0; 32]).is_err());
+        let _ = fs::remove_file(path);
+    }
 }

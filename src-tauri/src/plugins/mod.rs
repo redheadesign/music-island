@@ -253,9 +253,7 @@ fn refresh_runtime_locked(host: &mut PluginHost, enabled: &[String]) {
             .map(|proc| match proc.child.try_wait() {
                 Ok(None) => true,
                 Ok(Some(status)) => {
-                    logging::append_event(&format!(
-                        "plugin {id} exited with status {status:?}"
-                    ));
+                    logging::append_event(&format!("plugin {id} exited with status {status:?}"));
                     false
                 }
                 Err(error) => {
@@ -285,7 +283,10 @@ fn refresh_runtime_locked(host: &mut PluginHost, enabled: &[String]) {
                 )
             }
         } else {
-            (PluginRuntimeState::Stopped, "Enabled but not running".into())
+            (
+                PluginRuntimeState::Stopped,
+                "Enabled but not running".into(),
+            )
         };
 
         next_runtime.insert(
@@ -417,10 +418,8 @@ fn start_plugin_locked(host: &mut PluginHost, plugin: &DiscoveredPlugin) -> Resu
         tee_plugin_output(plugin.manifest.id.clone(), stderr, "stderr");
     }
 
-    host.processes.insert(
-        plugin.manifest.id.clone(),
-        PluginProcess { child },
-    );
+    host.processes
+        .insert(plugin.manifest.id.clone(), PluginProcess { child });
     if let Some(runtime) = host.runtime.get_mut(&plugin.manifest.id) {
         runtime.state = PluginRuntimeState::Starting;
         runtime.message = "Starting…".into();
@@ -457,11 +456,7 @@ pub fn append_plugin_log(id: &str, message: &str) {
         let _ = fs::create_dir_all(parent);
     }
     if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-        let _ = writeln!(
-            file,
-            "{} {message}",
-            chrono::Utc::now().to_rfc3339()
-        );
+        let _ = writeln!(file, "{} {message}", chrono::Utc::now().to_rfc3339());
     }
 }
 
@@ -558,11 +553,7 @@ pub async fn set_plugin_enabled(
 }
 
 #[tauri::command]
-pub fn plugin_invoke(
-    id: String,
-    method: String,
-    params: Option<Value>,
-) -> Result<Value, String> {
+pub fn plugin_invoke(id: String, method: String, params: Option<Value>) -> Result<Value, String> {
     invoke_plugin(&id, &method, params.unwrap_or(Value::Null))
 }
 

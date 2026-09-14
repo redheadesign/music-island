@@ -2,7 +2,6 @@
 ///
 /// 从 FrameSource 拉取 480-sample mono f32 帧，写入 WASAPI 输出设备。
 /// 如果设备 mix format 不是 mono 48kHz f32，内联做 upmix + 线性重采样。
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -48,8 +47,13 @@ impl WasapiRender {
             })
             .map_err(|e| format!("spawn render thread: {}", e))?;
 
-        ready_rx.recv().map_err(|_| "render thread died".to_string())??;
-        Ok(Self { stop, thread: Some(thread) })
+        ready_rx
+            .recv()
+            .map_err(|_| "render thread died".to_string())??;
+        Ok(Self {
+            stop,
+            thread: Some(thread),
+        })
     }
 }
 
@@ -71,11 +75,13 @@ fn render_loop(
     unsafe {
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
 
-        let enumerator: IMMDeviceEnumerator = CoCreateInstance(&CLSID_MMDeviceEnumerator, None, CLSCTX_ALL)
-            .map_err(|e| format!("CoCreateInstance(MMDeviceEnumerator): {}", e))?;
+        let enumerator: IMMDeviceEnumerator =
+            CoCreateInstance(&CLSID_MMDeviceEnumerator, None, CLSCTX_ALL)
+                .map_err(|e| format!("CoCreateInstance(MMDeviceEnumerator): {}", e))?;
 
         let device = if device_id.is_empty() {
-            enumerator.GetDefaultAudioEndpoint(eRender, eCommunications)
+            enumerator
+                .GetDefaultAudioEndpoint(eRender, eCommunications)
                 .map_err(|e| format!("GetDefaultAudioEndpoint: {}", e))?
         } else {
             // GetDevice 需要设备 ID，但我们传的是友好名称
@@ -85,15 +91,22 @@ fn render_loop(
                 Ok(d) => d,
                 Err(_) => {
                     // 枚举渲染设备，按友好名称匹配
-                    crate::voice::debug::debug_log_dev(&format!("RENDER: GetDevice failed for '{}', enumerating...", device_id));
-                    let collection = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)
+                    crate::voice::debug::debug_log_dev(&format!(
+                        "RENDER: GetDevice failed for '{}', enumerating...",
+                        device_id
+                    ));
+                    let collection = enumerator
+                        .EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)
                         .map_err(|e| format!("EnumAudioEndpoints: {}", e))?;
-                    let count = collection.GetCount()
+                    let count = collection
+                        .GetCount()
                         .map_err(|e| format!("GetCount: {}", e))?;
                     let mut found = None;
                     for i in 0..count {
                         if let Ok(dev) = collection.Item(i) {
-                            if let Ok(props) = dev.OpenPropertyStore(windows::Win32::System::Com::STGM_READ) {
+                            if let Ok(props) =
+                                dev.OpenPropertyStore(windows::Win32::System::Com::STGM_READ)
+                            {
                                 if let Ok(name_var) = props.GetValue(&windows::Win32::Devices::FunctionDiscovery::PKEY_Device_FriendlyName) {
                                     let name = name_var.to_string();
                                     if name == device_id {
@@ -108,8 +121,12 @@ fn render_loop(
                     match found {
                         Some(d) => d,
                         None => {
-                            crate::voice::debug::debug_log_dev(&format!("RENDER: device '{}' not found in enumeration, using default", device_id));
-                            enumerator.GetDefaultAudioEndpoint(eRender, eCommunications)
+                            crate::voice::debug::debug_log_dev(&format!(
+                                "RENDER: device '{}' not found in enumeration, using default",
+                                device_id
+                            ));
+                            enumerator
+                                .GetDefaultAudioEndpoint(eRender, eCommunications)
                                 .map_err(|e| format!("GetDefaultAudioEndpoint fallback: {}", e))?
                         }
                     }
@@ -117,10 +134,12 @@ fn render_loop(
             }
         };
 
-        let client: IAudioClient3 = device.Activate(CLSCTX_ALL, None)
+        let client: IAudioClient3 = device
+            .Activate(CLSCTX_ALL, None)
             .map_err(|e| format!("IMMDevice::Activate: {}", e))?;
 
-        let mix_ptr = client.GetMixFormat()
+        let mix_ptr = client
+            .GetMixFormat()
             .map_err(|e| format!("GetMixFormat: {}", e))?;
         let device_rate = (*mix_ptr).nSamplesPerSec;
         let device_channels = (*mix_ptr).nChannels as usize;
@@ -130,35 +149,52 @@ fn render_loop(
 
         log::info!(
             "render: device_rate={} channels={} block_align={} bits={} format={}",
-            device_rate, device_channels, device_block_align, device_bits, device_subformat
+            device_rate,
+            device_channels,
+            device_block_align,
+            device_bits,
+            device_subformat
         );
         crate::voice::debug::debug_log(&format!(
             "RENDER_INIT: rate={} ch={} block_align={} bits={} format={} device='{}'",
-            device_rate, device_channels, device_block_align, device_bits, device_subformat, device_id
+            device_rate,
+            device_channels,
+            device_block_align,
+            device_bits,
+            device_subformat,
+            device_id
         ));
 
         let init_res = client.Initialize(
             AUDCLNT_SHAREMODE_SHARED,
             AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
-            0, 0, mix_ptr, None,
+            0,
+            0,
+            mix_ptr,
+            None,
         );
         CoTaskMemFree(Some(mix_ptr as _));
         init_res.map_err(|e| format!("IAudioClient::Initialize: {}", e))?;
 
         let event = CreateEventW(None, false, false, PCWSTR::null())
             .map_err(|e| format!("CreateEventW: {}", e))?;
-        client.SetEventHandle(event)
+        client
+            .SetEventHandle(event)
             .map_err(|e| format!("SetEventHandle: {}", e))?;
 
-        let render_client: IAudioRenderClient = client.GetService()
+        let render_client: IAudioRenderClient = client
+            .GetService()
             .map_err(|e| format!("GetService(IAudioRenderClient): {}", e))?;
 
-        let buffer_frames = client.GetBufferSize()
+        let buffer_frames = client
+            .GetBufferSize()
             .map_err(|e| format!("GetBufferSize: {}", e))?;
 
         crate::voice::debug::debug_log(&format!(
             "RENDER_BUFFER: device='{}' buffer_frames={} period_ms={:.1}",
-            device_id, buffer_frames, buffer_frames as f64 / device_rate as f64 * 1000.0
+            device_id,
+            buffer_frames,
+            buffer_frames as f64 / device_rate as f64 * 1000.0
         ));
 
         let _mmcss = ProAudio::set_for_current_thread();
@@ -167,10 +203,12 @@ fn render_loop(
         let _ = client.Reset();
 
         // 预填充静音，避免启动时欠载
-        let prefill = render_client.GetBuffer(buffer_frames)
+        let prefill = render_client
+            .GetBuffer(buffer_frames)
             .map_err(|e| format!("GetBuffer(prefill): {}", e))?;
         std::ptr::write_bytes(prefill, 0, (buffer_frames * device_block_align) as usize);
-        render_client.ReleaseBuffer(buffer_frames, AUDCLNT_BUFFERFLAGS_SILENT.0 as u32)
+        render_client
+            .ReleaseBuffer(buffer_frames, AUDCLNT_BUFFERFLAGS_SILENT.0 as u32)
             .map_err(|e| format!("ReleaseBuffer(prefill): {}", e))?;
 
         client.Start().map_err(|e| format!("Start: {}", e))?;
@@ -186,7 +224,8 @@ fn render_loop(
                 continue;
             }
 
-            let padding = client.GetCurrentPadding()
+            let padding = client
+                .GetCurrentPadding()
                 .map_err(|e| format!("GetCurrentPadding: {}", e))?;
             let frames_writable = buffer_frames.saturating_sub(padding);
             if frames_writable == 0 {
@@ -194,7 +233,9 @@ fn render_loop(
             }
 
             // 拉取 mono 帧直到有足够数据填充 frames_writable
-            let needed_src = ((frames_writable as u64 * SAMPLE_RATE as u64 + device_rate as u64 - 1) / device_rate as u64) as usize;
+            let needed_src = ((frames_writable as u64 * SAMPLE_RATE as u64 + device_rate as u64
+                - 1)
+                / device_rate as u64) as usize;
 
             let mut got_some = 0u32;
             let mut got_none = 0u32;
@@ -221,7 +262,8 @@ fn render_loop(
                 ));
             }
 
-            let buf = render_client.GetBuffer(frames_writable)
+            let buf = render_client
+                .GetBuffer(frames_writable)
                 .map_err(|e| format!("GetBuffer: {}", e))?;
 
             let consumed = upconverter.write_into(
@@ -231,7 +273,8 @@ fn render_loop(
             );
             pending.drain(..consumed);
 
-            render_client.ReleaseBuffer(frames_writable, 0)
+            render_client
+                .ReleaseBuffer(frames_writable, 0)
                 .map_err(|e| format!("ReleaseBuffer: {}", e))?;
         }
 
@@ -252,7 +295,13 @@ struct UpConverter {
 
 impl UpConverter {
     fn new(src_rate: u32, dst_rate: u32, dst_channels: usize) -> Self {
-        Self { src_rate, dst_rate, dst_channels, phase: 0.0, last: 0.0 }
+        Self {
+            src_rate,
+            dst_rate,
+            dst_channels,
+            phase: 0.0,
+            last: 0.0,
+        }
     }
 
     unsafe fn write_into(&mut self, src: &[f32], dst: *mut f32, frames: usize) -> usize {
@@ -266,7 +315,11 @@ impl UpConverter {
             let pos = self.phase + f as f64 * ratio;
             let idx = pos as usize;
             let frac = pos - idx as f64;
-            let a = if idx == 0 { self.last } else { src.get(idx - 1).copied().unwrap_or(self.last) };
+            let a = if idx == 0 {
+                self.last
+            } else {
+                src.get(idx - 1).copied().unwrap_or(self.last)
+            };
             let b = src.get(idx).copied().unwrap_or(self.last);
             let s = (a as f64 + (b as f64 - a as f64) * frac) as f32;
             for c in 0..self.dst_channels {

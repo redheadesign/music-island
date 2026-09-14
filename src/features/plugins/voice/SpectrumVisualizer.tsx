@@ -30,16 +30,19 @@ type Props = {
   spectrumIn: number[]
   spectrumOut: number[]
   active?: boolean
+  reducedMotion?: boolean
+  compact?: boolean
 }
 
-/** Log-frequency spectrum (in = gray, out = accent). */
-export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true }: Props) {
+/** Log-frequency spectrum (in = gray, out = mint). */
+export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true, reducedMotion = false, compact = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const displayIn = useRef(new Float32Array(BANDS))
   const displayOut = useRef(new Float32Array(BANDS))
   const targetIn = useRef(new Float32Array(BANDS))
   const targetOut = useRef(new Float32Array(BANDS))
   const raf = useRef<number | null>(null)
+  const drawRef = useRef<((smooth: boolean) => void) | null>(null)
 
   useEffect(() => {
     const tin = targetIn.current
@@ -48,16 +51,23 @@ export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true }: P
       tin[i] = active ? (spectrumIn[i] ?? 0) : 0
       tout[i] = active ? (spectrumOut[i] ?? 0) : 0
     }
-  }, [spectrumIn, spectrumOut, active])
+    if (reducedMotion) drawRef.current?.(false)
+  }, [spectrumIn, spectrumOut, active, reducedMotion])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-
-    let gradient: CanvasGradient | null = null
-    let gradH = 0
+    let inputColor = ''
+    let outputColor = ''
+    const readThemeColors = () => {
+      const styles = getComputedStyle(canvas)
+      inputColor = styles.getPropertyValue('--fg-secondary').trim() || styles.color
+      outputColor = styles.getPropertyValue('--status-success').trim() || styles.color
+      drawRef.current?.(false)
+    }
+    readThemeColors()
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1
@@ -66,33 +76,30 @@ export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true }: P
       canvas.width = Math.max(1, Math.floor(w * dpr))
       canvas.height = Math.max(1, Math.floor(h * dpr))
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      // Resizing clears the bitmap; paused/reduced-motion meters have no next RAF.
+      drawRef.current?.(false)
     }
     resize()
     const ro = new ResizeObserver(resize)
     ro.observe(canvas)
+    const settingsRoot = canvas.closest('.settings-window-root')
+    const themeObserver = settingsRoot ? new MutationObserver(readThemeColors) : null
+    themeObserver?.observe(settingsRoot!, { attributes: true, attributeFilter: ['data-color-scheme'] })
 
-    const tick = () => {
+    drawRef.current = (smooth) => {
       const width = canvas.clientWidth
       const height = canvas.clientHeight
 
       for (let i = 0; i < BANDS; i++) {
         const din = displayIn.current
         const dout = displayOut.current
-        const speedIn = targetIn.current[i] > din[i] ? RISE : FALL
-        const speedOut = targetOut.current[i] > dout[i] ? RISE : FALL
+        const speedIn = smooth ? (targetIn.current[i] > din[i] ? RISE : FALL) : 1
+        const speedOut = smooth ? (targetOut.current[i] > dout[i] ? RISE : FALL) : 1
         din[i] += (targetIn.current[i] - din[i]) * speedIn
         dout[i] += (targetOut.current[i] - dout[i]) * speedOut
       }
 
       ctx.clearRect(0, 0, width, height)
-      if (!gradient || gradH !== height) {
-        gradH = height
-        gradient = ctx.createLinearGradient(0, height, 0, 0)
-        gradient.addColorStop(0, '#c8f062')
-        gradient.addColorStop(0.55, '#f0b429')
-        gradient.addColorStop(1, '#ff6b6b')
-      }
-
       for (let i = 0; i < BANDS; i++) {
         const freqLo = i === 0 ? FREQ_MIN : logBandFreqs[i - 1]
         const freqHi = i === BANDS - 1 ? FREQ_MAX : logBandFreqs[i]
@@ -102,31 +109,56 @@ export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true }: P
         const vin = displayIn.current[i]
         if (vin >= 0.005) {
           const bh = vin * height
-          ctx.fillStyle = 'rgba(167, 174, 166, 0.45)'
+          ctx.globalAlpha = .42
+          ctx.fillStyle = inputColor
           roundBar(ctx, xLo, height - bh, barW, bh)
         }
         const vout = displayOut.current[i]
         if (vout >= 0.005) {
           const bh = vout * height
-          ctx.fillStyle = gradient
+          ctx.globalAlpha = .9
+          ctx.fillStyle = outputColor
           roundBar(ctx, xLo, height - bh, barW, bh)
         }
       }
-
-      raf.current = requestAnimationFrame(tick)
+      ctx.globalAlpha = 1
     }
-    raf.current = requestAnimationFrame(tick)
+    drawRef.current(false)
 
     return () => {
       ro.disconnect()
-      if (raf.current) cancelAnimationFrame(raf.current)
+      themeObserver?.disconnect()
+      drawRef.current = null
     }
   }, [])
 
+  useEffect(() => {
+    if (!active || reducedMotion) {
+      if (raf.current) cancelAnimationFrame(raf.current)
+      raf.current = null
+      drawRef.current?.(false)
+      return
+    }
+
+    let lastFrame = 0
+    const tick = (now: number) => {
+      if (now - lastFrame >= 1000 / 30) {
+        lastFrame = now
+        drawRef.current?.(true)
+      }
+      raf.current = requestAnimationFrame(tick)
+    }
+    raf.current = requestAnimationFrame(tick)
+    return () => {
+      if (raf.current) cancelAnimationFrame(raf.current)
+      raf.current = null
+    }
+  }, [active, reducedMotion])
+
   return (
-    <div className="spectrum-wrap">
+    <div className={['spectrum-wrap', compact ? 'spectrum-wrap--compact' : ''].filter(Boolean).join(' ')}>
       <canvas ref={canvasRef} className="spectrum-canvas" aria-hidden />
-      <div className="spectrum-freq-row" aria-hidden>
+      {!compact ? <div className="spectrum-freq-row" aria-hidden>
         {FREQ_MARKS.map((f) => (
           <span
             key={f}
@@ -136,7 +168,7 @@ export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true }: P
             {formatHz(f)}
           </span>
         ))}
-      </div>
+      </div> : null}
     </div>
   )
 }

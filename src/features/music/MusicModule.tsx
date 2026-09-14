@@ -1,12 +1,18 @@
-import { Heart, HeartCrack, Pause, Play } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
-import type { CSSProperties, PointerEvent } from 'react'
+import { Music2, RotateCw, Unplug } from 'lucide-react'
+import { Fragment, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, PointerEvent, ReactNode } from 'react'
+import type { IslandLayoutV1, IslandLayoutElement, IslandLayoutZone, IslandReactionElement } from '../../shared/lib/islandLayout'
+import { MediaArtwork, NavigationButton, PlaybackButton, ReactionButton, PlaybackModeButton } from './MusicControls'
 import type { Locale, MediaCommand, MediaSnapshot } from '../../shared/lib/types'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
-import { formatTime } from '../../shared/lib/format'
-import { MarqueeText } from '../../shared/ui/MarqueeText'
+import { ProgressStrip } from './ProgressStrip'
+import { progressTrackKey, type ProgressNavigation } from './progressTransition'
+import './MusicModule.css'
 
 interface MusicModuleProps {
+  layout?: IslandLayoutV1
+  renderElement?: (element: IslandLayoutElement, node: ReactNode) => ReactNode
+  renderZone?: (zone: IslandLayoutZone, node: ReactNode) => ReactNode
   media: MediaSnapshot | null
   progressMs: number | null
   progressPercent: number
@@ -18,6 +24,7 @@ interface MusicModuleProps {
   showSource: boolean
   showPreviousNext: boolean
   locale?: Locale
+  reducedMotion?: boolean
   onCommand: (command: MediaCommand) => void
   showDirectReload?: boolean
   directReloadBusy?: boolean
@@ -36,6 +43,9 @@ function collapseRepeatedTitle(value: string): string {
 }
 
 export function MusicModule({
+  layout,
+  renderElement = (_element, node) => node,
+  renderZone = (_zone, node) => node,
   media,
   progressMs,
   progressPercent,
@@ -46,12 +56,15 @@ export function MusicModule({
   showProgress,
   showPreviousNext,
   locale = 'ru',
+  reducedMotion = false,
   onCommand,
   showDirectReload = false,
   directReloadBusy = false,
   onDirectReload,
 }: MusicModuleProps) {
   const [scrubRatio, setScrubRatio] = useState<number | null>(null)
+  const [navigation, setNavigation] = useState<ProgressNavigation | null>(null)
+  const navigationId = useRef(0)
   const scrubbingRef = useRef(false)
   const seekGestureIdRef = useRef<number | null>(null)
   const seekSentRef = useRef(false)
@@ -60,7 +73,8 @@ export function MusicModule({
   if (media?.provider === 'smtc' && media.smtcHealth === 'unavailable') {
     return (
       <section className="music-module music-module--empty music-module--warning" aria-label={t('music.smtcUnavailable')}>
-        <div className="track-copy">
+        <span className="music-empty-icon" aria-hidden="true"><Unplug size={22} /></span>
+        <div className="music-empty-copy">
           <strong>{t('music.smtcUnavailable')}</strong>
           <span>{t('music.smtcUnavailableHint')}</span>
         </div>
@@ -70,11 +84,14 @@ export function MusicModule({
 
   if (!media?.hasSession) {
     const isDirect = media?.provider === 'yandex-direct'
+    const restarting = isDirect && directReloadBusy
+    const emptyTitle = restarting ? t('music.directRestarting') : isDirect ? t('music.directOffline') : t('music.noSession')
     return (
-      <section className="music-module music-module--empty" aria-label={t('music.noSession')}>
-        <div className="track-copy">
-          <strong>{isDirect ? t('music.directOffline') : t('music.noSession')}</strong>
-          <span>{isDirect ? t('music.directOfflineHint') : t('music.noSessionHint')}</span>
+      <section className="music-module music-module--empty" aria-label={emptyTitle} aria-busy={restarting || undefined}>
+        <span className="music-empty-icon" aria-hidden="true">{isDirect ? <Unplug size={22} /> : <Music2 size={22} />}</span>
+        <div className="music-empty-copy">
+          <strong>{emptyTitle}</strong>
+          <span>{restarting ? t('music.directRestartingHint') : isDirect ? t('music.directOfflineHint') : t('music.noSessionHint')}</span>
         </div>
         {isDirect && onDirectReload ? (
           <button
@@ -83,6 +100,7 @@ export function MusicModule({
             disabled={directReloadBusy}
             onClick={() => onDirectReload()}
           >
+            <RotateCw size={14} aria-hidden="true" />
             {directReloadBusy ? t('music.reloading') : t('music.quickReload')}
           </button>
         ) : null}
@@ -104,6 +122,11 @@ export function MusicModule({
     scrubRatio != null && media.durationMs
       ? Math.round(media.durationMs * scrubRatio)
       : progressMs
+  const trackKey = progressTrackKey(media)
+  const navigate = (direction: 'next' | 'previous') => {
+    setNavigation({ id: ++navigationId.current, direction, fromTrackKey: trackKey, fromPositionMs: progressMs, requestedAt: Date.now() })
+    onCommand(direction)
+  }
   const recoveryBanner = showDirectReload && onDirectReload ? (
     <div className="direct-reload-banner">
       <span>{t('music.directDropped')}</span>
@@ -113,6 +136,7 @@ export function MusicModule({
         disabled={directReloadBusy}
         onClick={() => onDirectReload()}
       >
+        <RotateCw size={14} aria-hidden="true" />
         {directReloadBusy ? t('music.reloading') : t('music.quickReload')}
       </button>
     </div>
@@ -175,114 +199,49 @@ export function MusicModule({
     finishSeekGesture(event, false)
   }
 
+  const controlOrder = layout?.zones.player ?? ['previous', 'artwork', 'transport', 'next', 'progress']
+  const hasArtwork = showArtwork && !isButtonsOnly && controlOrder.includes('artwork')
+  const control = (element: IslandLayoutElement) => {
+    if (element === 'previous' || element === 'next') {
+      return showPreviousNext ? <NavigationButton direction={element} onClick={() => navigate(element)} disabled={element === 'previous' ? !media.canGoPrevious : !media.canGoNext} /> : null
+    }
+    if (element === 'artwork') return hasArtwork ? <MediaArtwork src={media.thumbnailDataUrl} title={title} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} /> : null
+    if (element === 'transport') return hasArtwork ? null : <PlaybackButton playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} />
+    return null
+  }
+  const reactions = (side: 'reactionLeft' | 'reactionRight') => {
+    const elements: IslandReactionElement[] = layout?.zones[side] ?? (media.provider === 'yandex-direct' ? side === 'reactionLeft' ? ['dislike'] : ['like'] : [])
+    return renderZone(side, !isButtonsOnly && elements.length ? <div className="music-reactions">{elements.map((kind) => <Fragment key={kind}>{renderElement(kind,
+      kind === 'shuffle' || kind === 'repeat'
+        ? <PlaybackModeButton kind={kind} active={media.isShuffleActive} repeatMode={media.repeatMode} disabled={kind === 'shuffle' ? !media.canShuffle : !media.canRepeat} locale={locale} onClick={() => onCommand(kind === 'shuffle' ? 'toggle-shuffle' : 'cycle-repeat')} />
+        : <ReactionButton kind={kind} active={kind === 'like' ? media.isLiked : media.isDisliked} disabled={kind === 'like' ? !media.canLike : !media.canDislike} onClick={() => onCommand(kind)} />
+    )}</Fragment>)}</div> : null)
+  }
+
   return (
     <section className={`music-module music-module--${density}`} aria-label="Now playing">
       {recoveryBanner}
-      <div className="media-controls media-controls--island" aria-label="Playback controls">
-        {showPreviousNext ? (
-          <button type="button" className="icon-button media-button" aria-label="Previous" onClick={() => onCommand('previous')} disabled={!media.canGoPrevious}>
-            <PreviousFilledIcon />
-          </button>
-        ) : null}
-        {showArtwork && !isButtonsOnly ? (
-          <div className="artwork-shell">
-            {media.thumbnailDataUrl ? (
-              <img src={media.thumbnailDataUrl} alt="" />
-            ) : (
-              <div className="artwork-placeholder">{title.slice(0, 2).toUpperCase()}</div>
-            )}
-            <button
-              type="button"
-              className="icon-button play-button artwork-play-button"
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-              onClick={() => onCommand('play-pause')}
-              disabled={!media.canPlay && !media.canPause}
-            >
-              {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="icon-button play-button"
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-            onClick={() => onCommand('play-pause')}
-            disabled={!media.canPlay && !media.canPause}
-          >
-            {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-          </button>
-        )}
-        {showPreviousNext ? (
-          <button type="button" className="icon-button media-button" aria-label="Next" onClick={() => onCommand('next')} disabled={!media.canGoNext}>
-            <NextFilledIcon />
-          </button>
-        ) : null}
-      </div>
-
-      {canShowSeek || media.provider === 'yandex-direct' ? (
-        <div className="progress-row">
-          {media.provider === 'yandex-direct' ? (
-            <button
-              type="button"
-              className={`reaction-button ${media.isDisliked ? 'reaction-button--active' : ''}`}
-              aria-label={media.isDisliked ? 'Убрать дизлайк' : 'Не нравится'}
-              aria-pressed={media.isDisliked}
-              disabled={!media.canDislike}
-              onClick={() => onCommand('dislike')}
-            >
-              <HeartCrack fill={media.isDisliked ? 'currentColor' : 'none'} />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
-            aria-label="Seek track"
-            onPointerDown={handleSeekPointerDown}
-            onPointerMove={handleSeekPointerMove}
-            onPointerUp={handleSeekPointerUp}
-            onPointerCancel={handleSeekPointerCancel}
-            onClick={(event) => event.preventDefault()}
-            disabled={!media.canSeek}
-            style={{ '--progress': activeRatio } as CSSProperties}
-          >
-            <span className="progress-fill" />
-            <span className="progress-content progress-content--track" title={trackLabel}>
-              <MarqueeText text={trackLabel} />
-            </span>
-            <span className="progress-content progress-content--time">
-              {formatTime(activeProgressMs)} / {formatTime(media.durationMs)}
-            </span>
-          </button>
-          {media.provider === 'yandex-direct' ? (
-            <button
-              type="button"
-              className={`reaction-button reaction-button--like ${media.isLiked ? 'reaction-button--active' : ''}`}
-              aria-label={media.isLiked ? 'Убрать из любимого' : 'Добавить в любимое'}
-              aria-pressed={media.isLiked}
-              disabled={!media.canLike}
-              onClick={() => onCommand('like')}
-            >
-              <Heart fill={media.isLiked ? 'currentColor' : 'none'} />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      {renderZone('player', <div className="media-controls media-controls--island" aria-label="Playback controls">
+        {controlOrder.map((element) => { const node = control(element); return node ? <Fragment key={element}>{renderElement(element, node)}</Fragment> : null })}
+      </div>)}
+      {!isButtonsOnly ? <div className="progress-row">
+        {reactions('reactionLeft')}
+        {showProgress && (canShowSeek || media.provider === 'yandex-direct') ? renderElement('progress', <button
+          type="button"
+          className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
+          aria-label="Seek track"
+          onPointerDown={handleSeekPointerDown}
+          onPointerMove={handleSeekPointerMove}
+          onPointerUp={handleSeekPointerUp}
+          onPointerCancel={handleSeekPointerCancel}
+          onClick={(event) => event.preventDefault()}
+          disabled={!media.canSeek}
+          style={{ '--progress': activeRatio } as CSSProperties}
+        >
+          <ProgressStrip frame={{ trackKey, ratio: activeRatio, positionMs: activeProgressMs, durationMs: media.durationMs, label: trackLabel }} navigation={navigation} reducedMotion={reducedMotion} scrubbing={scrubRatio != null} />
+        </button>) : renderElement('progress', null)}
+        {reactions('reactionRight')}
+      </div> : null}
     </section>
-  )
-}
-
-function PreviousFilledIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="M6 5a1 1 0 0 1 1 1v4.22l8.48-5.09A1 1 0 0 1 17 6v12a1 1 0 0 1-1.52.86L7 13.78V18a1 1 0 1 1-2 0V6a1 1 0 0 1 1-1Z" />
-    </svg>
-  )
-}
-
-function NextFilledIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="M18 5a1 1 0 0 0-1 1v4.22L8.52 5.13A1 1 0 0 0 7 6v12a1 1 0 0 0 1.52.86L17 13.78V18a1 1 0 1 0 2 0V6a1 1 0 0 0-1-1Z" />
-    </svg>
   )
 }

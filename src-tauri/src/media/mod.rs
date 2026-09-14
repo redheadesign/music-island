@@ -1,7 +1,9 @@
 pub mod health;
+mod snapshot_cache;
 
 use health::{SmtcHealth, SmtcHealthSnapshot};
 use serde::{Deserialize, Serialize};
+use snapshot_cache::SnapshotCache;
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -32,6 +34,7 @@ static SMTC_PROBES: AtomicU64 = AtomicU64::new(0);
 static SMTC_PASSIVE_PROBES: AtomicU64 = AtomicU64::new(0);
 static SMTC_BUSY_SKIPS: AtomicU64 = AtomicU64::new(0);
 static PROVIDER_GENERATION: AtomicU64 = AtomicU64::new(0);
+static SNAPSHOT_INITIALIZATION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 struct SmtcFlightGuard;
 
@@ -59,9 +62,94 @@ fn preferred_source_lock() -> &'static RwLock<Option<String>> {
 }
 
 pub fn set_preferred_source(source: Option<String>) {
-    *preferred_source_lock()
+    let mut preferred = preferred_source_lock()
         .write()
-        .expect("preferred source lock poisoned") = source;
+        .expect("preferred source lock poisoned");
+    if *preferred != source {
+        *preferred = source;
+        PROVIDER_GENERATION.fetch_add(1, Ordering::AcqRel);
+    }
+}
+
+struct SnapshotSelection {
+    provider: MediaProvider,
+    generation: u64,
+    preferred_source: Option<String>,
+}
+
+fn snapshot_selection() -> SnapshotSelection {
+    let provider = active_provider_lock()
+        .read()
+        .expect("active provider lock poisoned");
+    let preferred = preferred_source_lock()
+        .read()
+        .expect("preferred source lock poisoned");
+    SnapshotSelection {
+        provider: *provider,
+        generation: PROVIDER_GENERATION.load(Ordering::Acquire),
+        preferred_source: preferred.clone(),
+    }
+}
+
+fn snapshot_cache_lock() -> &'static RwLock<SnapshotCache> {
+    static CACHE: OnceLock<RwLock<SnapshotCache>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(SnapshotCache::default()))
+}
+
+pub(crate) fn cached_snapshot() -> Option<MediaSnapshot> {
+    let provider = active_provider_lock()
+        .read()
+        .expect("active provider lock poisoned");
+    let _preferred = preferred_source_lock()
+        .read()
+        .expect("preferred source lock poisoned");
+    snapshot_cache_lock()
+        .read()
+        .expect("snapshot cache lock poisoned")
+        .get(PROVIDER_GENERATION.load(Ordering::Acquire), *provider)
+}
+
+fn with_current_snapshot(
+    generation: u64,
+    snapshot: &MediaSnapshot,
+    after_store: impl FnOnce(),
+) -> bool {
+    // Keep selection changes out of both cache publication and event delivery.
+    let provider = active_provider_lock()
+        .read()
+        .expect("active provider lock poisoned");
+    let _preferred = preferred_source_lock()
+        .read()
+        .expect("preferred source lock poisoned");
+    if *provider != snapshot.provider || generation != PROVIDER_GENERATION.load(Ordering::Acquire) {
+        return false;
+    }
+    snapshot_cache_lock()
+        .write()
+        .expect("snapshot cache lock poisoned")
+        .store(generation, snapshot);
+    after_store();
+    true
+}
+
+fn publish_snapshot(
+    app: &AppHandle,
+    generation: u64,
+    snapshot: &MediaSnapshot,
+    previous_key: &mut String,
+    emit_timeline: bool,
+) -> bool {
+    with_current_snapshot(generation, snapshot, || {
+        let key = snapshot_key(snapshot);
+        if key != *previous_key {
+            let _ = app.emit("media:update", snapshot);
+            MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
+            *previous_key = key;
+        } else if emit_timeline {
+            let _ = app.emit("timeline:update", TimelineUpdate::from(snapshot));
+            TIMELINE_UPDATES.fetch_add(1, Ordering::Relaxed);
+        }
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +173,10 @@ pub struct MediaSnapshot {
     pub can_dislike: bool,
     pub is_liked: bool,
     pub is_disliked: bool,
+    pub can_shuffle: bool,
+    pub is_shuffle_active: bool,
+    pub can_repeat: bool,
+    pub repeat_mode: RepeatMode,
     pub active_wave_id: Option<String>,
     pub active_wave_title: Option<String>,
     pub thumbnail_data_url: Option<String>,
@@ -130,8 +222,16 @@ pub fn switch_active_provider(app: &AppHandle, provider: MediaProvider) {
     let previous = active_provider();
     set_active_provider(provider);
     if previous != provider {
-        let _ = app.emit("media:update", MediaSnapshot::no_session_for(provider));
-        MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
+        let selection = snapshot_selection();
+        if selection.provider == provider {
+            publish_snapshot(
+                app,
+                selection.generation,
+                &MediaSnapshot::no_session_for(provider),
+                &mut String::new(),
+                false,
+            );
+        }
     }
 }
 
@@ -217,6 +317,14 @@ pub enum PlaybackStatus {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RepeatMode {
+    Off,
+    All,
+    One,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum MediaCommand {
@@ -228,6 +336,8 @@ pub enum MediaCommand {
     Stop,
     Like,
     Dislike,
+    ToggleShuffle,
+    CycleRepeat,
     Seek {
         #[serde(rename = "positionMs")]
         position_ms: i64,
@@ -259,6 +369,10 @@ impl MediaSnapshot {
             can_dislike: false,
             is_liked: false,
             is_disliked: false,
+            can_shuffle: false,
+            is_shuffle_active: false,
+            can_repeat: false,
+            repeat_mode: RepeatMode::Off,
             active_wave_id: None,
             active_wave_title: None,
             thumbnail_data_url: None,
@@ -280,22 +394,25 @@ pub fn start_watcher(app: AppHandle) {
         let mut poll_index: u32 = 0;
         let mut last_health = health::current();
         let mut last_provider = active_provider();
+        let mut last_generation = PROVIDER_GENERATION.load(Ordering::Acquire);
         let mut last_direct_status = None;
 
         loop {
             MEDIA_POLLS.fetch_add(1, Ordering::Relaxed);
-            let provider = active_provider();
-            if provider != last_provider {
+            let selection = snapshot_selection();
+            let provider = selection.provider;
+            let generation = selection.generation;
+            if provider != last_provider || generation != last_generation {
                 previous_key.clear();
                 last_good = None;
                 last_good_at = None;
                 direct_failure_streak = 0;
                 miss_streak = 0;
                 last_provider = provider;
+                last_generation = generation;
             }
 
             if provider == MediaProvider::YandexDirect {
-                let generation = PROVIDER_GENERATION.load(Ordering::Acquire);
                 match timeout(PROBE_TIMEOUT, crate::yandex::snapshot()).await {
                     Ok(Ok(mut snapshot)) => {
                         if generation != PROVIDER_GENERATION.load(Ordering::Acquire) {
@@ -303,14 +420,8 @@ pub fn start_watcher(app: AppHandle) {
                         }
                         crate::yandex::record_probe_success();
                         preserve_same_track_metadata(last_good.as_ref(), &mut snapshot);
-                        let key = snapshot_key(&snapshot);
-                        if key != previous_key {
-                            let _ = app.emit("media:update", snapshot.clone());
-                            MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
-                            previous_key = key;
-                        } else {
-                            let _ = app.emit("timeline:update", TimelineUpdate::from(&snapshot));
-                            TIMELINE_UPDATES.fetch_add(1, Ordering::Relaxed);
+                        if !publish_snapshot(&app, generation, &snapshot, &mut previous_key, true) {
+                            continue;
                         }
                         last_good = Some(snapshot);
                         last_good_at = Some(Instant::now());
@@ -340,12 +451,7 @@ pub fn start_watcher(app: AppHandle) {
                             last_good_at = None;
                             let snapshot =
                                 MediaSnapshot::no_session_for(MediaProvider::YandexDirect);
-                            let key = snapshot_key(&snapshot);
-                            if key != previous_key {
-                                let _ = app.emit("media:update", snapshot);
-                                MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
-                                previous_key = key;
-                            }
+                            publish_snapshot(&app, generation, &snapshot, &mut previous_key, false);
                         }
                         sleep(Duration::from_millis(DEGRADED_POLL_MS.min(2_000))).await;
                     }
@@ -371,12 +477,7 @@ pub fn start_watcher(app: AppHandle) {
                             last_good_at = None;
                             let snapshot =
                                 MediaSnapshot::no_session_for(MediaProvider::YandexDirect);
-                            let key = snapshot_key(&snapshot);
-                            if key != previous_key {
-                                let _ = app.emit("media:update", snapshot);
-                                MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
-                                previous_key = key;
-                            }
+                            publish_snapshot(&app, generation, &snapshot, &mut previous_key, false);
                         }
                         sleep(Duration::from_millis(2_000)).await;
                     }
@@ -384,21 +485,16 @@ pub fn start_watcher(app: AppHandle) {
                 continue;
             }
 
-            let generation = PROVIDER_GENERATION.load(Ordering::Acquire);
             let include_metadata =
                 last_good.is_none() || poll_index.is_multiple_of(FULL_METADATA_EVERY);
             poll_index = poll_index.wrapping_add(1);
             let started = Instant::now();
             let previous_for_poll = last_good.clone();
-            let preferred_source = preferred_source_lock()
-                .read()
-                .expect("preferred source lock poisoned")
-                .clone()
-                .or_else(|| {
-                    last_good
-                        .as_ref()
-                        .and_then(|snapshot| snapshot.source_app_id.clone())
-                });
+            let preferred_source = selection.preferred_source.or_else(|| {
+                last_good
+                    .as_ref()
+                    .and_then(|snapshot| snapshot.source_app_id.clone())
+            });
             let probe = if let Some(guard) = try_smtc_flight() {
                 SMTC_PROBES.fetch_add(1, Ordering::Relaxed);
                 Some(
@@ -503,15 +599,14 @@ pub fn start_watcher(app: AppHandle) {
             } else {
                 raw
             };
-            let key = snapshot_key(&snapshot);
-
-            if key != previous_key {
-                let _ = app.emit("media:update", snapshot.clone());
-                MEDIA_UPDATES.fetch_add(1, Ordering::Relaxed);
-                previous_key = key;
-            } else if snapshot.has_session {
-                let _ = app.emit("timeline:update", TimelineUpdate::from(&snapshot));
-                TIMELINE_UPDATES.fetch_add(1, Ordering::Relaxed);
+            if !publish_snapshot(
+                &app,
+                generation,
+                &snapshot,
+                &mut previous_key,
+                snapshot.has_session,
+            ) {
+                continue;
             }
 
             let delay_ms = match next_health.status {
@@ -609,26 +704,74 @@ fn start_passive_smtc_watcher(app: AppHandle) {
     });
 }
 
+fn seed_snapshot(generation: u64, snapshot: MediaSnapshot) -> anyhow::Result<MediaSnapshot> {
+    let provider = active_provider_lock()
+        .read()
+        .expect("active provider lock poisoned");
+    let _preferred = preferred_source_lock()
+        .read()
+        .expect("preferred source lock poisoned");
+    if *provider != snapshot.provider || generation != PROVIDER_GENERATION.load(Ordering::Acquire) {
+        anyhow::bail!("media selection changed while loading its snapshot");
+    }
+    let mut cache = snapshot_cache_lock()
+        .write()
+        .expect("snapshot cache lock poisoned");
+    // A watcher result that arrived during initialization is already authoritative.
+    if let Some(current) = cache.get(generation, *provider) {
+        return Ok(current);
+    }
+    cache.store(generation, &snapshot);
+    Ok(snapshot)
+}
+
+async fn wait_for_cached_snapshot() -> anyhow::Result<MediaSnapshot> {
+    timeout(PROBE_TIMEOUT, async {
+        loop {
+            if let Some(snapshot) = cached_snapshot() {
+                return snapshot;
+            }
+            sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await
+    .map_err(|_| anyhow::anyhow!("SMTC snapshot is still being initialized"))
+}
+
 pub async fn current_snapshot() -> anyhow::Result<MediaSnapshot> {
     MEDIA_POLLS.fetch_add(1, Ordering::Relaxed);
-    if active_provider() == MediaProvider::YandexDirect {
-        return match timeout(PROBE_TIMEOUT, crate::yandex::snapshot()).await {
+    if let Some(snapshot) = cached_snapshot() {
+        return Ok(snapshot);
+    }
+    // Multiple windows share one initialization; ordinary reads never start a probe.
+    let _initialization = SNAPSHOT_INITIALIZATION.lock().await;
+    if let Some(snapshot) = cached_snapshot() {
+        return Ok(snapshot);
+    }
+    let selection = snapshot_selection();
+    if selection.provider == MediaProvider::YandexDirect {
+        let probe = timeout(PROBE_TIMEOUT, crate::yandex::snapshot()).await;
+        if selection.generation != PROVIDER_GENERATION.load(Ordering::Acquire) {
+            anyhow::bail!("media selection changed while loading its snapshot");
+        }
+        let snapshot = match probe {
             Ok(Ok(snapshot)) => {
                 crate::yandex::record_probe_success();
-                Ok(snapshot)
+                snapshot
             }
             Ok(Err(error)) => {
                 crate::yandex::record_probe_failure(&error.to_string());
-                Ok(MediaSnapshot::no_session_for(MediaProvider::YandexDirect))
+                MediaSnapshot::no_session_for(MediaProvider::YandexDirect)
             }
             Err(_) => {
                 crate::yandex::record_probe_failure("CDP snapshot timed out");
-                Ok(MediaSnapshot::no_session_for(MediaProvider::YandexDirect))
+                MediaSnapshot::no_session_for(MediaProvider::YandexDirect)
             }
         };
+        return seed_snapshot(selection.generation, snapshot);
     }
     let Some(guard) = try_smtc_flight() else {
-        return Ok(MediaSnapshot::no_session());
+        return wait_for_cached_snapshot().await;
     };
     SMTC_PROBES.fetch_add(1, Ordering::Relaxed);
     let started = Instant::now();
@@ -636,28 +779,32 @@ pub async fn current_snapshot() -> anyhow::Result<MediaSnapshot> {
         PROBE_TIMEOUT,
         tauri::async_runtime::spawn_blocking(move || {
             let _guard = guard;
-            platform::poll_snapshot(None, None, true)
+            platform::poll_snapshot(None, selection.preferred_source.as_deref(), true)
         }),
     )
     .await
     .map_err(|_| anyhow::anyhow!("SMTC snapshot timed out"))?
     .map_err(|error| anyhow::anyhow!("SMTC snapshot worker failed: {error}"))??;
+    if selection.generation != PROVIDER_GENERATION.load(Ordering::Acquire) {
+        anyhow::bail!("media selection changed while loading its snapshot");
+    }
     let health = health::record_success(started.elapsed().as_millis() as u64, result.session_count);
     let mut snapshot = result.snapshot;
     snapshot.smtc_health = health.status;
-    Ok(snapshot)
+    seed_snapshot(selection.generation, snapshot)
 }
 
 pub async fn send_command(command: MediaCommand) -> anyhow::Result<()> {
     MEDIA_COMMANDS.fetch_add(1, Ordering::Relaxed);
-    if active_provider() == MediaProvider::YandexDirect {
+    let selection = snapshot_selection();
+    if selection.provider == MediaProvider::YandexDirect {
         return crate::yandex::send_command(command).await;
     }
     let Some(_guard) = try_smtc_flight() else {
         anyhow::bail!("SMTC is busy with an existing request");
     };
     SMTC_PROBES.fetch_add(1, Ordering::Relaxed);
-    platform::send_command(command).await
+    platform::send_command(command, selection.preferred_source.as_deref()).await
 }
 
 pub fn current_health() -> SmtcHealthSnapshot {
@@ -685,19 +832,33 @@ pub async fn list_sessions() -> anyhow::Result<Vec<MediaSessionInfo>> {
 }
 
 fn snapshot_key(snapshot: &MediaSnapshot) -> String {
-    format!(
-        "{}|{}|{:?}|{}|{}|{}|{}|{}|{}|{}",
-        snapshot.source_app_id.as_deref().unwrap_or_default(),
-        snapshot.track_id.as_deref().unwrap_or_default(),
-        snapshot.playback_status,
-        snapshot.title.as_deref().unwrap_or_default(),
-        snapshot.artist.as_deref().unwrap_or_default(),
-        snapshot.duration_ms.unwrap_or_default(),
-        snapshot.is_liked,
-        snapshot.is_disliked,
-        snapshot.active_wave_id.as_deref().unwrap_or_default(),
-        snapshot.active_wave_title.as_deref().unwrap_or_default()
-    )
+    serde_json::to_string(&(
+        (
+            &snapshot.source_app_id,
+            &snapshot.track_id,
+            &snapshot.playback_status,
+        ),
+        (&snapshot.title, &snapshot.artist, snapshot.duration_ms),
+        (
+            snapshot.can_seek,
+            snapshot.can_go_next,
+            snapshot.can_go_previous,
+            snapshot.can_play,
+            snapshot.can_pause,
+            snapshot.can_like,
+            snapshot.can_dislike,
+            snapshot.can_shuffle,
+            snapshot.can_repeat,
+        ),
+        (
+            snapshot.is_liked,
+            snapshot.is_disliked,
+            snapshot.is_shuffle_active,
+            snapshot.repeat_mode,
+        ),
+        (&snapshot.active_wave_id, &snapshot.active_wave_title),
+    ))
+    .expect("media snapshot key fields are serializable")
 }
 
 fn retain_direct_stale(
@@ -751,10 +912,38 @@ fn preserve_same_track_metadata(previous: Option<&MediaSnapshot>, current: &mut 
     }
 }
 
+fn source_matches_preference(source: &str, preferred_source: &str) -> bool {
+    if preferred_source.eq_ignore_ascii_case("spotify") {
+        let normalized = source.to_ascii_lowercase();
+        normalized == "spotify.exe"
+            || (normalized.starts_with("spotifyab.spotifymusic_")
+                && normalized.ends_with("!spotify"))
+    } else {
+        source == preferred_source
+    }
+}
+
+fn preferred_source_index(sources: &[String], preferred_source: &str) -> Option<usize> {
+    sources
+        .iter()
+        .position(|source| source_matches_preference(source, preferred_source))
+}
+
+fn fallback_session_priority(source: &str, is_playing: bool, current_source: Option<&str>) -> u8 {
+    if is_playing {
+        0
+    } else if current_source == Some(source) {
+        1
+    } else {
+        2
+    }
+}
+
 #[cfg(windows)]
 mod platform {
     use super::{
-        MediaCommand, MediaProvider, MediaSessionInfo, MediaSnapshot, PlaybackStatus, PollResult,
+        preferred_source_index, MediaCommand, MediaProvider, MediaSessionInfo, MediaSnapshot,
+        PlaybackStatus, PollResult, RepeatMode,
     };
     use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
     use tokio::sync::Mutex as AsyncMutex;
@@ -763,6 +952,7 @@ mod platform {
         GlobalSystemMediaTransportControlsSessionManager as SessionManager,
         GlobalSystemMediaTransportControlsSessionPlaybackStatus as NativePlaybackStatus,
     };
+    use windows::Media::MediaPlaybackAutoRepeatMode as NativeRepeatMode;
 
     pub fn poll_snapshot(
         previous: Option<&MediaSnapshot>,
@@ -827,15 +1017,18 @@ mod platform {
     static LATEST_SEEK_MS: AtomicI64 = AtomicI64::new(0);
     static SEEK_MUTEX: AsyncMutex<()> = AsyncMutex::const_new(());
 
-    pub async fn send_command(command: MediaCommand) -> anyhow::Result<()> {
+    pub async fn send_command(
+        command: MediaCommand,
+        preferred_source: Option<&str>,
+    ) -> anyhow::Result<()> {
         if let MediaCommand::Seek { position_ms } = command {
             LATEST_SEEK_MS.store(position_ms, Ordering::SeqCst);
             let generation = SEEK_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
-            run_seek(generation).await?;
+            run_seek(generation, preferred_source).await?;
             return Ok(());
         }
 
-        let session = match current_session().await? {
+        let session = match current_session(preferred_source).await? {
             Some(session) => session,
             None => return Ok(()),
         };
@@ -862,18 +1055,61 @@ mod platform {
             MediaCommand::Like | MediaCommand::Dislike => {
                 anyhow::bail!("like controls are unavailable through Windows SMTC");
             }
+            MediaCommand::ToggleShuffle => {
+                let playback = session.GetPlaybackInfo()?;
+                let controls = playback.Controls()?;
+                if !controls.IsShuffleEnabled()? {
+                    anyhow::bail!("shuffle is unavailable through this SMTC session");
+                }
+                let active = playback
+                    .IsShuffleActive()
+                    .and_then(|value| value.Value())
+                    .unwrap_or(false);
+                if !session.TryChangeShuffleActiveAsync(!active)?.await? {
+                    anyhow::bail!("SMTC session rejected the shuffle command");
+                }
+            }
+            MediaCommand::CycleRepeat => {
+                let playback = session.GetPlaybackInfo()?;
+                let controls = playback.Controls()?;
+                if !controls.IsRepeatEnabled()? {
+                    anyhow::bail!("repeat is unavailable through this SMTC session");
+                }
+                let current = playback
+                    .AutoRepeatMode()
+                    .and_then(|value| value.Value())
+                    .unwrap_or(NativeRepeatMode::None);
+                let next = match current {
+                    NativeRepeatMode::None => NativeRepeatMode::List,
+                    NativeRepeatMode::List => NativeRepeatMode::Track,
+                    _ => NativeRepeatMode::None,
+                };
+                if !session.TryChangeAutoRepeatModeAsync(next)?.await? {
+                    anyhow::bail!("SMTC session rejected the repeat command");
+                }
+            }
             MediaCommand::Seek { .. } => unreachable!(),
         }
 
         Ok(())
     }
 
-    async fn current_session() -> anyhow::Result<Option<Session>> {
+    async fn current_session(preferred_source: Option<&str>) -> anyhow::Result<Option<Session>> {
         let manager = SessionManager::RequestAsync()?.await?;
-        Ok(manager.GetCurrentSession().ok())
+        let current_id = manager
+            .GetCurrentSession()
+            .ok()
+            .and_then(|session| session.SourceAppUserModelId().ok())
+            .map(|value| value.to_string_lossy());
+        let sessions = manager.GetSessions()?;
+        let mut available = Vec::with_capacity(sessions.Size()? as usize);
+        for index in 0..sessions.Size()? {
+            available.push(sessions.GetAt(index)?);
+        }
+        choose_session(&available, preferred_source, current_id.as_deref())
     }
 
-    async fn run_seek(generation: u64) -> anyhow::Result<()> {
+    async fn run_seek(generation: u64, preferred_source: Option<&str>) -> anyhow::Result<()> {
         let _guard = SEEK_MUTEX.lock().await;
 
         if SEEK_GENERATION.load(Ordering::SeqCst) != generation {
@@ -882,7 +1118,7 @@ mod platform {
 
         let position_ms = LATEST_SEEK_MS.load(Ordering::SeqCst);
 
-        let session = match current_session().await? {
+        let session = match current_session(preferred_source).await? {
             Some(session) => session,
             None => return Ok(()),
         };
@@ -962,6 +1198,17 @@ mod platform {
             can_dislike: false,
             is_liked: false,
             is_disliked: false,
+            can_shuffle: controls.IsShuffleEnabled()?,
+            is_shuffle_active: playback
+                .IsShuffleActive()
+                .and_then(|value| value.Value())
+                .unwrap_or(false),
+            can_repeat: controls.IsRepeatEnabled()?,
+            repeat_mode: playback
+                .AutoRepeatMode()
+                .and_then(|value| value.Value())
+                .map(map_repeat_mode)
+                .unwrap_or(RepeatMode::Off),
             active_wave_id: None,
             active_wave_title: None,
             thumbnail_data_url,
@@ -976,32 +1223,42 @@ mod platform {
         preferred_source: Option<&str>,
         current_source: Option<&str>,
     ) -> anyhow::Result<Option<Session>> {
-        let mut current = None;
-        let mut first_playing = None;
-        let mut first = None;
+        let sources = sessions
+            .iter()
+            .map(|session| {
+                session
+                    .SourceAppUserModelId()
+                    .map(|value| value.to_string_lossy())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if let Some(preferred_source) = preferred_source {
+            return Ok(preferred_source_index(&sources, preferred_source)
+                .map(|index| sessions[index].clone()));
+        }
 
-        for session in sessions {
-            let source = session.SourceAppUserModelId()?.to_string_lossy();
-            if first.is_none() {
-                first = Some(session.clone());
-            }
+        let mut best: Option<(u8, Session)> = None;
+
+        for (session, source) in sessions.iter().zip(sources) {
             let is_playing = session
                 .GetPlaybackInfo()
                 .and_then(|info| info.PlaybackStatus())
                 .map(|status| status == NativePlaybackStatus::Playing)
                 .unwrap_or(false);
-            if preferred_source == Some(source.as_str()) && is_playing {
-                return Ok(Some(session.clone()));
-            }
-            if current_source == Some(source.as_str()) {
-                current = Some(session.clone());
-            }
-            if is_playing && first_playing.is_none() {
-                first_playing = Some(session.clone());
+            let priority = super::fallback_session_priority(&source, is_playing, current_source);
+            if best.as_ref().is_none_or(|(saved, _)| priority < *saved) {
+                best = Some((priority, session.clone()));
             }
         }
 
-        Ok(first_playing.or(current).or(first))
+        Ok(best.map(|(_, session)| session))
+    }
+
+    fn map_repeat_mode(mode: NativeRepeatMode) -> RepeatMode {
+        match mode {
+            NativeRepeatMode::Track => RepeatMode::One,
+            NativeRepeatMode::List => RepeatMode::All,
+            _ => RepeatMode::Off,
+        }
     }
 
     fn datetime_to_rfc3339(value: windows::Foundation::DateTime) -> String {
@@ -1092,6 +1349,10 @@ mod routing_tests {
             can_dislike: true,
             is_liked: false,
             is_disliked: false,
+            can_shuffle: true,
+            is_shuffle_active: false,
+            can_repeat: true,
+            repeat_mode: RepeatMode::Off,
             active_wave_id: None,
             active_wave_title: None,
             thumbnail_data_url: Some("data:image/jpeg;base64,test".into()),
@@ -1128,6 +1389,108 @@ mod routing_tests {
         changed.is_liked = false;
         changed.active_wave_id = Some("wave-1".into());
         assert_ne!(key, snapshot_key(&changed));
+        changed.active_wave_id = None;
+        changed.is_shuffle_active = true;
+        assert_ne!(key, snapshot_key(&changed));
+        changed.is_shuffle_active = false;
+        changed.repeat_mode = RepeatMode::All;
+        assert_ne!(key, snapshot_key(&changed));
+    }
+
+    #[test]
+    fn snapshot_key_includes_command_capability_only_changes() {
+        let original = snapshot();
+        let key = snapshot_key(&original);
+
+        let mut changed = original.clone();
+        changed.can_seek = !changed.can_seek;
+        assert_ne!(key, snapshot_key(&changed));
+
+        changed = original.clone();
+        changed.can_go_next = !changed.can_go_next;
+        assert_ne!(key, snapshot_key(&changed));
+
+        changed = original.clone();
+        changed.can_go_previous = !changed.can_go_previous;
+        assert_ne!(key, snapshot_key(&changed));
+
+        changed = original.clone();
+        changed.can_play = !changed.can_play;
+        assert_ne!(key, snapshot_key(&changed));
+
+        changed = original.clone();
+        changed.can_pause = !changed.can_pause;
+        assert_ne!(key, snapshot_key(&changed));
+
+        changed = original.clone();
+        changed.can_like = !changed.can_like;
+        assert_ne!(key, snapshot_key(&changed));
+
+        changed = original.clone();
+        changed.can_dislike = !changed.can_dislike;
+        assert_ne!(key, snapshot_key(&changed));
+
+        changed = original.clone();
+        changed.can_shuffle = !changed.can_shuffle;
+        assert_ne!(key, snapshot_key(&changed));
+
+        changed = original.clone();
+        changed.can_repeat = !changed.can_repeat;
+        assert_ne!(key, snapshot_key(&changed));
+    }
+
+    #[test]
+    fn preferred_source_is_authoritative_even_when_paused() {
+        assert_eq!(
+            preferred_source_index(&["Other.exe".into(), "Spotify.exe".into()], "Spotify.exe"),
+            Some(1)
+        );
+        assert!(preferred_source_index(&["Other.exe".into()], "Spotify.exe").is_none());
+    }
+
+    #[test]
+    fn spotify_preference_matches_desktop_and_store_sessions_only() {
+        assert!(source_matches_preference("Spotify.exe", "spotify"));
+        assert!(source_matches_preference(
+            "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify",
+            "spotify"
+        ));
+        assert!(!source_matches_preference("SpotifyHelper.exe", "spotify"));
+        assert!(!source_matches_preference("Other.exe", "spotify"));
+    }
+
+    #[test]
+    fn automatic_selection_still_prefers_playing_then_current() {
+        assert!(
+            fallback_session_priority("Playing.exe", true, Some("Current.exe"))
+                < fallback_session_priority("Current.exe", false, Some("Current.exe"))
+        );
+    }
+
+    #[test]
+    fn timeline_changes_do_not_require_a_full_metadata_event() {
+        let original = snapshot();
+        let mut advanced = original.clone();
+        advanced.position_ms = Some(8_000);
+        advanced.updated_at = "later".into();
+        assert_eq!(snapshot_key(&original), snapshot_key(&advanced));
+        let timeline = TimelineUpdate::from(&advanced);
+        assert_eq!(timeline.position_ms, Some(8_000));
+        assert_eq!(timeline.updated_at, "later");
+    }
+
+    #[test]
+    fn no_session_clears_transport_and_metadata_for_the_same_provider() {
+        for provider in [MediaProvider::Smtc, MediaProvider::YandexDirect] {
+            let empty = MediaSnapshot::no_session_for(provider);
+            assert_eq!(empty.provider, provider);
+            assert!(!empty.has_session);
+            assert!(empty.title.is_none());
+            assert!(empty.thumbnail_data_url.is_none());
+            assert!(!empty.can_play && !empty.can_pause);
+            assert!(!empty.can_go_next && !empty.can_go_previous);
+            assert_ne!(snapshot_key(&snapshot()), snapshot_key(&empty));
+        }
     }
 
     #[test]
@@ -1173,6 +1536,11 @@ mod routing_tests {
             1,
             &crate::yandex::DirectYandexState::RestartRequired
         ));
+        assert!(!retain_direct_stale(
+            Some(Instant::now() - DIRECT_STALE_MAX_AGE - Duration::from_secs(1)),
+            1,
+            &crate::yandex::DirectYandexState::Degraded
+        ));
     }
 }
 
@@ -1195,7 +1563,10 @@ mod platform {
         Ok(Vec::new())
     }
 
-    pub async fn send_command(_command: MediaCommand) -> anyhow::Result<()> {
+    pub async fn send_command(
+        _command: MediaCommand,
+        _preferred_source: Option<&str>,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 }

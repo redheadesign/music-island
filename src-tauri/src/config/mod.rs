@@ -13,6 +13,8 @@ const CONFIG_FILE_NAME: &str = "config.json";
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
     pub schema_version: u16,
+    #[serde(default)]
+    pub taskbar: TaskbarConfig,
     pub appearance: AppearanceConfig,
     pub layout: LayoutConfig,
     pub behavior: BehaviorConfig,
@@ -22,6 +24,39 @@ pub struct AppConfig {
     pub media: MediaConfig,
     #[serde(default)]
     pub plugins: PluginsConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskbarConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_taskbar_scale")]
+    pub scale: f64,
+    #[serde(default)]
+    pub show_like: bool,
+}
+
+impl Default for TaskbarConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            scale: default_taskbar_scale(),
+            show_like: false,
+        }
+    }
+}
+
+fn default_taskbar_scale() -> f64 {
+    1.0
+}
+
+fn sanitize_taskbar_scale(value: f64) -> f64 {
+    if value.is_finite() {
+        value.clamp(0.75, 1.25)
+    } else {
+        default_taskbar_scale()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -168,6 +203,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             schema_version: 2,
+            taskbar: TaskbarConfig::default(),
             appearance: AppearanceConfig {
                 theme: Theme::LiquidGlassDark,
                 accent_color: "#F76100".to_string(),
@@ -230,11 +266,20 @@ impl ConfigState {
         Ok(config)
     }
 
+    pub fn taskbar_enabled(&self) -> bool {
+        self.config
+            .read()
+            .expect("config lock poisoned")
+            .taskbar
+            .enabled
+    }
+
     pub fn save(&self, config: AppConfig) -> anyhow::Result<AppConfig> {
         let mut normalized = config;
         normalized.schema_version = 2;
         normalized.layout.width = normalized.layout.width.clamp(80, 125);
         normalized.layout.scale = normalized.layout.scale.clamp(70, 120);
+        normalized.taskbar.scale = sanitize_taskbar_scale(normalized.taskbar.scale);
         let path = config_path()?;
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
@@ -260,5 +305,48 @@ fn load_from_disk() -> anyhow::Result<AppConfig> {
     if config.behavior.hover_delay_ms <= 70 {
         config.behavior.hover_delay_ms = 320;
     }
+    config.taskbar.scale = sanitize_taskbar_scale(config.taskbar.scale);
     Ok(config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn older_configs_keep_the_taskbar_player_off() {
+        let mut legacy = serde_json::to_value(AppConfig::default()).unwrap();
+        legacy.as_object_mut().unwrap().remove("taskbar");
+        let loaded: AppConfig = serde_json::from_value(legacy).unwrap();
+        assert!(!loaded.taskbar.enabled);
+        assert_eq!(loaded.taskbar.scale, 1.0);
+        assert!(!loaded.taskbar.show_like);
+        assert_eq!(loaded.media.protocol, MediaProtocol::Smtc);
+    }
+
+    #[test]
+    fn taskbar_preference_round_trips_without_changing_media_consent() {
+        let mut config = AppConfig::default();
+        config.taskbar.enabled = true;
+        config.taskbar.scale = 1.25;
+        config.taskbar.show_like = true;
+        config.media.protocol = MediaProtocol::YandexDirect;
+        config.media.direct_yandex_consent = true;
+        let loaded: AppConfig =
+            serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+        assert!(loaded.taskbar.enabled);
+        assert_eq!(loaded.taskbar.scale, 1.25);
+        assert!(loaded.taskbar.show_like);
+        assert_eq!(loaded.media.protocol, MediaProtocol::YandexDirect);
+        assert!(loaded.media.direct_yandex_consent);
+    }
+
+    #[test]
+    fn taskbar_scale_is_bounded_and_non_finite_values_use_the_default() {
+        assert_eq!(sanitize_taskbar_scale(0.5), 0.75);
+        assert_eq!(sanitize_taskbar_scale(1.1), 1.1);
+        assert_eq!(sanitize_taskbar_scale(1.5), 1.25);
+        assert_eq!(sanitize_taskbar_scale(f64::NAN), 1.0);
+        assert_eq!(sanitize_taskbar_scale(f64::INFINITY), 1.0);
+    }
 }

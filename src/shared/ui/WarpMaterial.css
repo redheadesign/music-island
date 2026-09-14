@@ -1,0 +1,20 @@
+.warp-material {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.warp-material__field {
+  position: absolute;
+  inset: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .warp-material__field { animation: none; }
+}
+
+@media (forced-colors: active) {
+  .warp-material { display: none; }
+}

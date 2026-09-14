@@ -1,30 +1,32 @@
 import {
   AudioLines,
-  Headphones,
-  Mic2,
   SlidersHorizontal,
+  RotateCcw,
   Volume2,
   Waves,
   X,
 } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { AGC_CALLS_RMS, AGC_CONTENT_RMS, dbToLinear, linearToDb } from './levels'
-import { EXPLODE_EFFECTS, sceneLabel } from './presets'
+import { sceneLabel } from './presets'
 import { DarkSelect } from './DarkSelect'
 import { useIslandVoiceApp } from './useIslandVoiceApp'
-import { FOX_CLIP_CATALOG, VoiceFoxMascot, type FoxClipId } from './VoiceFoxMascot'
+import { FOX_CLIP_CATALOG, type FoxClipId } from './VoiceFoxMascot'
 import { VoiceGuidePage } from './VoiceGuidePage'
 import { VoiceLiveMeters } from './VoiceLiveMeters'
+import { VoiceControlCard } from './VoiceControlCard'
 import { GlassSurface } from '../../../shared/ui/GlassSurface'
 import { RangeSlider } from '../../../shared/ui/RangeSlider'
 import { createTranslator } from '../../../shared/i18n/messages'
 import { openExternalUrl } from '../../../app/tauriApi'
 import type { Locale } from '../../../shared/lib/types'
+import './voice-settings.css'
 
 interface VoiceSettingsViewProps {
   locale: Locale
   /** False while Settings is hidden or another tab is active — pause fox / meters. */
   active?: boolean
+  reducedMotion?: boolean
   developerMode?: boolean
   showExperimentalBanner?: boolean
   onDismissExperimentalBanner?: () => void
@@ -36,6 +38,7 @@ const CABLE_SITE = 'https://vb-audio.com/Cable/'
 export function VoiceSettingsView({
   locale,
   active = true,
+  reducedMotion = false,
   developerMode = false,
   showExperimentalBanner = true,
   onDismissExperimentalBanner,
@@ -60,16 +63,6 @@ export function VoiceSettingsView({
       ? 'content'
       : 'custom'
 
-  const meterTarget = app.agcEnabled
-    ? agcChip === 'custom'
-      ? 'custom'
-      : agcChip
-    : 'custom'
-
-  const outputHint = /cable input/i.test(app.outputDevice)
-    ? t.outputHintCable
-    : t.outputHintNeedCable
-
   if (guideOpen) {
     return (
       <VoiceGuidePage
@@ -83,54 +76,21 @@ export function VoiceSettingsView({
 
   return (
     <div className="voice-settings" aria-busy={!app.hydrated}>
-      <section className="voice-control-hero" aria-label={t.start}>
-        <div className="voice-fx-row voice-fx-row--center">
-          {EXPLODE_EFFECTS.map((fx) => (
-            <button
-              key={fx.value}
-              type="button"
-              className={`voice-chip ${app.fxEnabled && app.fxEffect === fx.value ? 'voice-chip--active' : ''}`}
-              disabled={!app.running}
-              onClick={() => void app.toggleFx(fx.value)}
-            >
-              {locale === 'ru' ? fx.labelRu : fx.labelEn}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={[
-              'voice-chip',
-              'voice-chip--monitor',
-              app.monitorEnabled ? 'voice-chip--active' : '',
-            ].filter(Boolean).join(' ')}
-            aria-pressed={app.monitorEnabled}
-            onClick={() => void app.applyMonitor(!app.monitorEnabled)}
-          >
-            <Headphones size={14} aria-hidden />
-            <span>{t.monitor}</span>
-          </button>
-        </div>
-        {app.fxEnabled ? (
-          <label className="settings-control-row voice-fx-intensity">
-            <span><strong>{t.fxIntensity}</strong></span>
-            <div className="range-control">
-              <RangeSlider
-                min={1}
-                max={100}
-                value={app.fxIntensity}
-                disabled={!app.running}
-                onChange={(e) => void app.applyFxIntensity(Number(e.currentTarget.value))}
-              />
-              <output>{app.fxIntensity}%</output>
-            </div>
-          </label>
-        ) : null}
-
-        <VoiceFoxMascot
-          live={app.running}
+      <VoiceControlCard
+        reducedMotion={reducedMotion}
+          locale={locale}
+          running={app.running}
+          busy={app.busy}
+          hydrated={app.hydrated}
           active={active}
           previewClipId={developerMode ? foxPreviewId : null}
-        />
+          monitorEnabled={app.monitorEnabled}
+          activeEffect={app.fxEnabled ? app.fxEffect : null}
+          error={app.error}
+          onToggleProcessing={() => void (app.running ? app.stop() : app.start())}
+          onToggleMonitor={() => void app.applyMonitor(!app.monitorEnabled)}
+          onToggleEffect={(effect) => void app.toggleFx(effect)}
+      >
 
         {developerMode ? (
           <div className="fox-dev-preview" data-tauri-drag-region="false">
@@ -177,16 +137,7 @@ export function VoiceSettingsView({
           </div>
         ) : null}
 
-        <button
-          type="button"
-          className={['voice-control-cta', app.running ? 'voice-control-cta--stop' : 'voice-control-cta--start'].join(' ')}
-          disabled={app.busy || !app.hydrated}
-          onClick={() => void (app.running ? app.stop() : app.start())}
-        >
-          {app.running ? t.stop : t.start}
-        </button>
-        {app.error ? <p className="voice-settings-error">{app.error}</p> : null}
-      </section>
+      </VoiceControlCard>
 
       {showExperimentalBanner ? (
         <div className="voice-experimental-banner" role="status">
@@ -214,27 +165,18 @@ export function VoiceSettingsView({
         </div>
       ) : null}
 
-      <VoiceSection title={t.sectionDevices} icon={<Mic2 size={16} />}>
-        <div className="voice-device-stack">
-          <DeviceSelect icon={<Mic2 size={14} />} label={t.input} value={app.inputDevice} options={app.inputs} onChange={app.setInputDevice} />
-          <DeviceSelect icon={<AudioLines size={14} />} label={t.output} value={app.outputDevice} options={app.outputs} onChange={app.setOutputDevice} />
-        </div>
-        <p className="voice-settings-hint">{outputHint}</p>
-
+      <div className="voice-devices-flow">
         <VoiceLiveMeters
           running={app.running}
           active={active}
-          targetKind={meterTarget}
-          overloadLabel={t.inputOverload}
-          comfortTip={t.meterComfortTip}
-          yellTip={t.meterYellTip}
-          targetTip={
-            locale === 'ru'
-              ? 'Целевой уровень после усиления'
-              : 'Target level after gain'
-          }
+          reducedMotion={reducedMotion}
+          input={{ label: t.input, value: app.inputDevice, options: app.inputs, onChange: app.setInputDevice }}
+          output={{ label: t.output, value: app.outputDevice, options: app.outputs, onChange: app.setOutputDevice }}
+          processingLabel={t.signalProcessing}
+          runningLabel={t.running}
+          stoppedLabel={t.stopped}
         />
-      </VoiceSection>
+      </div>
 
       <VoiceSection
         title={t.sectionNoise}
@@ -270,8 +212,8 @@ export function VoiceSettingsView({
         icon={<Volume2 size={16} />}
         action={(
           <div className="voice-segment-switch" role="group" aria-label={t.gainMode}>
-            <button type="button" className={!app.agcEnabled ? 'is-active' : ''} onClick={() => void app.applyAgcEnabled(false)}>{t.gainManual}</button>
-            <button type="button" className={app.agcEnabled ? 'is-active' : ''} onClick={() => void app.applyAgcEnabled(true)}>{t.gainAuto}</button>
+            <button type="button" className={!app.agcEnabled ? 'is-active' : ''} aria-pressed={!app.agcEnabled} onClick={() => void app.applyAgcEnabled(false)}>{t.gainManual}</button>
+            <button type="button" className={app.agcEnabled ? 'is-active' : ''} aria-pressed={app.agcEnabled} onClick={() => void app.applyAgcEnabled(true)}>{t.gainAuto}</button>
           </div>
         )}
       >
@@ -279,9 +221,9 @@ export function VoiceSettingsView({
           <>
             <p className="voice-settings-hint">{t.gainAutoHint}</p>
             <div className="voice-chip-row">
-              <button type="button" className={`voice-chip ${agcChip === 'calls' ? 'voice-chip--active' : ''}`} onClick={() => void app.applyAgcTarget(AGC_CALLS_RMS)}>{t.gainTargetCalls}</button>
-              <button type="button" className={`voice-chip ${agcChip === 'content' ? 'voice-chip--active' : ''}`} onClick={() => void app.applyAgcTarget(AGC_CONTENT_RMS)}>{t.gainTargetContent}</button>
-              <button type="button" className={`voice-chip ${agcChip === 'custom' ? 'voice-chip--active' : ''}`} onClick={() => { if (agcChip !== 'custom') void app.applyAgcTarget(0.05) }}>{t.gainTargetCustom}</button>
+              <button type="button" className={`voice-chip ${agcChip === 'calls' ? 'voice-chip--active' : ''}`} aria-pressed={agcChip === 'calls'} onClick={() => void app.applyAgcTarget(AGC_CALLS_RMS)}>{t.gainTargetCalls}</button>
+              <button type="button" className={`voice-chip ${agcChip === 'content' ? 'voice-chip--active' : ''}`} aria-pressed={agcChip === 'content'} onClick={() => void app.applyAgcTarget(AGC_CONTENT_RMS)}>{t.gainTargetContent}</button>
+              <button type="button" className={`voice-chip ${agcChip === 'custom' ? 'voice-chip--active' : ''}`} aria-pressed={agcChip === 'custom'} onClick={() => { if (agcChip !== 'custom') void app.applyAgcTarget(0.05) }}>{t.gainTargetCustom}</button>
             </div>
             <label className="settings-control-row">
               <span><strong>{t.agcTarget}</strong></span>
@@ -297,13 +239,19 @@ export function VoiceSettingsView({
             </label>
           </>
         ) : (
-          <label className="settings-control-row">
+          <div className="settings-control-row voice-gain-row">
             <span><strong>{t.micGain}</strong></span>
             <div className="range-control">
-              <RangeSlider min={50} max={400} value={Math.round(app.micGain * 100)} onChange={(e) => void app.applyMicGain(Number(e.currentTarget.value) / 100)} />
+              <RangeSlider aria-label={t.micGain} min={50} max={400} value={Math.round(app.micGain * 100)} onChange={(e) => void app.applyMicGain(Number(e.currentTarget.value) / 100)} />
               <output>{Math.round(app.micGain * 100)}%</output>
+              <button type="button" className="voice-gain-reset"
+                aria-label={t.gainReset} title={t.gainReset}
+                disabled={Math.abs(app.micGain - 1) < 0.0001 || app.busy || !app.hydrated}
+                onClick={() => void app.applyMicGain(1)}>
+                <RotateCcw size={15} aria-hidden />
+              </button>
             </div>
-          </label>
+          </div>
         )}
       </VoiceSection>
 
@@ -325,6 +273,7 @@ export function VoiceSettingsView({
                 key={preset.id}
                 type="button"
                 className={`voice-chip ${app.presetId === preset.id ? 'voice-chip--active' : ''}`}
+                aria-pressed={app.presetId === preset.id}
                 disabled={!app.eqEnabled}
                 onClick={() => void app.applyScene(preset)}
               >
@@ -336,10 +285,14 @@ export function VoiceSettingsView({
             {app.eqBands.map((gain, index) => (
               <label key={index} className="voice-eq-band">
                 <RangeSlider
+                  className="range-slider--vertical"
+                  aria-orientation="vertical"
                   min={-12}
                   max={12}
                   step={0.5}
                   value={gain}
+                  aria-label={`${t.eq}: ${freqs[index] ?? 0} ${locale === 'ru' ? 'Гц' : 'Hz'}`}
+                  aria-valuetext={`${gain > 0 ? '+' : ''}${gain} dB`}
                   disabled={!app.eqEnabled}
                   onChange={(e) => {
                     const next = [...app.eqBands]
@@ -416,34 +369,6 @@ function HeaderSwitch({
     >
       <span className="ui-switch__thumb" aria-hidden="true" />
     </button>
-  )
-}
-
-function DeviceSelect({
-  icon,
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  icon: ReactNode
-  label: string
-  value: string
-  options: string[]
-  onChange: (value: string) => void
-}) {
-  return (
-    <label className="settings-control-row">
-      <span>
-        <strong className="inline-flex">{icon} {label}</strong>
-      </span>
-      <DarkSelect
-        ariaLabel={label}
-        value={value}
-        options={options.map((device) => ({ value: device, label: device }))}
-        onChange={onChange}
-      />
-    </label>
   )
 }
 

@@ -63,8 +63,17 @@ fn candidate_roots(resource_dir: Option<&Path>) -> Vec<PathBuf> {
         roots.push(dir.to_path_buf());
     }
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default();
-    roots.push(PathBuf::from(&manifest_dir).join("resources").join("voice").join("vb-cable"));
-    roots.push(PathBuf::from(&manifest_dir).join("resources").join("vb-cable"));
+    roots.push(
+        PathBuf::from(&manifest_dir)
+            .join("resources")
+            .join("voice")
+            .join("vb-cable"),
+    );
+    roots.push(
+        PathBuf::from(&manifest_dir)
+            .join("resources")
+            .join("vb-cable"),
+    );
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
             roots.push(parent.join("resources").join("voice").join("vb-cable"));

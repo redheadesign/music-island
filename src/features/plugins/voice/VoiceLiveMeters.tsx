@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { LevelMeter, type GainTargetKind } from './LevelMeter'
-import { SpectrumVisualizer } from './SpectrumVisualizer'
 import { voicePluginApi, type AudioStats } from './pluginApi'
+import { VoiceSignalFlow } from './VoiceSignalFlow'
 
 const emptyStats: AudioStats = {
   input_level: -100,
@@ -22,29 +21,40 @@ const emptyStats: AudioStats = {
 export function VoiceLiveMeters({
   running,
   active = true,
-  targetKind,
-  overloadLabel,
-  comfortTip,
-  yellTip,
-  targetTip,
+  reducedMotion = false,
+  input,
+  output,
+  processingLabel,
+  runningLabel,
+  stoppedLabel,
 }: {
   running: boolean
   /** Pause polling when the voice tab / settings window is not visible. */
   active?: boolean
-  targetKind: GainTargetKind
-  overloadLabel: string
-  comfortTip: string
-  yellTip: string
-  targetTip: string
+  reducedMotion?: boolean
+  input: { label: string; value: string; options: string[]; onChange: (value: string) => void }
+  output: { label: string; value: string; options: string[]; onChange: (value: string) => void }
+  processingLabel: string
+  runningLabel: string
+  stoppedLabel: string
 }) {
   const [stats, setStats] = useState<AudioStats>(emptyStats)
-  const [peakHoldDb, setPeakHoldDb] = useState<number | null>(null)
+  const [documentVisible, setDocumentVisible] = useState(
+    () => typeof document === 'undefined' || document.visibilityState === 'visible',
+  )
 
   useEffect(() => {
-    if (!running || !active) {
+    const updateVisibility = () => setDocumentVisible(document.visibilityState === 'visible')
+    document.addEventListener('visibilitychange', updateVisibility)
+    return () => document.removeEventListener('visibilitychange', updateVisibility)
+  }, [])
+
+  const meterActive = running && active && documentVisible
+
+  useEffect(() => {
+    if (!meterActive) {
       if (!running) {
         setStats(emptyStats)
-        setPeakHoldDb(null)
       }
       return
     }
@@ -54,12 +64,6 @@ export function VoiceLiveMeters({
         const next = await voicePluginApi.getAudioStats()
         if (cancelled) return
         setStats(next)
-        if (next.post_gain_peak > -90) {
-          setPeakHoldDb((prev) => {
-            if (prev == null || next.post_gain_peak >= prev) return next.post_gain_peak
-            return Math.max(next.post_gain_peak, prev - 1.5)
-          })
-        }
       } catch {
         /* ignore */
       }
@@ -70,27 +74,19 @@ export function VoiceLiveMeters({
       cancelled = true
       window.clearInterval(id)
     }
-  }, [running, active])
+  }, [running, meterActive])
 
   return (
-    <div className="voice-meters-elevated">
-      <div className="voice-live-meters">
-        <SpectrumVisualizer
-          spectrumIn={stats.spectrum}
-          spectrumOut={stats.spectrum_out}
-          active={running && active}
-        />
-        <LevelMeter
-          stats={stats}
-          running={running && active}
-          overloadLabel={overloadLabel}
-          comfortTip={comfortTip}
-          yellTip={yellTip}
-          targetTip={targetTip}
-          targetKind={targetKind}
-          peakHoldDb={peakHoldDb}
-        />
-      </div>
-    </div>
+    <VoiceSignalFlow
+      input={input}
+      output={output}
+      processingLabel={processingLabel}
+      runningLabel={runningLabel}
+      stoppedLabel={stoppedLabel}
+      running={running}
+      meterActive={meterActive}
+      reducedMotion={reducedMotion}
+      stats={stats}
+    />
   )
 }

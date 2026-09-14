@@ -1,8 +1,18 @@
-import { ChevronDown } from 'lucide-react'
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { Check, ChevronDown } from 'lucide-react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
+import './DarkSelect.css'
 
 type Option = { value: string; label: string }
+
+const PORTAL_THEME_PROPERTIES = [
+  '--border-strong',
+  '--fg-primary',
+  '--fg-secondary',
+  '--surface-glass',
+  '--surface-hover',
+  '--surface-raised',
+] as const
 
 export function DarkSelect({
   value,
@@ -22,24 +32,122 @@ export function DarkSelect({
   const id = useId()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const focusOnOpen = useRef(0)
   const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 })
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, maxHeight: 280 })
+  const [portalTheme, setPortalTheme] = useState<CSSProperties>({})
 
   const selected = options.find((o) => o.value === value)
   const label = selected?.label || placeholder
 
+  const openMenu = (edge?: 'first' | 'last') => {
+    const selectedIndex = options.findIndex((option) => option.value === value)
+    focusOnOpen.current = edge === 'first'
+      ? 0
+      : edge === 'last'
+        ? options.length - 1
+        : Math.max(0, selectedIndex)
+    setOpen(true)
+  }
+
+  const closeMenu = (restoreFocus = false) => {
+    if (restoreFocus) buttonRef.current?.focus({ preventScroll: true })
+    setOpen(false)
+  }
+
+  const handleMenuKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      closeMenu(true)
+      return
+    }
+    if (event.key === 'Tab') {
+      const trigger = buttonRef.current
+      const destination = trigger ? adjacentTabStop(trigger, menuRef.current, event.shiftKey) : undefined
+      if (destination) {
+        // Unmounting a focused portal can reset the browser's tab starting
+        // point. Resolve the form's next stop before closing the menu.
+        event.preventDefault()
+        closeMenu()
+        destination.focus()
+      } else {
+        // At the document boundary, let the browser move to its own chrome.
+        closeMenu(true)
+      }
+      return
+    }
+    const currentIndex = Math.max(0, optionRefs.current.findIndex((option) => option === event.target))
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? options.length - 1
+        : event.key === 'ArrowDown'
+          ? Math.min(options.length - 1, currentIndex + 1)
+          : event.key === 'ArrowUp'
+            ? Math.max(0, currentIndex - 1)
+            : null
+    if (nextIndex == null) return
+    event.preventDefault()
+    optionRefs.current[nextIndex]?.focus({ preventScroll: true })
+    optionRefs.current[nextIndex]?.scrollIntoView({ block: 'nearest' })
+  }
+
   useLayoutEffect(() => {
     if (!open || !buttonRef.current) return
-    const r = buttonRef.current.getBoundingClientRect()
-    const width = Math.max(r.width, 240)
-    const left = Math.min(r.left, window.innerWidth - width - 12)
-    let top = r.bottom + 6
-    const estimated = Math.min(options.length * 40 + 12, 280)
-    if (top + estimated > window.innerHeight - 12) {
-      top = Math.max(12, r.top - estimated - 6)
+    const placeMenu = () => {
+      if (!buttonRef.current) return
+      const r = buttonRef.current.getBoundingClientRect()
+      const viewportWidth = document.documentElement.clientWidth
+      const viewportHeight = window.innerHeight
+      const inset = 12
+      const gap = 6
+      const width = Math.min(Math.max(r.width, 240), Math.max(1, viewportWidth - inset * 2))
+      const left = Math.max(inset, Math.min(r.left, viewportWidth - width - inset))
+      const desiredHeight = Math.min(menuRef.current?.scrollHeight || 52, 280)
+      const below = Math.max(0, viewportHeight - r.bottom - gap - inset)
+      const above = Math.max(0, r.top - gap - inset)
+      const openBelow = below >= desiredHeight || below >= above
+      const maxHeight = Math.max(1, Math.min(280, openBelow ? below : above, viewportHeight - inset * 2))
+      const height = Math.min(desiredHeight, maxHeight)
+      const anchorTop = openBelow ? r.bottom + gap : r.top - gap - height
+      const top = Math.max(inset, Math.min(anchorTop, viewportHeight - height - inset))
+      setPos((previous) => previous.top === top && previous.left === left && previous.width === width && previous.maxHeight === maxHeight
+        ? previous
+        : { top, left, width, maxHeight })
     }
-    setPos({ top, left, width })
+    placeMenu()
+    const observer = new ResizeObserver(placeMenu)
+    observer.observe(buttonRef.current)
+    if (menuRef.current) observer.observe(menuRef.current)
+    window.addEventListener('resize', placeMenu)
+    window.addEventListener('scroll', placeMenu, true)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', placeMenu)
+      window.removeEventListener('scroll', placeMenu, true)
+    }
   }, [open, options.length])
+
+  useLayoutEffect(() => {
+    if (!open || !buttonRef.current) return
+    const trigger = buttonRef.current
+    const syncPortalTheme = () => setPortalTheme(readPortalTheme(trigger))
+    syncPortalTheme()
+
+    const settingsRoot = trigger.closest('.settings-window-root')
+    if (!settingsRoot) return
+    const observer = new MutationObserver(syncPortalTheme)
+    observer.observe(settingsRoot, { attributes: true, attributeFilter: ['data-color-scheme'] })
+    return () => observer.disconnect()
+  }, [open])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    optionRefs.current[focusOnOpen.current]?.focus({ preventScroll: true })
+    optionRefs.current[focusOnOpen.current]?.scrollIntoView({ block: 'nearest' })
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -48,14 +156,9 @@ export function DarkSelect({
       if (buttonRef.current?.contains(t) || menuRef.current?.contains(t)) return
       setOpen(false)
     }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
     document.addEventListener('mousedown', onPointer)
-    document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('mousedown', onPointer)
-      document.removeEventListener('keydown', onKey)
     }
   }, [open])
 
@@ -68,32 +171,50 @@ export function DarkSelect({
         className={['dark-select', open ? 'dark-select--open' : ''].filter(Boolean).join(' ')}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={open ? `${id}-menu` : undefined}
         aria-label={ariaLabel}
+        aria-describedby={ariaLabel ? `${id}-value` : undefined}
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => open ? closeMenu() : openMenu()}
+        onKeyDown={(event) => {
+          if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault()
+            openMenu(event.key === 'Home' ? 'first' : event.key === 'End' ? 'last' : undefined)
+          } else if (event.key === 'Escape' && open) {
+            event.preventDefault()
+            event.stopPropagation()
+            closeMenu(true)
+          } else if (event.key === 'Tab' && open) {
+            closeMenu()
+          }
+        }}
       >
-        <span className="dark-select__label" title={label}>{label}</span>
+        <span id={`${id}-value`} className="dark-select__label" title={label}>{label}</span>
         <ChevronDown size={14} className="dark-select__chevron" aria-hidden />
       </button>
       {open
         ? createPortal(
             <div
               ref={menuRef}
+              id={`${id}-menu`}
               className="dark-select-menu"
               role="listbox"
               aria-labelledby={id}
-              style={{ top: pos.top, left: pos.left, width: pos.width }}
+              style={{ ...portalTheme, ...pos }}
+              onKeyDown={handleMenuKey}
             >
               {options.length === 0 ? (
-                <div className="dark-select-option dark-select-option--empty">{placeholder}</div>
+                <div className="dark-select-option dark-select-option--empty" role="option" aria-disabled="true">{placeholder}</div>
               ) : (
-                options.map((option) => {
+                options.map((option, index) => {
                   const active = option.value === value
                   return (
                     <button
                       key={option.value}
+                      ref={(element) => { optionRefs.current[index] = element }}
                       type="button"
                       role="option"
+                      tabIndex={-1}
                       aria-selected={active}
                       className={[
                         'dark-select-option',
@@ -101,10 +222,11 @@ export function DarkSelect({
                       ].filter(Boolean).join(' ')}
                       onClick={() => {
                         onChange(option.value)
-                        setOpen(false)
+                        closeMenu(true)
                       }}
                     >
-                      {option.label}
+                      <span>{option.label}</span>
+                      {active ? <Check size={14} className="dark-select-option__check" aria-hidden /> : null}
                     </button>
                   )
                 })
@@ -115,4 +237,30 @@ export function DarkSelect({
         : null}
     </>
   )
+}
+
+function readPortalTheme(trigger: HTMLElement) {
+  const computed = getComputedStyle(trigger)
+  const theme = { colorScheme: computed.colorScheme } as CSSProperties & Record<string, string>
+  for (const property of PORTAL_THEME_PROPERTIES) {
+    theme[property] = computed.getPropertyValue(property)
+  }
+  return theme
+}
+
+function adjacentTabStop(trigger: HTMLElement, menu: HTMLElement | null, backwards: boolean) {
+  const selector = 'a[href], area[href], button, input, select, textarea, iframe, summary, [tabindex], [contenteditable="true"], audio[controls], video[controls]'
+  const candidates = Array.from(trigger.ownerDocument.querySelectorAll<HTMLElement>(selector))
+    .filter((element) => {
+      if (element.tabIndex < 0 || menu?.contains(element)) return false
+      if (element.matches(':disabled, [aria-disabled="true"]')) return false
+      if (element.closest('[hidden], [inert], [aria-hidden="true"]')) return false
+      if (!element.getClientRects().length) return false
+      const visibility = getComputedStyle(element).visibility
+      return visibility !== 'hidden' && visibility !== 'collapse'
+    })
+    // Positive tabindex entries precede the natural document order.
+    .sort((a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity))
+  const triggerIndex = candidates.indexOf(trigger)
+  return triggerIndex < 0 ? undefined : candidates[triggerIndex + (backwards ? -1 : 1)]
 }

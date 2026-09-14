@@ -5,7 +5,6 @@
 ///
 /// 输出始终是 **mono f32 @ 48 kHz, 480-sample frames**。
 /// 如果设备 mix format 不同，内联做 downmix + 线性重采样。
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -15,8 +14,8 @@ use windows::Win32::Media::Audio::*;
 use windows::Win32::System::Com::*;
 use windows::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
 
-use crate::voice::mmcss::ProAudio;
 use crate::voice::debug::debug_log;
+use crate::voice::mmcss::ProAudio;
 
 /// 每帧样本数（10ms @ 48kHz = 480）
 pub const FRAME_SAMPLES: usize = 480;
@@ -62,9 +61,14 @@ impl WasapiCapture {
             .map_err(|e| format!("spawn capture thread: {}", e))?;
 
         // 等待线程初始化完成，同步获取错误
-        ready_rx.recv().map_err(|_| "capture thread died".to_string())??;
+        ready_rx
+            .recv()
+            .map_err(|_| "capture thread died".to_string())??;
 
-        Ok(Self { stop, thread: Some(thread) })
+        Ok(Self {
+            stop,
+            thread: Some(thread),
+        })
     }
 }
 
@@ -87,16 +91,19 @@ fn capture_loop(
         // COM MTA init（线程局部）
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
 
-        let enumerator: IMMDeviceEnumerator = CoCreateInstance(&CLSID_MMDeviceEnumerator, None, CLSCTX_ALL)
-            .map_err(|e| format!("CoCreateInstance(MMDeviceEnumerator): {}", e))?;
+        let enumerator: IMMDeviceEnumerator =
+            CoCreateInstance(&CLSID_MMDeviceEnumerator, None, CLSCTX_ALL)
+                .map_err(|e| format!("CoCreateInstance(MMDeviceEnumerator): {}", e))?;
 
         let device = find_device(&enumerator, device_id)?;
 
-        let client: IAudioClient3 = device.Activate(CLSCTX_ALL, None)
+        let client: IAudioClient3 = device
+            .Activate(CLSCTX_ALL, None)
             .map_err(|e| format!("IMMDevice::Activate: {}", e))?;
 
         // GetMixFormat 返回 CoTaskMem 分配的 WAVEFORMATEX，可能是 WAVEFORMATEXTENSIBLE
-        let mix_ptr = client.GetMixFormat()
+        let mix_ptr = client
+            .GetMixFormat()
             .map_err(|e| format!("GetMixFormat: {}", e))?;
 
         let device_rate = (*mix_ptr).nSamplesPerSec;
@@ -116,7 +123,8 @@ fn capture_loop(
             let sub = ext.SubFormat;
             if sub == windows::core::GUID::from_u128(0x00000003_0000_0010_8000_00AA00389B71) {
                 "EXT-IEEE_FLOAT".to_string()
-            } else if sub == windows::core::GUID::from_u128(0x00000001_0000_0010_8000_00AA00389B71) {
+            } else if sub == windows::core::GUID::from_u128(0x00000001_0000_0010_8000_00AA00389B71)
+            {
                 "EXT-PCM".to_string()
             } else {
                 format!("EXT-{:?}", sub)
@@ -131,35 +139,49 @@ fn capture_loop(
 
         log::info!(
             "capture: device_rate={} channels={} bits={} convert={}",
-            device_rate, device_channels, device_bits, needs_convert
+            device_rate,
+            device_channels,
+            device_bits,
+            needs_convert
         );
 
         // Initialize shared mode with event callback
         let init_res = client.Initialize(
             AUDCLNT_SHAREMODE_SHARED,
             AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
-            0, 0, mix_ptr, None,
+            0,
+            0,
+            mix_ptr,
+            None,
         );
         CoTaskMemFree(Some(mix_ptr as _));
         init_res.map_err(|e| format!("IAudioClient::Initialize: {}", e))?;
 
         let event = CreateEventW(None, false, false, PCWSTR::null())
             .map_err(|e| format!("CreateEventW: {}", e))?;
-        client.SetEventHandle(event)
+        client
+            .SetEventHandle(event)
             .map_err(|e| format!("SetEventHandle: {}", e))?;
 
-        let cap_client: IAudioCaptureClient = client.GetService()
+        let cap_client: IAudioCaptureClient = client
+            .GetService()
             .map_err(|e| format!("GetService(IAudioCaptureClient): {}", e))?;
 
         // MMCSS Pro Audio 调度
         let _mmcss = ProAudio::set_for_current_thread();
 
-        client.Start().map_err(|e| format!("IAudioClient::Start: {}", e))?;
+        client
+            .Start()
+            .map_err(|e| format!("IAudioClient::Start: {}", e))?;
         let _ = ready_tx.send(Ok(()));
 
         let mut accumulator = FrameAccumulator::new();
         let mut converter = if needs_convert {
-            Some(InlineConverter::new(device_rate, device_channels, SAMPLE_RATE))
+            Some(InlineConverter::new(
+                device_rate,
+                device_channels,
+                SAMPLE_RATE,
+            ))
         } else {
             None
         };
@@ -190,7 +212,13 @@ fn capture_loop(
                 let mut buffer_ptr: *mut u8 = std::ptr::null_mut();
                 let mut frames_avail: u32 = 0;
                 let mut flags: u32 = 0;
-                let r = cap_client.GetBuffer(&mut buffer_ptr, &mut frames_avail, &mut flags, None, None);
+                let r = cap_client.GetBuffer(
+                    &mut buffer_ptr,
+                    &mut frames_avail,
+                    &mut flags,
+                    None,
+                    None,
+                );
                 if let Err(e) = r {
                     if e.code() == windows::Win32::Media::Audio::AUDCLNT_S_BUFFER_EMPTY {
                         break;
@@ -207,7 +235,12 @@ fn capture_loop(
                     got_first_buffer = true;
                 }
 
-                if flags & (AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 | AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0 | AUDCLNT_BUFFERFLAGS_SILENT.0) as u32 != 0 {
+                if flags
+                    & (AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0
+                        | AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0
+                        | AUDCLNT_BUFFERFLAGS_SILENT.0) as u32
+                    != 0
+                {
                     sink.on_glitch(flags);
                 }
 
@@ -221,7 +254,8 @@ fn capture_loop(
 
                 accumulator.feed(mono_48k, |frame| sink.on_frame(frame));
 
-                cap_client.ReleaseBuffer(frames_avail)
+                cap_client
+                    .ReleaseBuffer(frames_avail)
                     .map_err(|e| format!("ReleaseBuffer: {}", e))?;
             }
         }
@@ -250,14 +284,21 @@ fn find_device(enumerator: &IMMDeviceEnumerator, id: &str) -> Result<IMMDevice, 
             }
             Err(_) => {
                 // GetDevice 失败（传入的是友好名称），枚举设备按友好名称匹配
-                debug_log(&format!("CAPTURE_DEVICE: GetDevice failed for '{}', enumerating...", id));
-                let collection = enumerator.EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE)
+                debug_log(&format!(
+                    "CAPTURE_DEVICE: GetDevice failed for '{}', enumerating...",
+                    id
+                ));
+                let collection = enumerator
+                    .EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE)
                     .map_err(|e| format!("EnumAudioEndpoints: {}", e))?;
-                let count = collection.GetCount()
+                let count = collection
+                    .GetCount()
                     .map_err(|e| format!("GetCount: {}", e))?;
                 for i in 0..count {
                     if let Ok(dev) = collection.Item(i) {
-                        if let Ok(props) = dev.OpenPropertyStore(windows::Win32::System::Com::STGM_READ) {
+                        if let Ok(props) =
+                            dev.OpenPropertyStore(windows::Win32::System::Com::STGM_READ)
+                        {
                             if let Ok(name_var) = props.GetValue(&windows::Win32::Devices::FunctionDiscovery::PKEY_Device_FriendlyName) {
                                 let name = name_var.to_string();
                                 if name == id {
@@ -268,8 +309,12 @@ fn find_device(enumerator: &IMMDeviceEnumerator, id: &str) -> Result<IMMDevice, 
                         }
                     }
                 }
-                debug_log(&format!("CAPTURE_DEVICE: '{}' not found in enum, using default", id));
-                enumerator.GetDefaultAudioEndpoint(eCapture, eCommunications)
+                debug_log(&format!(
+                    "CAPTURE_DEVICE: '{}' not found in enum, using default",
+                    id
+                ));
+                enumerator
+                    .GetDefaultAudioEndpoint(eCapture, eCommunications)
                     .map_err(|e| format!("GetDefaultAudioEndpoint fallback: {}", e))
             }
         }
@@ -283,7 +328,9 @@ struct FrameAccumulator {
 
 impl FrameAccumulator {
     fn new() -> Self {
-        Self { buf: Vec::with_capacity(FRAME_SAMPLES * 2) }
+        Self {
+            buf: Vec::with_capacity(FRAME_SAMPLES * 2),
+        }
     }
 
     fn feed(&mut self, samples: &[f32], mut emit: impl FnMut(&Frame)) {
@@ -316,8 +363,11 @@ struct InlineConverter {
 impl InlineConverter {
     fn new(src_rate: u32, src_channels: usize, dst_rate: u32) -> Self {
         Self {
-            src_rate, src_channels, dst_rate,
-            last_sample: 0.0, phase: 0.0,
+            src_rate,
+            src_channels,
+            dst_rate,
+            last_sample: 0.0,
+            phase: 0.0,
             out: Vec::with_capacity(2048),
         }
     }
@@ -351,9 +401,14 @@ impl InlineConverter {
         while self.phase < total_src {
             let idx = self.phase as usize;
             let frac = self.phase - idx as f64;
-            let a = if idx == 0 { self.last_sample } else { mono[idx - 1] };
+            let a = if idx == 0 {
+                self.last_sample
+            } else {
+                mono[idx - 1]
+            };
             let b = mono.get(idx).copied().unwrap_or(self.last_sample);
-            self.out.push((a as f64 + (b as f64 - a as f64) * frac) as f32);
+            self.out
+                .push((a as f64 + (b as f64 - a as f64) * frac) as f32);
             self.phase += ratio;
         }
         self.phase -= total_src;

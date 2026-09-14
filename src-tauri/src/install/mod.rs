@@ -68,7 +68,10 @@ fn normalize_path(path: &Path) -> String {
 }
 
 fn normalize_version(raw: &str) -> String {
-    raw.trim().trim_start_matches('v').trim_start_matches('V').to_string()
+    raw.trim()
+        .trim_start_matches('v')
+        .trim_start_matches('V')
+        .to_string()
 }
 
 fn parse_semver(raw: &str) -> Option<(u64, u64, u64)> {
@@ -152,10 +155,7 @@ fn run_key_exe_path() -> Option<PathBuf> {
         use winreg::RegKey;
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let run = hkcu
-            .open_subkey_with_flags(
-                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
-                KEY_READ,
-            )
+            .open_subkey_with_flags(r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", KEY_READ)
             .ok()?;
         let value: String = run.get_value("Music Island").ok()?;
         parse_command_exe(&value)
@@ -220,9 +220,7 @@ pub fn reconcile(current_version: &str) -> ReconcileResult {
     let Ok(current_exe) = std::env::current_exe() else {
         return ReconcileResult::Continue;
     };
-    let current_exe = current_exe
-        .canonicalize()
-        .unwrap_or(current_exe);
+    let current_exe = current_exe.canonicalize().unwrap_or(current_exe);
     let current_version = normalize_version(current_version);
 
     let mut candidates: Vec<(PathBuf, String)> = Vec::new();

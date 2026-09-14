@@ -1,0 +1,32 @@
+.release-scene { width:1080px; height:1350px; position:relative; overflow:hidden; display:flex; flex-direction:column; padding:100px 80px 70px; color:#f1f0ed; background:#101113; font-family:var(--font-sans); -webkit-font-smoothing:antialiased; }
+.release-heading { flex-shrink:0; }
+.release-heading h1 { margin:0; font-size:78px; line-height:1.07; letter-spacing:-.055em; font-weight:650; }
+.release-description { max-width:810px; margin:28px 0 0; font-size:29px; line-height:1.46; letter-spacing:-.018em; color:#a7a8ac; }
+.release-visual { flex:1; min-height:0; width:100%; display:grid; place-items:center; position:relative; }
+.release-ui { width:760px; zoom:1.18; background:transparent; }
+.release-ui--editor .island-layout-editor__header { display:none; }
+.release-ui--editor .island-layout-editor { gap:20px; }
+.release-ui--editor .island-preview { min-height:290px; }
+.release-ui--taskbar { padding:28px; background:#18191c; border:1px solid #ffffff10; border-radius:28px; }
+.release-ui--taskbar .taskbar-preview { height:220px; }
+.release-ui--taskbar .taskbar-editor-controls { zoom:2; }
+.release-ui--voice { display:grid; gap:28px; }
+.release-quota-stage { position:relative; isolation:isolate; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:60px; width:900px; height:530px; border-radius:32px; overflow:hidden; background:#171412; }
+.release-quota-compact { position:relative; zoom:2.9; }
+.release-quota-details { position:relative; zoom:1.65; }
+.release-quota-details .usage-chip--expanded { display:flex; width:auto; gap:16px; }
+.release-quota-details .usage-chip__provider { width:160px; }
+.release-settings-pair { position:relative; width:920px; height:580px; }
+.release-settings-window { position:absolute; width:860px; height:620px; overflow:hidden; zoom:.77; left:0; top:0; border:1px solid #ffffff13; border-radius:22px; box-shadow:0 24px 64px #0003; }
+.release-settings-window--light { left:326px; top:132px; height:570px; }
+.release-source-logos { position:absolute; left:28px; bottom:16px; display:flex; align-items:center; gap:22px; }
+.release-scene--readme { width:1440px; height:900px; padding:65px 80px 35px; }
+.release-scene--readme .release-heading h1 { font-size:60px; }
+.release-scene--readme .release-description { font-size:25px; max-width:1200px; margin-top:20px; }
+.release-scene--readme .release-ui { zoom:1.35; }
+.release-scene--readme .release-quota-stage { width:1080px; height:510px; }
+.release-scene--readme .release-settings-pair { transform:scale(1.05); transform-origin:center; }
+/* Showcase wrappers are sized to content; production window roots fill a screen. */
+.release-ui.settings-window-root { height:auto; min-height:0; overflow:visible; }
+.release-settings-window.settings-window-root { min-height:0; }
+.release-export { position:fixed; right:16px; bottom:16px; display:flex; gap:12px; padding:10px 14px; border:1px solid #ffffff20; border-radius:12px; background:#202125; color:#eee; font:13px var(--font-sans); z-index:9999; } .release-export button { color:inherit; border:0; padding:0; background:none; cursor:pointer; } .release-export a { color:inherit; }

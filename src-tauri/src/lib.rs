@@ -7,6 +7,7 @@ mod media;
 mod plugins;
 mod tray;
 mod updater;
+mod usage;
 mod voice;
 mod window;
 mod yandex;
@@ -18,6 +19,11 @@ use tauri::{Emitter, Manager, State};
 #[tauri::command]
 async fn get_config(state: State<'_, ConfigState>) -> Result<AppConfig, String> {
     state.load().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn get_taskbar_status() -> window::taskbar::TaskbarStatus {
+    window::taskbar::status()
 }
 
 #[tauri::command]
@@ -36,6 +42,7 @@ async fn save_config(
             config::MediaProtocol::YandexDirect => media::MediaProvider::YandexDirect,
         },
     );
+    usage::sync_config(&app, app.state::<usage::UsageState>().inner(), &saved);
     let _ = app.emit("config:changed", saved.clone());
     Ok(saved)
 }
@@ -155,9 +162,7 @@ async fn replay_intro_window(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn get_install_handoff(
-    state: State<'_, install::InstallState>,
-) -> Option<install::NewerHandoff> {
+fn get_install_handoff(state: State<'_, install::InstallState>) -> Option<install::NewerHandoff> {
     state
         .newer_handoff
         .lock()
@@ -273,10 +278,12 @@ pub fn run() {
             Some(vec!["--startup"]),
         ))
         .manage(ConfigState::new())
+        .manage(usage::UsageState::default())
         .manage(voice::VoiceEngineState::new())
         .manage(install::InstallState::default())
         .invoke_handler(tauri::generate_handler![
             get_config,
+            get_taskbar_status,
             save_config,
             preview_config,
             get_media_snapshot,
@@ -300,6 +307,10 @@ pub fn run() {
             copy_diagnostics,
             check_for_updates,
             download_and_install_update,
+            usage::usage_get_snapshot,
+            usage::usage_connect,
+            usage::usage_disconnect,
+            usage::usage_refresh,
             plugins::list_plugins,
             plugins::set_plugin_enabled,
             plugins::plugin_invoke,
@@ -345,9 +356,9 @@ pub fn run() {
             }
             match window::setup_already_running_window(&handle) {
                 Ok(()) => logging::append_event("already-running window setup ok"),
-                Err(error) => logging::append_event(&format!(
-                    "already-running window setup failed: {error}"
-                )),
+                Err(error) => {
+                    logging::append_event(&format!("already-running window setup failed: {error}"))
+                }
             }
             if defer_newer {
                 logging::append_event("install: deferring to newer build; showing handoff notice");
@@ -366,6 +377,7 @@ pub fn run() {
                 Err(error) => logging::append_event(&format!("tray setup failed: {error}")),
             }
             if let Ok(config) = app.state::<ConfigState>().load() {
+                usage::sync_config(&handle, app.state::<usage::UsageState>().inner(), &config);
                 emit_autostart_sync(&handle, config.behavior.launch_at_startup);
                 media::set_preferred_source(config.media.preferred_source_app_id.clone());
                 media::set_active_provider(match config.media.protocol {
@@ -401,6 +413,7 @@ pub fn run() {
             }
             media::start_watcher(handle.clone());
             window::start_gesture_watcher(app.handle().clone());
+            window::taskbar::start(app.handle().clone());
             plugins::bootstrap(&handle);
             logging::append_event("media watcher started");
             Ok(())

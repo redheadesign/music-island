@@ -87,25 +87,16 @@
   gap: 7px;
   border-radius: 999px;
   color: var(--accent, #f76100);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035)),
-    radial-gradient(circle at 18% 0%, rgba(var(--artwork-primary), 0.42), transparent 42%),
-    linear-gradient(180deg, rgba(var(--artwork-primary), 0.28), rgba(var(--artwork-secondary), 0.24)),
-    rgba(10, 12, 18, 0.84);
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.35),
-    inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(18px) saturate(125%);
+  box-shadow: none;
   transform: translateX(-50%);
   pointer-events: auto;
-  transition: background 700ms ease;
 }
 
 .wave-selection-chip > span {
   max-width: 240px;
   overflow: hidden;
   font-size: 12px;
-  font-weight: 720;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -118,22 +109,21 @@
   place-items: center;
   border: 0;
   border-radius: 50%;
-  color: rgba(255, 255, 255, 0.62);
-  background: var(--accent, #f76100);
+  color: var(--accent, #f76100);
+  background: transparent;
   cursor: pointer;
 }
 
-.wave-selection-chip button:hover {
-  color: rgba(255, 255, 255, 0.88);
+.wave-selection-chip button:hover:not(:disabled) {
   filter: brightness(1.06);
 }
 
 .wave-selection-chip svg {
-  width: 13px;
-  height: 13px;
-  stroke-width: 2.5;
-  opacity: 0.9;
+  width: 22px;
+  height: 22px;
 }
+
+.wave-selection-chip button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 
 .wave-selection-chip button:disabled {
   opacity: 0.42;

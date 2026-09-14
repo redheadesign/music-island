@@ -18,7 +18,9 @@ use tokio::sync::Mutex as AsyncMutex;
 use tokio::time::{sleep, timeout};
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 
-use crate::media::{health, MediaCommand, MediaProvider, MediaSnapshot, PlaybackStatus};
+use crate::media::{
+    health, MediaCommand, MediaProvider, MediaSnapshot, PlaybackStatus, RepeatMode,
+};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const RPC_TIMEOUT: Duration = Duration::from_secs(3);
@@ -248,8 +250,9 @@ pub async fn try_soft_recover() -> Option<DirectYandexStatus> {
         {
             set_status(DirectYandexStatus {
                 state: DirectYandexState::RestartRequired,
-                message: "Direct endpoint is not running. Use Quick reload or reconnect in Settings."
-                    .into(),
+                message:
+                    "Direct endpoint is not running. Use Quick reload or reconnect in Settings."
+                        .into(),
                 port: current.port,
                 executable_path: current
                     .executable_path
@@ -483,11 +486,17 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
             .read()
             .expect("Yandex metadata lock poisoned")
             .clone();
-        let same_track_id = match (&track_id, previous.as_ref().and_then(|item| item.track_id.as_ref())) {
+        let same_track_id = match (
+            &track_id,
+            previous.as_ref().and_then(|item| item.track_id.as_ref()),
+        ) {
             (Some(current), Some(prior)) => current == prior,
             _ => false,
         };
-        let same_title = match (&title, previous.as_ref().and_then(|item| item.title.as_ref())) {
+        let same_title = match (
+            &title,
+            previous.as_ref().and_then(|item| item.title.as_ref()),
+        ) {
             (Some(current), Some(prior)) => current == prior,
             _ => false,
         };
@@ -551,6 +560,25 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
             .get("disliked")
             .and_then(Value::as_bool)
             .unwrap_or(false),
+        can_shuffle: controls_ready
+            && value
+                .get("canShuffle")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        is_shuffle_active: value
+            .get("shuffleActive")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        can_repeat: controls_ready
+            && value
+                .get("canRepeat")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        repeat_mode: match value.get("repeatMode").and_then(Value::as_str) {
+            Some("one") => RepeatMode::One,
+            Some("all") => RepeatMode::All,
+            _ => RepeatMode::Off,
+        },
         active_wave_id: validated_dom_id(string_field(&value, "activeWaveId")),
         active_wave_title: string_field(&value, "activeWaveTitle"),
         thumbnail_data_url: cover,
@@ -573,11 +601,29 @@ pub async fn send_command(command: MediaCommand) -> anyhow::Result<()> {
             | MediaCommand::Stop
             | MediaCommand::Like
             | MediaCommand::Dislike
+            | MediaCommand::ToggleShuffle
+            | MediaCommand::CycleRepeat
     ) {
         Some(evaluate(port, STATE_EXPRESSION).await?)
     } else {
         None
     };
+    if let Some(state) = before.as_ref() {
+        let supported = match &command {
+            MediaCommand::ToggleShuffle => state
+                .get("canShuffle")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            MediaCommand::CycleRepeat => state
+                .get("canRepeat")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            _ => true,
+        };
+        if !supported {
+            anyhow::bail!("Yandex Music does not expose this control");
+        }
+    }
     let expression = match &command {
         MediaCommand::Play => playback_click_expression("PLAY_BUTTON"),
         MediaCommand::Pause | MediaCommand::Stop => playback_click_expression("PAUSE_BUTTON"),
@@ -586,6 +632,12 @@ pub async fn send_command(command: MediaCommand) -> anyhow::Result<()> {
         MediaCommand::Previous => click_expression(&["PREVIOUS_TRACK_BUTTON"]),
         MediaCommand::Like => click_expression(&["LIKE_BUTTON"]),
         MediaCommand::Dislike => click_expression(&["DISLIKE_BUTTON"]),
+        MediaCommand::ToggleShuffle => click_expression(&["SHUFFLE_BUTTON_ON", "SHUFFLE_BUTTON"]),
+        MediaCommand::CycleRepeat => click_expression(&[
+            "REPEAT_BUTTON_NO_REPEAT",
+            "REPEAT_BUTTON_REPEAT_CONTEXT",
+            "REPEAT_BUTTON_REPEAT_ONE",
+        ]),
         MediaCommand::Seek { position_ms } => seek_expression(*position_ms),
     };
     let result = evaluate(port, &expression).await?;
@@ -677,6 +729,14 @@ async fn confirm_command(port: u16, command: &MediaCommand, before: &Value) -> a
             after.get("disliked").and_then(Value::as_bool)
                 != before.get("disliked").and_then(Value::as_bool)
         }
+        MediaCommand::ToggleShuffle => {
+            after.get("shuffleActive").and_then(Value::as_bool)
+                != before.get("shuffleActive").and_then(Value::as_bool)
+        }
+        MediaCommand::CycleRepeat => {
+            after.get("repeatMode").and_then(Value::as_str)
+                != before.get("repeatMode").and_then(Value::as_str)
+        }
         _ => true,
     };
     for _ in 0..4 {
@@ -713,7 +773,12 @@ fn collapse_repeated_title(title: String) -> Option<String> {
             continue;
         }
         let chunk: String = chars[..chunk_len].iter().collect();
-        if chunk.chars().cycle().take(chars.len()).eq(chars.iter().copied()) {
+        if chunk
+            .chars()
+            .cycle()
+            .take(chars.len())
+            .eq(chars.iter().copied())
+        {
             let collapsed = chunk.trim();
             if !collapsed.is_empty() {
                 return Some(collapsed.to_string());
@@ -870,7 +935,7 @@ fn log_capabilities_once(value: &Value) {
         return;
     }
     crate::logging::append_event(&format!(
-        "direct Yandex capabilities: next={}, previous={}, seek={}, like={}, dislike={}",
+        "direct Yandex capabilities: next={}, previous={}, seek={}, like={}, dislike={}, shuffle={}, repeat={}",
         value
             .get("canNext")
             .and_then(Value::as_bool)
@@ -886,6 +951,14 @@ fn log_capabilities_once(value: &Value) {
             .unwrap_or(false),
         value
             .get("canDislike")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        value
+            .get("canShuffle")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        value
+            .get("canRepeat")
             .and_then(Value::as_bool)
             .unwrap_or(false),
     ));
@@ -1105,6 +1178,15 @@ const STATE_EXPRESSION: &str = r#"
   );
   const like=pq("[data-test-id='LIKE_BUTTON']","button[aria-label*='рав'],button[aria-label*='ike']");
   const dislike=pq("[data-test-id='DISLIKE_BUTTON']","button[aria-label*='е нрав'],button[aria-label*='islike']");
+  const shuffleOn=pq("[data-test-id='SHUFFLE_BUTTON_ON']");
+  const shuffle=shuffleOn||pq("[data-test-id='SHUFFLE_BUTTON']");
+  const repeatOne=pq("[data-test-id='REPEAT_BUTTON_REPEAT_ONE']");
+  const repeatAll=pq("[data-test-id='REPEAT_BUTTON_REPEAT_CONTEXT']");
+  const repeat=repeatOne||repeatAll||pq("[data-test-id='REPEAT_BUTTON_NO_REPEAT']");
+  const available=(e)=>{
+    const button=e?.closest('button')||e;
+    return !!button && !button.disabled && button.getAttribute('aria-disabled')!=='true';
+  };
   const now=pq("[data-test-id='TIMECODE_TIME_START']");
   const end=pq("[data-test-id='TIMECODE_TIME_END']");
   const timecode=pq("[data-test-id='VIBE_PLAYERBAR_TIMECODE']");
@@ -1145,6 +1227,10 @@ const STATE_EXPRESSION: &str = r#"
     canDislike:!!dislike,
     liked:active(like,'like'),
     disliked:active(dislike,'dislike'),
+    canShuffle:available(shuffle),
+    shuffleActive:!!shuffleOn && available(shuffleOn),
+    canRepeat:available(repeat),
+    repeatMode:repeatOne?'one':repeatAll?'all':'off',
     activeWaveId:activeWheelItem?.getAttribute('data-intersection-property-id')||'',
     activeWaveTitle
   };
@@ -1213,6 +1299,28 @@ mod tests {
         assert!(!STATE_EXPRESSION.contains("href.includes('disliked')"));
         assert!(STATE_EXPRESSION.contains("icons.includes(icon)"));
         assert!(STATE_EXPRESSION.contains("aria-pressed"));
+    }
+
+    #[test]
+    fn shuffle_and_repeat_use_verified_player_test_ids() {
+        for id in [
+            "SHUFFLE_BUTTON",
+            "SHUFFLE_BUTTON_ON",
+            "REPEAT_BUTTON_NO_REPEAT",
+            "REPEAT_BUTTON_REPEAT_CONTEXT",
+            "REPEAT_BUTTON_REPEAT_ONE",
+        ] {
+            assert!(STATE_EXPRESSION.contains(id));
+        }
+        assert!(STATE_EXPRESSION.contains("repeatMode:repeatOne?'one':repeatAll?'all':'off'"));
+        assert!(STATE_EXPRESSION.contains("button.getAttribute('aria-disabled')!=='true'"));
+        let repeat = click_expression(&[
+            "REPEAT_BUTTON_NO_REPEAT",
+            "REPEAT_BUTTON_REPEAT_CONTEXT",
+            "REPEAT_BUTTON_REPEAT_ONE",
+        ]);
+        assert!(repeat.contains("REPEAT_BUTTON_REPEAT_ONE"));
+        assert!(!repeat.contains("eval("));
     }
 
     #[test]

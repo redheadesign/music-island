@@ -1,0 +1,185 @@
+.direct-connection-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--overlay-scrim);
+  backdrop-filter: blur(12px);
+  animation: direct-connection-dim 220ms var(--ease-standard) both;
+}
+
+.direct-connection-dialog {
+  container: direct-connection / inline-size;
+  width: min(500px, 100%);
+  max-height: calc(100dvh - var(--space-9));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  color: var(--fg-primary);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-panel), inset 0 1px 0 var(--highlight-inset);
+  font-family: var(--font-sans);
+  animation: direct-connection-enter 220ms var(--ease-enter) both;
+}
+
+.direct-connection-dialog__body {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-7);
+}
+
+.direct-connection-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.direct-connection-dialog__icon {
+  flex: 0 0 var(--space-9);
+  display: grid;
+  width: var(--space-9);
+  height: var(--space-9);
+  place-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--fg-secondary);
+  background: var(--surface-raised);
+}
+
+.direct-connection-dialog__header h2 {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-title);
+  line-height: var(--leading-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+}
+
+.direct-connection-dialog__description {
+  margin: 0;
+  color: var(--fg-secondary);
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+}
+
+.direct-connection-dialog__description strong {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--fg-primary);
+  font-weight: var(--weight-medium);
+}
+
+.direct-connection-dialog__facts {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-5) 0 0;
+  border-top: 1px solid var(--border-subtle);
+  list-style: none;
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
+}
+
+.direct-connection-dialog__facts li {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.direct-connection-dialog__facts svg { margin-top: 1px; color: var(--fg-muted); }
+.direct-connection-dialog__facts span { overflow-wrap: anywhere; }
+
+.direct-connection-dialog__error {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--status-danger);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-raised);
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+
+.direct-connection-dialog__error strong { color: var(--status-danger); font-weight: var(--weight-medium); }
+.direct-connection-dialog__error p { margin: 0; color: var(--fg-secondary); }
+
+.direct-connection-dialog__footer {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-7) var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-sunken);
+}
+
+.direct-connection-dialog__footer > p {
+  margin: 0;
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+}
+
+.direct-connection-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.direct-connection-dialog__actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 104px;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-label);
+  line-height: var(--leading-label);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), opacity var(--motion-fast) var(--ease-standard);
+}
+
+.direct-connection-dialog__cancel { color: var(--fg-secondary); background: transparent; }
+.direct-connection-dialog__cancel:hover { color: var(--fg-primary); background: var(--surface-hover); }
+.direct-connection-dialog__connect { color: var(--surface-canvas); background: var(--fg-primary); }
+.direct-connection-dialog__connect:hover:not(:disabled) { background: var(--control-primary-hover); }
+.direct-connection-dialog__connect:disabled { opacity: .65; cursor: default; }
+.direct-connection-dialog__actions button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.direct-connection-dialog__spinner { flex-shrink: 0; animation: direct-connection-spin 1s linear infinite; }
+.direct-connection-backdrop[data-reduced-motion='true'],
+.direct-connection-dialog[data-reduced-motion='true'],
+.direct-connection-dialog[data-reduced-motion='true'] * { animation: none; transition: none; }
+
+@container direct-connection (max-width: 380px) {
+  .direct-connection-dialog__body { padding: var(--space-6); gap: var(--space-5); }
+  .direct-connection-dialog__header { gap: var(--space-3); }
+  .direct-connection-dialog__icon { flex-basis: var(--space-8); width: var(--space-8); height: var(--space-8); }
+  .direct-connection-dialog__header h2 { font-size: 18px; }
+  .direct-connection-dialog__footer { padding: var(--space-5) var(--space-6) var(--space-6); }
+  .direct-connection-dialog__actions button { flex: 1 1 104px; }
+}
+
+@keyframes direct-connection-dim { from { opacity: 0; } to { opacity: 1; } }
+@keyframes direct-connection-enter { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes direct-connection-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .direct-connection-backdrop, .direct-connection-dialog, .direct-connection-dialog * { animation: none; transition: none; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .direct-connection-backdrop { background: var(--overlay-scrim-strong); backdrop-filter: none; }
+}

@@ -35,6 +35,7 @@ interface MediaControllerOptions {
   enabled: boolean
   configLoaded: boolean
   protocol: 'smtc' | 'yandex-direct'
+  timelineEnabled?: boolean
 }
 
 interface MediaController {
@@ -53,6 +54,7 @@ export function useMediaController({
   enabled,
   configLoaded,
   protocol,
+  timelineEnabled = true,
 }: MediaControllerOptions): MediaController {
   const [media, setMedia] = useState<MediaSnapshot | null>(null)
   const [mediaLoaded, setMediaLoaded] = useState(false)
@@ -76,16 +78,19 @@ export function useMediaController({
   }, [])
 
   useEffect(() => {
-    let mounted = true
+    let active = true
     void getSmtcHealth().then((health) => {
-      if (mounted) setSmtcHealth(health)
+      if (active) setSmtcHealth(health)
     }).catch(() => undefined)
     let cleanup: () => void = () => undefined
-    void onSmtcHealth(setSmtcHealth).then((unlisten) => {
-      cleanup = unlisten
-    })
+    void onSmtcHealth((health) => {
+      if (active) setSmtcHealth(health)
+    }).then((unlisten) => {
+      if (active) cleanup = unlisten
+      else unlisten()
+    }).catch(() => undefined)
     return () => {
-      mounted = false
+      active = false
       cleanup()
     }
   }, [])
@@ -122,34 +127,48 @@ export function useMediaController({
 
   useEffect(() => {
     if (!enabled) return
+    let active = true
     let cleanupMedia: () => void = () => undefined
-    let cleanupTimeline: () => void = () => undefined
 
     void onMediaUpdate((snapshot) => {
-      setMedia((current) => reconcileMedia(current, snapshot))
+      if (active) setMedia((current) => reconcileMedia(current, snapshot))
     }).then((unlisten) => {
-      cleanupMedia = unlisten
-    })
-    void onTimelineUpdate((timeline) => {
-      setMedia((current) => {
-        if (!current || current.provider !== timeline.provider) return current
-        return reconcileMedia(current, { ...current, ...timeline })
-      })
-    }).then((unlisten) => {
-      cleanupTimeline = unlisten
-    })
+      if (active) cleanupMedia = unlisten
+      else unlisten()
+    }).catch(() => undefined)
 
     return () => {
+      active = false
       cleanupMedia()
-      cleanupTimeline()
     }
   }, [enabled, reconcileMedia])
 
   useEffect(() => {
-    if (!enabled || media?.playbackStatus !== 'playing') return
+    if (!enabled || !timelineEnabled) return
+    let active = true
+    let cleanupTimeline: () => void = () => undefined
+
+    void onTimelineUpdate((timeline) => {
+      if (active) setMedia((current) => {
+        if (!current || current.provider !== timeline.provider) return current
+        return reconcileMedia(current, { ...current, ...timeline })
+      })
+    }).then((unlisten) => {
+      if (active) cleanupTimeline = unlisten
+      else unlisten()
+    }).catch(() => undefined)
+
+    return () => {
+      active = false
+      cleanupTimeline()
+    }
+  }, [enabled, reconcileMedia, timelineEnabled])
+
+  useEffect(() => {
+    if (!enabled || !timelineEnabled || media?.playbackStatus !== 'playing') return
     const interval = window.setInterval(() => setNowMs(Date.now()), 1_000)
     return () => window.clearInterval(interval)
-  }, [enabled, media?.playbackStatus])
+  }, [enabled, media?.playbackStatus, timelineEnabled])
 
   const progressMs = useMemo(
     () => media?.positionMs == null ? null : getInterpolatedPosition(media, nowMs),

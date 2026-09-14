@@ -1,6 +1,6 @@
 use std::io::{BufWriter, Write};
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Mutex;
 
 /// 日志行计数器，避免每次都读文件检查轮转
 static LOG_LINE_COUNT: AtomicU32 = AtomicU32::new(0);
@@ -49,7 +49,11 @@ pub fn debug_log(msg: &str) {
 
         let log_path = dir.join("debug.log");
         let needs_bom = !log_path.exists();
-        if let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+        if let Ok(f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_path)
+        {
             let mut writer = BufWriter::new(f);
             // 新文件写入 UTF-8 BOM，让 Windows 正确识别编码
             if needs_bom {
@@ -110,8 +114,12 @@ pub fn flush_debug_log() {
 
 /// 日志文件轮转：当文件超限时，只保留最后 keep_lines 行
 fn trim_log_file(path: &std::path::Path, max_lines: usize, keep_lines: usize) {
-    use std::io::{BufRead, BufReader, SeekFrom, Seek, Write};
-    let file = match std::fs::OpenOptions::new().read(true).write(true).open(path) {
+    use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
+    let file = match std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+    {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -120,7 +128,13 @@ fn trim_log_file(path: &std::path::Path, max_lines: usize, keep_lines: usize) {
     if lines.len() <= max_lines {
         return;
     }
-    let keep: Vec<&str> = lines.iter().rev().take(keep_lines).rev().map(|s| s.as_str()).collect();
+    let keep: Vec<&str> = lines
+        .iter()
+        .rev()
+        .take(keep_lines)
+        .rev()
+        .map(|s| s.as_str())
+        .collect();
     let mut file = file;
     file.seek(SeekFrom::Start(0)).ok();
     file.set_len(0).ok();

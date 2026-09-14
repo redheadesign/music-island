@@ -10,6 +10,7 @@ import type {
   MediaSnapshot,
   PluginRuntimeInfo,
   SmtcHealthSnapshot,
+  TaskbarStatus,
   TimelineUpdate,
   UpdateCheckResult,
   UpdateProgressEvent,
@@ -36,6 +37,10 @@ const fallbackSnapshot: MediaSnapshot = {
   canDislike: false,
   isLiked: false,
   isDisliked: false,
+  canShuffle: false,
+  isShuffleActive: false,
+  canRepeat: false,
+  repeatMode: 'off',
   activeWaveId: null,
   activeWaveTitle: null,
   thumbnailDataUrl: null,
@@ -63,6 +68,10 @@ export async function getMediaSnapshot(): Promise<MediaSnapshot> {
       canPlay: true,
       canLike: true,
       canDislike: true,
+      canShuffle: true,
+      isShuffleActive: false,
+      canRepeat: true,
+      repeatMode: 'all',
       provider: 'yandex-direct',
       activeWaveId: 'preview_0',
       activeWaveTitle: 'Е-е-е, рок!',
@@ -384,8 +393,27 @@ export async function onOverlayAction(action: 'open-settings', callback: () => v
   return listen(`overlay:${action}`, callback)
 }
 
+/** Native request to reveal the main island without opening Settings or taking focus. */
+export async function onIslandReveal(callback: () => void): Promise<() => void> {
+  if (!isTauriRuntime()) {
+    return () => undefined
+  }
+
+  return listen('island:reveal', () => callback())
+}
+
 export function getDefaultConfig(): AppConfig {
   return defaultConfig
+}
+
+export async function getTaskbarStatus(): Promise<TaskbarStatus> {
+  if (!isTauriRuntime()) return { state: 'off' }
+  return invoke<TaskbarStatus>('get_taskbar_status')
+}
+
+export async function onTaskbarStatus(callback: (status: TaskbarStatus) => void): Promise<() => void> {
+  if (!isTauriRuntime()) return () => undefined
+  return listen<TaskbarStatus>('taskbar:status', (event) => callback(event.payload))
 }
 
 export async function openExternalUrl(url: string): Promise<void> {
@@ -404,6 +432,12 @@ export async function openExternalUrl(url: string): Promise<void> {
     return
   }
   await openUrl(parsed.toString())
+}
+
+/** Opens the installed Spotify client through its registered Windows URI handler. */
+export async function openSpotify(): Promise<void> {
+  if (!isTauriRuntime()) return
+  await openUrl('spotify:')
 }
 
 function isTauriRuntime(): boolean {
@@ -442,6 +476,7 @@ export async function onPluginsChanged(
 
 const defaultConfig: AppConfig = {
   schemaVersion: 2,
+  taskbar: { enabled: false, scale: 1, showLike: false },
   appearance: {
     theme: 'liquid-glass-dark',
     accentColor: '#F76100',

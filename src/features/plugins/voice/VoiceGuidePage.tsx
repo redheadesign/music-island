@@ -1,6 +1,7 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, ChevronDown } from 'lucide-react'
 import type { Locale } from '../../../shared/lib/types'
-import { getVoiceGuide, type GuideBlock } from './guide/voiceGuideContent'
+import { getVoiceGuide } from './guide/voiceGuideContent'
+import './VoiceGuidePage.css'
 
 export function VoiceGuidePage({
   locale,
@@ -14,75 +15,64 @@ export function VoiceGuidePage({
   onOpenCableSite: () => void
 }) {
   const doc = getVoiceGuide(locale)
-  const backLabel = locale === 'ru' ? 'Назад' : 'Back'
 
   return (
-    <div className="voice-guide-page">
-      <header className="voice-guide-page__top">
-        <button type="button" className="voice-guide-page__back" onClick={onBack}>
-          <ArrowLeft size={18} aria-hidden />
-          <span>{backLabel}</span>
-        </button>
-      </header>
+    <div className="voice-guide-page voice-setup-guide">
+      <button type="button" className="voice-setup-guide__back" onClick={onBack}>
+        <ArrowLeft size={16} aria-hidden />
+        {doc.back}
+      </button>
 
-      <article className="voice-guide-article">
-        <h1 className="voice-guide-article__title">{doc.title}</h1>
-        <p className="voice-guide-article__lead">{doc.lead}</p>
+      <article className="voice-setup-guide__article">
+        <header className="voice-setup-guide__intro">
+          <h1>{doc.title}</h1>
+          <p>{doc.lead}</p>
+          <p className="voice-setup-guide__local">{doc.localNote}</p>
+        </header>
 
-        <nav className="voice-guide-toc" aria-label={locale === 'ru' ? 'Содержание' : 'Contents'}>
-          {doc.sections.map((section) => (
-            <a key={section.id} href={`#guide-${section.id}`} className="voice-guide-toc__link">
-              {section.title}
-            </a>
+        <ol className="voice-setup-guide__steps" aria-label={doc.stepsLabel}>
+          {doc.steps.map((step, index) => (
+            <li key={step.id} className="voice-setup-guide__step">
+              <span className="voice-setup-guide__number" aria-hidden>{index + 1}</span>
+              <div className="voice-setup-guide__step-body">
+                <h2>{step.title}</h2>
+                <p>{step.text}</p>
+                {step.device ? (
+                  <dl className="voice-setup-guide__device">
+                    <dt>{step.device.label}</dt>
+                    <dd>{step.device.value}</dd>
+                  </dl>
+                ) : null}
+                {step.action === 'download' ? (
+                  <button type="button" className="voice-setup-guide__action" onClick={onOpenCableSite}>
+                    {openCableSiteLabel}
+                    <ArrowUpRight size={15} aria-hidden />
+                  </button>
+                ) : null}
+                {step.note ? <p className="voice-setup-guide__note">{step.note}</p> : null}
+              </div>
+            </li>
           ))}
-        </nav>
+        </ol>
 
-        {doc.sections.map((section) => (
-          <section key={section.id} id={`guide-${section.id}`} className="voice-guide-section">
-            <h2 className="voice-guide-section__title">{section.title}</h2>
-            {section.blocks.map((block, index) => (
-              <GuideBlockView key={`${section.id}-${index}`} block={block} />
-            ))}
-          </section>
-        ))}
+        <button type="button" className="voice-setup-guide__return" onClick={onBack}>
+          <ArrowLeft size={16} aria-hidden />
+          {doc.returnToSettings}
+        </button>
 
-        <div className="voice-guide-article__actions">
-          <button type="button" className="secondary-button" onClick={onOpenCableSite}>
-            {openCableSiteLabel}
-          </button>
-        </div>
+        <section className="voice-setup-guide__help">
+          <h2>{doc.helpTitle}</h2>
+          {doc.help.map((item) => (
+            <details key={item.title} className="voice-setup-guide__disclosure">
+              <summary>
+                {item.title}
+                <ChevronDown size={16} aria-hidden />
+              </summary>
+              <p>{item.text}</p>
+            </details>
+          ))}
+        </section>
       </article>
     </div>
   )
-}
-
-function GuideBlockView({ block }: { block: GuideBlock }) {
-  switch (block.type) {
-    case 'p':
-      return <p className="voice-guide-p">{block.text}</p>
-    case 'h2':
-      return <h2 className="voice-guide-section__title">{block.text}</h2>
-    case 'h3':
-      return <h3 className="voice-guide-h3">{block.text}</h3>
-    case 'ul':
-      return (
-        <ul className="voice-guide-list">
-          {block.items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      )
-    case 'ol':
-      return (
-        <ol className="voice-guide-list voice-guide-list--ordered">
-          {block.items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
-      )
-    case 'callout':
-      return <aside className="voice-guide-callout">{block.text}</aside>
-    default:
-      return null
-  }
 }

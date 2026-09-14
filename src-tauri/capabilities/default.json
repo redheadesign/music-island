@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default permissions for Music Island windows.",
-  "windows": ["main", "settings", "already-running", "intro"],
+  "windows": ["main", "settings", "already-running", "intro", "taskbar"],
   "permissions": [
     "core:default",
     "core:window:allow-hide",

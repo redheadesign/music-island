@@ -128,7 +128,9 @@ pub fn set_overlay_bounds(
     };
 
     {
-        let mut layout = hit_layout().lock().expect("overlay hit layout lock poisoned");
+        let mut layout = hit_layout()
+            .lock()
+            .expect("overlay hit layout lock poisoned");
         let next = OverlayHitLayout {
             expanded,
             hit_width,
@@ -485,3 +487,4 @@ pub fn show_already_running_notice(app: &AppHandle) -> tauri::Result<()> {
 
     Ok(())
 }
+pub mod taskbar;

@@ -1,0 +1,44 @@
+.progress-visual {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.progress-visual--exiting .progress-fill {
+  animation: music-progress-next-fill-out var(--progress-exit-duration, 360ms) cubic-bezier(.4, 0, .2, 1) both;
+  transition: none;
+}
+
+.progress-visual--exiting[data-progress-direction='previous'] .progress-fill {
+  animation-name: music-progress-previous-fill-out;
+}
+
+.progress-visual--entering .progress-fill {
+  animation: music-progress-fill-in var(--progress-enter-duration, 180ms) var(--ease-enter) both;
+}
+
+@keyframes music-progress-next-fill-out {
+  from { opacity: 1; transform: scaleX(var(--progress, 0)); }
+  75% { opacity: 1; transform: scaleX(1); }
+  to { opacity: 0; transform: scaleX(1); }
+}
+
+@keyframes music-progress-previous-fill-out {
+  from { opacity: 1; transform: scaleX(var(--progress, 0)); }
+  75% { opacity: 1; transform: scaleX(0); }
+  to { opacity: 0; transform: scaleX(0); }
+}
+
+@keyframes music-progress-fill-in {
+  from { opacity: 0; transform: scaleX(var(--progress, 0)); }
+  to { opacity: 1; transform: scaleX(var(--progress, 0)); }
+}
+
+.progress-visual[data-reduced-motion='true'],
+.progress-visual[data-reduced-motion='true'] * { animation: none !important; transition: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-visual, .progress-visual * { animation: none !important; transition: none !important; }
+}

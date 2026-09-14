@@ -1,3 +1,4 @@
+use crate::voice::dsp::noise_gate::NoiseGate;
 /// AGC（Automatic Gain Control）
 ///
 /// 设计参考：
@@ -5,9 +6,7 @@
 /// - WebRTC AGC2（sonora-agc2）：噪声限增益 + 连续语音帧门控 + 增益速率限制
 ///
 /// 使用独立的 `dsp::vad::VadState` 进行语音活动检测。
-
 use crate::voice::dsp::vad::VadState;
-use crate::voice::dsp::noise_gate::NoiseGate;
 use crate::voice::dsp::DspModule;
 
 /// AGC 状态（DSP 线程本地，无需线程安全）
@@ -65,11 +64,7 @@ impl AgcState {
     /// 处理一帧
     ///
     /// `target_rms`: 目标输出电平（线性 RMS）
-    pub fn process_frame(
-        &mut self,
-        frame: &mut [f32],
-        target_rms: f32,
-    ) -> f32 {
+    pub fn process_frame(&mut self, frame: &mut [f32], target_rms: f32) -> f32 {
         if frame.is_empty() {
             return self.gain;
         }
@@ -80,8 +75,7 @@ impl AgcState {
         let noise_floor = self.vad.noise_floor();
 
         // ── 2. 连续语音帧门控 ──
-        let gain_increase_allowed =
-            self.vad.adjacent_speech_count() >= ADJACENT_SPEECH_THRESHOLD;
+        let gain_increase_allowed = self.vad.adjacent_speech_count() >= ADJACENT_SPEECH_THRESHOLD;
 
         // ── 3. 增益更新（仅连续语音帧达标后）──
         if has_voice {
@@ -131,10 +125,8 @@ impl AgcState {
         }
 
         // ── 4. 增益约束 ──
-        let noise_limited_max =
-            (MAX_OUTPUT_NOISE / noise_floor.max(1e-7)).min(MAX_GAIN);
-        let dynamic_max =
-            (target_rms / noise_floor.max(1e-7)).min(noise_limited_max);
+        let noise_limited_max = (MAX_OUTPUT_NOISE / noise_floor.max(1e-7)).min(MAX_GAIN);
+        let dynamic_max = (target_rms / noise_floor.max(1e-7)).min(noise_limited_max);
         self.gain = self.gain.clamp(MIN_GAIN, dynamic_max.max(MIN_GAIN));
 
         // ── 5. 应用增益 ──

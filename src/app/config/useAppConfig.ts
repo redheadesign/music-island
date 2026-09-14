@@ -13,6 +13,7 @@ function withNormalizedConfig(config: AppConfig): AppConfig {
   const defaults = getDefaultConfig()
   return {
     ...config,
+    taskbar: { ...defaults.taskbar, ...config.taskbar },
     appearance: {
       ...config.appearance,
       locale: normalizeLocale(config.appearance?.locale),
@@ -64,16 +65,25 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
   }, [])
 
   useEffect(() => {
+    let active = true
     let cleanup: () => void = () => undefined
-    void onConfigChanged((next) => setConfig(withNormalizedConfig(next))).then((unlisten) => {
-      cleanup = unlisten
-    })
-    return () => cleanup()
+    void onConfigChanged((next) => {
+      if (active) setConfig(withNormalizedConfig(next))
+    }).then((unlisten) => {
+      if (active) cleanup = unlisten
+      else unlisten()
+    }).catch(() => undefined)
+    return () => {
+      active = false
+      cleanup()
+    }
   }, [])
 
   useEffect(() => {
+    let active = true
     let cleanup: () => void = () => undefined
     void onAutostartSync((event) => {
+      if (!active) return
       setAutostartStatus(event)
       if (event.ok || !event.enabled) {
         setAutostartError(null)
@@ -81,9 +91,13 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
       }
       setAutostartError(event.message ?? 'Не удалось настроить автозапуск')
     }).then((unlisten) => {
-      cleanup = unlisten
-    })
-    return () => cleanup()
+      if (active) cleanup = unlisten
+      else unlisten()
+    }).catch(() => undefined)
+    return () => {
+      active = false
+      cleanup()
+    }
   }, [])
 
   const updateConfig = useCallback(async (nextConfig: AppConfig) => {

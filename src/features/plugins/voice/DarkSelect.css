@@ -1,0 +1,95 @@
+.dark-select.dark-select {
+  gap: var(--space-2);
+  max-width: min(100%, 320px);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--fg-primary);
+  background: var(--surface-raised);
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+
+.dark-select.dark-select:hover:not(:disabled),
+.dark-select.dark-select--open {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.dark-select.dark-select:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Portaled to body: selectors deliberately do not depend on Settings ancestry. */
+.dark-select-menu.dark-select-menu {
+  box-sizing: border-box;
+  padding: var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--fg-primary);
+  background: var(--surface-glass);
+  box-shadow: 0 12px 32px #0006, inset 0 1px 0 #ffffff06;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  font-family: var(--font-sans);
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.dark-select-menu .dark-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--fg-primary);
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.dark-select-menu .dark-select-option > span {
+  min-width: 0;
+}
+
+.dark-select-menu .dark-select-option:hover,
+.dark-select-menu .dark-select-option:focus {
+  outline: none;
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.dark-select-menu .dark-select-option--active {
+  color: var(--fg-primary);
+  background: var(--surface-raised);
+  font-weight: 500;
+}
+
+.dark-select-option__check {
+  flex: 0 0 auto;
+  color: var(--fg-primary);
+}
+
+.dark-select-menu .dark-select-option--empty {
+  color: var(--fg-secondary);
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .dark-select-menu.dark-select-menu {
+    background: var(--surface-raised);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

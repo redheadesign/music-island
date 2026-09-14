@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Pin, PinOff, Settings2 } from 'lucide-react'
-import type { IslandAppState } from '../../app/useIslandApp'
+import { type IslandAppState, type UsageController } from '../../app/useIslandApp'
+import { getIslandLayout } from '../../shared/lib/islandLayout'
 import {
   getCollapsedGestureState,
   onCollapsedGestureState,
   onIntroClosed,
+  onIslandReveal,
   setOverlayBounds,
   type CollapsedGestureState,
 } from '../../app/tauriApi'
@@ -16,6 +18,7 @@ import { useAppUpdater } from '../settings/useAppUpdater'
 import {
   cancelOverlayWindowOperations,
   getOverlayBounds,
+  shouldDeferOverlayClose,
   measureExpandedHitBand,
   syncOverlayWindow,
   type OverlayWindowPhase,
@@ -25,15 +28,19 @@ import { buildAccentTokens } from '../../shared/lib/accentTheme'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import {
   getUiPrefs,
+  getUsageWidgetCompact,
+  getUsageWidgetScale,
   islandUpdateSnoozePatch,
   shouldShowIslandUpdateBanner,
   trackUpdateFirstSeen,
   withUiPrefs,
 } from '../../shared/lib/uiPrefs'
 import { UpdateBanner } from '../../shared/ui/UpdateBanner'
+import { UsageStatusChip } from '../usage/UsageStatusChip'
 
 interface OverlayShellProps {
   app: IslandAppState
+  usage?: UsageController
 }
 
 interface ArtworkTheme {
@@ -47,9 +54,8 @@ const FALLBACK_ARTWORK_THEME: ArtworkTheme = {
 }
 
 const OPEN_PULL_THRESHOLD = 8
-const OPEN_CLOSE_GRACE_MS = 280
 
-export function OverlayShell({ app }: OverlayShellProps) {
+export function OverlayShell({ app, usage }: OverlayShellProps) {
   const {
     config,
     media,
@@ -67,6 +73,10 @@ export function OverlayShell({ app }: OverlayShellProps) {
     restartDirect,
   } = app
   const uiPrefs = getUiPrefs(config)
+  const usageScale = getUsageWidgetScale(config)
+  const usageCompact = getUsageWidgetCompact(config)
+  const islandLayout = useMemo(() => getIslandLayout(config), [config])
+  const hasUsage = islandLayout.zones.left.length + islandLayout.zones.right.length > 0
   const updater = useAppUpdater(true, Boolean(uiPrefs.forceSameVersionUpdate))
   const locale = normalizeLocale(config?.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
@@ -200,6 +210,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
   })
   const stripArmedRef = useRef(true)
   const openedAtRef = useRef(0)
+  const revealHoldUntilRef = useRef(0)
   windowPhaseRef.current = windowPhase
   const currentArtworkThemeRef = useRef<ArtworkTheme>(FALLBACK_ARTWORK_THEME)
   const [artworkTheme, setArtworkTheme] = useState<ArtworkTheme>(FALLBACK_ARTWORK_THEME)
@@ -273,7 +284,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
 
   useEffect(() => {
     let cancelled = false
-    const bounds = getOverlayBounds(config.layout.width, config.layout.scale)
+    const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: uiPrefs.usageAlwaysVisible === true, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) })
     const phase = windowPhase
     void syncOverlayWindow(phase, bounds).then(async (applied) => {
       if (!applied) {
@@ -295,7 +306,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
     return () => {
       cancelled = true
     }
-  }, [config.layout.scale, config.layout.width, mode, setMode, windowPhase])
+  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, uiPrefs.usageAlwaysVisible, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase])
 
   // Native keep-alive band must cover Settings/Pin in *physical* px (DPR-aware).
   // 1.3.21 only hugged height in CSS px — on 125%/150% the band was too narrow and mid-path closed.
@@ -320,6 +331,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
     publish()
     const observer = new ResizeObserver(() => publish())
     observer.observe(zone)
+    zone.querySelectorAll('.island-usage-rail').forEach((rail) => observer.observe(rail))
     return () => observer.disconnect()
   }, [
     config,
@@ -419,7 +431,8 @@ export function OverlayShell({ app }: OverlayShellProps) {
       }
 
       lastPointerRef.current = { x: state.clientX, y: state.clientY }
-      if (performance.now() - openedAtRef.current < OPEN_CLOSE_GRACE_MS) {
+      if (state.active) revealHoldUntilRef.current = 0
+      if (shouldDeferOverlayClose(performance.now(), openedAtRef.current, revealHoldUntilRef.current)) {
         return
       }
       if (phase === 'opening' && !expandedVisible) {
@@ -456,6 +469,22 @@ export function OverlayShell({ app }: OverlayShellProps) {
     [config?.appearance.accentColor],
   )
 
+  useEffect(() => {
+    let active = true
+    let cleanup = () => {}
+    void onIslandReveal(() => {
+      if (!active) return
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+      openCommittedRef.current = true
+      openedAtRef.current = performance.now()
+      revealHoldUntilRef.current = openedAtRef.current + 3000
+      setExpandedVisible(false)
+      setWindowPhase('opening')
+    }).then((unlisten) => { if (active) cleanup = unlisten; else unlisten() }).catch(() => undefined)
+    return () => { active = false; cleanup() }
+  }, [])
+
   const style = useMemo(() => {
     if (!config) {
       return undefined
@@ -466,6 +495,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
       '--island-radius': `${config.appearance.cornerRadius}px`,
       '--island-blur': `${config.appearance.blurStrength}px`,
       '--island-scale': config.layout.scale / 100,
+      '--usage-scale': getUsageWidgetScale(config),
       '--island-width': config.layout.width / 100,
       '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,
       '--island-hit-width': `${(500 * (config.layout.width / 100) + 112) * (config.layout.scale / 100)}px`,
@@ -751,7 +781,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
       return
     }
 
-    if (performance.now() - openedAtRef.current < OPEN_CLOSE_GRACE_MS) {
+    if (shouldDeferOverlayClose(performance.now(), openedAtRef.current, revealHoldUntilRef.current)) {
       return
     }
 
@@ -814,6 +844,11 @@ export function OverlayShell({ app }: OverlayShellProps) {
             windowPhase === 'opening' ? 'island-top-chrome--opening' : '',
           ].join(' ')}
         >
+          {uiPrefs.usageAlwaysVisible === true && windowPhase === 'collapsed' ? (['left', 'right'] as const).map((side) => (
+            islandLayout.zones[side].length > 0 ? <div key={side} className={`island-usage-collapsed island-usage-collapsed--${side}`}>
+              <UsageStatusChip snapshot={usage?.snapshot ?? null} enabledProviders={islandLayout.zones[side]} compact locale={locale} />
+            </div> : null
+          )) : null}
           <div
             className={[
               'edge-trigger',
@@ -865,8 +900,9 @@ export function OverlayShell({ app }: OverlayShellProps) {
               }}
             >
             <div className="island-scale-layer">
-            <section className="island-card">
+            <section className="island-card island-surface">
               <MusicModule
+                layout={islandLayout}
                 media={media}
                 progressMs={progressMs}
                 progressPercent={progressPercent}
@@ -878,6 +914,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 showSource={config.layout.showSource}
                 showPreviousNext={config.layout.showPreviousNext}
                 locale={config.appearance.locale}
+                reducedMotion={config.appearance.reducedMotion}
                 onCommand={(command) => void sendCommand(command)}
                 showDirectReload={showDirectReload}
                 directReloadBusy={directReloadBusy}
@@ -888,14 +925,15 @@ export function OverlayShell({ app }: OverlayShellProps) {
               <UpdateBanner
                 variant="island"
                 title={t('island.updateTitle')}
-                primaryLabel={t('island.updateNow')}
+                primaryLabel={t(updater.status === 'error' ? 'settings.updateRetry' : 'island.updateNow')}
                 laterLabel={t('island.updateLater')}
                 status={
-                  updater.status === 'downloading' || updater.status === 'installing'
+                  updater.status === 'downloading' || updater.status === 'installing' || updater.status === 'error'
                     ? updater.status
                     : 'available'
                 }
                 progressPercent={updater.progress?.percent ?? null}
+                error={updater.error}
                 progressLabel={
                   updater.status === 'downloading'
                     ? t('settings.downloadingUpdate')
@@ -918,6 +956,11 @@ export function OverlayShell({ app }: OverlayShellProps) {
             </div>
 
             {/* Outside scale() so mix-blend-mode: difference can see past the card. */}
+            {(['left', 'right'] as const).map((side) => islandLayout.zones[side].length > 0 ? (
+              <aside key={side} className={`island-usage-rail island-usage-rail--${side}`} aria-label={t('settings.usage')}>
+                <UsageStatusChip snapshot={usage?.snapshot ?? null} enabledProviders={islandLayout.zones[side]} compact={usageCompact} locale={locale} />
+              </aside>
+            ) : null)}
             <header
               className="island-actions"
               aria-label="Overlay actions"
@@ -935,7 +978,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
               >
                 <Settings2 size={16} />
               </button>
-              <button
+              {islandLayout.zones.actions.includes('pin') ? <button
                 type="button"
                 className="icon-button"
                 aria-label={config.behavior.pinExpanded ? 'Unpin island' : 'Pin island'}
@@ -956,7 +999,7 @@ export function OverlayShell({ app }: OverlayShellProps) {
                 }}
               >
                 {config.behavior.pinExpanded ? <PinOff size={16} /> : <Pin size={16} />}
-              </button>
+              </button> : null}
             </header>
             </motion.div>
           </div>

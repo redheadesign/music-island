@@ -15,6 +15,7 @@ export type SessionSnapshot = {
   agcTarget: number;
   micGain: number;
   presetId: string | null;
+  /** Compatibility with older snapshots; the UI now ignores it and writes 100. */
   fxIntensity: number;
   /** Last known engine state — restore on next app launch. */
   engineRunning?: boolean;

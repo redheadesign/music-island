@@ -1,329 +1,136 @@
 import type { Locale } from '../../../../shared/lib/types'
 
-export type GuideBlock =
-  | { type: 'p'; text: string }
-  | { type: 'h2'; text: string }
-  | { type: 'h3'; text: string }
-  | { type: 'ul'; items: string[] }
-  | { type: 'ol'; items: string[] }
-  | { type: 'callout'; text: string }
-
-export type GuideSection = {
+type GuideStep = {
   id: string
   title: string
-  blocks: GuideBlock[]
+  text: string
+  note?: string
+  device?: { label: string; value: string }
+  action?: 'download'
 }
 
-export type GuideDoc = {
+type GuideDoc = {
   title: string
   lead: string
-  sections: GuideSection[]
+  localNote: string
+  stepsLabel: string
+  steps: GuideStep[]
+  helpTitle: string
+  help: { title: string; text: string }[]
+  back: string
+  returnToSettings: string
 }
 
 const ru: GuideDoc = {
-  title: 'Справка Better Voice',
-  lead:
-    'Better Voice чистит голос в реальном времени и отдаёт его в виртуальный микрофон. Так Discord, Zoom и браузер слышат уже обработанный звук.',
-  sections: [
+  title: 'Подключение Better Voice',
+  lead: 'Для приложений, где шумоподавления нет или его недостаточно. Better Voice убирает фоновый шум и передаёт обработанный голос через виртуальный микрофон.',
+  localNote: 'Звук обрабатывается на вашем компьютере.',
+  stepsLabel: 'Первое подключение',
+  steps: [
     {
-      id: 'what',
-      title: 'Зачем это нужно',
-      blocks: [
-        {
-          type: 'p',
-          text: 'Обычные приложения видят только микрофоны из списка Windows. Они не умеют подключаться «внутрь» Music Island. Поэтому нужен виртуальный кабель: Better Voice пишет в него, а приложения берут его как микрофон.',
-        },
-        {
-          type: 'ul',
-          items: [
-            'Шумодав убирает фон и клавиатуру',
-            'Усиление и EQ выравнивают громкость и тембр',
-            'В созвоне или записи слышен уже чистый голос',
-          ],
-        },
-      ],
+      id: 'install',
+      title: 'Установите VB-Cable',
+      text: 'Скачайте драйвер для Windows с сайта VB-Audio. Распакуйте архив, запустите установщик от имени администратора и перезагрузите компьютер.',
+      note: 'Если VB-Cable уже установлен, переходите к шагу 2.',
+      action: 'download',
     },
     {
-      id: 'route',
-      title: 'Как идёт звук',
-      blocks: [
-        {
-          type: 'ol',
-          items: [
-            'Реальный микрофон → вход Better Voice',
-            'Обработка (шум, громкость, EQ, эффекты)',
-            'Выход в CABLE Input',
-            'В Discord / Zoom / браузере микрофон → CABLE Output',
-          ],
-        },
-        {
-          type: 'callout',
-          text: 'CABLE Input — куда пишет Better Voice. CABLE Output — что выбирают другие приложения как микрофон.',
-        },
-      ],
+      id: 'microphone',
+      title: 'Выберите свой микрофон',
+      text: 'В Better Voice откройте раздел «Устройства». В поле «Микрофон» выберите устройство, в которое говорите.',
     },
     {
-      id: 'drivers',
-      title: 'Установка VB-Cable',
-      blocks: [
-        {
-          type: 'p',
-          text: 'Один раз ставится бесплатный подписанный драйвер VB-Cable с официального сайта. Это тот же принцип, что у встроенного виртуального мика в Krisp.',
-        },
-        {
-          type: 'ol',
-          items: [
-            'Открой vb-audio.com/Cable',
-            'Скачай VB-Cable и запусти установщик от имени администратора',
-            'Пройди мастер. Если Windows попросит перезагрузку — перезагрузись',
-            'В Better Voice: микрофон — твой реальный вход, виртуальный выход — CABLE Input',
-            'В Discord / Zoom / браузере: микрофон — CABLE Output',
-            'Нажми Старт и говори',
-          ],
-        },
-      ],
+      id: 'output',
+      title: 'Направьте звук в кабель',
+      text: 'В том же разделе выберите CABLE Input. Сюда Better Voice отправит обработанный голос.',
+      device: { label: 'Better Voice · Виртуальный выход', value: 'CABLE Input' },
     },
     {
-      id: 'controls',
-      title: 'Основные кнопки',
-      blocks: [
-        {
-          type: 'ul',
-          items: [
-            'Старт / Стоп — включает и выключает обработку',
-            'Прослушать себя — слышишь финальный микс в наушниках или колонках',
-            'Эхо, Робот, Перегруз — короткие эффекты поверх голоса',
-            'Шумодав, громкость и EQ — постоянная обработка',
-          ],
-        },
-      ],
+      id: 'app',
+      title: 'Выберите кабель в нужном приложении',
+      text: 'Откройте настройки звука приложения и выберите CABLE Output как микрофон. Так оно получит звук из Better Voice.',
+      device: { label: 'Ваше приложение · Микрофон', value: 'CABLE Output' },
     },
     {
-      id: 'problems',
-      title: 'Если что-то не работает',
-      blocks: [
-        {
-          type: 'h3',
-          text: 'В приложении нет CABLE Output',
-        },
-        {
-          type: 'p',
-          text: 'Драйвер не установился или нужна перезагрузка Windows. Поставь VB-Cable ещё раз от администратора.',
-        },
-        {
-          type: 'h3',
-          text: 'Тебя не слышно',
-        },
-        {
-          type: 'ul',
-          items: [
-            'Better Voice запущен (Старт)',
-            'Виртуальный выход — CABLE Input',
-            'В созвоне выбран микрофон CABLE Output, а не обычный мик',
-          ],
-        },
-        {
-          type: 'h3',
-          text: 'Слышен сырой микрофон',
-        },
-        {
-          type: 'p',
-          text: 'В приложении созвона всё ещё выбран реальный микрофон. Переключи на CABLE Output.',
-        },
-        {
-          type: 'h3',
-          text: 'Эхо или слышишь сам себя',
-        },
-        {
-          type: 'p',
-          text: 'Выключи «Прослушать себя» или убавь громкость колонок. Для созвонов удобнее наушники.',
-        },
-      ],
-    },
-    {
-      id: 'faq',
-      title: 'Частые вопросы',
-      blocks: [
-        {
-          type: 'h3',
-          text: 'Нужна ли отдельная программа рядом с Music Island?',
-        },
-        {
-          type: 'p',
-          text: 'Нет. Better Voice уже внутри Music Island. Нужен только драйвер VB-Cable в Windows.',
-        },
-        {
-          type: 'h3',
-          text: 'Это безопасно?',
-        },
-        {
-          type: 'p',
-          text: 'VB-Cable — известный подписанный драйвер. Music Island обрабатывает звук локально и не отправляет голос на сервер для шумодава.',
-        },
-        {
-          type: 'h3',
-          text: 'Почему функция в бете?',
-        },
-        {
-          type: 'p',
-          text: 'Интерфейс и часть сценариев ещё дорабатываются. Основной маршрут — мик → обработка → CABLE — уже рабочий.',
-        },
-      ],
+      id: 'start',
+      title: 'Включите обработку',
+      text: 'Вернитесь в Better Voice и нажмите «Включить обработку». Говорите в микрофон: индикаторы уровня должны двигаться.',
+      note: 'Оставьте Music Island запущенным, пока используете этот микрофон.',
     },
   ],
+  helpTitle: 'Если не получается',
+  help: [
+    {
+      title: 'Нет CABLE Input или CABLE Output',
+      text: 'Перезагрузите компьютер после установки VB-Cable и заново откройте приложение. Если устройства не появились, проверьте, завершилась ли установка драйвера.',
+    },
+    {
+      title: 'Меня не слышно',
+      text: 'Проверьте, что обработка включена. В Better Voice должны быть выбраны ваш микрофон и CABLE Input, а в нужном приложении — CABLE Output.',
+    },
+    {
+      title: 'Слышу себя или эхо',
+      text: 'Выключите «Прослушивать себя» в Better Voice. Если используете колонки, попробуйте наушники.',
+    },
+  ],
+  back: 'Назад',
+  returnToSettings: 'К настройке микрофона',
 }
 
 const en: GuideDoc = {
-  title: 'Better Voice help',
-  lead:
-    'Better Voice cleans your mic in real time and sends it to a virtual microphone, so Discord, Zoom, and browsers hear the processed voice.',
-  sections: [
+  title: 'Connect Better Voice',
+  lead: 'For apps with limited or no noise suppression. Better Voice reduces background noise and sends processed audio through a virtual microphone.',
+  localNote: 'Audio is processed on your computer.',
+  stepsLabel: 'First-time setup',
+  steps: [
     {
-      id: 'what',
-      title: 'Why you need it',
-      blocks: [
-        {
-          type: 'p',
-          text: 'Apps only see microphones listed by Windows. They cannot tap into Music Island directly. A virtual cable bridges that gap: Better Voice writes into it, apps pick it as the mic.',
-        },
-        {
-          type: 'ul',
-          items: [
-            'Denoise cuts background noise and keyboard clicks',
-            'Gain and EQ keep level and tone steady',
-            'Calls and recordings get the cleaned voice',
-          ],
-        },
-      ],
-    },
-    {
-      id: 'route',
-      title: 'Signal path',
-      blocks: [
-        {
-          type: 'ol',
-          items: [
-            'Hardware mic → Better Voice input',
-            'Processing (noise, gain, EQ, effects)',
-            'Output to CABLE Input',
-            'In Discord / Zoom / browser: mic → CABLE Output',
-          ],
-        },
-        {
-          type: 'callout',
-          text: 'CABLE Input is where Better Voice writes. CABLE Output is what other apps select as the microphone.',
-        },
-      ],
-    },
-    {
-      id: 'drivers',
+      id: 'install',
       title: 'Install VB-Cable',
-      blocks: [
-        {
-          type: 'p',
-          text: 'Install the free signed VB-Cable driver once from the official site — same idea as Krisp’s built-in virtual mic.',
-        },
-        {
-          type: 'ol',
-          items: [
-            'Open vb-audio.com/Cable',
-            'Download VB-Cable and run the installer as Administrator',
-            'Finish the wizard. Reboot if Windows asks',
-            'In Better Voice: input = your real mic, virtual output = CABLE Input',
-            'In Discord / Zoom / browser: mic = CABLE Output',
-            'Press Start and talk',
-          ],
-        },
-      ],
+      text: 'Download the Windows driver from VB-Audio. Extract the archive, run the installer as administrator, then restart your computer.',
+      note: 'If VB-Cable is already installed, continue to step 2.',
+      action: 'download',
     },
     {
-      id: 'controls',
-      title: 'Main controls',
-      blocks: [
-        {
-          type: 'ul',
-          items: [
-            'Start / Stop — turns processing on and off',
-            'Monitor — hear the final mix in your headphones or speakers',
-            'Echo, Robot, Distortion — short voice effects',
-            'Denoise, gain, and EQ — ongoing processing',
-          ],
-        },
-      ],
+      id: 'microphone',
+      title: 'Choose your microphone',
+      text: 'Open Devices in Better Voice. Under Microphone, choose the device you speak into.',
     },
     {
-      id: 'problems',
-      title: 'Troubleshooting',
-      blocks: [
-        {
-          type: 'h3',
-          text: 'No CABLE Output in the app',
-        },
-        {
-          type: 'p',
-          text: 'The driver is missing or Windows needs a reboot. Reinstall VB-Cable as Administrator.',
-        },
-        {
-          type: 'h3',
-          text: 'Nobody can hear you',
-        },
-        {
-          type: 'ul',
-          items: [
-            'Better Voice is running (Start)',
-            'Virtual output is CABLE Input',
-            'The call app uses CABLE Output, not your hardware mic',
-          ],
-        },
-        {
-          type: 'h3',
-          text: 'They hear the raw mic',
-        },
-        {
-          type: 'p',
-          text: 'The call app still uses your real microphone. Switch it to CABLE Output.',
-        },
-        {
-          type: 'h3',
-          text: 'Echo or you hear yourself',
-        },
-        {
-          type: 'p',
-          text: 'Turn off Monitor or lower speaker volume. Headphones are easier for calls.',
-        },
-      ],
+      id: 'output',
+      title: 'Send audio to the cable',
+      text: 'In the same section, choose CABLE Input. Better Voice sends your processed audio here.',
+      device: { label: 'Better Voice · Virtual output', value: 'CABLE Input' },
     },
     {
-      id: 'faq',
-      title: 'FAQ',
-      blocks: [
-        {
-          type: 'h3',
-          text: 'Do I need a separate app next to Music Island?',
-        },
-        {
-          type: 'p',
-          text: 'No. Better Voice is built in. You only need the VB-Cable Windows driver.',
-        },
-        {
-          type: 'h3',
-          text: 'Is it safe?',
-        },
-        {
-          type: 'p',
-          text: 'VB-Cable is a well-known signed driver. Music Island processes audio locally and does not upload your voice for denoising.',
-        },
-        {
-          type: 'h3',
-          text: 'Why is it beta?',
-        },
-        {
-          type: 'p',
-          text: 'The UI and some edge cases are still being polished. The core route — mic → process → CABLE — already works.',
-        },
-      ],
+      id: 'app',
+      title: 'Choose the cable in your app',
+      text: 'Open the app’s audio settings and select CABLE Output as its microphone. This receives audio from Better Voice.',
+      device: { label: 'Your app · Microphone', value: 'CABLE Output' },
+    },
+    {
+      id: 'start',
+      title: 'Start processing',
+      text: 'Return to Better Voice and select Start processing. Speak into your microphone: the level meters should move.',
+      note: 'Keep Music Island running while you use this microphone.',
     },
   ],
+  helpTitle: 'Troubleshooting',
+  help: [
+    {
+      title: 'CABLE Input or CABLE Output is missing',
+      text: 'Restart your computer after installing VB-Cable, then reopen the app. If the devices are still missing, check that the driver installation completed.',
+    },
+    {
+      title: 'Nobody can hear me',
+      text: 'Check that processing is on. Better Voice should use your microphone and CABLE Input. Your other app should use CABLE Output.',
+    },
+    {
+      title: 'I hear myself or an echo',
+      text: 'Turn off Hear yourself in Better Voice. If you use speakers, try headphones.',
+    },
+  ],
+  back: 'Back',
+  returnToSettings: 'Back to microphone settings',
 }
 
 export function getVoiceGuide(locale: Locale): GuideDoc {
