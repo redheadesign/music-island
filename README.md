@@ -10,31 +10,21 @@ Music, voice and assistant limits — a compact workspace at the edge of your Wi
 
 Portable: download `music-island.exe` and run it. Existing settings stay in `%APPDATA%\Music Island\`. The executable is unsigned; Windows may show SmartScreen.
 
-## Your island, your layout
-
 ![Music Island's live layout editor with a media player, assistant quota and a component tray](docs/media/v2/01-island.webp)
 
 Drag real controls into the preview: artwork, transport, progress, reactions and assistant widgets. Put both reactions on either side. Pull an edge to change width or a corner to change scale. Settings and play/pause always remain accessible.
-
-## Music in the taskbar
 
 ![Customizable compact player in a graphite taskbar preview](docs/media/v2/02-taskbar.webp)
 
 An optional native mini-player sits beside the Windows system tray and follows the taskbar as it appears and hides. Start with artwork and three playback buttons; add Like, Shuffle or Repeat, rearrange them and adjust their size. Available on the primary horizontal taskbar. [Details](docs/TASKBAR.md).
 
-## Better Voice
-
 ![Better Voice processing card and microphone-to-output signal route](docs/media/v2/03-voice.webp)
 
 Clean up your microphone, hear the result and switch voice effects on or off. The signal route shows input, processing and output together. The fox and the warm graphite material respond to processing. Better Voice is **Beta**; routing audio into another app requires VB-Cable. [Setup and audio engine](docs/BETTER_VOICE.md).
 
-## Assistant limits at a glance
-
 ![Compact and detailed Codex and Claude usage widgets with sample remaining percentages](docs/media/v2/04-usage.webp)
 
 Optional Codex and Claude widgets show remaining quota in compact rings or a detailed view. Choose their size and position, and whether they stay visible when the island closes. Each connection is off by default: Codex talks to the installed local app-server, while Claude uses the existing local Claude Code sign-in to query Anthropic directly. Screenshots use fictional data. [Connection and privacy details](docs/USAGE.md).
-
-## A clearer place for settings
 
 ![Music Island settings in dark and light themes](docs/media/v2/05-settings.webp)
 

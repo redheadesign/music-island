@@ -53,7 +53,7 @@ const config: StorybookConfig = {
     config.server = {
       ...config.server,
       host: '127.0.0.1',
-      watch: { ...config.server?.watch, ignored: ['**/.local/**', '**/src-tauri/**', '**/release/**', '**/storybook-static/**'] },
+      watch: { ...config.server?.watch, ignored: ['**/.local/**', '**/src-tauri/**', `${path.resolve(root, 'release').replaceAll('\\', '/')}/**`, '**/storybook-static/**'] },
     }
     return config
   },

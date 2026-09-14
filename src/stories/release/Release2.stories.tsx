@@ -11,7 +11,6 @@ import { UsageStatusChip } from '../../features/usage/UsageStatusChip'
 import { WarpMaterial } from '../../shared/ui/WarpMaterial'
 import { BrandLogo } from '../../shared/ui/BrandLogo'
 import { withUiPrefs } from '../../shared/lib/uiPrefs'
-import { withIslandLayout, getIslandLayout } from '../../shared/lib/islandLayout'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
 import { audioStats, health } from '../fixtures'
 import './release.css'
@@ -61,8 +60,9 @@ function ReleaseScene({ feature, format }: { feature: Feature; format: 'telegram
     base.appearance.locale = 'ru'
     base.appearance.accentColor = '#f76100'
     base.plugins.settings.ui = { hoverCoachCompleted: true, usageWidgetCompact: true }
-    const layout = getIslandLayout(base)
-    return withIslandLayout(base, { ...layout, zones: { ...layout.zones, right: ['codex'] } })
+    // Use the app's default provider placement: Codex belongs on the left.
+    base.plugins.settings.usage = { codexEnabled: true, claudeEnabled: false }
+    return base
   })
   const locale = format === 'readme' ? 'en' : 'ru'
   const config = { ...storedConfig, appearance: { ...storedConfig.appearance, locale } } as typeof storedConfig
