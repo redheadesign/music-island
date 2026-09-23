@@ -1,0 +1,6 @@
+{
+  "identifier": "dictation-overlay",
+  "description": "Read dictation status, cancel recording or copy the current result from its bottom overlay.",
+  "windows": ["recording_overlay"],
+  "permissions": ["dictation:overlay"]
+}

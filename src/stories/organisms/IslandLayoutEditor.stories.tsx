@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fireEvent, userEvent } from 'storybook/test'
+import { expect, fireEvent, userEvent, waitFor } from 'storybook/test'
 import { useState } from 'react'
 import { IslandLayoutEditor } from '../../features/settings/IslandLayoutEditor'
 import { getDefaultConfig } from '../../app/tauriApi'
@@ -35,15 +35,16 @@ function mockSyntheticPointerCapture(node: HTMLElement): () => void {
 }
 
 async function pointerDrag(source: HTMLElement, target: HTMLElement, pointerId: number, x?: number): Promise<void> {
+  target.scrollIntoView({ block: 'center', behavior: 'instant' })
   const sourceRect = source.getBoundingClientRect()
   const targetRect = target.getBoundingClientRect()
   const restore = mockSyntheticPointerCapture(source)
   const targetX = x ?? targetRect.left + targetRect.width / 2
   const targetY = targetRect.top + targetRect.height / 2
   try {
-    fireEvent.pointerDown(source, { button: 0, pointerId, clientX: sourceRect.left + sourceRect.width / 2, clientY: sourceRect.top + sourceRect.height / 2 })
-    fireEvent.pointerMove(source, { pointerId, clientX: targetX, clientY: targetY })
-    fireEvent.pointerUp(source, { pointerId, clientX: targetX, clientY: targetY })
+    await fireEvent.pointerDown(source, { button: 0, isPrimary: true, pointerId, clientX: sourceRect.left + sourceRect.width / 2, clientY: sourceRect.top + sourceRect.height / 2 })
+    await fireEvent.pointerMove(source, { pointerId, clientX: targetX, clientY: targetY })
+    await fireEvent.pointerUp(source, { pointerId, clientX: targetX, clientY: targetY })
   } finally {
     restore()
   }
@@ -102,13 +103,54 @@ export const CancelledDrag: Story = {
   },
 }
 
+export const PointerGrabGeometry: Story = {
+  name: 'Точка захвата · масштабы и отмена',
+  play: async ({ canvasElement }) => {
+    const frame = canvasElement.querySelector<HTMLElement>('.island-preview__frame')!
+    const source = element(zone(canvasElement, 'player'), 'previous')
+    const original = frame.style.transform
+    const restore = mockSyntheticPointerCapture(source)
+    try {
+      for (const scale of [.65, 1, 1.25, 1.5, 2]) {
+        frame.style.transform = `scale(${scale})`
+        source.scrollIntoView({ block: 'center', behavior: 'instant' })
+        const bounds = source.getBoundingClientRect()
+        const visual = source.querySelector('svg')!.getBoundingClientRect()
+        const x = bounds.left + bounds.width * .27, y = bounds.top + bounds.height * .41
+        await fireEvent.pointerDown(source, { button: 0, isPrimary: true, pointerId: 81, clientX: x, clientY: y })
+        await fireEvent.pointerMove(source, { pointerId: 81, clientX: x + 13, clientY: y + 9 })
+        await waitFor(() => {
+          const ghost = document.querySelector<HTMLElement>('.island-layout-drag-ghost')!
+          expect(ghost.parentElement).toBe(document.body)
+          const actual = ghost.getBoundingClientRect()
+          expect(actual.left).toBeCloseTo(bounds.left + 13, 1)
+          expect(actual.top).toBeCloseTo(bounds.top + 9, 1)
+          expect(actual.width).toBeCloseTo(bounds.width, 1)
+          expect(actual.height).toBeCloseTo(bounds.height, 1)
+          const ink = ghost.querySelector('svg')!.getBoundingClientRect()
+          expect(ink.left).toBeCloseTo(visual.left + 13, 1)
+          expect(ink.top).toBeCloseTo(visual.top + 9, 1)
+          expect(ink.width).toBeCloseTo(visual.width, 1)
+          expect(ink.height).toBeCloseTo(visual.height, 1)
+        })
+        await userEvent.keyboard('{Escape}')
+        await expect(document.querySelector('.island-layout-drag-ghost')).not.toBeInTheDocument()
+      }
+      await expect(canvasElement.querySelector('[data-change-count]')).toHaveAttribute('data-change-count', '0')
+    } finally {
+      frame.style.transform = original
+      restore()
+    }
+  },
+}
+
 export const KeyboardControls: Story = {
   name: 'Управление с клавиатуры',
   play: async ({ canvasElement }) => {
     const artwork = element(zone(canvasElement, 'player'), 'artwork')
     artwork.focus()
     await userEvent.keyboard(' ')
-    await userEvent.keyboard('{ArrowRight}{ArrowRight}{Enter}')
+    await userEvent.keyboard('{ArrowLeft}{Enter}')
     await expect(element(zone(canvasElement, 'catalog'), 'artwork')).toBeInTheDocument()
     const catalogArtwork = element(zone(canvasElement, 'catalog'), 'artwork')
     catalogArtwork.focus()
@@ -121,12 +163,9 @@ export const KeyboardControls: Story = {
 export const ProviderNativeFallback: Story = {
   name: 'Провайдер между зонами',
   play: async ({ canvasElement }) => {
-    const transfer = new DataTransfer()
     const source = element(zone(canvasElement, 'left'), 'codex')
     const target = zone(canvasElement, 'right')
-    fireEvent.dragStart(source, { dataTransfer: transfer })
-    fireEvent.dragOver(target, { dataTransfer: transfer })
-    fireEvent.drop(target, { dataTransfer: transfer })
+    await pointerDrag(source, target, 49)
     await expect(element(target, 'codex')).toBeInTheDocument()
     await expect(zone(canvasElement, 'left').querySelector('[data-layout-element="codex"]')).toBeNull()
   },

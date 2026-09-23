@@ -15,7 +15,7 @@ type Phase = 'sleep' | 'wake' | 'live' | 'toSleep'
  * Live idle pack only (sleep / wake / to-sleep stay single base clips).
  * Any new fox-*.webm MUST be built from flood-filled RGBA frames
  * (`.local/process_fox_alpha.py`) — never ffmpeg remux of opaque Magnific plates.
- * See `.cursor/rules/fox-mascot-alpha.mdc`.
+ * See `src/features/plugins/voice/AGENTS.md`.
  */
 const LIVE_PACK = [foxLiveWebmUrl, foxLiveBWebmUrl, foxLiveCWebmUrl, foxLiveDWebmUrl] as const
 

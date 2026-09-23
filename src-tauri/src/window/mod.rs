@@ -4,10 +4,11 @@ use std::sync::{
     Mutex, OnceLock,
 };
 use tauri::{
-    window::Color, AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl,
+    window::Color, AppHandle, Emitter, Manager, WebviewUrl,
     WebviewWindowBuilder,
 };
 use tokio::time::{sleep, Duration};
+pub mod monitors;
 
 /// Extra vertical room below the collapsed strip so pull-to-open still receives samples.
 const COLLAPSED_HIT_HEIGHT: f64 = 120.0;
@@ -70,8 +71,8 @@ pub fn setup_overlay_window(app: &AppHandle) -> tauri::Result<()> {
         window.set_skip_taskbar(true)?;
         window.set_decorations(false)?;
         fit_overlay_to_monitor(app)?;
-        window.show()?;
-        // Apply click-through AFTER show/geometry — those calls drop WS_EX_TRANSPARENT.
+        #[cfg(windows)] monitors::install_display_listener(&window);
+        // The HWND starts hidden. React acknowledges its final viewport before first show.
         set_overlay_clickthrough_ex(app, true, true)?;
         set_overlay_bounds(app, false, DEFAULT_HIT_WIDTH, COLLAPSED_STRIP_HEIGHT)?;
     }
@@ -85,29 +86,35 @@ pub fn reset_overlay_position(app: &AppHandle) -> tauri::Result<()> {
 }
 
 fn fit_overlay_to_monitor(app: &AppHandle) -> tauri::Result<()> {
-    let Some(window) = app.get_webview_window("main") else {
-        return Ok(());
-    };
+    monitors::refresh(app).map(|_| ())
+}
 
-    let monitor = window.current_monitor()?.or(window.primary_monitor()?);
-    if let Some(monitor) = monitor {
-        let size = monitor.size();
-        let position = monitor.position();
-        let gap = MONITOR_EDGE_GAP_PX as u32;
-        // Inset left/right/bottom only — keep the top flush with the monitor.
-        let width = size.width.saturating_sub(gap.saturating_mul(2)).max(1);
-        let height = size.height.saturating_sub(gap).max(1);
-        window.set_size(PhysicalSize::new(width, height))?;
-        window.set_position(PhysicalPosition::new(
-            position.x + MONITOR_EDGE_GAP_PX,
-            position.y,
-        ))?;
+#[tauri::command]
+pub async fn show_overlay_ready(app: AppHandle, window: tauri::WebviewWindow, viewport_width: f64, viewport_height: f64) -> Result<bool, String> {
+    if window.label() != "main" { return Err("Only the overlay can acknowledge its viewport".into()); }
+    if app.state::<crate::install::InstallState>().newer_handoff.lock().unwrap_or_else(|e| e.into_inner()).is_some() { return Ok(true); }
+    fit_overlay_to_monitor(&app).map_err(|e| e.to_string())?;
+    let size = window.inner_size().map_err(|e| e.to_string())?;
+    let scale = window.scale_factor().map_err(|e| e.to_string())?;
+    if !viewport_matches(size.width, size.height, scale, viewport_width, viewport_height) { return Ok(false); }
+    window.show().map_err(|e| e.to_string())?;
+    sync_clickthrough_from_cursor_ex(&app, true).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+fn viewport_matches(width: u32, height: u32, scale: f64, vw: f64, vh: f64) -> bool {
+    vw.is_finite() && vh.is_finite() && scale > 0.0 && (f64::from(width) / scale - vw).abs() <= 2.0 && (f64::from(height) / scale - vh).abs() <= 2.0
+}
+
+/// Updates interaction layout only — the HWND stays monitor-sized (minus edge gaps).
+pub fn set_sequenced_overlay_bounds(app: &AppHandle, expanded: bool, width: f64, height: f64, generation: Option<u64>) -> tauri::Result<()> {
+    static LAST: Mutex<u64> = Mutex::new(0);
+    let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(generation) = generation {
+        if generation <= *last { return Ok(()); }
+        *last = generation;
     }
-
-    #[cfg(windows)]
-    platform::mark_non_rude_hwnd(&window);
-
-    Ok(())
+    set_overlay_bounds(app, expanded, width, height)
 }
 
 /// Updates interaction layout only — the HWND stays monitor-sized (minus edge gaps).
@@ -236,7 +243,12 @@ pub fn get_collapsed_gesture_state(app: &AppHandle) -> tauri::Result<CollapsedGe
 pub fn start_gesture_watcher(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let mut previous = CollapsedGestureState::inactive();
+        let mut monitor_check = std::time::Instant::now();
         loop {
+            if monitors::take_dirty() || monitor_check.elapsed() >= Duration::from_secs(2) {
+                if let Err(error) = monitors::refresh(&app) { log::debug!("Monitor refresh: {error}"); }
+                monitor_check = std::time::Instant::now();
+            }
             GESTURE_POLLS.fetch_add(1, Ordering::Relaxed);
             let next = get_collapsed_gesture_state(&app)
                 .unwrap_or_else(|_| CollapsedGestureState::inactive());
@@ -403,15 +415,9 @@ pub fn setup_intro_window(app: &AppHandle) -> tauri::Result<()> {
     window.set_always_on_top(true)?;
     window.set_skip_taskbar(true)?;
     // Purely visual — do not steal clicks from the desktop or the island.
-    window.set_ignore_cursor_events(true)?;
+    window.set_ignore_cursor_events(!crate::onboarding::is_onboarding())?;
 
-    let monitor = window.current_monitor()?.or(window.primary_monitor()?);
-    if let Some(monitor) = monitor {
-        let size = monitor.size();
-        let position = monitor.position();
-        window.set_size(PhysicalSize::new(size.width, size.height))?;
-        window.set_position(PhysicalPosition::new(position.x, position.y))?;
-    }
+    monitors::refresh(app)?;
 
     window.show()?;
     Ok(())
@@ -422,36 +428,24 @@ pub fn close_intro_window(app: &AppHandle) -> tauri::Result<()> {
         window.destroy()?;
     }
     // Main overlay listens and may start the one-shot hover coach (#28).
-    let _ = app.emit("intro:closed", ());
+    crate::onboarding::closed(app);
     Ok(())
 }
 
 /// Recreate and play the startup intro (dev preview / settings button).
 pub fn replay_intro_window(app: &AppHandle) -> tauri::Result<()> {
-    if let Some(window) = app.get_webview_window("intro") {
-        let _ = window.destroy();
-    }
-
-    let window = WebviewWindowBuilder::new(app, "intro", WebviewUrl::App("index.html".into()))
-        .title("Music Island")
-        .decorations(false)
-        .transparent(true)
-        .shadow(false)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        .visible(false)
-        .build()?;
+    let window = if let Some(window) = app.get_webview_window("intro") {
+        window
+    } else {
+        WebviewWindowBuilder::new(app, "intro", WebviewUrl::App("index.html".into()))
+            .title("Music Island").decorations(false).transparent(true).shadow(false)
+            .always_on_top(true).skip_taskbar(true).visible(false).build()?
+    };
 
     window.set_background_color(Some(Color(0, 0, 0, 0)))?;
-    window.set_ignore_cursor_events(true)?;
+    window.set_ignore_cursor_events(!crate::onboarding::is_onboarding())?;
 
-    let monitor = window.current_monitor()?.or(window.primary_monitor()?);
-    if let Some(monitor) = monitor {
-        let size = monitor.size();
-        let position = monitor.position();
-        window.set_size(PhysicalSize::new(size.width, size.height))?;
-        window.set_position(PhysicalPosition::new(position.x, position.y))?;
-    }
+    monitors::refresh(app)?;
 
     window.show()?;
     crate::logging::append_event("intro window replayed");
@@ -464,8 +458,6 @@ pub fn open_settings_window(app: &AppHandle) -> tauri::Result<()> {
             window.unminimize()?;
             window.show()?;
             window.set_focus()?;
-        } else if window.is_visible().unwrap_or(false) {
-            window.hide()?;
         } else {
             window.show()?;
             window.set_focus()?;
@@ -488,3 +480,16 @@ pub fn show_already_running_notice(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 pub mod taskbar;
+
+#[cfg(test)]
+mod viewport_tests {
+    use super::*;
+    #[test]
+    fn only_show_when_the_webview_has_the_final_dpi_scaled_viewport() {
+        assert!(!viewport_matches(2556, 1438, 1.25, 1280.0, 800.0));
+        assert!(viewport_matches(2556, 1438, 1.25, 2045.0, 1150.0));
+        assert!(!viewport_matches(1436, 2558, 1.5, 2045.0, 1150.0));
+        assert!(viewport_matches(1436, 2558, 1.5, 957.0, 1705.0));
+        assert!(!viewport_matches(2556, 1438, 1.25, f64::NAN, 1150.0));
+    }
+}

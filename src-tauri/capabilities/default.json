@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default permissions for Music Island windows.",
-  "windows": ["main", "settings", "already-running", "intro", "taskbar"],
+  "windows": ["main", "settings", "already-running", "intro", "taskbar", "recording_overlay"],
   "permissions": [
     "core:default",
     "core:window:allow-hide",
@@ -11,7 +11,6 @@
     "core:window:allow-destroy",
     "opener:default",
     "autostart:default",
-    "log:default",
-    "updater:default"
+    "log:default"
   ]
 }

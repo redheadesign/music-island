@@ -20,14 +20,14 @@
 .usage-chip [data-tone='low'] { --quota-ink: #eaa59f; }
 .usage-chip [data-tone='unknown'] { --quota-ink: #96969e; }
 .usage-chip__window[data-tone] .usage-chip__bar i { background: var(--quota-ink, #abd5b9); }
-.usage-chip--compact { display: flex; align-items: center; gap: 8px; }
-.usage-chip__compact-provider { display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 4px; border: 0; border-radius: 24px; backdrop-filter: blur(22px); }
-.usage-chip__ring-logo { position: relative; display: grid; place-items: center; width: 32px; height: 32px; color: rgba(255,255,255,.9); }
+.usage-chip--compact { width: max-content; flex: none; display: flex; align-items: center; gap: 8px; }
+.usage-chip__compact-provider { display: flex; align-items: center; gap: 8px; width: max-content; flex: none; padding: 4px 12px 4px 8px; border: 0; border-radius: 24px; backdrop-filter: blur(22px); }
+.usage-chip__ring-logo { flex: 0 0 32px; position: relative; display: grid; place-items: center; width: 32px; height: 32px; color: rgba(255,255,255,.9); }
 .usage-chip__ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .usage-chip__ring circle { fill: none; stroke-width: 1.6; }
 .usage-chip__ring-track { stroke: rgba(255,255,255,.14); }
 .usage-chip__ring-value { stroke: var(--quota-ink, #abd5b9); stroke-linecap: round; transition: stroke-dasharray var(--motion-normal) var(--ease-standard); }
-.usage-chip__compact-value { color: rgba(255,255,255,.86); font-size: 12px; font-weight: 550; }
+.usage-chip__compact-value { flex: none; white-space: nowrap; color: rgba(255,255,255,.86); font-size: 12px; font-weight: 550; }
 .usage-chip__empty { min-height: 22px; color: rgba(255,255,255,.5); font-size: 14px; }
 .usage-chip__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
@@ -75,7 +75,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 4px 12px 4px 8px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
   color: var(--fg-muted);
@@ -124,24 +124,7 @@
 .usage-settings__limit[data-tone='unknown'] .usage-settings__meter i { background: var(--fg-muted); }
 
 .usage-settings__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
-.usage-settings__actions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: var(--control-height-compact);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  color: var(--fg-secondary);
-  background: color-mix(in srgb, var(--surface-panel) 64%, transparent);
-  font: inherit;
-  font-size: var(--text-caption);
-  cursor: pointer;
-}
-.usage-settings__actions button:hover { color: var(--fg-primary); background: var(--surface-hover); }
-.usage-settings__actions button:disabled { opacity: .55; cursor: default; }
 .usage-settings__actions svg { width: 14px; height: 14px; }
-.usage-settings__actions .usage-settings__primary { color: var(--fg-on-solid); background: var(--fg-primary); border-color: transparent; }
 
 @container (max-width: 500px) {
   .usage-settings__provider { padding: var(--space-4); }
@@ -158,4 +141,4 @@
 
 /* Island satellites: single translucent provider surface. */
 
-.usage-chip__compact-provider { box-sizing: border-box; width: 84px; padding-right: 8px; gap: 6px; }
+.usage-chip__compact-provider { box-sizing: border-box; width: max-content; }

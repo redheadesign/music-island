@@ -1,10 +1,10 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Minus, X } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { checkForUpdates, copyDiagnostics } from './app/tauriApi'
 import { useIslandApp } from './app/useIslandApp'
 import { useUsageController } from './app/usage/useUsageController'
-import { IntroSplash } from './features/intro/IntroSplash'
+import { LaunchExperience } from './features/intro/LaunchExperience'
+import { DictationOverlay } from './features/dictation/DictationOverlay'
 import { resumeVoiceEngineIfNeeded } from './features/plugins/voice/resumeVoiceEngine'
 import { AlreadyRunningNotice } from './features/notice/AlreadyRunningNotice'
 import { OverlayShell } from './features/overlay/OverlayShell'
@@ -12,7 +12,7 @@ import { SettingsPanel } from './features/settings/SettingsPanel'
 import { TaskbarPlayer } from './features/taskbar/TaskbarPlayer'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
 import { getSettingsColorScheme } from './shared/lib/uiPrefs'
-import { IconButton } from './shared/ui/IconButton'
+import { SettingsWindow } from './features/settings/SettingsWindow'
 import './App.css'
 
 function App() {
@@ -20,8 +20,9 @@ function App() {
 
   // Intro is a separate Tauri window — keep it free of island hooks/state.
   if (windowLabel === 'intro') {
-    return <IntroSplash />
+    return <LaunchExperience />
   }
+  if (windowLabel === 'recording_overlay') return <DictationOverlay />
 
   return <IslandWindows windowLabel={windowLabel} />
 }
@@ -63,15 +64,7 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
     }
 
     return (
-      <main className="settings-window-root" data-color-scheme={getSettingsColorScheme(app.config)}>
-        <header className="settings-titlebar" data-tauri-drag-region>
-          <strong className="settings-titlebar-drag">{t('settings.title')}</strong>
-          <div className="settings-window-actions" data-tauri-drag-region="false">
-            <IconButton data-tauri-drag-region="false" aria-label={t('settings.minimize')} onClick={() => void runWindowAction('minimize')}><Minus /></IconButton>
-            <IconButton data-tauri-drag-region="false" aria-label={t('settings.close')} onClick={() => void runWindowAction('hide')}><X /></IconButton>
-          </div>
-        </header>
-        <div className="settings-scroll">
+      <SettingsWindow locale={locale} colorScheme={getSettingsColorScheme(app.config)} onMinimize={() => void runWindowAction('minimize')} onClose={() => void runWindowAction('hide')}>
           <SettingsPanel
             usage={usage}
             config={app.config}
@@ -83,8 +76,7 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
             autostartError={app.autostartError ?? null}
             autostartStatus={app.autostartStatus ?? null}
           />
-        </div>
-      </main>
+      </SettingsWindow>
     )
   }
 

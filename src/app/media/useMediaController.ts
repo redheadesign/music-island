@@ -20,6 +20,7 @@ import {
   getInterpolatedPosition,
   mergeMediaSnapshot,
   type SessionHold,
+  isSameTrack,
 } from '../playbackClock'
 import { mediaSessionsEqual, shouldDispatchSeek } from './mediaModel'
 
@@ -62,7 +63,8 @@ export function useMediaController({
   const [smtcHealth, setSmtcHealth] = useState(INITIAL_SMTC_HEALTH)
   const [mediaSessions, setMediaSessions] = useState<MediaSessionInfo[]>([])
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const pendingSeekRef = useRef<{ positionMs: number; untilMs: number; preservePlaying: boolean } | null>(null)
+  const pendingSeekRef = useRef<{ positionMs: number; untilMs: number; preservePlaying: boolean; track: MediaSnapshot; generation: number } | null>(null)
+  const commandGeneration = useRef(0)
   const sessionHoldRef = useRef<SessionHold | null>(null)
   const mediaRef = useRef<MediaSnapshot | null>(null)
   const lastSeekDispatchRef = useRef<{ positionMs: number; atMs: number } | null>(null)
@@ -70,12 +72,21 @@ export function useMediaController({
   mediaRef.current = media
 
   const reconcileMedia = useCallback((current: MediaSnapshot | null, snapshot: MediaSnapshot) => {
+    if (snapshot.provider !== protocol || (snapshot.generation ?? 0) < (current?.generation ?? 0)) return current
     const now = Date.now()
+    if (pendingSeekRef.current && (!isSameTrack(pendingSeekRef.current.track, snapshot) || pendingSeekRef.current.track.provider !== snapshot.provider || pendingSeekRef.current.track.sourceAppId !== snapshot.sourceAppId || now >= pendingSeekRef.current.untilMs)) pendingSeekRef.current = null
     const merged = mergeMediaSnapshot(current, snapshot, pendingSeekRef.current, now)
     const held = applySessionHold(current, merged, sessionHoldRef.current, now)
     sessionHoldRef.current = held.hold
     return held.snapshot
-  }, [])
+  }, [protocol])
+
+  useEffect(() => {
+    pendingSeekRef.current = null
+    sessionHoldRef.current = null
+    lastSeekDispatchRef.current = null
+    commandGeneration.current++
+  }, [protocol, enabled])
 
   useEffect(() => {
     let active = true
@@ -103,7 +114,7 @@ export function useMediaController({
       getMediaSnapshot()
         .then((snapshot) => {
           if (!mounted) return
-          setMedia(snapshot)
+          setMedia((current) => reconcileMedia(current, snapshot))
           setMediaLoaded(true)
         })
         .catch(() => {
@@ -123,7 +134,7 @@ export function useMediaController({
     return () => {
       mounted = false
     }
-  }, [configLoaded, enabled, protocol])
+  }, [configLoaded, enabled, protocol, reconcileMedia])
 
   useEffect(() => {
     if (!enabled) return
@@ -150,8 +161,8 @@ export function useMediaController({
 
     void onTimelineUpdate((timeline) => {
       if (active) setMedia((current) => {
-        if (!current || current.provider !== timeline.provider) return current
-        return reconcileMedia(current, { ...current, ...timeline })
+        if (!current || (timeline.generation ?? 0) !== (current.generation ?? 0) || current.provider !== timeline.provider || current.sourceAppId !== timeline.sourceAppId || (current.trackId || current.title) !== (timeline.trackId || timeline.title) || Date.parse(timeline.updatedAt) < Date.parse(current.updatedAt)) return current
+        return reconcileMedia(current, { ...current, positionMs: timeline.positionMs, durationMs: timeline.durationMs, playbackStatus: timeline.playbackStatus, updatedAt: timeline.updatedAt })
       })
     }).then((unlisten) => {
       if (active) cleanupTimeline = unlisten
@@ -197,6 +208,7 @@ export function useMediaController({
   const sendCommand = useCallback(async (command: MediaCommand) => {
     if (typeof command === 'object' && 'seek' in command) {
       const current = mediaRef.current
+      if (!current?.hasSession) return
       const targetPosition = command.seek.positionMs
       const now = Date.now()
       if (!shouldDispatchSeek(current?.positionMs ?? 0, targetPosition, lastSeekDispatchRef.current, now)) return
@@ -204,6 +216,8 @@ export function useMediaController({
       lastSeekDispatchRef.current = { positionMs: targetPosition, atMs: now }
       const jumpMs = Math.abs(targetPosition - (current?.positionMs ?? 0))
       pendingSeekRef.current = {
+        track: current,
+        generation: ++commandGeneration.current,
         positionMs: targetPosition,
         untilMs: now + (jumpMs > 20_000 ? 4_000 : 1_800),
         preservePlaying: current?.playbackStatus === 'playing',
@@ -211,16 +225,23 @@ export function useMediaController({
       setMedia((currentMedia) =>
         currentMedia ? applyOptimisticSeek(currentMedia, targetPosition) : currentMedia,
       )
+      const generation = commandGeneration.current
       void sendMediaCommand(command).catch(() => {
-        pendingSeekRef.current = null
+        if (pendingSeekRef.current?.generation === generation) pendingSeekRef.current = null
       })
       return
     }
 
+    const generation = ++commandGeneration.current
+    if (command === 'next' || command === 'previous' || command === 'stop') {
+      pendingSeekRef.current = null
+      lastSeekDispatchRef.current = null
+      sessionHoldRef.current = null
+    }
     try {
       await sendMediaCommand(command)
     } catch {
-      pendingSeekRef.current = null
+      if (commandGeneration.current === generation) pendingSeekRef.current = null
     }
   }, [])
 

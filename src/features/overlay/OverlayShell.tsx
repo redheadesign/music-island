@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { IslandFeedback } from '../../shared/ui/PressFeedback'
+import { SettingsFilled } from '../../shared/ui/SettingsIcons'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Pin, PinOff, Settings2 } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { Pin, PinOff } from 'lucide-react'
 import { type IslandAppState, type UsageController } from '../../app/useIslandApp'
 import { getIslandLayout } from '../../shared/lib/islandLayout'
 import {
@@ -13,6 +15,7 @@ import {
   type CollapsedGestureState,
 } from '../../app/tauriApi'
 import { MusicModule } from '../music/MusicModule'
+import { DictationMicrophone } from '../dictation/DictationMicrophone'
 import { ActiveSelectionChip } from '../music/wave/ActiveSelectionChip'
 import { useAppUpdater } from '../settings/useAppUpdater'
 import {
@@ -23,6 +26,8 @@ import {
   syncOverlayWindow,
   type OverlayWindowPhase,
 } from './overlayWindow'
+import { transitionOverlay, type OverlayTransition } from './overlayTransition'
+import { IslandTopIndicator } from './IslandTopIndicator'
 import { HoverCoach } from './HoverCoach'
 import { buildAccentTokens } from '../../shared/lib/accentTheme'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
@@ -76,6 +81,8 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
   const usageScale = getUsageWidgetScale(config)
   const usageCompact = getUsageWidgetCompact(config)
   const islandLayout = useMemo(() => getIslandLayout(config), [config])
+  const systemReducedMotion = useReducedMotion()
+  const reducedMotion = config.appearance.reducedMotion || Boolean(systemReducedMotion)
   const hasUsage = islandLayout.zones.left.length + islandLayout.zones.right.length > 0
   const updater = useAppUpdater(true, Boolean(uiPrefs.forceSameVersionUpdate))
   const locale = normalizeLocale(config?.appearance.locale)
@@ -133,8 +140,16 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
       console.error('Direct quick reload failed', error)
     }
   }
-  const [windowPhase, setWindowPhase] = useState<OverlayWindowPhase>('collapsed')
-  const [expandedVisible, setExpandedVisible] = useState(false)
+  const [transition, setTransition] = useState<OverlayTransition>({ phase: 'collapsed', generation: 0 })
+  const transitionRef = useRef(transition)
+  const windowPhase = transition.phase
+  const expandedVisible = windowPhase === 'open'
+  const setWindowPhase = useCallback((phase: OverlayWindowPhase, expected?: number) => {
+    const next = transitionOverlay(transitionRef.current, phase, expected)
+    transitionRef.current = next
+    windowPhaseRef.current = next.phase
+    setTransition(next)
+  }, [])
   const [, setIsHoveringIsland] = useState(false)
   const [hoverCoachActive, setHoverCoachActive] = useState(false)
   const [peekProgress, setPeekProgress] = useState(0)
@@ -168,7 +183,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
 
   useEffect(() => {
     if (!hoverCoachActive || !config) return
-    if (windowPhase !== 'opening' && windowPhase !== 'open') return
+    if (windowPhase !== 'open') return
 
     setHoverCoachActive(false)
     setIsPeekGesture(false)
@@ -277,17 +292,18 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
     if (windowPhase === 'collapsed' || windowPhase === 'closing') {
       openCommittedRef.current = true
       openedAtRef.current = performance.now()
-      setExpandedVisible(false)
+
       setWindowPhase('opening')
     }
-  }, [config, isPinned, mode, setMode, windowPhase])
+  }, [config, isPinned, mode, setMode, windowPhase, setWindowPhase])
 
   useEffect(() => {
     let cancelled = false
     const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: uiPrefs.usageAlwaysVisible === true, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) })
     const phase = windowPhase
+    const generation = transitionRef.current.generation
     void syncOverlayWindow(phase, bounds).then(async (applied) => {
-      if (!applied) {
+      if (!applied || cancelled || generation !== transitionRef.current.generation) {
         return
       }
       if (phase === 'opening') {
@@ -295,18 +311,23 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
           return
         }
         await nextPaint()
-        if (cancelled || !openCommittedRef.current) return
+        if (cancelled || generation !== transitionRef.current.generation || !openCommittedRef.current) return
         if (mode !== 'settings') {
           setMode('expanded')
         }
-        setExpandedVisible(true)
-        setWindowPhase('open')
+
+        setWindowPhase('open', generation)
       }
+    }).catch(() => {
+      if (cancelled || generation !== transitionRef.current.generation) return
+      resetPeekVisualsRef.current()
+      stripArmedRef.current = true
+      setWindowPhase('collapsed', generation)
     })
     return () => {
       cancelled = true
     }
-  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, uiPrefs.usageAlwaysVisible, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase])
+  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, uiPrefs.usageAlwaysVisible, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
 
   // Native keep-alive band must cover Settings/Pin in *physical* px (DPR-aware).
   // 1.3.21 only hugged height in CSS px — on 125%/150% the band was too narrow and mid-path closed.
@@ -325,7 +346,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
 
     const publish = () => {
       const { width, height } = measureExpandedHitBand(zone)
-      void setOverlayBounds(true, width, height)
+      if (windowPhaseRef.current === 'open') void setOverlayBounds(true, width, height).catch(() => undefined)
     }
 
     publish()
@@ -464,6 +485,22 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
     }
   }, [expandedVisible, windowPhase])
 
+  // Visibility never depends on an exit callback from a removed/re-entered tree.
+  // The opening deadline also recovers a rejected or stalled native bounds request.
+  useEffect(() => {
+    if (transition.phase !== 'closing' && transition.phase !== 'opening') return
+    const generation = transition.generation
+    const timer = window.setTimeout(() => {
+      if (transitionRef.current.generation !== generation) return
+      cancelOverlayWindowOperations()
+      resetPeekVisualsRef.current()
+      stripArmedRef.current = true
+      setMode(media?.hasSession ? 'compact' : 'no-session')
+      setWindowPhase('collapsed', generation)
+    }, transition.phase === 'opening' ? 1500 : reducedMotion ? 0 : 280)
+    return () => window.clearTimeout(timer)
+  }, [transition, reducedMotion, media?.hasSession, setMode, setWindowPhase])
+
   const accentTokens = useMemo(
     () => buildAccentTokens(config?.appearance.accentColor ?? '#F76100'),
     [config?.appearance.accentColor],
@@ -479,11 +516,11 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
       openCommittedRef.current = true
       openedAtRef.current = performance.now()
       revealHoldUntilRef.current = openedAtRef.current + 3000
-      setExpandedVisible(false)
+
       setWindowPhase('opening')
     }).then((unlisten) => { if (active) cleanup = unlisten; else unlisten() }).catch(() => undefined)
     return () => { active = false; cleanup() }
-  }, [])
+  }, [setWindowPhase])
 
   const style = useMemo(() => {
     if (!config) {
@@ -585,7 +622,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
     openCommittedRef.current = false
     stripArmedRef.current = false
     resetPeekVisuals()
-    setExpandedVisible(false)
+
     setIsHoveringIsland(false)
     setWindowPhase('collapsed')
   }
@@ -760,17 +797,6 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
     }
   }
 
-  const handleExpandedExitComplete = () => {
-    if (windowPhase !== 'closing') {
-      return
-    }
-
-    setMode(media?.hasSession ? 'compact' : 'no-session')
-    resetPeekVisuals()
-    stripArmedRef.current = false
-    setWindowPhase('collapsed')
-  }
-
   const scheduleClose = () => {
     clearCloseTimer()
     if (config.behavior.pinExpanded || mode === 'settings') {
@@ -787,7 +813,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
 
     setIsHoveringIsland(false)
     setWindowPhase('closing')
-    setExpandedVisible(false)
+
   }
 
   const handleExpandedHoverEnter = () => {
@@ -796,7 +822,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
     if (windowPhase === 'closing') {
       setWindowPhase('open')
       setMode('expanded')
-      setExpandedVisible(true)
+
       openedAtRef.current = performance.now()
     }
   }
@@ -829,7 +855,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
         `size-${config.layout.size}`,
         showCollapsedLayer ? 'island-root--collapsed' : '',
         expandedVisible ? 'island-root--expanded' : '',
-        config.appearance.reducedMotion ? 'reduced-motion' : '',
+        reducedMotion ? 'reduced-motion' : '',
       ].join(' ')}
       style={style}
     >
@@ -866,23 +892,12 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
             onPointerLeave={handlePointerLeave}
             onPointerCancel={handlePointerLeave}
           >
-            <span className="edge-peek" aria-hidden="true" />
-            <span
-              className={[
-                'collapsed-progress',
-                hideCollapsedProgress || (isPeekGesture && peekProgress > 0.08) ? 'collapsed-progress--hidden' : '',
-              ].join(' ')}
-            >
-              <span
-                className="collapsed-progress__fill"
-                style={{ transform: `scaleX(${progressPercent / 100})` }}
-              />
-            </span>
+            <IslandTopIndicator progressPercent={progressPercent} hidden={hideCollapsedProgress || (isPeekGesture && peekProgress > 0.08)} />
           </div>
         </div>
       ) : null}
 
-      <AnimatePresence onExitComplete={handleExpandedExitComplete}>
+      <AnimatePresence>
         {expandedVisible ? (
           <div className="island-expanded-layer">
             <motion.div
@@ -891,16 +906,16 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
               key="island-expanded"
               onPointerEnter={handleExpandedHoverEnter}
               onPointerLeave={handleExpandedHoverLeave}
-              initial={config.appearance.reducedMotion ? false : { opacity: 0, y: -18 }}
+              initial={reducedMotion ? false : { opacity: 0, y: -18 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{
-                duration: config.appearance.reducedMotion ? 0 : 0.26,
+                duration: reducedMotion ? 0 : 0.26,
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
             <div className="island-scale-layer">
-            <section className="island-card island-surface">
+            <IslandFeedback className="island-card island-surface">
               <MusicModule
                 layout={islandLayout}
                 media={media}
@@ -920,7 +935,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
                 directReloadBusy={directReloadBusy}
                 onDirectReload={() => void handleDirectReload()}
               />
-            </section>
+            </IslandFeedback>
             {showIslandUpdate ? (
               <UpdateBanner
                 variant="island"
@@ -970,15 +985,16 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
                 } as CSSProperties
               }
             >
-              <button
+              {islandLayout.zones.actions.map((action) => action === 'settings' ? <button
+                key={action}
                 type="button"
                 className="icon-button"
                 aria-label="Open settings"
                 onClick={() => void openSettingsWindow()}
               >
-                <Settings2 size={16} />
-              </button>
-              {islandLayout.zones.actions.includes('pin') ? <button
+                <SettingsFilled weight="fill" size={16} />
+              </button> : action === 'pin' ? <button
+                key={action}
                 type="button"
                 className="icon-button"
                 aria-label={config.behavior.pinExpanded ? 'Unpin island' : 'Pin island'}
@@ -994,12 +1010,12 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
                   if (!nextPinExpanded) {
                     setMode('expanded')
                     setWindowPhase('open')
-                    setExpandedVisible(true)
+
                   }
                 }}
               >
                 {config.behavior.pinExpanded ? <PinOff size={16} /> : <Pin size={16} />}
-              </button> : null}
+              </button> : <DictationMicrophone key={action} enabled={config.plugins.enabled.includes('dictation')} locale={locale} />)}
             </header>
             </motion.div>
           </div>

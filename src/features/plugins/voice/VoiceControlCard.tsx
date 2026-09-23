@@ -1,4 +1,4 @@
-import { Headphones, LoaderCircle, Mic2, Square } from 'lucide-react'
+import { Headphones, LoaderCircle, Mic2, Square } from '../../../shared/ui/SettingsIcons'
 import { useId, type ReactNode } from 'react'
 import type { Locale } from '../../../shared/lib/types'
 import { VoiceEffects } from './VoiceEffects'

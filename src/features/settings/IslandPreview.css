@@ -23,3 +23,9 @@
 .island-preview__dimensions span { display: flex; gap: 7px; }
 .island-preview__dimensions output { min-width: 32px; font-variant-numeric: tabular-nums; color: #ececf1; }
 .island-preview__dimensions [data-active='true'] { color: white; }
+
+.island-preview__satellite-content { width: max-content; flex: none; }
+
+/* The camera uses viewport-space transforms, never CSS zoom on pointer targets. */
+.island-preview__camera { position: relative; flex: none; }
+.island-preview__camera > .island-preview__frame { position: absolute; top: 0; left: 0; }

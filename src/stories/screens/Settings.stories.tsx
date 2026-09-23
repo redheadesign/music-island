@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useMemo, useState, type ComponentProps } from 'react'
 import { useGlobals } from 'storybook/preview-api'
 import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
+import { SettingsWindow } from '../../features/settings/SettingsWindow'
 import { SettingsPanel } from '../../features/settings/SettingsPanel'
 import { getDefaultConfig } from '../../app/tauriApi'
 import type { AppConfig, Locale } from '../../shared/lib/types'
@@ -51,9 +52,7 @@ function SettingsPreview({
           args.onChange(next)
         }}
       />
-  return <div className="settings-window-root">
-    {scrollViewportHeight ? <div className="settings-scroll" style={{ height: scrollViewportHeight }}>{panel}</div> : panel}
-  </div>
+  return <div style={{ height: scrollViewportHeight ?? 754 }}><SettingsWindow locale={locale} colorScheme={getSettingsColorScheme(configuredPreview)}>{panel}</SettingsWindow></div>
 }
 
 const meta = {
@@ -114,6 +113,38 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = { name: 'Настройки приложения' }
+export const ScopeStartsAtFirstPage: Story = { name: 'Раздел открывается с первого пункта', play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement)
+  const scopes = within(canvas.getByRole('group', { name: 'Раздел настроек' }))
+  await userEvent.click(canvas.getByRole('button', { name: 'Панель задач' }))
+  await userEvent.click(scopes.getByRole('button', { name: 'Диктовка' }))
+  await userEvent.click(canvas.getByRole('button', { name: 'Модели' }))
+  await userEvent.click(scopes.getByRole('button', { name: 'Music Island' }))
+  await expect(canvas.getByRole('button', { name: 'Внешний вид' })).toHaveAttribute('aria-current', 'page')
+  await userEvent.click(scopes.getByRole('button', { name: 'Диктовка' }))
+  await expect(canvas.getByRole('button', { name: 'Основное' })).toHaveAttribute('aria-current', 'page')
+  await userEvent.click(scopes.getByRole('button', { name: /Better Voice/ }))
+  await userEvent.click(canvas.getByRole('button', { name: 'Подключение' }))
+  await userEvent.click(scopes.getByRole('button', { name: 'Music Island' }))
+  await userEvent.click(scopes.getByRole('button', { name: /Better Voice/ }))
+  await expect(canvas.getByRole('button', { name: 'Микрофон и эффекты' })).toHaveAttribute('aria-current', 'page')
+} }
+export const DictationNavigation: Story = { name: 'Диктовка · единая оболочка', play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement)
+  await userEvent.click(within(canvas.getByRole('group', { name: 'Раздел настроек' })).getByRole('button', { name: 'Диктовка' }))
+  await expect(await canvas.findByRole('switch', { name: 'Диктовка' })).toHaveAttribute('aria-checked', 'false')
+  await userEvent.click(canvas.getByRole('button', { name: 'Модели' }))
+  await canvas.findByRole('heading', { name: 'Модели' })
+  await userEvent.click(canvas.getByRole('button', { name: 'Дополнительно' }))
+  const scroller = canvasElement.querySelector<HTMLElement>('[data-settings-scroll]')!
+  await waitFor(() => expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight))
+  const offset = Math.min(600, scroller.scrollHeight - scroller.clientHeight)
+  scroller.scrollTop = offset
+  await userEvent.click(canvas.getByRole('button', { name: 'Дополнительно' }))
+  await expect(scroller.scrollTop).toBe(offset)
+  await userEvent.click(canvas.getByRole('button', { name: 'Модели' }))
+  await expect(scroller.scrollTop).toBe(0)
+} }
 export const AssistantLimits: Story = {
   name: 'Подключение лимитов ИИ',
   play: async ({ canvasElement }) => {
@@ -127,6 +158,21 @@ export const AssistantLimits: Story = {
 export const AppearanceDark: Story = {
   name: 'Внешний вид · тёмное оформление',
   parameters: { settingsColorScheme: 'dark' },
+}
+export const ResetKeepsConnectedLimits: Story = {
+  name: 'Сброс островка сохраняет подключённые лимиты',
+  play: async (context) => {
+    await AssistantLimits.play?.(context)
+    const canvas = within(context.canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: /^(Внешний вид|Appearance)$/ }))
+    const codex = () => context.canvasElement.querySelector('[data-layout-target="left"] [data-layout-element="codex"]')
+    await expect(codex()).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: /^(Сбросить настройки островка|Reset island settings)$/ }))
+    await waitFor(() => expect(context.args.onChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      plugins: expect.objectContaining({ settings: expect.objectContaining({ usage: expect.objectContaining({ codexEnabled: true }) }) }),
+    })))
+    await expect(codex()).toBeInTheDocument()
+  },
 }
 export const AppearanceLight: Story = {
   name: 'Внешний вид · светлое оформление',
@@ -180,7 +226,7 @@ export const DeepScrollNavigation: Story = {
   parameters: { scrollViewportHeight: 620, workshop: { width: 860, height: 880 } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const scroller = canvasElement.querySelector<HTMLElement>('.settings-scroll')!
+    const scroller = canvasElement.querySelector<HTMLElement>('[data-settings-scroll]')!
     scroller.scrollTop = Math.min(240, scroller.scrollHeight - scroller.clientHeight)
     await waitFor(() => expect(scroller.scrollTop).toBeGreaterThan(0))
 
@@ -385,7 +431,7 @@ export const System: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /^(Система|System)$/ }))
-    await waitFor(() => expect(canvas.getByRole('switch')).toBeVisible())
+    await waitFor(() => expect(canvas.getAllByRole('switch')[0]).toBeVisible())
   },
 }
 export const About: Story = {
@@ -484,7 +530,10 @@ export const VoiceDeveloperMode: Story = {
     await expect(canvasElement.querySelector('.voice-atmosphere')).toBeInTheDocument()
     await expect(canvas.queryByRole('combobox', { name: previewLabel })).not.toBeInTheDocument()
 
-    await userEvent.click(canvas.getByRole('button', { name: /^(Режим разработчика|Developer mode)$/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Music Island$/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^(О программе|About)$/ }))
+    await userEvent.click(canvas.getByRole('switch', { name: /^(Режим разработчика|Developer mode)$/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Better Voice/ }))
     await expect(canvas.getByRole('combobox', { name: previewLabel })).toHaveValue('')
     // Developer mode still owns the fox preview; the background has no selector.
     await expect(canvasElement.querySelectorAll('.fox-dev-preview select')).toHaveLength(1)
@@ -496,7 +545,9 @@ export const VoiceDeveloperMode: Story = {
       }),
     ))
 
-    await userEvent.click(canvas.getByRole('button', { name: /^(Выключить режим разработчика|Turn off developer mode)$/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Music Island$/ }))
+    await userEvent.click(canvas.getByRole('switch', { name: /^(Режим разработчика|Developer mode)$/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Better Voice/ }))
     await waitFor(() => expect(args.onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         plugins: expect.objectContaining({

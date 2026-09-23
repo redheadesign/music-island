@@ -1,4 +1,4 @@
-import { Pipette } from 'lucide-react'
+import { Pipette } from '../../shared/ui/SettingsIcons'
 import {
   useCallback,
   useEffect,

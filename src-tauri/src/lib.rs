@@ -1,10 +1,13 @@
 mod autostart;
 mod config;
+mod data;
 mod diagnostics;
 mod install;
 mod logging;
 mod media;
+mod onboarding;
 mod plugins;
+mod shutdown;
 mod tray;
 mod updater;
 mod usage;
@@ -32,7 +35,12 @@ async fn save_config(
     config: AppConfig,
     state: State<'_, ConfigState>,
 ) -> Result<AppConfig, String> {
+    let previous_monitor = state.load().ok().and_then(|c| c.behavior.monitor_id);
     let saved = state.save(config).map_err(|error| error.to_string())?;
+    if previous_monitor != saved.behavior.monitor_id {
+        window::monitors::invalidate();
+        window::reset_overlay_position(&app).map_err(|e| e.to_string())?;
+    }
     emit_autostart_sync(&app, saved.behavior.launch_at_startup);
     media::set_preferred_source(saved.media.preferred_source_app_id.clone());
     media::switch_active_provider(
@@ -134,8 +142,9 @@ async fn set_overlay_bounds(
     expanded: bool,
     visual_width: f64,
     visual_height: f64,
+    generation: Option<u64>,
 ) -> Result<(), String> {
-    window::set_overlay_bounds(&app, expanded, visual_width, visual_height)
+    window::set_sequenced_overlay_bounds(&app, expanded, visual_width, visual_height, generation)
         .map_err(|error| error.to_string())
 }
 
@@ -152,13 +161,13 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn close_intro_window(app: tauri::AppHandle) -> Result<(), String> {
-    window::close_intro_window(&app).map_err(|error| error.to_string())
+async fn close_intro_window(app: tauri::AppHandle, generation: Option<u64>) -> Result<(), String> {
+    onboarding::close(&app, generation)
 }
 
 #[tauri::command]
 async fn replay_intro_window(app: tauri::AppHandle) -> Result<(), String> {
-    window::replay_intro_window(&app).map_err(|error| error.to_string())
+    onboarding::replay(&app, false)
 }
 
 #[tauri::command]
@@ -264,6 +273,31 @@ fn emit_autostart_sync(app: &tauri::AppHandle, enabled: bool) {
 }
 
 pub fn run() {
+    if data::run_cleanup_helper() {
+        return;
+    }
+    let probe_args: Vec<_> = std::env::args().collect();
+    if probe_args.get(1).map(String::as_str) == Some("--dictation-runtime-check") {
+        let result = handy_core::runtime_check::run(
+            probe_args.get(2).map(std::path::Path::new),
+            probe_args.get(3).map(std::path::Path::new),
+        );
+        let failed = result.is_err();
+        let report =
+            result.unwrap_or_else(|error| serde_json::json!({"error":format!("{error:#}")}));
+        let path = handy_core::portable::data_dir()
+            .unwrap()
+            .join("runtime-check.json");
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(path, serde_json::to_vec_pretty(&report).unwrap());
+        if failed {
+            std::process::exit(1)
+        }
+        return;
+    }
+    onboarding::prepare();
     logging::install_panic_hook();
     logging::append_event("app bootstrap started");
     let builder = tauri::Builder::default()
@@ -273,6 +307,10 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(handy_core::plugin())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--startup"]),
@@ -297,11 +335,20 @@ pub fn run() {
             enable_direct_yandex,
             disable_direct_yandex,
             reset_window_position,
+            window::monitors::get_monitor_snapshot,
+            window::show_overlay_ready,
             set_overlay_bounds,
             get_collapsed_gesture_state,
             open_settings_window,
             close_intro_window,
             replay_intro_window,
+            onboarding::get_launch_state,
+            onboarding::get_intro_state,
+            onboarding::finish_onboarding,
+            onboarding::replay_onboarding,
+            data::get_data_snapshot,
+            data::open_data_folder,
+            data::delete_all_data_and_exit,
             get_install_handoff,
             open_newer_install,
             copy_diagnostics,
@@ -319,6 +366,9 @@ pub fn run() {
             voice::voice_invoke
         ])
         .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::ScaleFactorChanged { .. }) {
+                window::monitors::invalidate();
+            }
             if matches!(window.label(), "settings" | "already-running") {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
@@ -377,6 +427,14 @@ pub fn run() {
                 Err(error) => logging::append_event(&format!("tray setup failed: {error}")),
             }
             if let Ok(config) = app.state::<ConfigState>().load() {
+                if config.plugins.enabled.iter().any(|id| id == "dictation") {
+                    let dictation_app = handle.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(error) = handy_core::resume(dictation_app).await {
+                            log::warn!("Could not initialize dictation: {error}");
+                        }
+                    });
+                }
                 usage::sync_config(&handle, app.state::<usage::UsageState>().inner(), &config);
                 emit_autostart_sync(&handle, config.behavior.launch_at_startup);
                 media::set_preferred_source(config.media.preferred_source_app_id.clone());
@@ -420,8 +478,15 @@ pub fn run() {
         });
 
     logging::append_event("app run requested");
-    match builder.run(tauri::generate_context!()) {
-        Ok(()) => logging::append_event("app run finished"),
+    match builder.build(tauri::generate_context!()) {
+        Ok(app) => app.run(|handle, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                if !shutdown::ready_to_exit() {
+                    api.prevent_exit();
+                    shutdown::request(handle);
+                }
+            }
+        }),
         Err(error) => logging::append_event(&format!("app run failed: {error}")),
     }
 }

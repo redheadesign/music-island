@@ -26,6 +26,8 @@ const DIRECT_STALE_MAX_FAILURES: u32 = 3;
 const DIRECT_STALE_MAX_AGE: Duration = Duration::from_secs(10);
 
 static SMTC_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
+static SMTC_COMMANDS_WAITING: AtomicU64 = AtomicU64::new(0);
+static MEDIA_COMMAND_QUEUE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 static MEDIA_POLLS: AtomicU64 = AtomicU64::new(0);
 static MEDIA_COMMANDS: AtomicU64 = AtomicU64::new(0);
 static MEDIA_UPDATES: AtomicU64 = AtomicU64::new(0);
@@ -34,25 +36,58 @@ static SMTC_PROBES: AtomicU64 = AtomicU64::new(0);
 static SMTC_PASSIVE_PROBES: AtomicU64 = AtomicU64::new(0);
 static SMTC_BUSY_SKIPS: AtomicU64 = AtomicU64::new(0);
 static PROVIDER_GENERATION: AtomicU64 = AtomicU64::new(0);
+static ROUTE_GENERATION: AtomicU64 = AtomicU64::new(0);
 static SNAPSHOT_INITIALIZATION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
-struct SmtcFlightGuard;
+struct SmtcFlightGuard<'a>(&'a AtomicBool);
 
-impl Drop for SmtcFlightGuard {
+impl Drop for SmtcFlightGuard<'_> {
     fn drop(&mut self) {
-        SMTC_IN_FLIGHT.store(false, Ordering::Release);
+        self.0.store(false, Ordering::Release);
     }
 }
 
-fn try_smtc_flight() -> Option<SmtcFlightGuard> {
+fn try_smtc_flight() -> Option<SmtcFlightGuard<'static>> {
+    if SMTC_COMMANDS_WAITING.load(Ordering::Acquire) != 0 {
+        return None;
+    }
     if SMTC_IN_FLIGHT
         .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
         .is_ok()
     {
-        Some(SmtcFlightGuard)
+        Some(SmtcFlightGuard(&SMTC_IN_FLIGHT))
     } else {
         SMTC_BUSY_SKIPS.fetch_add(1, Ordering::Relaxed);
         None
+    }
+}
+
+async fn wait_for_command_flight(flight: &AtomicBool) -> anyhow::Result<SmtcFlightGuard<'_>> {
+    timeout(PROBE_TIMEOUT, async {
+        loop {
+            if flight
+                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+            {
+                break SmtcFlightGuard(flight);
+            }
+            sleep(Duration::from_millis(8)).await;
+        }
+    })
+    .await
+    .map_err(|_| anyhow::anyhow!("Windows media request did not finish in time"))
+}
+
+struct WaitingCommand;
+impl WaitingCommand {
+    fn new() -> Self {
+        SMTC_COMMANDS_WAITING.fetch_add(1, Ordering::AcqRel);
+        Self
+    }
+}
+impl Drop for WaitingCommand {
+    fn drop(&mut self) {
+        SMTC_COMMANDS_WAITING.fetch_sub(1, Ordering::AcqRel);
     }
 }
 
@@ -67,6 +102,7 @@ pub fn set_preferred_source(source: Option<String>) {
         .expect("preferred source lock poisoned");
     if *preferred != source {
         *preferred = source;
+        ROUTE_GENERATION.fetch_add(1, Ordering::AcqRel);
         PROVIDER_GENERATION.fetch_add(1, Ordering::AcqRel);
     }
 }
@@ -74,6 +110,7 @@ pub fn set_preferred_source(source: Option<String>) {
 struct SnapshotSelection {
     provider: MediaProvider,
     generation: u64,
+    route_generation: u64,
     preferred_source: Option<String>,
 }
 
@@ -87,6 +124,7 @@ fn snapshot_selection() -> SnapshotSelection {
     SnapshotSelection {
         provider: *provider,
         generation: PROVIDER_GENERATION.load(Ordering::Acquire),
+        route_generation: ROUTE_GENERATION.load(Ordering::Acquire),
         preferred_source: preferred.clone(),
     }
 }
@@ -139,6 +177,9 @@ fn publish_snapshot(
     previous_key: &mut String,
     emit_timeline: bool,
 ) -> bool {
+    let mut stamped = snapshot.clone();
+    stamped.generation = generation;
+    let snapshot = &stamped;
     with_current_snapshot(generation, snapshot, || {
         let key = snapshot_key(snapshot);
         if key != *previous_key {
@@ -155,6 +196,8 @@ fn publish_snapshot(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaSnapshot {
+    #[serde(default)]
+    pub generation: u64,
     pub has_session: bool,
     pub source_app_id: Option<String>,
     pub track_id: Option<String>,
@@ -214,6 +257,7 @@ pub fn set_active_provider(provider: MediaProvider) {
         .expect("active provider lock poisoned");
     if *active != provider {
         *active = provider;
+        ROUTE_GENERATION.fetch_add(1, Ordering::AcqRel);
         PROVIDER_GENERATION.fetch_add(1, Ordering::AcqRel);
     }
 }
@@ -280,6 +324,10 @@ pub struct MediaSessionInfo {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct TimelineUpdate {
+    generation: u64,
+    source_app_id: Option<String>,
+    track_id: Option<String>,
+    title: Option<String>,
     position_ms: Option<i64>,
     duration_ms: Option<i64>,
     playback_status: PlaybackStatus,
@@ -290,6 +338,10 @@ struct TimelineUpdate {
 impl From<&MediaSnapshot> for TimelineUpdate {
     fn from(snapshot: &MediaSnapshot) -> Self {
         Self {
+            generation: snapshot.generation,
+            source_app_id: snapshot.source_app_id.clone(),
+            track_id: snapshot.track_id.clone(),
+            title: snapshot.title.clone(),
             position_ms: snapshot.position_ms,
             duration_ms: snapshot.duration_ms,
             playback_status: snapshot.playback_status.clone(),
@@ -351,6 +403,7 @@ impl MediaSnapshot {
 
     pub fn no_session_for(provider: MediaProvider) -> Self {
         Self {
+            generation: 0,
             has_session: false,
             source_app_id: None,
             track_id: None,
@@ -704,7 +757,8 @@ fn start_passive_smtc_watcher(app: AppHandle) {
     });
 }
 
-fn seed_snapshot(generation: u64, snapshot: MediaSnapshot) -> anyhow::Result<MediaSnapshot> {
+fn seed_snapshot(generation: u64, mut snapshot: MediaSnapshot) -> anyhow::Result<MediaSnapshot> {
+    snapshot.generation = generation;
     let provider = active_provider_lock()
         .read()
         .expect("active provider lock poisoned");
@@ -796,13 +850,41 @@ pub async fn current_snapshot() -> anyhow::Result<MediaSnapshot> {
 
 pub async fn send_command(command: MediaCommand) -> anyhow::Result<()> {
     MEDIA_COMMANDS.fetch_add(1, Ordering::Relaxed);
+    if matches!(
+        command,
+        MediaCommand::Next
+            | MediaCommand::Previous
+            | MediaCommand::Stop
+            | MediaCommand::Seek { .. }
+    ) {
+        // Discard probes already in flight, including Direct CDP replies.
+        PROVIDER_GENERATION.fetch_add(1, Ordering::AcqRel);
+    }
     let selection = snapshot_selection();
+    // Serialize user commands without dropping Next while a Seek or probe owns SMTC.
+    // Polls yield to queued commands; switching source invalidates queued work.
+    let _waiting = WaitingCommand::new();
+    let _queue = MEDIA_COMMAND_QUEUE.lock().await;
+    let current = snapshot_selection();
+    if current.route_generation != selection.route_generation {
+        anyhow::bail!("Media source changed before the command could run");
+    }
     if selection.provider == MediaProvider::YandexDirect {
         return crate::yandex::send_command(command).await;
     }
-    let Some(_guard) = try_smtc_flight() else {
-        anyhow::bail!("SMTC is busy with an existing request");
-    };
+    let _guard = wait_for_command_flight(&SMTC_IN_FLIGHT).await?;
+    if ROUTE_GENERATION.load(Ordering::Acquire) != selection.route_generation {
+        anyhow::bail!("Media source changed before the command could run");
+    }
+    if matches!(
+        command,
+        MediaCommand::Next
+            | MediaCommand::Previous
+            | MediaCommand::Stop
+            | MediaCommand::Seek { .. }
+    ) {
+        PROVIDER_GENERATION.fetch_add(1, Ordering::AcqRel);
+    }
     SMTC_PROBES.fetch_add(1, Ordering::Relaxed);
     platform::send_command(command, selection.preferred_source.as_deref()).await
 }
@@ -834,6 +916,7 @@ pub async fn list_sessions() -> anyhow::Result<Vec<MediaSessionInfo>> {
 fn snapshot_key(snapshot: &MediaSnapshot) -> String {
     serde_json::to_string(&(
         (
+            snapshot.generation,
             &snapshot.source_app_id,
             &snapshot.track_id,
             &snapshot.playback_status,
@@ -1028,6 +1111,13 @@ mod platform {
             return Ok(());
         }
 
+        if matches!(
+            command,
+            MediaCommand::Next | MediaCommand::Previous | MediaCommand::Stop
+        ) {
+            SEEK_GENERATION.fetch_add(1, Ordering::SeqCst);
+        }
+
         let session = match current_session(preferred_source).await? {
             Some(session) => session,
             None => return Ok(()),
@@ -1143,11 +1233,6 @@ mod platform {
         let source_app_id = optional_string(session.SourceAppUserModelId()?.to_string_lossy());
         let playback = session.GetPlaybackInfo()?;
         let controls = playback.Controls()?;
-        let timeline = session.GetTimelineProperties()?;
-        let start_ms = timespan_to_ms(timeline.StartTime()?);
-        let position_ms = (timespan_to_ms(timeline.Position()?) - start_ms).max(0);
-        let duration_ms = (timespan_to_ms(timeline.EndTime()?) - start_ms).max(0);
-        let updated_at = datetime_to_rfc3339(timeline.LastUpdatedTime()?);
 
         let can_reuse_metadata = previous.and_then(|snapshot| snapshot.source_app_id.as_deref())
             == source_app_id.as_deref();
@@ -1169,7 +1254,6 @@ mod platform {
                     snapshot.source_app_id == source_app_id
                         && snapshot.title == title
                         && snapshot.artist == artist
-                        && snapshot.duration_ms == Some(duration_ms)
                 });
                 let thumbnail = if track_unchanged {
                     previous.and_then(|snapshot| snapshot.thumbnail_data_url.clone())
@@ -1179,7 +1263,14 @@ mod platform {
                 (title, artist, album_title, thumbnail)
             };
 
+        let timeline = session.GetTimelineProperties()?;
+        let start_ms = timespan_to_ms(timeline.StartTime()?);
+        let position_ms = (timespan_to_ms(timeline.Position()?) - start_ms).max(0);
+        let duration_ms = (timespan_to_ms(timeline.EndTime()?) - start_ms).max(0);
+        let updated_at = datetime_to_rfc3339(timeline.LastUpdatedTime()?);
+
         Ok(MediaSnapshot {
+            generation: 0,
             has_session: true,
             source_app_id,
             track_id: None,
@@ -1331,6 +1422,7 @@ mod routing_tests {
 
     fn snapshot() -> MediaSnapshot {
         MediaSnapshot {
+            generation: 0,
             has_session: true,
             source_app_id: Some("test.player".into()),
             track_id: Some("track-1".into()),
@@ -1377,6 +1469,22 @@ mod routing_tests {
         assert!(try_smtc_flight().is_none());
         drop(first);
         assert!(try_smtc_flight().is_some());
+    }
+
+    #[tokio::test]
+    async fn navigation_waits_for_the_in_flight_seek() {
+        let flight = AtomicBool::new(true);
+        let previous = SmtcFlightGuard(&flight);
+        let navigation = wait_for_command_flight(&flight);
+        let finish_seek = async {
+            sleep(Duration::from_millis(25)).await;
+            drop(previous);
+        };
+        let (navigation, ()) = tokio::join!(navigation, finish_seek);
+        let navigation = navigation.expect("Next must wait for Seek, rather than disappear");
+        assert!(flight.load(Ordering::Acquire));
+        drop(navigation);
+        assert!(!flight.load(Ordering::Acquire));
     }
 
     #[test]

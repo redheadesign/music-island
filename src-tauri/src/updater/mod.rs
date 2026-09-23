@@ -12,7 +12,7 @@ const GITHUB_REPO: &str = "music-island";
 const PREFERRED_ASSET: &str = "music-island.exe";
 const CHECKSUM_ASSET: &str = "SHA256.txt";
 const MAX_CHECKSUM_BYTES: usize = 64 * 1024;
-const USER_AGENT: &str = "MusicIsland-Updater/2.0.0";
+const USER_AGENT: &str = "MusicIsland-Updater/3.0.0";
 const TEMP_ROOT_NAME: &str = "MusicIslandUpdate";
 
 #[derive(Debug, Clone, Serialize)]

@@ -38,3 +38,5 @@ src-tauri/resources-optional/
 .pnpm-store/
 docs/SESSION_HANDOFF.md
 docs/DESIGN_PREFERENCES.md
+
+src-tauri/crates/**/target/

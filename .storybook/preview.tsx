@@ -1,6 +1,7 @@
 import type { Preview } from '@storybook/react-vite'
 import { themes } from 'storybook/theming'
 import { WorkshopFrame } from '../src/stories/WorkshopFrame'
+import { resetDictationPreview } from '../src/stories/mocks/dictationApi'
 import { resetVoicePreview } from '../src/stories/mocks/voiceApi'
 import { resetVoiceSession } from '../src/stories/mocks/voiceSession'
 import { resetNativePreview } from '../src/stories/mocks/tauriApi'
@@ -88,6 +89,7 @@ const preview: Preview = {
   },
   beforeEach(context) {
     resetNativePreview(context.parameters.nativePreview)
+    resetDictationPreview()
     resetVoicePreview(context.parameters.voicePreview)
     resetVoiceSession()
   },

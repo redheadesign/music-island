@@ -43,6 +43,10 @@ function resolveSourceImport(importer, specifier) {
 }
 
 function validateBoundary(importer, target) {
+  // Repository-owned static brand assets carry no app or feature dependencies.
+  const staticAsset = target.startsWith(path.join(root, 'assets') + path.sep)
+    && ['.svg', '.png', '.webp'].includes(path.extname(target))
+  if (staticAsset) return null
   const sourceLayer = layerOf(importer)
   const targetLayer = layerOf(target)
   if (sourceLayer === 'shared' && targetLayer !== 'shared') {

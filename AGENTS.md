@@ -6,7 +6,7 @@
 - Windows SMTC is the default media source; Direct Yandex Music is an explicit opt-in local CDP integration with the installed desktop client.
 - Better Voice runs in-process in Rust; its React settings, meters and fox mascot live in `src/features/plugins/voice`.
 - Start with `README.md` and `docs/ARCHITECTURE.md`. Consult `docs/MEDIA_ARCHITECTURE.md`, `docs/YANDEX_MUSIC_API.md`, `docs/BETTER_VOICE.md`, `docs/QA.md` and `docs/RELEASES.md` for the relevant subsystem.
-- Use root and nested `AGENTS.md` files for Codex instructions. The original `.cursor/rules` files are retained for reference; do not rely on Cursor rule discovery in Codex.
+- Use root and nested `AGENTS.md` files for Codex instructions. The former Cursor fox rule is preserved in `src/features/plugins/voice/AGENTS.md`; the duplicate `.cursor/rules` file was removed.
 - When present, local unfinished work and the exact build/verification state are recorded in `docs/SESSION_HANDOFF.md`. Read it when available before resuming the taskbar work or creating a test build; update it when those outstanding checks are resolved.
 
 ## Scope

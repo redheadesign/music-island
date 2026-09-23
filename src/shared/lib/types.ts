@@ -58,6 +58,7 @@ export interface WaveSelectionResult {
 }
 
 export interface MediaSnapshot {
+  generation?: number
   hasSession: boolean
   sourceAppId: string | null
   trackId: string | null
@@ -89,6 +90,10 @@ export interface MediaSnapshot {
 }
 
 export interface TimelineUpdate {
+  generation?: number
+  sourceAppId: string | null
+  trackId: string | null
+  title: string | null
   positionMs: number | null
   durationMs: number | null
   playbackStatus: PlaybackStatus
@@ -128,6 +133,9 @@ export type LayoutPreset = 'clean-controls' | 'album-pill' | 'now-playing-rich' 
 export interface TaskbarStatus {
   state: 'off' | 'visible' | 'hidden' | 'no-space' | 'unsupported' | 'error'
 }
+
+export interface MonitorInfo { id: string; name: string; x: number; y: number; width: number; height: number; scaleFactor: number; primary: boolean }
+export interface MonitorSnapshot { revision: number; monitors: MonitorInfo[]; activeId: string | null; preferredId: string | null }
 
 export interface AppConfig {
   schemaVersion: number

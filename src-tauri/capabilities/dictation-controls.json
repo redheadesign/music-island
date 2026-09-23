@@ -1,0 +1,6 @@
+{
+  "identifier": "dictation-controls",
+  "description": "The optional island microphone can read status and toggle dictation.",
+  "windows": ["main"],
+  "permissions": ["dictation:controls"]
+}

@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { StaticRadialGradient } from '@paper-design/shaders-react'
 import { useEffect, useRef } from 'react'
-import logoMarkUrl from './logo-mark.svg'
+import { AppLogo } from '../../shared/ui/AppLogo'
 import './IntroSplash.css'
 
 /** Brand splash tones derived from #F76100 */
@@ -12,7 +12,7 @@ const EDGE_COLORS = ['#F76100', '#ff8a33', '#ffd0a8']
  * One vector mark: brief hold → spin → dip → fly → orange top flash.
  * (Skipped entirely when the app is launched with --startup.)
  */
-export function IntroSplash() {
+export function IntroSplash({ reducedMotion = false, generation }: { reducedMotion?: boolean; generation?: number }) {
   const stageRef = useRef<HTMLDivElement>(null)
   const edgeRef = useRef<HTMLDivElement>(null)
   const finishedRef = useRef(false)
@@ -32,14 +32,15 @@ export function IntroSplash() {
     if (!stage || !edge) return
 
     let cancelled = false
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const reduceMotion = reducedMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     const finish = async () => {
       if (finishedRef.current) return
       finishedRef.current = true
       try {
-        await invoke('close_intro_window')
+        await invoke('close_intro_window', { generation })
       } catch {
+        if (cancelled) return
         try {
           await getCurrentWindow().destroy()
         } catch {
@@ -114,13 +115,13 @@ export function IntroSplash() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [reducedMotion, generation])
 
   return (
     <div className="intro-splash" aria-hidden>
       <div ref={stageRef} className="intro-stage">
         <div className="intro-logo">
-          <img className="intro-logo__mark" src={logoMarkUrl} alt="" draggable={false} />
+          <AppLogo variant="intro" className="intro-logo__mark" />
         </div>
       </div>
 

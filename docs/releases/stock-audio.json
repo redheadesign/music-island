@@ -1,0 +1,42 @@
+{
+  "retrieved": "2026-09-23",
+  "musicCataloguePublication": "2020-01-28",
+  "sourcePage": "https://mixkit.co/free-stock-music/mood/positive/",
+  "rawAudioDistribution": false,
+  "usage": "Synchronized promotional videos only",
+  "assets": [
+    {
+      "kind": "music",
+      "file": "tech-house-vibes.mp3",
+      "url": "https://assets.mixkit.co/music/130/130.mp3",
+      "title": "Tech House vibes",
+      "author": "Alejandro Magaña (A. M.)",
+      "bytes": 3276082,
+      "sha256": "95972c602ff0686e298792f45b384f0e15477f3cf983f05dd98fd5e5d965eed6",
+      "license": "https://mixkit.co/license/#musicFree",
+      "attributionRequired": false
+    },
+    {
+      "kind": "ocean",
+      "file": "ocean.wav",
+      "url": "https://assets.mixkit.co/active_storage/sfx/1208/1208.wav",
+      "title": "Small waves harbor rocks",
+      "author": "Mixkit sound effects",
+      "bytes": 20600780,
+      "sha256": "cfd725ebf1702858eaae3eddd341a4fee60b20b4ec3043fb4b8d9daa5ea63d99",
+      "license": "https://mixkit.co/license/#sfxFree",
+      "attributionRequired": false
+    },
+    {
+      "kind": "crickets",
+      "file": "crickets.wav",
+      "url": "https://assets.mixkit.co/active_storage/sfx/39/39.wav",
+      "title": "Crickets and insects in the wild ambience",
+      "author": "Mixkit sound effects",
+      "bytes": 4588526,
+      "sha256": "dcf4574791c8c49a9e55d088b577a5132a7ae3bf14d0eadbefba8b8e789b8965",
+      "license": "https://mixkit.co/license/#sfxFree",
+      "attributionRequired": false
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 import type { MediaSnapshot } from '../../shared/lib/types'
-import previewRecord from '../../assets/preview-record.svg'
+import previewRecord from '../../assets/preview-sea-stack.webp'
 
 export const APPEARANCE_PREVIEW_MEDIA: MediaSnapshot = {
   hasSession: true,
   sourceAppId: 'YandexMusic.exe',
   trackId: 'settings-preview',
-  title: 'Evening Light',
+  title: 'Still Water',
   artist: 'Music Island',
   albumTitle: null,
   playbackStatus: 'playing',

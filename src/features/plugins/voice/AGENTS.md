@@ -1,6 +1,6 @@
 # Better Voice guidance
 
-The fox rules below were copied from `.cursor/rules/fox-mascot-alpha.mdc` without changing their body. Maintain this file as the Codex source of truth. All paths in these rules are relative to the repository root. They apply when changing fox assets, mascot playback or the local alpha-processing pipeline; unrelated voice changes do not require regenerating assets.
+This file is the source of truth for Better Voice and the fox pipeline. The duplicate Cursor rule was removed after verifying that its complete body is preserved here. All paths in these rules are relative to the repository root. They apply when changing fox assets, mascot playback or the local alpha-processing pipeline; unrelated voice changes do not require regenerating assets.
 
 # Fox mascot alpha (do not regress)
 

@@ -153,7 +153,7 @@ const ru = {
   'island.updateTitle': 'Доступно обновление',
   'island.updateNow': 'Обновить',
   'island.updateLater': 'Позже',
-  'island.hoverCoach': 'Наведите курсор на верхний край',
+  'island.hoverCoach': 'Подведите мышь к верхнему краю',
 } as const
 
 type MessageKey = keyof typeof ru

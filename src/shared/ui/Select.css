@@ -1,0 +1,16 @@
+.dark-select { display:inline-flex; align-items:center; justify-content:space-between; gap:var(--space-2); min-width:0; max-width:320px; min-height:var(--control-height); padding:8px var(--space-3); border:0; border-radius:var(--radius-sm); color:var(--fg-primary); background:var(--control-surface); font:inherit; font-size:var(--text-caption); cursor:pointer; text-align:left; }
+.dark-select:hover:not(:disabled), .dark-select--open { background:var(--control-surface-hover); }
+.dark-select:disabled { opacity:.45; cursor:default; }
+.dark-select:focus-visible { outline:var(--focus-ring); outline-offset:var(--focus-offset); }
+.dark-select__label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dark-select__chevron { flex:0 0 auto; opacity:.7; }
+.dark-select-menu { position:fixed; z-index:12000; overflow-y:auto; max-height:280px; padding:var(--space-1); border:0; border-radius:var(--radius-md); color:var(--fg-primary); background:var(--surface-raised); box-shadow:var(--shadow-popover); overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
+.dark-select-option { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); width:100%; min-height:var(--control-height); padding:var(--space-2) var(--space-3); border:0; border-radius:var(--radius-sm); background:transparent; color:var(--fg-primary); font:inherit; font-size:var(--text-caption); line-height:1.5; text-align:left; overflow-wrap:anywhere; cursor:pointer; }
+.dark-select-option > span { min-width:0; }
+.dark-select-option:hover, .dark-select-option:focus-visible { background:var(--control-surface-hover); outline:var(--focus-ring); outline-offset:-2px; }
+.dark-select-option--active { font-weight:600; }
+.dark-select-option__check { flex:0 0 auto; }
+.dark-select-option--empty { color:var(--fg-secondary); cursor:default; }
+
+.dark-select--actions { width: 32px; min-height: 32px; padding: 5px; justify-content: center; background: transparent; }
+.dark-select-option[data-danger] { color: var(--status-danger); }

@@ -1,0 +1,8 @@
+.island-feedback { position: relative; isolation: isolate; }
+.island-feedback__layer { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 0; }
+.island-feedback__wave { position: absolute; border-radius: 50%; background: #fff; pointer-events: none; }
+.island-feedback > :not(.island-feedback__layer) { position: relative; z-index: 1; }
+.playback-morph { overflow: visible; flex-shrink: 0; }
+.reaction-button--like > svg { transition: fill 240ms ease, color 200ms ease; }
+@media (prefers-reduced-motion: reduce) { .reaction-button--like > svg { transition: none; } }
+[data-reduced-motion='true'] .reaction-button--like > svg, .reduced-motion .reaction-button--like > svg { transition: none; }

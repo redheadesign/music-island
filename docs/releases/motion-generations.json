@@ -1,0 +1,134 @@
+{
+  "date": "2026-09-23",
+  "initialBudget": 900,
+  "additionalAuthorizedBudget": 900,
+  "totalSpent": 1794,
+  "music": [
+    {
+      "name": "continuous",
+      "provider": "Strophe",
+      "model": "MiniMax Music 3",
+      "generationId": "437662b2-af0b-4425-9c7a-6d35936fa8cf",
+      "credits": 18,
+      "prompt": "Compose a polished instrumental electro-funk / nu-disco cue for a contemporary design-led software launch film. Exactly 120 BPM, steady 4/4. Warm tight syncopated synth bass, crisp dry kick and snare, subtle swung hats, tasteful short analog synth stabs. Confident, youthful, sunny orange energy, a little fashion runway attitude, makes you want to move. Start immediately with a clean rhythmic hook, develop in 8-second phrases, leave deliberate tiny gaps for product clicks, a satisfying ending by 60 seconds. Sophisticated and minimal, no childish or cute melody, no ukulele, no bells, no corporate inspiration music, no orchestral score, no rock, no trap, no EDM festival drop. Absolutely instrumental only: no voice, no spoken words, no vocals, no vocal chops. Original melody, do not imitate any existing artist or song.",
+      "parameters": {
+        "duration": 60
+      },
+      "status": "archived-rejected-by-user"
+    },
+    {
+      "name": "rhythm",
+      "provider": "Strophe",
+      "model": "MiniMax Music 3",
+      "generationId": "ab75ff07-af92-4350-9b5b-cec1e59f7307",
+      "credits": 18,
+      "prompt": "Compose an original high-end instrumental electronic product-film cue, 124 BPM, with a taut contemporary broken-beat / light UK-garage groove. Rounded syncopated sub bass kept controlled, crisp shuffling percussion, punchy warm analog chords and small metallic accents, youthful and vividly orange, confident and sophisticated. Energetic and tactile, not aggressive. Distinct from disco: broken rhythmic accents, sparse spacious hooks, elegant half-beat stops useful for match cuts. Immediate groove, a build in the middle and a clean resolved ending at 60 seconds. No voice, speech, lyrics or singing, no vocal samples, no trap hats, no rock guitars, no childish plucks, no ukulele, no dramatic dark cinematic drone or huge festival drop. Original music without reference to an existing artist or track.",
+      "parameters": {
+        "duration": 60
+      },
+      "status": "archived-rejected-by-user"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "water",
+      "prompt": "A beautifully observed real photograph, vertical 9:16, fine-art editorial nature photography. Looking almost straight down at shallow clear water over a pale warm limestone bed. One small irregular flat ochre-orange stone island sits just above the water in the upper middle of the composition, naturally weathered and porous, asymmetrical, NOT polished or geometrically shaped. Around it, a few broad subtle elliptical ripples and lovely optical sun caustics. A narrow amber afternoon sunlight reflection crosses cool gray-blue water. Restrained actual colors: warm orange ochre stone, off-white limestone, soft slate blue water. The lower third is open quiet water with almost no visual detail, for later typography. Natural raking sunlight, genuine mineral texture, subtle imperfections, delicate believable optical refraction, photographed with a medium-format camera, no HDR, no excessive saturation or dramatic grading. Composition confident and minimal, like a beautiful travel/design magazine photograph. This must look like an actual natural place captured by a discerning photographer, never a 3D render, product mockup or AI fantasy. No plastic, ribbon, metallic material, floating objects, letters, UI, logo, people, borders or watermark.",
+      "parameters": {
+        "resolution": "2K",
+        "aspectRatio": "9:16"
+      },
+      "generationId": "7a524397-a89f-49cf-946b-a1196d9655e3",
+      "model": "Seedream 5.0 Pro",
+      "credits": 14,
+      "status": "used"
+    },
+    {
+      "name": "reeds",
+      "prompt": "Real editorial nature photograph, portrait 9:16. A close view of seven slender warm ochre reeds growing in still slate-blue lake water. Their varying heights form a loose natural sound-wave rhythm across the central horizontal band, with delicate long reflections below. Restrained burnt orange seed heads, fine natural stems, tiny imperfections. No horizon, no sky, no huge landscape: an intimate observed detail, quietly confident photographic composition, gentle side light, rich graphite-blue water, a few elliptical ripples, medium format lens. Top and bottom have generous quiet negative space. Contemporary fine-art nature photography, not illustration, no CGI, plastic, candy colors, symmetry, text, people, logos or UI.",
+      "parameters": {
+        "resolution": "2K",
+        "aspectRatio": "9:16"
+      },
+      "generationId": "06770536-cd86-4f5a-9c05-cab83feb88c6",
+      "model": "Seedream 5.0 Pro",
+      "credits": 14,
+      "status": "used"
+    },
+    {
+      "name": "light",
+      "prompt": "Fine-art architectural nature photograph, portrait 9:16. Almost flat close-up of a beautifully tactile pale warm limestone wall, brushed by a single irregular diagonal band of golden afternoon sunlight. In the upper half a thin branch with three real burnt-orange autumn leaves enters from the left, casting sharp beautiful leaf silhouettes across the pale mineral surface. Lower right falls into cool deep graphite shadow. One confident diagonal composition, ample negative space, subtle porous actual stone and fragile actual dried leaf texture. Quiet contemporary editorial photography, natural daylight, restrained palette of orange, ivory and graphite. No CGI, no plastic, no floating objects, no studio product props, no people, no text or logos. Physical light and shade, utterly photographic.",
+      "parameters": {
+        "resolution": "2K",
+        "aspectRatio": "9:16"
+      },
+      "generationId": "b532d68d-6c43-4a04-bad5-4e90bd08bcdf",
+      "model": "Seedream 5.0 Pro",
+      "credits": 14,
+      "status": "used"
+    }
+  ],
+  "inserts": [
+    {
+      "model": "Seedance 2.5",
+      "generationId": "3aff70ca-9d1d-48d7-8120-ebf447b85e34",
+      "credits": 286,
+      "prompt": "Preserve the photographic composition and every rock texture. A real quiet locked-off overhead shot of clear shallow water and a weathered ochre stone. A small gentle ripple starts beside the stone and travels outward, crossing subtle sunlight caustics. Natural fluid movement only, no morphing, no drifting stone, no object addition, no artificial particles or graphic effects. The camera makes an almost imperceptible smooth slow push. Refined editorial nature cinematography, real daylight. No text, logo, UI or music.",
+      "parameters": {
+        "resolution": "1080p",
+        "duration": 4,
+        "audio": true
+      },
+      "imageIds": [
+        "7a524397-a89f-49cf-946b-a1196d9655e3"
+      ],
+      "status": "used"
+    },
+    {
+      "model": "Seedance 2.5",
+      "generationId": "b6fc3685-19f2-40f2-8a3a-81795b8df91e",
+      "credits": 286,
+      "prompt": "Animate this real photographic lake detail with absolute restraint. The reeds gently sway in a light breeze, in staggered rhythmic phases like a natural sound wave. Reflections move correctly with small water ripples. Keep the exact number and placement of stems stable; no growth, disappearance, new objects, or morphing. Locked-off camera with a very subtle smooth lateral drift. Maintain natural fine texture and slate blue water, warm seed heads. Four seconds of real editorial nature cinematography, no text, UI, logo, particles or music.",
+      "parameters": {
+        "duration": 4,
+        "resolution": "1080p",
+        "audio": true
+      },
+      "imageIds": [
+        "06770536-cd86-4f5a-9c05-cab83feb88c6"
+      ],
+      "status": "used"
+    },
+    {
+      "model": "Seedance 2.5",
+      "generationId": "f72f255a-1797-40ef-bb8c-cfd139b6ae11",
+      "credits": 286,
+      "prompt": "Animate the real sunlight and orange autumn leaves in this photograph. A gentle breeze causes subtle irregular leaf movement and physically matching cast shadows. The sunlit diagonal gradually opens a little across the warm limestone wall, as if a cloud has just passed, revealing fine natural texture. No object morphing or floating, no extra leaves, no cinematic fantasy. Stable editorial photographic framing, no zoom jump. Quiet physical detail contrasting warm ivory light and graphite shade. No text, logos, UI, music or voice.",
+      "parameters": {
+        "duration": 4,
+        "resolution": "1080p",
+        "audio": true
+      },
+      "imageIds": [
+        "b532d68d-6c43-4a04-bad5-4e90bd08bcdf"
+      ],
+      "status": "used"
+    }
+  ],
+  "rejected": [
+    {
+      "generationId": "07f2604d-90f9-4c58-95a8-90e2853ec7d1",
+      "credits": 286,
+      "status": "rejected; not in films"
+    },
+    {
+      "generationId": "54a3ea61-6a76-4953-9652-aaf05c45993e",
+      "credits": 286,
+      "status": "rejected; not in films"
+    },
+    {
+      "generationId": "34d0e601-742c-46d5-b101-f92e357f83f6",
+      "credits": 286,
+      "status": "rejected; not in films"
+    }
+  ]
+}

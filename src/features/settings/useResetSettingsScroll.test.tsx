@@ -15,6 +15,7 @@ function Fixture() {
     <button type="button" onClick={() => setPage('island:appearance')}>Appearance</button>
     <button type="button" onClick={() => setPage('island:about')}>About</button>
     <button type="button" onClick={() => setPage('voice:about')}>Voice</button>
+    <div data-settings-scroll />
   </section>
 }
 
@@ -24,23 +25,24 @@ describe('useResetSettingsScrollOnChange', () => {
     scrollContainer.className = 'settings-scroll'
     document.body.append(scrollContainer)
     const root = createRoot(scrollContainer)
-    scrollContainer.scrollTop = 480
+
 
     try {
       await act(async () => root.render(<Fixture />))
-      expect(scrollContainer.scrollTop).toBe(480)
+      const content = scrollContainer.querySelector<HTMLElement>('[data-settings-scroll]')!
+      expect(content.scrollTop).toBe(0)
 
-      scrollContainer.scrollTop = 720
+      content.scrollTop = 720
       await act(async () => scrollContainer.querySelector<HTMLButtonElement>('button')!.click())
-      expect(scrollContainer.scrollTop).toBe(720)
+      expect(content.scrollTop).toBe(720)
 
       await act(async () => scrollContainer.querySelectorAll<HTMLButtonElement>('button')[1].click())
-      expect(scrollContainer.scrollTop).toBe(0)
+      expect(content.scrollTop).toBe(0)
       expect(scrollContainer.querySelector('section')?.dataset.page).toBe('island:about')
 
-      scrollContainer.scrollTop = 560
+      content.scrollTop = 560
       await act(async () => scrollContainer.querySelectorAll<HTMLButtonElement>('button')[2].click())
-      expect(scrollContainer.scrollTop).toBe(0)
+      expect(content.scrollTop).toBe(0)
       expect(scrollContainer.querySelector('section')?.dataset.page).toBe('voice:about')
     } finally {
       await act(async () => root.unmount())

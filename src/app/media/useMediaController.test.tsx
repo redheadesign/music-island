@@ -72,6 +72,26 @@ afterEach(async () => {
 })
 
 describe('media controller timeline lifecycle', () => {
+  it('does not reapply a seek to a new track after navigation', async () => {
+    await render()
+    await act(async () => { await current.sendCommand({ seek: { positionMs: 60_000 } }) })
+    expect(current.media?.positionMs).toBe(60_000)
+    await act(async () => { await current.sendCommand('next') })
+    const next = { ...snapshot, trackId: 'track-b', title: 'Track B', positionMs: 0 }
+    await act(async () => { vi.mocked(api.onMediaUpdate).mock.calls[0][0](next) })
+    await act(async () => { vi.mocked(api.onTimelineUpdate).mock.calls[0][0]({ ...next, positionMs: 200 }) })
+    expect(current.media?.positionMs).toBeLessThan(1_000)
+  })
+
+  it('ignores a late timeline from the previous track', async () => {
+    await render()
+    const next = { ...snapshot, trackId: 'track-b', title: 'Track B', positionMs: 0 }
+    await act(async () => { vi.mocked(api.onMediaUpdate).mock.calls[0][0](next) })
+    await act(async () => { vi.mocked(api.onTimelineUpdate).mock.calls[0][0]({ ...snapshot, positionMs: 60_000 }) })
+    expect(current.media?.trackId).toBe('track-b')
+    expect(current.media?.positionMs).toBe(0)
+  })
+
   it('keeps timeline delivery and playing progress interpolation enabled by default', async () => {
     await render()
     expect(api.onTimelineUpdate).toHaveBeenCalledOnce()

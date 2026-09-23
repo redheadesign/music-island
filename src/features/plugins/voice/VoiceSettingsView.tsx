@@ -1,3 +1,4 @@
+import { Toggle } from '../../../shared/ui/SettingsControls'
 import {
   AudioLines,
   SlidersHorizontal,
@@ -5,7 +6,7 @@ import {
   Volume2,
   Waves,
   X,
-} from 'lucide-react'
+} from '../../../shared/ui/SettingsIcons'
 import { useMemo, useState, type ReactNode } from 'react'
 import { AGC_CALLS_RMS, AGC_CONTENT_RMS, dbToLinear, linearToDb } from './levels'
 import { sceneLabel } from './presets'
@@ -24,6 +25,8 @@ import './voice-settings.css'
 
 interface VoiceSettingsViewProps {
   locale: Locale
+  page?: 'general' | 'guide'
+  onPage?: (page: 'general' | 'guide') => void
   /** False while Settings is hidden or another tab is active — pause fox / meters. */
   active?: boolean
   reducedMotion?: boolean
@@ -37,6 +40,8 @@ const CABLE_SITE = 'https://vb-audio.com/Cable/'
 
 export function VoiceSettingsView({
   locale,
+  page,
+  onPage,
   active = true,
   reducedMotion = false,
   developerMode = false,
@@ -46,7 +51,9 @@ export function VoiceSettingsView({
   const app = useIslandVoiceApp(locale, { active })
   const { t } = app
   const ti = createTranslator(locale)
-  const [guideOpen, setGuideOpen] = useState(false)
+  const [localGuide, setLocalGuide] = useState(false)
+  const guideOpen = page ? page === 'guide' : localGuide
+  const setGuideOpen = (open: boolean) => onPage ? onPage(open ? 'guide' : 'general') : setLocalGuide(open)
   const [foxPreviewId, setFoxPreviewId] = useState<FoxClipId | null>(null)
   const foxPreviewLabel = useMemo(
     () => FOX_CLIP_CATALOG.find((clip) => clip.id === foxPreviewId)?.label ?? null,
@@ -359,16 +366,7 @@ function HeaderSwitch({
   onChange: (checked: boolean) => void
 }) {
   return (
-    <button
-      type="button"
-      className={['ui-switch', checked ? 'ui-switch--on' : ''].filter(Boolean).join(' ')}
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-    >
-      <span className="ui-switch__thumb" aria-hidden="true" />
-    </button>
+    <Toggle checked={checked} onChange={onChange} aria-label={label} />
   )
 }
 

@@ -205,8 +205,8 @@ export function MusicModule({
     if (element === 'previous' || element === 'next') {
       return showPreviousNext ? <NavigationButton direction={element} onClick={() => navigate(element)} disabled={element === 'previous' ? !media.canGoPrevious : !media.canGoNext} /> : null
     }
-    if (element === 'artwork') return hasArtwork ? <MediaArtwork src={media.thumbnailDataUrl} title={title} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} /> : null
-    if (element === 'transport') return hasArtwork ? null : <PlaybackButton playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} />
+    if (element === 'artwork') return hasArtwork ? <MediaArtwork reducedMotion={reducedMotion} src={media.thumbnailDataUrl} title={title} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} /> : null
+    if (element === 'transport') return hasArtwork ? null : <PlaybackButton reducedMotion={reducedMotion} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} />
     return null
   }
   const reactions = (side: 'reactionLeft' | 'reactionRight') => {
@@ -214,7 +214,7 @@ export function MusicModule({
     return renderZone(side, !isButtonsOnly && elements.length ? <div className="music-reactions">{elements.map((kind) => <Fragment key={kind}>{renderElement(kind,
       kind === 'shuffle' || kind === 'repeat'
         ? <PlaybackModeButton kind={kind} active={media.isShuffleActive} repeatMode={media.repeatMode} disabled={kind === 'shuffle' ? !media.canShuffle : !media.canRepeat} locale={locale} onClick={() => onCommand(kind === 'shuffle' ? 'toggle-shuffle' : 'cycle-repeat')} />
-        : <ReactionButton kind={kind} active={kind === 'like' ? media.isLiked : media.isDisliked} disabled={kind === 'like' ? !media.canLike : !media.canDislike} onClick={() => onCommand(kind)} />
+        : <ReactionButton locale={locale} reducedMotion={reducedMotion} kind={kind} active={kind === 'like' ? media.isLiked : media.isDisliked} disabled={kind === 'like' ? !media.canLike : !media.canDislike} onClick={() => onCommand(kind)} />
     )}</Fragment>)}</div> : null)
   }
 

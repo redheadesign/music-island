@@ -1,0 +1,6 @@
+{
+  "identifier": "dictation-settings",
+  "description": "Local dictation settings and explicitly requested model, history and storage actions.",
+  "windows": ["settings"],
+  "permissions": ["dictation:settings"]
+}

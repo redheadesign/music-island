@@ -8,6 +8,7 @@ import { StatusChip } from '../shared/ui/StatusChip'
 
 export default {
   title: 'Foundations',
+  decorators: [(Story) => <div className="auxiliary-ui" style={{ background: 'var(--surface-canvas)', padding: 24 }}><Story /></div>],
   parameters: { workshop: { width: 920 }, controls: { disable: true } },
 } satisfies Meta
 
@@ -37,10 +38,10 @@ function FoundationSection({ title, description, children }: {
 }
 
 const surfaces = [
-  { token: '--surface-canvas', label: 'Основа', value: '#101113', usage: 'Фон окна и пространство между разделами' },
-  { token: '--surface-panel', label: 'Содержание', value: '#18191c', usage: 'Группы настроек и длинный текст' },
-  { token: '--surface-raised', label: 'Управление', value: '#222326', usage: 'Поля ввода, меню и вторичные кнопки' },
-  { token: '--surface-glass', label: 'Навигация', value: 'rgba(32, 33, 36, .78)', usage: 'Плавающая панель над содержанием' },
+  { token: '--surface-canvas', label: 'Основа', value: '#1E1E1E', usage: 'Фон окна и пространство между разделами' },
+  { token: '--surface-panel', label: 'Содержание', value: '#272727', usage: 'Группы настроек и длинный текст' },
+  { token: '--surface-raised', label: 'Управление', value: '#303030', usage: 'Поля ввода, меню и вторичные кнопки' },
+  { token: '--surface-glass', label: 'Меню', value: '#303030', usage: 'Поверхность меню и вложенного содержимого' },
 ] as const
 
 export const Palette: StoryObj = {
@@ -60,9 +61,9 @@ export const Palette: StoryObj = {
       <FoundationSection title="Текст" description="Важность задается цветом и расстоянием. Второстепенные подписи остаются читаемыми.">
         <div className="foundation-text-colors">
           {[
-            ['--fg-primary', 'Основной текст', '#f5f5f7', 'Названия, значения, активная навигация'],
-            ['--fg-secondary', 'Пояснения', '#aaaab2', 'Описания настроек и дополнительный контекст'],
-            ['--fg-muted', 'Метаданные', '#85858f', 'Версии, единицы измерения, вспомогательные подписи'],
+            ['--fg-primary', 'Основной текст', '#f5f5f5', 'Названия, значения, активная навигация'],
+            ['--fg-secondary', 'Пояснения', '#b7b7b7', 'Описания настроек и дополнительный контекст'],
+            ['--fg-muted', 'Метаданные', '#929292', 'Версии, единицы измерения, вспомогательные подписи'],
           ].map(([token, label, value, usage]) => (
             <div className="foundation-text-color" key={token} style={{ color: `var(${token})` }}>
               <span className="foundation-text-specimen" aria-hidden="true">Aa</span>
@@ -78,8 +79,8 @@ export const Palette: StoryObj = {
           <div><StatusChip tone="danger" className="sample-pill">Нет подключения</StatusChip><code>--status-danger</code><p>Ошибка, которую можно исправить</p></div>
         </div>
         <div className="foundation-border-grid">
-          <div><span style={{ borderColor: 'var(--border-subtle)' }} /><code>--border-subtle</code><p>Разделение соседних поверхностей</p></div>
-          <div><span style={{ borderColor: 'var(--border-strong)' }} /><code>--border-strong</code><p>Контур интерактивного элемента</p></div>
+          <div><span style={{ borderColor: 'var(--border-subtle)' }} /><code>--border-subtle</code><p>Скрыт у обычных панелей</p></div>
+          <div><span style={{ borderColor: 'var(--border-strong)' }} /><code>--border-strong</code><p>Фокус и необходимые границы</p></div>
         </div>
       </FoundationSection>
       <FoundationSection title="Личный акцент" description="Выбранный цвет отмечает активный выбор и основное действие. Палитра берется из настроек приложения.">
@@ -162,7 +163,7 @@ export const Surfaces: StoryObj = {
     <FoundationPage index="04" title="Глубина без декора" description="Матовая основа удерживает внимание на содержании. Полупрозрачность помогает отделить плавающую навигацию от страницы.">
       <div className="foundation-material-grid">
         <div className="foundation-material"><div className="foundation-material-stage"><GlassSurface className="foundation-material-sample foundation-material-sample--solid"><Music2 size={22} aria-hidden="true" /><strong>Music Island</strong><span>Ваши настройки</span></GlassSurface></div><h2>Матовая панель</h2><p>Стабильный контраст для текста и настроек, независимо от фона.</p><code>--surface-panel · --radius-xl</code></div>
-        <div className="foundation-material"><div className="foundation-material-stage foundation-material-stage--glass"><span className="foundation-material-background" aria-hidden="true">Music<br />Island</span><GlassSurface className="foundation-material-sample foundation-material-sample--glass"><Music2 size={22} aria-hidden="true" /><strong>Music Island</strong><span>Плавающая навигация</span></GlassSurface></div><h2>Стекло навигации</h2><p>Один слой размытия, нейтральный оттенок и тонкий светлый контур.</p><code>--surface-glass · --glass-blur</code></div>
+        <div className="foundation-material"><div className="foundation-material-stage foundation-material-stage--glass"><span className="foundation-material-background" aria-hidden="true">Music<br />Island</span><GlassSurface className="foundation-material-sample foundation-material-sample--glass"><Music2 size={22} aria-hidden="true" /><strong>Music Island</strong><span>Плавающий островок</span></GlassSurface></div><h2>Материал островка</h2><p>Один слой размытия, нейтральный оттенок и тонкий светлый контур.</p><code>--surface-glass · --glass-blur</code></div>
       </div>
       <FoundationSection title="Правила материала">
         <div className="foundation-principles">
@@ -227,9 +228,9 @@ export const Accessibility: StoryObj = {
       <FoundationSection title="Контраст текста на панели" description="Расчет для непрозрачного фона #18191c. Ориентир WCAG AA для обычного текста — не менее 4,5 : 1.">
         <div className="foundation-contrast-list">
           {[
-            ['--fg-primary', '#f5f5f7', 'Основной текст'],
-            ['--fg-secondary', '#aaaab2', 'Пояснение к настройке'],
-            ['--fg-muted', '#85858f', 'Дополнительная подпись'],
+            ['--fg-primary', '#f5f5f5', 'Основной текст'],
+            ['--fg-secondary', '#b7b7b7', 'Пояснение к настройке'],
+            ['--fg-muted', '#929292', 'Дополнительная подпись'],
           ].map(([token, value, label]) => <div key={token} style={{ '--contrast-color': `var(${token})` } as CSSProperties}><strong>{label}</strong><code>{token}</code><span>{contrastRatio(value, '#18191c')} : 1</span><Check size={16} aria-label="Соответствует AA" /></div>)}
         </div>
       </FoundationSection>

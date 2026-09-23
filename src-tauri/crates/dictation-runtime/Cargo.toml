@@ -1,0 +1,17 @@
+[package]
+name = "music-island-dictation-runtime"
+version = "0.9.7"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[lib]
+name = "music_island_dictation"
+crate-type = ["cdylib"]
+
+[dependencies]
+music-island-dictation-protocol = { path = "../dictation-protocol" }
+anyhow = "1"
+serde_json = "1"
+transcribe-rs = { version = "=0.3.8", features = ["onnx"] }
+transcribe-cpp = { version = "=0.2.3", default-features = false, features = ["dynamic-backends", "vulkan"] }
+vad-rs = { git = "https://github.com/cjpais/vad-rs", default-features = false }

@@ -519,6 +519,7 @@ pub async fn snapshot() -> anyhow::Result<MediaSnapshot> {
         }
     }
     Ok(MediaSnapshot {
+        generation: 0,
         has_session: title.is_some() || track_id.is_some() || controls_ready,
         source_app_id: Some("YandexMusic.Direct".into()),
         track_id,

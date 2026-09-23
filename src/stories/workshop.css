@@ -105,19 +105,7 @@ a {
   border-radius: 8px;
   padding: 12px;
 }
-.workshop .settings-window-root {
-  width: 100%;
-  height: auto;
-  overflow: visible;
-  padding: 22px;
-  --accent: inherit;
-  --accent-soft: inherit;
-  --accent-strong: inherit;
-  --accent-rgb: inherit;
-  --accent-glow: inherit;
-  --accent-muted: inherit;
-  --accent-ink: inherit;
-}
+.workshop .settings-window-root { width: 100%; height: 100%; }
 .workshop .island-root {
   min-height: 260px;
 }
@@ -383,9 +371,6 @@ a {
   }
   .workshop-stage {
     padding: 28px 16px;
-  }
-  .workshop .settings-window-root {
-    padding: 14px;
   }
   .welcome-hero {
     grid-template-columns: 1fr;

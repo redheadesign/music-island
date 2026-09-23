@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "controls"
+description = "Read state and toggle a user-enabled dictation session."
+commands.allow = ["get_status", "toggle"]
+
+[[permission]]
+identifier = "overlay"
+description = "Read state and cancel the active dictation operation."
+commands.allow = ["get_status", "cancel_operation", "copy_result"]

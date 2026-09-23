@@ -7,6 +7,9 @@ const previewMocks = new Map(
   [
     ['src/app/tauriApi.ts', 'src/stories/mocks/tauriApi.ts'],
     ['src/app/usage/usageApi.ts', 'src/stories/mocks/usageApi.ts'],
+    ['src/app/dictation/dictationApi.ts', 'src/stories/mocks/dictationApi.ts'],
+    ['src/app/dictation/dictationEvents.ts', 'src/stories/mocks/dictationEvents.ts'],
+    ['src/app/data/dataApi.ts', 'src/stories/mocks/dataApi.ts'],
     [
       'src/features/plugins/voice/pluginApi.ts',
       'src/stories/mocks/voiceApi.ts',
@@ -38,7 +41,7 @@ const config: StorybookConfig = {
         enforce: 'pre',
         resolveId(source, importer) {
           if (!importer || !source.startsWith('.')) return
-          if (path.resolve(importer.split('?')[0]) === path.resolve(root, 'src/stories/mocks/tauriApi.ts')) return
+          if (path.resolve(importer.split('?')[0]).startsWith(path.resolve(root, 'src/stories/mocks') + path.sep)) return
           const resolved = path.resolve(
             path.dirname(importer.split('?')[0]),
             source,

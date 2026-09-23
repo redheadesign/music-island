@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowUpRight, ChevronDown } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, ChevronDown } from '../../../shared/ui/SettingsIcons'
 import type { Locale } from '../../../shared/lib/types'
 import { getVoiceGuide } from './guide/voiceGuideContent'
 import './VoiceGuidePage.css'

@@ -1,0 +1,5 @@
+.status-chip.status-chip--flat { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 0; border-radius: var(--radius-pill); box-shadow: none; backdrop-filter: none; background: var(--surface-raised); color: var(--fg-secondary); font-size: 11px; font-weight: 500; line-height: 1.35; white-space: nowrap; }
+.status-chip--flat.status-chip--accent { background: var(--badge-accent-surface); color: var(--badge-accent-text); }
+.status-chip--flat.status-chip--success { background: var(--status-success-surface); color: var(--status-success); }
+.status-chip--flat.status-chip--warning { background: var(--status-warning-surface); color: var(--status-warning); }
+.status-chip--flat.status-chip--danger { background: var(--status-danger-surface); color: var(--status-danger); }

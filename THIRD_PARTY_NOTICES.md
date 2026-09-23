@@ -1,9 +1,7 @@
 # Third-party notices
 
 Music Island is licensed under GPL-3.0-or-later. The portable executable also
-contains separately licensed third-party components. This notice documents the
-native DeepFilterNet component that is checked into this repository rather than
-built by Cargo as part of the normal application build.
+contains separately licensed third-party components. This notice covers the embedded voice and dictation components. Cargo dependencies retain their own licenses.
 
 ## DeepFilterNet native runtime bridge
 
@@ -48,7 +46,7 @@ weights are covered by the code's MIT/Apache-2.0 choice.
 
 ### MIT License
 
-Copyright (c) 2021 Hendrik Schröter
+Copyright (c) 2021 Hendrik SchrГ¶ter
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -66,3 +64,104 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+## Handy dictation integration
+
+- Upstream: https://github.com/cjpais/Handy/tree/v0.9.7
+- Commit: `05e0aedd2906f0d82722735f930465950c476b90`
+- Copyright (c) 2025 CJ Pais. MIT (Expat).
+- Adapted source: `src-tauri/crates/handy-core`; integration journal: `docs/HANDY_ADAPTATIONS.md`.
+- Music Island's integration and combined application remain GPL-3.0-or-later.
+  GNU identifies Expat as GPL-compatible: https://www.gnu.org/licenses/license-list.html#Expat.
+- The permission below covers Handy code, not independently licensed downloaded weights.
+
+### Handy license (full text)
+
+MIT License
+
+Copyright (c) 2025 CJ Pais
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Dictation inference dependencies
+
+The runtime bundle records every shipped DLL's hash and size in its build manifest.
+`transcribe-rs 0.3.8`, `transcribe-cpp 0.2.3` and the pinned `vad-rs` revision are
+specified in `src-tauri/crates/dictation-runtime/Cargo.lock`. Their source licenses
+and those of their native dependencies remain applicable. ONNX Runtime 1.24.2
+is obtained from Microsoft's official release (MIT); the required Microsoft VC143
+runtime files are distributed under the Visual Studio redistributable terms,
+not relabeled as GPL or MIT. The Vulkan loader is supplied by the system/driver.
+
+Silero VAD v4 is embedded from Handy's pinned resources. The upstream Silero VAD
+project identifies its code/models as MIT: https://github.com/snakers4/silero-vad.
+Copyright (c) 2020-present Silero Team. Its license text accompanies extracted
+resources. ASR weights are downloaded only after user action and are not embedded.
+See `docs/DICTATION_MODEL_CATALOG.json` for pinned model-card references, revisions,
+base models and declared license metadata. `other` and noncommercial model licenses
+must not be interpreted as MIT, Apache or GPL permission to redistribute weights.
+
+The extracted `resources/licenses` folder contains full native dependency notices,
+the official ONNX Runtime third-party notices and a machine-readable index. The
+index covers 615 packages in the pinned Windows Cargo graphs, including build tools.
+`scripts/collect-native-notices.py` reproduces it from Cargo metadata and upstream
+license files. Nine upstream packages declare an SPDX license but omit a separate
+license file at the reviewed revision: enum-map, enum-map-derive, ferrous-opencc,
+ferrous-opencc-compiler, realfft, seahash, selectors, tauri-plugin and vad-rs. Their
+entries retain the authors/source declaration and explicitly identify the included
+SPDX standard text; it is not represented as an upstream copyright notice.
+Recheck those declarations and the VC redistributable terms before publication.
+
+## Phosphor Icons
+
+`@phosphor-icons/react` 2.1.10 supplies auxiliary-interface icons.
+https://github.com/phosphor-icons/react
+
+```text
+MIT License
+
+Copyright (c) 2020 Phosphor Icons
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Development-only release media tools
+
+Storybook, html-to-image, Sharp and the Windows FFmpeg installer are used only to
+export release images/video. Their executables and dependencies are not embedded
+in Music Island. The pinned FFmpeg binary is obtained from the npm package
+`@ffmpeg-installer/ffmpeg` 1.1.0 (Windows binary package 4.1.0); its upstream build license remains applicable
+to that tool. Do not add the encoder to the portable distribution.

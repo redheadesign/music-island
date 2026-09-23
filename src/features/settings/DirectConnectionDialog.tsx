@@ -1,4 +1,5 @@
-import { FlaskConical, LoaderCircle, Monitor, Music2 } from 'lucide-react'
+import { Button } from '../../shared/ui/SettingsControls'
+import { FlaskConical, LoaderCircle, Monitor, Music2 } from '../../shared/ui/SettingsIcons'
 import { useId } from 'react'
 import type { Ref } from 'react'
 import type { Locale } from '../../shared/lib/types'
@@ -62,13 +63,13 @@ export function DirectConnectionDialog({
       <footer className="direct-connection-dialog__footer">
         <p>{t('consent.li3')}</p>
         <div className="direct-connection-dialog__actions">
-          <button type="button" className="direct-connection-dialog__cancel" onClick={onCancel}>
+          <Button type="button" variant="secondary" onClick={onCancel}>
             {busy ? t('consent.close') : t('consent.cancel')}
-          </button>
-          <button type="button" className="direct-connection-dialog__connect" disabled={busy} onClick={onConnect}>
+          </Button>
+          <Button type="button" variant="primary" disabled={busy} onClick={onConnect}>
             {busy ? <LoaderCircle className="direct-connection-dialog__spinner" size={16} aria-hidden="true" /> : null}
             <span role={busy ? 'status' : undefined}>{busy ? t('consent.connecting') : error ? t('consent.retry') : t('consent.connect')}</span>
-          </button>
+          </Button>
         </div>
       </footer>
     </section>

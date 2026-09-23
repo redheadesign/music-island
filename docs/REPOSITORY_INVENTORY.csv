@@ -1,0 +1,546 @@
+path,role,bytes
+.github/ISSUE_TEMPLATE/bug_report.md,Documentation or documented reference assets,350
+.github/ISSUE_TEMPLATE/design_feedback.md,Documentation or documented reference assets,244
+.github/ISSUE_TEMPLATE/feature_request.md,Documentation or documented reference assets,221
+.gitignore,Build configuration or repository metadata,590
+.oxlintrc.json,Build configuration or repository metadata,245
+.storybook/main.ts,Storybook,2498
+.storybook/manager.ts,Storybook,563
+.storybook/preview.tsx,Storybook,3143
+.storybook/tsconfig.json,Storybook,46
+AGENTS.md,Documentation or documented reference assets,5107
+CHANGELOG.md,Documentation or documented reference assets,23724
+CONTRIBUTING.md,Documentation or documented reference assets,764
+LICENSE,Build configuration or repository metadata,35855
+README.md,Documentation or documented reference assets,8656
+SECURITY.md,Documentation or documented reference assets,3259
+Start-Storybook.bat,Build configuration or repository metadata,205
+Stop-Storybook.bat,Build configuration or repository metadata,595
+THIRD_PARTY_NOTICES.md,Documentation or documented reference assets,9722
+assets/app-icon.png,Application assets,52928
+assets/app-icon.svg,Application assets,970802
+docs/ARCHITECTURE.md,Documentation or documented reference assets,16151
+docs/BETTER_VOICE.md,Documentation or documented reference assets,1596
+docs/DESIGN.md,Documentation or documented reference assets,21709
+docs/DESIGN_SYSTEM.md,Documentation or documented reference assets,7965
+docs/DICTATION.md,Documentation or documented reference assets,9911
+docs/DICTATION_MODEL_CATALOG.json,Documentation or documented reference assets,17724
+docs/HANDY_ADAPTATIONS.md,Documentation or documented reference assets,5282
+docs/MEDIA_ARCHITECTURE.md,Documentation or documented reference assets,4645
+docs/PERFORMANCE.md,Documentation or documented reference assets,2301
+docs/PLUGINS.md,Documentation or documented reference assets,2971
+docs/PRIVACY.md,Documentation or documented reference assets,2384
+docs/QA.md,Documentation or documented reference assets,5864
+docs/QA_CONSISTENCY_2026-09-23.md,Documentation or documented reference assets,6432
+docs/QA_DICTATION_2026-09-22.md,Documentation or documented reference assets,8019
+docs/QA_RELEASE_3.md,Documentation or documented reference assets,8382
+docs/REFERENCES.md,Documentation or documented reference assets,907
+docs/RELEASES.md,Documentation or documented reference assets,7681
+docs/REPOSITORY_REVIEW.md,Documentation or documented reference assets,5331
+docs/ROADMAP.md,Documentation or documented reference assets,1677
+docs/STORYBOOK.md,Documentation or documented reference assets,14995
+docs/TASKBAR.md,Documentation or documented reference assets,6232
+docs/TROUBLESHOOTING.md,Documentation or documented reference assets,6481
+docs/TZ.md,Documentation or documented reference assets,1674
+docs/USAGE.md,Documentation or documented reference assets,3751
+docs/YANDEX_MUSIC_API.md,Documentation or documented reference assets,5603
+docs/alpha-smtc-broken-flyout-2026-07-10.png,Documentation or documented reference assets,235185
+docs/media/README.md,Documentation or documented reference assets,330
+docs/media/preview-poster.jpg,Documentation or documented reference assets,126343
+docs/media/preview.html,Documentation or documented reference assets,1205
+docs/media/preview.mp4,Documentation or documented reference assets,5400964
+docs/media/v2/01-island.webp,Documentation or documented reference assets,30308
+docs/media/v2/02-taskbar.webp,Documentation or documented reference assets,23234
+docs/media/v2/03-voice.webp,Documentation or documented reference assets,38716
+docs/media/v2/04-usage.webp,Documentation or documented reference assets,31832
+docs/media/v2/05-settings.webp,Documentation or documented reference assets,37636
+docs/media/v3/01-island.webp,Documentation or documented reference assets,37526
+docs/media/v3/02-taskbar.webp,Documentation or documented reference assets,34292
+docs/media/v3/03-voice.webp,Documentation or documented reference assets,50294
+docs/media/v3/04-usage.webp,Documentation or documented reference assets,41666
+docs/media/v3/05-settings.webp,Documentation or documented reference assets,48518
+docs/media/v3/06-dictation.webp,Documentation or documented reference assets,47610
+docs/plugins/better-voice.manifest.example.json,Documentation or documented reference assets,377
+docs/releases/2.0/01-island.png,Documentation or documented reference assets,68174
+docs/releases/2.0/02-taskbar.png,Documentation or documented reference assets,60096
+docs/releases/2.0/03-voice.png,Documentation or documented reference assets,69337
+docs/releases/2.0/04-usage.png,Documentation or documented reference assets,100146
+docs/releases/2.0/05-settings.png,Documentation or documented reference assets,53466
+docs/releases/2.0/README.md,Documentation or documented reference assets,1222
+docs/releases/3.0-media-sources.md,Documentation or documented reference assets,3219
+docs/releases/3.0-release-notes.md,Documentation or documented reference assets,3283
+docs/releases/3.0/01-dictation.png,Documentation or documented reference assets,576103
+docs/releases/3.0/02-models.png,Documentation or documented reference assets,325826
+docs/releases/3.0/03-settings.png,Documentation or documented reference assets,234128
+docs/releases/telegram-2.0.md,Documentation or documented reference assets,1426
+docs/releases/telegram-3.0.md,Documentation or documented reference assets,2611
+docs/releases/v2.0.0.md,Documentation or documented reference assets,3470
+index.html,Build configuration or repository metadata,385
+package-lock.json,Build configuration or repository metadata,270623
+package.json,Build configuration or repository metadata,2457
+public/icons.svg,Application assets,5031
+scripts/build-dictation-runtime.mjs,Build or manual QA tooling,4314
+scripts/build-portable.mjs,Build or manual QA tooling,563
+scripts/check-import-boundaries.mjs,Build or manual QA tooling,2762
+scripts/collect-native-notices.py,Build or manual QA tooling,6809
+scripts/copy-release-artifacts.mjs,Build or manual QA tooling,3356
+scripts/encode-release-media.mjs,Build or manual QA tooling,2616
+scripts/exercise-wave-wheel.mjs,Build or manual QA tooling,2826
+scripts/generate-icons.mjs,Build or manual QA tooling,844
+scripts/inspect-overlay-hit-targets.mjs,Build or manual QA tooling,3883
+scripts/inspect-provider-lifecycle.mjs,Build or manual QA tooling,2096
+scripts/inspect-yandex-cdp.mjs,Build or manual QA tooling,5496
+scripts/inspect-yandex-context-menu.mjs,Build or manual QA tooling,2057
+scripts/package-better-voice-plugin.mjs,Build or manual QA tooling,2607
+scripts/profile-hotfix.mjs,Build or manual QA tooling,4528
+scripts/release-media-server.mjs,Build or manual QA tooling,3520
+scripts/set-preview-pinned.mjs,Build or manual QA tooling,1877
+scripts/settings-window-action.mjs,Build or manual QA tooling,2186
+scripts/smtc-probe.ps1,Build or manual QA tooling,3232
+scripts/test-consent-dialog.mjs,Build or manual QA tooling,2789
+scripts/test-direct-integration.mjs,Build or manual QA tooling,7742
+scripts/test-overlay-reveal.mjs,Build or manual QA tooling,4240
+scripts/test-preview-contracts.mjs,Build or manual QA tooling,3643
+scripts/test-wave-roundtrip.mjs,Build or manual QA tooling,2770
+scripts/verify-release-media.mjs,Build or manual QA tooling,4453
+src-tauri/Cargo.lock,"Native code, resources and build metadata",227508
+src-tauri/Cargo.toml,"Native code, resources and build metadata",2216
+src-tauri/build.rs,"Native code, resources and build metadata",373
+src-tauri/capabilities/default.json,"Native code, resources and build metadata",495
+src-tauri/capabilities/dictation-controls.json,"Native code, resources and build metadata",194
+src-tauri/capabilities/dictation-overlay.json,"Native code, resources and build metadata",228
+src-tauri/capabilities/dictation-settings.json,"Native code, resources and build metadata",215
+src-tauri/capabilities/spotify-opener.json,"Native code, resources and build metadata",339
+src-tauri/crates/dictation-protocol/Cargo.toml,"Native code, resources and build metadata",197
+src-tauri/crates/dictation-protocol/src/lib.rs,"Native code, resources and build metadata",2389
+src-tauri/crates/dictation-runtime/Cargo.lock,"Native code, resources and build metadata",29180
+src-tauri/crates/dictation-runtime/Cargo.toml,"Native code, resources and build metadata",541
+src-tauri/crates/dictation-runtime/src/lib.rs,"Native code, resources and build metadata",15938
+src-tauri/crates/handy-core/Cargo.lock,Handy vendored/adapted native code and assets,219694
+src-tauri/crates/handy-core/Cargo.toml,Handy vendored/adapted native code and assets,6955
+src-tauri/crates/handy-core/LICENSE,Handy vendored/adapted native code and assets,1085
+src-tauri/crates/handy-core/UPSTREAM.md,Handy vendored/adapted native code and assets,640
+src-tauri/crates/handy-core/build.rs,Handy vendored/adapted native code and assets,1483
+src-tauri/crates/handy-core/resources/default_settings.json,Handy vendored/adapted native code and assets,337
+src-tauri/crates/handy-core/resources/handy.png,Handy vendored/adapted native code and assets,768
+src-tauri/crates/handy-core/resources/handy_warning.png,Handy vendored/adapted native code and assets,2261
+src-tauri/crates/handy-core/resources/licenses/Handy-MIT.txt,Handy vendored/adapted native code and assets,1085
+src-tauri/crates/handy-core/resources/licenses/Native-dependencies.json,Handy vendored/adapted native code and assets,296430
+src-tauri/crates/handy-core/resources/licenses/Native-dependencies.txt,Handy vendored/adapted native code and assets,5633587
+src-tauri/crates/handy-core/resources/licenses/ONNX-Runtime-MIT.txt,Handy vendored/adapted native code and assets,1094
+src-tauri/crates/handy-core/resources/licenses/ONNX-Runtime-ThirdPartyNotices.txt,Handy vendored/adapted native code and assets,325054
+src-tauri/crates/handy-core/resources/licenses/Silero-MIT.txt,Handy vendored/adapted native code and assets,1097
+src-tauri/crates/handy-core/resources/marimba_start.wav,Handy vendored/adapted native code and assets,102268
+src-tauri/crates/handy-core/resources/marimba_stop.wav,Handy vendored/adapted native code and assets,139068
+src-tauri/crates/handy-core/resources/models/gigaam_vocab.txt,Handy vendored/adapted native code and assets,2264
+src-tauri/crates/handy-core/resources/models/silero_vad_v4.onnx,Handy vendored/adapted native code and assets,1807522
+src-tauri/crates/handy-core/resources/pop_start.wav,Handy vendored/adapted native code and assets,107870
+src-tauri/crates/handy-core/resources/pop_stop.wav,Handy vendored/adapted native code and assets,101586
+src-tauri/crates/handy-core/resources/recording.png,Handy vendored/adapted native code and assets,678
+src-tauri/crates/handy-core/resources/transcribing.png,Handy vendored/adapted native code and assets,756
+src-tauri/crates/handy-core/resources/tray_idle.png,Handy vendored/adapted native code and assets,1048
+src-tauri/crates/handy-core/resources/tray_idle_dark.png,Handy vendored/adapted native code and assets,1522
+src-tauri/crates/handy-core/resources/tray_idle_warning.png,Handy vendored/adapted native code and assets,1464
+src-tauri/crates/handy-core/resources/tray_idle_warning_dark.png,Handy vendored/adapted native code and assets,1237
+src-tauri/crates/handy-core/resources/tray_recording.png,Handy vendored/adapted native code and assets,1461
+src-tauri/crates/handy-core/resources/tray_recording_dark.png,Handy vendored/adapted native code and assets,1308
+src-tauri/crates/handy-core/resources/tray_transcribing.png,Handy vendored/adapted native code and assets,1559
+src-tauri/crates/handy-core/resources/tray_transcribing_dark.png,Handy vendored/adapted native code and assets,1461
+src-tauri/crates/handy-core/src/actions.rs,Handy vendored/adapted native code and assets,42960
+src-tauri/crates/handy-core/src/apple_intelligence.rs,Handy vendored/adapted native code and assets,2487
+src-tauri/crates/handy-core/src/audio_feedback.rs,Handy vendored/adapted native code and assets,4692
+src-tauri/crates/handy-core/src/audio_toolkit/audio/device.rs,Handy vendored/adapted native code and assets,1507
+src-tauri/crates/handy-core/src/audio_toolkit/audio/mod.rs,Handy vendored/adapted native code and assets,439
+src-tauri/crates/handy-core/src/audio_toolkit/audio/recorder.rs,Handy vendored/adapted native code and assets,41535
+src-tauri/crates/handy-core/src/audio_toolkit/audio/recorder/tests.rs,Handy vendored/adapted native code and assets,14790
+src-tauri/crates/handy-core/src/audio_toolkit/audio/resampler.rs,Handy vendored/adapted native code and assets,13420
+src-tauri/crates/handy-core/src/audio_toolkit/audio/utils.rs,Handy vendored/adapted native code and assets,1620
+src-tauri/crates/handy-core/src/audio_toolkit/audio/visualizer.rs,Handy vendored/adapted native code and assets,5968
+src-tauri/crates/handy-core/src/audio_toolkit/bin/cli.rs,Handy vendored/adapted native code and assets,13194
+src-tauri/crates/handy-core/src/audio_toolkit/constants.rs,Handy vendored/adapted native code and assets,45
+src-tauri/crates/handy-core/src/audio_toolkit/lang_id.rs,Handy vendored/adapted native code and assets,6855
+src-tauri/crates/handy-core/src/audio_toolkit/mod.rs,Handy vendored/adapted native code and assets,579
+src-tauri/crates/handy-core/src/audio_toolkit/text.rs,Handy vendored/adapted native code and assets,32580
+src-tauri/crates/handy-core/src/audio_toolkit/utils.rs,Handy vendored/adapted native code and assets,400
+src-tauri/crates/handy-core/src/audio_toolkit/vad/earshot.rs,Handy vendored/adapted native code and assets,3709
+src-tauri/crates/handy-core/src/audio_toolkit/vad/mod.rs,Handy vendored/adapted native code and assets,3719
+src-tauri/crates/handy-core/src/audio_toolkit/vad/silero.rs,Handy vendored/adapted native code and assets,1730
+src-tauri/crates/handy-core/src/audio_toolkit/vad/smoothed.rs,Handy vendored/adapted native code and assets,7805
+src-tauri/crates/handy-core/src/autostart.rs,Handy vendored/adapted native code and assets,6057
+src-tauri/crates/handy-core/src/catalog/catalog.json,Handy vendored/adapted native code and assets,129572
+src-tauri/crates/handy-core/src/catalog/mod.rs,Handy vendored/adapted native code and assets,11556
+src-tauri/crates/handy-core/src/cli.rs,Handy vendored/adapted native code and assets,2068
+src-tauri/crates/handy-core/src/clipboard.rs,Handy vendored/adapted native code and assets,36891
+src-tauri/crates/handy-core/src/commands/audio.rs,Handy vendored/adapted native code and assets,13260
+src-tauri/crates/handy-core/src/commands/history.rs,Handy vendored/adapted native code and assets,4991
+src-tauri/crates/handy-core/src/commands/mod.rs,Handy vendored/adapted native code and assets,6175
+src-tauri/crates/handy-core/src/commands/models.rs,Handy vendored/adapted native code and assets,7241
+src-tauri/crates/handy-core/src/commands/transcription.rs,Handy vendored/adapted native code and assets,1266
+src-tauri/crates/handy-core/src/focus_target.rs,Handy vendored/adapted native code and assets,2424
+src-tauri/crates/handy-core/src/helpers/clamshell.rs,Handy vendored/adapted native code and assets,2580
+src-tauri/crates/handy-core/src/helpers/mod.rs,Handy vendored/adapted native code and assets,20
+src-tauri/crates/handy-core/src/input.rs,Handy vendored/adapted native code and assets,11345
+src-tauri/crates/handy-core/src/lib.rs,Handy vendored/adapted native code and assets,14752
+src-tauri/crates/handy-core/src/llm_client.rs,Handy vendored/adapted native code and assets,24492
+src-tauri/crates/handy-core/src/main.rs,Handy vendored/adapted native code and assets,988
+src-tauri/crates/handy-core/src/managers/audio.rs,Handy vendored/adapted native code and assets,43059
+src-tauri/crates/handy-core/src/managers/gguf_meta.rs,Handy vendored/adapted native code and assets,18116
+src-tauri/crates/handy-core/src/managers/history.rs,Handy vendored/adapted native code and assets,27548
+src-tauri/crates/handy-core/src/managers/mod.rs,Handy vendored/adapted native code and assets,123
+src-tauri/crates/handy-core/src/managers/model.rs,Handy vendored/adapted native code and assets,128964
+src-tauri/crates/handy-core/src/managers/model/download.rs,Handy vendored/adapted native code and assets,16857
+src-tauri/crates/handy-core/src/managers/model/download/tests.rs,Handy vendored/adapted native code and assets,18238
+src-tauri/crates/handy-core/src/managers/model_capabilities.rs,Handy vendored/adapted native code and assets,10844
+src-tauri/crates/handy-core/src/managers/transcription.rs,Handy vendored/adapted native code and assets,80133
+src-tauri/crates/handy-core/src/memory.rs,Handy vendored/adapted native code and assets,2621
+src-tauri/crates/handy-core/src/overlay.rs,Handy vendored/adapted native code and assets,36511
+src-tauri/crates/handy-core/src/paste_tx/macos.rs,Handy vendored/adapted native code and assets,13372
+src-tauri/crates/handy-core/src/paste_tx/mod.rs,Handy vendored/adapted native code and assets,11354
+src-tauri/crates/handy-core/src/paste_tx/windows.rs,Handy vendored/adapted native code and assets,22858
+src-tauri/crates/handy-core/src/portable.rs,Handy vendored/adapted native code and assets,3351
+src-tauri/crates/handy-core/src/runtime.rs,Handy vendored/adapted native code and assets,9577
+src-tauri/crates/handy-core/src/runtime_check.rs,Handy vendored/adapted native code and assets,2079
+src-tauri/crates/handy-core/src/secrets.rs,Handy vendored/adapted native code and assets,2945
+src-tauri/crates/handy-core/src/secure_input.rs,Handy vendored/adapted native code and assets,28069
+src-tauri/crates/handy-core/src/settings.rs,Handy vendored/adapted native code and assets,63831
+src-tauri/crates/handy-core/src/shortcut/handler.rs,Handy vendored/adapted native code and assets,2690
+src-tauri/crates/handy-core/src/shortcut/handy_keys.rs,Handy vendored/adapted native code and assets,21315
+src-tauri/crates/handy-core/src/shortcut/mod.rs,Handy vendored/adapted native code and assets,46598
+src-tauri/crates/handy-core/src/shortcut/tauri_impl.rs,Handy vendored/adapted native code and assets,7537
+src-tauri/crates/handy-core/src/signal_handle.rs,Handy vendored/adapted native code and assets,2288
+src-tauri/crates/handy-core/src/status.rs,Handy vendored/adapted native code and assets,2698
+src-tauri/crates/handy-core/src/storage.rs,Handy vendored/adapted native code and assets,19514
+src-tauri/crates/handy-core/src/transcription_coordinator.rs,Handy vendored/adapted native code and assets,62930
+src-tauri/crates/handy-core/src/tray.rs,Handy vendored/adapted native code and assets,446
+src-tauri/crates/handy-core/src/tray_i18n.rs,Handy vendored/adapted native code and assets,2958
+src-tauri/crates/handy-core/src/utils.rs,Handy vendored/adapted native code and assets,7079
+src-tauri/examples/smtc_probe.rs,"Native code, resources and build metadata",2998
+src-tauri/icons/icon.ico,"Native code, resources and build metadata",370070
+src-tauri/permissions/dictation/controls.toml,"Native code, resources and build metadata",329
+src-tauri/permissions/dictation/settings.toml,"Native code, resources and build metadata",3783
+src-tauri/resources/voice/deepfilter/deepfilter_runtime_bridge.dll,"Native code, resources and build metadata",24782336
+src-tauri/resources/voice/models/.gitkeep,"Native code, resources and build metadata",13
+src-tauri/src/autostart/mod.rs,"Native code, resources and build metadata",9415
+src-tauri/src/config/mod.rs,"Native code, resources and build metadata",9961
+src-tauri/src/data.rs,"Native code, resources and build metadata",5083
+src-tauri/src/diagnostics/mod.rs,"Native code, resources and build metadata",1659
+src-tauri/src/install/mod.rs,"Native code, resources and build metadata",9174
+src-tauri/src/lib.rs,"Native code, resources and build metadata",18545
+src-tauri/src/logging/mod.rs,"Native code, resources and build metadata",1703
+src-tauri/src/main.rs,"Native code, resources and build metadata",110
+src-tauri/src/media/health.rs,"Native code, resources and build metadata",2493
+src-tauri/src/media/mod.rs,"Native code, resources and build metadata",61110
+src-tauri/src/media/snapshot_cache.rs,"Native code, resources and build metadata",4027
+src-tauri/src/onboarding.rs,"Native code, resources and build metadata",8205
+src-tauri/src/plugins/mod.rs,"Native code, resources and build metadata",18602
+src-tauri/src/shutdown.rs,"Native code, resources and build metadata",2665
+src-tauri/src/tray/mod.rs,"Native code, resources and build metadata",1278
+src-tauri/src/updater/mod.rs,"Native code, resources and build metadata",20762
+src-tauri/src/usage/claude.rs,"Native code, resources and build metadata",7075
+src-tauri/src/usage/codex.rs,"Native code, resources and build metadata",11180
+src-tauri/src/usage/mod.rs,"Native code, resources and build metadata",16293
+src-tauri/src/usage/model.rs,"Native code, resources and build metadata",4210
+src-tauri/src/voice/agc.rs,"Native code, resources and build metadata",5348
+src-tauri/src/voice/assets.rs,"Native code, resources and build metadata",1638
+src-tauri/src/voice/audio_engine.rs,"Native code, resources and build metadata",43317
+src-tauri/src/voice/audio_init.rs,"Native code, resources and build metadata",19058
+src-tauri/src/voice/audio_utils.rs,"Native code, resources and build metadata",12002
+src-tauri/src/voice/bgm.rs,"Native code, resources and build metadata",611
+src-tauri/src/voice/debug.rs,"Native code, resources and build metadata",4877
+src-tauri/src/voice/denoise/deepfilter.rs,"Native code, resources and build metadata",10052
+src-tauri/src/voice/denoise/mod.rs,"Native code, resources and build metadata",3076
+src-tauri/src/voice/denoise/rnnoise.rs,"Native code, resources and build metadata",1728
+src-tauri/src/voice/device.rs,"Native code, resources and build metadata",848
+src-tauri/src/voice/dsp/hpf.rs,"Native code, resources and build metadata",1570
+src-tauri/src/voice/dsp/limiter.rs,"Native code, resources and build metadata",1747
+src-tauri/src/voice/dsp/mod.rs,"Native code, resources and build metadata",699
+src-tauri/src/voice/dsp/noise_gate.rs,"Native code, resources and build metadata",2227
+src-tauri/src/voice/dsp/vad.rs,"Native code, resources and build metadata",3381
+src-tauri/src/voice/eq.rs,"Native code, resources and build metadata",5298
+src-tauri/src/voice/explode.rs,"Native code, resources and build metadata",9670
+src-tauri/src/voice/mmcss.rs,"Native code, resources and build metadata",2703
+src-tauri/src/voice/mod.rs,"Native code, resources and build metadata",11268
+src-tauri/src/voice/vb_cable.rs,"Native code, resources and build metadata",9990
+src-tauri/src/voice/wasapi_capture.rs,"Native code, resources and build metadata",14983
+src-tauri/src/voice/wasapi_render.rs,"Native code, resources and build metadata",12795
+src-tauri/src/window/mod.rs,"Native code, resources and build metadata",16880
+src-tauri/src/window/monitors.rs,Build configuration or repository metadata,8151
+src-tauri/src/window/taskbar.rs,"Native code, resources and build metadata",83343
+src-tauri/src/window/taskbar/geometry.rs,"Native code, resources and build metadata",15951
+src-tauri/src/window/taskbar/native_player.rs,"Native code, resources and build metadata",77600
+src-tauri/src/yandex/mod.rs,"Native code, resources and build metadata",60195
+src-tauri/tauri.conf.json,"Native code, resources and build metadata",2934
+src-tauri/windows-app-manifest.xml,"Native code, resources and build metadata",639
+src/App.css,Frontend entrypoints,51674
+src/App.tsx,Frontend entrypoints,4102
+src/app/config/useAppConfig.test.tsx,App orchestration and native adapters,1753
+src/app/config/useAppConfig.ts,App orchestration and native adapters,3270
+src/app/data/dataApi.ts,App orchestration and native adapters,344
+src/app/data/useDataController.ts,App orchestration and native adapters,1174
+src/app/dictation/dictationApi.ts,App orchestration and native adapters,14101
+src/app/dictation/dictationContract.test.ts,App orchestration and native adapters,2000
+src/app/dictation/dictationEvents.ts,App orchestration and native adapters,71
+src/app/dictation/useDictationAction.ts,App orchestration and native adapters,1184
+src/app/dictation/useDictationController.test.tsx,App orchestration and native adapters,3865
+src/app/dictation/useDictationController.ts,App orchestration and native adapters,5431
+src/app/dictation/useDictationOverlay.ts,App orchestration and native adapters,2824
+src/app/dictation/useDictationShortcut.test.tsx,App orchestration and native adapters,3697
+src/app/dictation/useDictationShortcut.ts,App orchestration and native adapters,3240
+src/app/islandApp.types.ts,App orchestration and native adapters,1485
+src/app/media/mediaModel.test.ts,App orchestration and native adapters,1299
+src/app/media/mediaModel.ts,App orchestration and native adapters,833
+src/app/media/useDirectStatus.ts,App orchestration and native adapters,1398
+src/app/media/useMediaController.test.tsx,App orchestration and native adapters,6961
+src/app/media/useMediaController.ts,App orchestration and native adapters,9093
+src/app/media/useWaveController.ts,App orchestration and native adapters,3671
+src/app/playbackClock.test.ts,App orchestration and native adapters,7031
+src/app/playbackClock.ts,App orchestration and native adapters,6681
+src/app/tauriApi.ts,App orchestration and native adapters,15802
+src/app/usage/index.ts,App orchestration and native adapters,329
+src/app/usage/usageApi.ts,App orchestration and native adapters,2046
+src/app/usage/usagePreferences.ts,App orchestration and native adapters,1224
+src/app/usage/useUsageController.test.tsx,App orchestration and native adapters,4587
+src/app/usage/useUsageController.ts,App orchestration and native adapters,2666
+src/app/useIslandApp.ts,App orchestration and native adapters,4685
+src/app/window/useOverlayReady.test.tsx,Build configuration or repository metadata,2253
+src/app/window/useOverlayReady.ts,Build configuration or repository metadata,1099
+src/app/window/useWindowController.ts,App orchestration and native adapters,953
+src/assets/hero.png,Frontend entrypoints,13057
+src/assets/preview-record.svg,Frontend entrypoints,481
+src/assets/preview-sea-stack.webp,Build configuration or repository metadata,42870
+src/assets/react.svg,Frontend entrypoints,4126
+src/assets/vite.svg,Frontend entrypoints,8709
+src/features/dictation/DictationAdvanced.tsx,Feature UI,7437
+src/features/dictation/DictationFields.tsx,Feature UI,1233
+src/features/dictation/DictationMicrophone.tsx,Feature UI,881
+src/features/dictation/DictationModels.tsx,Feature UI,8754
+src/features/dictation/DictationOverlay.tsx,Feature UI,3205
+src/features/dictation/DictationSettings.tsx,Feature UI,21898
+src/features/dictation/DictationShortcut.tsx,Feature UI,1806
+src/features/dictation/HandyImport.tsx,Feature UI,4076
+src/features/dictation/ModelCard.tsx,Feature UI,3600
+src/features/dictation/dictation.css,Feature UI,8621
+src/features/dictation/dictationPages.ts,Feature UI,469
+src/features/dictation/modelCatalog.test.ts,Feature UI,2159
+src/features/dictation/modelCatalog.ts,Feature UI,2854
+src/features/intro/IntroSplash.css,Feature UI,1686
+src/features/intro/IntroSplash.tsx,Feature UI,5530
+src/features/intro/LaunchExperience.tsx,Feature UI,2180
+src/features/intro/Onboarding.css,Feature UI,4702
+src/features/intro/Onboarding.tsx,Feature UI,7945
+src/features/modules/registry.test.ts,Feature UI,667
+src/features/modules/registry.ts,Feature UI,1241
+src/features/music/MusicControls.tsx,Feature UI,5055
+src/features/music/MusicModule.css,Feature UI,3044
+src/features/music/MusicModule.test.tsx,Feature UI,10035
+src/features/music/MusicModule.tsx,Feature UI,11172
+src/features/music/PressFeedback.test.tsx,Feature UI,2394
+src/features/music/ProgressStrip.css,Feature UI,1433
+src/features/music/ProgressStrip.tsx,Feature UI,2871
+src/features/music/progressExit.test.ts,Feature UI,2324
+src/features/music/progressExit.ts,Feature UI,883
+src/features/music/progressTransition.test.ts,Feature UI,8656
+src/features/music/progressTransition.ts,Feature UI,4250
+src/features/music/wave/ActiveSelectionChip.tsx,Feature UI,1426
+src/features/music/wave/WaveWheel.tsx,Feature UI,7543
+src/features/music/wave/wave.css,Feature UI,2840
+src/features/music/wave/wheelGeometry.test.ts,Feature UI,1282
+src/features/music/wave/wheelGeometry.ts,Feature UI,961
+src/features/notice/AlreadyRunningNotice.tsx,Feature UI,2471
+src/features/overlay/HoverCoach.tsx,Feature UI,381
+src/features/overlay/IslandTopIndicator.tsx,Feature UI,467
+src/features/overlay/OverlayShell.tsx,Feature UI,38037
+src/features/overlay/overlayTransition.test.ts,Feature UI,963
+src/features/overlay/overlayTransition.ts,Feature UI,486
+src/features/overlay/overlayWindow.test.ts,Feature UI,3671
+src/features/overlay/overlayWindow.ts,Feature UI,6611
+src/features/plugins/PluginRail.tsx,Feature UI,1299
+src/features/plugins/usePlugins.ts,Feature UI,1351
+src/features/plugins/voice/AGENTS.md,Feature UI,2642
+src/features/plugins/voice/ChartTip.tsx,Feature UI,1315
+src/features/plugins/voice/DarkSelect.tsx,Feature UI,66
+src/features/plugins/voice/LevelMeter.tsx,Feature UI,3336
+src/features/plugins/voice/SpectrumVisualizer.tsx,Feature UI,6088
+src/features/plugins/voice/VoiceAtmosphere.css,Feature UI,358
+src/features/plugins/voice/VoiceAtmosphere.tsx,Feature UI,648
+src/features/plugins/voice/VoiceControlCard.css,Feature UI,5074
+src/features/plugins/voice/VoiceControlCard.tsx,Feature UI,3399
+src/features/plugins/voice/VoiceEffects.css,Feature UI,1983
+src/features/plugins/voice/VoiceEffects.tsx,Feature UI,1215
+src/features/plugins/voice/VoiceFoxMascot.css,Feature UI,1510
+src/features/plugins/voice/VoiceFoxMascot.tsx,Feature UI,935
+src/features/plugins/voice/VoiceFoxVideoMascot.tsx,Feature UI,16586
+src/features/plugins/voice/VoiceGuidePage.css,Feature UI,4584
+src/features/plugins/voice/VoiceGuidePage.tsx,Feature UI,2802
+src/features/plugins/voice/VoiceLiveMeters.tsx,Feature UI,2581
+src/features/plugins/voice/VoiceSettingsView.tsx,Feature UI,14987
+src/features/plugins/voice/VoiceSignalFlow.css,Feature UI,5379
+src/features/plugins/voice/VoiceSignalFlow.tsx,Feature UI,3578
+src/features/plugins/voice/assets/fox-live-b.webm,Feature UI,44581
+src/features/plugins/voice/assets/fox-live-c.webm,Feature UI,62834
+src/features/plugins/voice/assets/fox-live-d.webm,Feature UI,138325
+src/features/plugins/voice/assets/fox-live-poster.png,Feature UI,159665
+src/features/plugins/voice/assets/fox-live.webm,Feature UI,122684
+src/features/plugins/voice/assets/fox-sleep-poster.png,Feature UI,169780
+src/features/plugins/voice/assets/fox-sleep.webm,Feature UI,127074
+src/features/plugins/voice/assets/fox-to-sleep.webm,Feature UI,43497
+src/features/plugins/voice/assets/fox-wake.webm,Feature UI,55563
+src/features/plugins/voice/guide/voiceGuideContent.ts,Feature UI,6277
+src/features/plugins/voice/levels.ts,Feature UI,1057
+src/features/plugins/voice/pluginApi.ts,Feature UI,3104
+src/features/plugins/voice/presets.ts,Feature UI,2621
+src/features/plugins/voice/resumeVoiceEngine.ts,Feature UI,1482
+src/features/plugins/voice/session.test.ts,Feature UI,1940
+src/features/plugins/voice/session.ts,Feature UI,1151
+src/features/plugins/voice/useIslandVoiceApp.ts,Feature UI,19738
+src/features/plugins/voice/voice-settings.css,Feature UI,9639
+src/features/plugins/voice/voiceMessages.ts,Feature UI,8103
+src/features/settings/AccentColorPicker.css,Feature UI,2502
+src/features/settings/AccentColorPicker.tsx,Feature UI,8576
+src/features/settings/DataSettings.tsx,Feature UI,3763
+src/features/settings/DirectConnectionDialog.css,Feature UI,6215
+src/features/settings/DirectConnectionDialog.tsx,Feature UI,2952
+src/features/settings/IslandLayoutEditor.css,Feature UI,5267
+src/features/settings/IslandLayoutEditor.tsx,Feature UI,13479
+src/features/settings/IslandPreview.css,Feature UI,3117
+src/features/settings/IslandPreview.tsx,Feature UI,12665
+src/features/settings/LayoutDragGhost.tsx,Feature UI,1128
+src/features/settings/MonitorSetting.tsx,Feature UI,2571
+src/features/settings/SettingsPanel.tsx,Feature UI,51640
+src/features/settings/SettingsWindow.tsx,Feature UI,1181
+src/features/settings/TaskbarLayoutEditor.css,Feature UI,2419
+src/features/settings/TaskbarLayoutEditor.test.tsx,Feature UI,7633
+src/features/settings/TaskbarLayoutEditor.tsx,Feature UI,9445
+src/features/settings/dragGeometry.test.ts,Feature UI,727
+src/features/settings/dragGeometry.ts,Feature UI,1741
+src/features/settings/previewMedia.ts,Feature UI,875
+src/features/settings/settings.css,Feature UI,36012
+src/features/settings/useAppUpdater.ts,Feature UI,3882
+src/features/settings/useResetSettingsScroll.test.tsx,Feature UI,2245
+src/features/settings/useResetSettingsScroll.ts,Feature UI,923
+src/features/settings/useWindowVisible.ts,Feature UI,1797
+src/features/taskbar/TaskbarPlayer.css,Feature UI,4416
+src/features/taskbar/TaskbarPlayer.tsx,Feature UI,5438
+src/features/usage/UsageSettingsSection.tsx,Feature UI,6726
+src/features/usage/UsageStatusChip.tsx,Feature UI,6478
+src/features/usage/index.ts,Feature UI,114
+src/features/usage/usage.css,Feature UI,8095
+src/features/usage/usageFormat.ts,Feature UI,743
+src/index.css,Frontend entrypoints,742
+src/main.tsx,Frontend entrypoints,230
+src/shared/i18n/messages.ts,"Shared types, tokens, utilities and controls",20090
+src/shared/lib/accentTheme.test.ts,Shared frontend,867
+src/shared/lib/accentTheme.ts,"Shared types, tokens, utilities and controls",3288
+src/shared/lib/dataTypes.ts,"Shared types, tokens, utilities and controls",332
+src/shared/lib/dictationModelNotices.ts,"Shared types, tokens, utilities and controls",14192
+src/shared/lib/dictationTypes.ts,"Shared types, tokens, utilities and controls",12099
+src/shared/lib/format.test.ts,"Shared types, tokens, utilities and controls",806
+src/shared/lib/format.ts,"Shared types, tokens, utilities and controls",850
+src/shared/lib/islandLayout.test.ts,"Shared types, tokens, utilities and controls",8104
+src/shared/lib/islandLayout.ts,"Shared types, tokens, utilities and controls",8889
+src/shared/lib/releaseNotesSummary.ts,"Shared types, tokens, utilities and controls",1942
+src/shared/lib/taskbarLayout.test.ts,"Shared types, tokens, utilities and controls",2580
+src/shared/lib/taskbarLayout.ts,"Shared types, tokens, utilities and controls",2990
+src/shared/lib/types.ts,"Shared types, tokens, utilities and controls",5665
+src/shared/lib/uiPrefs.test.ts,"Shared types, tokens, utilities and controls",2009
+src/shared/lib/uiPrefs.ts,"Shared types, tokens, utilities and controls",5672
+src/shared/lib/usageTypes.ts,"Shared types, tokens, utilities and controls",1196
+src/shared/styles/island-material.css,"Shared types, tokens, utilities and controls",551
+src/shared/styles/primitives.css,"Shared types, tokens, utilities and controls",985
+src/shared/styles/tokens.css,"Shared types, tokens, utilities and controls",7465
+src/shared/ui/AppLogo.tsx,Shared frontend,437
+src/shared/ui/BrandIcons.tsx,"Shared types, tokens, utilities and controls",1298
+src/shared/ui/BrandLogo.NOTICE.md,"Shared types, tokens, utilities and controls",2523
+src/shared/ui/BrandLogo.css,"Shared types, tokens, utilities and controls",137
+src/shared/ui/BrandLogo.tsx,"Shared types, tokens, utilities and controls",7352
+src/shared/ui/GlassPill.tsx,"Shared types, tokens, utilities and controls",224
+src/shared/ui/GlassSurface.tsx,"Shared types, tokens, utilities and controls",357
+src/shared/ui/IconButton.tsx,"Shared types, tokens, utilities and controls",280
+src/shared/ui/MarqueeText.tsx,"Shared types, tokens, utilities and controls",1262
+src/shared/ui/Modal.css,"Shared types, tokens, utilities and controls",1004
+src/shared/ui/Modal.tsx,"Shared types, tokens, utilities and controls",885
+src/shared/ui/PressFeedback.css,"Shared types, tokens, utilities and controls",751
+src/shared/ui/PressFeedback.tsx,"Shared types, tokens, utilities and controls",3943
+src/shared/ui/RangeSlider.css,"Shared types, tokens, utilities and controls",3240
+src/shared/ui/RangeSlider.tsx,"Shared types, tokens, utilities and controls",910
+src/shared/ui/ReleaseNotesMarkdown.tsx,"Shared types, tokens, utilities and controls",3241
+src/shared/ui/Select.css,"Shared types, tokens, utilities and controls",2109
+src/shared/ui/Select.tsx,"Shared types, tokens, utilities and controls",11492
+src/shared/ui/SettingsControls.css,"Shared types, tokens, utilities and controls",5838
+src/shared/ui/SettingsControls.tsx,"Shared types, tokens, utilities and controls",4315
+src/shared/ui/SettingsIcons.ts,"Shared types, tokens, utilities and controls",4068
+src/shared/ui/StatusChip.css,Shared frontend,796
+src/shared/ui/StatusChip.tsx,"Shared types, tokens, utilities and controls",574
+src/shared/ui/UpdateBanner.css,"Shared types, tokens, utilities and controls",8579
+src/shared/ui/UpdateBanner.tsx,"Shared types, tokens, utilities and controls",5066
+src/shared/ui/WarpMaterial.css,"Shared types, tokens, utilities and controls",346
+src/shared/ui/WarpMaterial.tsx,"Shared types, tokens, utilities and controls",3210
+src/stories/DesignReferences.stories.tsx,Storybook,8861
+src/stories/Foundations.stories.tsx,Storybook,21172
+src/stories/Welcome.stories.tsx,Storybook,5247
+src/stories/WorkshopFrame.tsx,Storybook,3326
+src/stories/atoms/AppLogo.stories.tsx,Storybook,969
+src/stories/atoms/BrandLogo.stories.tsx,Storybook,1479
+src/stories/atoms/GlassSurface.stories.tsx,Storybook,661
+src/stories/atoms/IconButton.stories.tsx,Storybook,1614
+src/stories/atoms/MarqueeText.stories.tsx,Storybook,887
+src/stories/atoms/PlaybackFeedback.stories.tsx,Storybook,2087
+src/stories/atoms/RangeSlider.stories.tsx,Storybook,1573
+src/stories/atoms/SettingsControls.stories.tsx,Storybook,5005
+src/stories/atoms/StatusChip.stories.tsx,Storybook,1363
+src/stories/dictationFixtures.ts,Storybook,8295
+src/stories/fixtures.ts,Storybook,2173
+src/stories/mocks/dataApi.ts,Storybook,401
+src/stories/mocks/dictationApi.ts,Storybook,2998
+src/stories/mocks/dictationEvents.ts,Storybook,202
+src/stories/mocks/tauriApi.ts,Storybook,2320
+src/stories/mocks/usageApi.ts,Storybook,1626
+src/stories/mocks/voiceApi.ts,Storybook,3355
+src/stories/mocks/voiceSession.ts,Storybook,395
+src/stories/molecules/AccentColorPicker.stories.tsx,Storybook,1081
+src/stories/molecules/ActiveSelectionChip.stories.tsx,Storybook,2648
+src/stories/molecules/DarkSelect.stories.tsx,Storybook,4859
+src/stories/molecules/DictationOverlay.stories.tsx,Storybook,2179
+src/stories/molecules/HoverCoach.stories.tsx,Storybook,1106
+src/stories/molecules/LevelMeter.stories.tsx,Storybook,1366
+src/stories/molecules/ModelCard.stories.tsx,Storybook,2743
+src/stories/molecules/MonitorSetting.stories.tsx,Storybook,1510
+src/stories/molecules/UsageStatusChip.stories.tsx,Storybook,5581
+src/stories/organisms/DirectConnectionDialog.stories.tsx,Storybook,3665
+src/stories/organisms/FoxMascot.stories.tsx,Storybook,7208
+src/stories/organisms/IslandLayoutEditor.stories.tsx,Storybook,15684
+src/stories/organisms/MusicModule.stories.tsx,Storybook,14316
+src/stories/organisms/TaskbarLayoutEditor.stories.tsx,Storybook,10069
+src/stories/organisms/TaskbarPlayer.stories.tsx,Storybook,9555
+src/stories/organisms/UpdateBanner.stories.tsx,Storybook,8360
+src/stories/organisms/UsageSettingsSection.stories.tsx,Storybook,5637
+src/stories/organisms/VoiceControlCard.stories.tsx,Storybook,6261
+src/stories/organisms/VoiceEffects.stories.tsx,Storybook,2142
+src/stories/release/Release2.stories.tsx,Storybook,852
+src/stories/release/Release3.stories.tsx,Storybook,4196
+src/stories/release/Release3Motion.stories.tsx,Storybook,14088
+src/stories/release/Release3Visuals.tsx,Storybook,4364
+src/stories/release/ReleaseScene.tsx,Storybook,8138
+src/stories/release/assets/repository-qr.svg,Storybook,7604
+src/stories/release/exportReleaseScene.ts,Storybook,4208
+src/stories/release/release.css,Storybook,3154
+src/stories/release/release3.css,Storybook,2903
+src/stories/release/release3Export.ts,Storybook,1258
+src/stories/release/release3Fixtures.ts,Storybook,1364
+src/stories/release/release3Motion.config.json,Storybook,401
+src/stories/release/release3Motion.css,Storybook,6732
+src/stories/screens/BetterVoice.stories.tsx,Storybook,16103
+src/stories/screens/DataStorage.stories.tsx,Storybook,1872
+src/stories/screens/Dictation.stories.tsx,Storybook,5715
+src/stories/screens/Island.stories.tsx,Storybook,5844
+src/stories/screens/Onboarding.stories.tsx,Storybook,3661
+src/stories/screens/Settings.stories.tsx,Storybook,30275
+src/stories/screens/VoiceGuide.stories.tsx,Storybook,2125
+src/stories/useWorkshopConfig.ts,Storybook,744
+src/stories/workshop.css,Storybook,23978
+tsconfig.app.json,Build configuration or repository metadata,655
+tsconfig.json,Build configuration or repository metadata,119
+tsconfig.node.json,Build configuration or repository metadata,558
+tsconfig.storybook.json,Build configuration or repository metadata,225
+vite.config.ts,Build configuration or repository metadata,275
+vitest.config.ts,Build configuration or repository metadata,190

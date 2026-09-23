@@ -7,15 +7,14 @@
 .taskbar-layout-editor > .island-layout-catalog { min-height: 110px; }
 @media (forced-colors: active) { .taskbar-preview { background: Canvas; border: 1px solid CanvasText; } }
 .taskbar-editor-controls { flex: 0 0 auto; position: relative; outline: 1.5px dashed transparent; outline-offset: 4px; border-radius: 10px; }
-.taskbar-layout-editor[data-dragging] .taskbar-editor-controls { outline-color: #ffffff42; }
-.taskbar-editor-controls[data-over] { outline-color: #c8e5d4; }
+.taskbar-editor-controls[data-ready] { outline-color: var(--accent); background: var(--drop-zone-ready); }
+.taskbar-editor-controls[data-over] { outline: 2px solid var(--accent); background: var(--drop-zone-active); }
 .taskbar-editor-element { position: relative; flex: 0 0 auto; display: flex; align-items: center; min-height: 32px; cursor: grab; touch-action: none; user-select: none; border-radius: 7px; outline: 1.5px solid transparent; }
 .taskbar-editor-element:hover { outline-color: #ffffff42; }
 .taskbar-editor-element[data-picked] { opacity: .25; }
-.taskbar-editor-element[data-insert]::before { position: absolute; content: ''; left: -2px; top: 2px; bottom: 2px; width: 2px; border-radius: 2px; background: #c8e5d4; }
+.taskbar-editor-element[data-insert]::before { position: absolute; content: ''; left: -2px; top: 2px; bottom: 2px; width: 2px; border-radius: 2px; background: var(--accent); }
 .taskbar-editor-element:focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
 .taskbar-editor-element__visual { display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .taskbar-layout-catalog__items { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
 .taskbar-editor-element--catalog { padding: 8px; background: #343537; border-radius: 14px; }
 .taskbar-control-sample.taskbar-player { width: auto; height: 32px; padding: 0; background: transparent; border: 0; }
-.taskbar-layout-drag-ghost { position: fixed; z-index: 10000; pointer-events: none; padding: 8px; border-radius: 12px; background: #343537; transform: translate(-50%,-50%); }

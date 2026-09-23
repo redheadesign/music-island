@@ -49,7 +49,7 @@ export const Both: Story = {
   args: { enabledProviders: ['codex', 'claude'] },
   play: async ({ canvasElement }) => {
     const chip = canvasElement.querySelector<HTMLElement>('.usage-chip')!
-    await expect(Math.round(chip.getBoundingClientRect().width)).toBe(176)
+    await expect(chip.scrollWidth).toBeLessThanOrEqual(chip.clientWidth)
     await expect(chip).toHaveAttribute('data-layout', 'compact')
   },
 }
@@ -77,7 +77,21 @@ export const CompactScaled: Story = {
   parameters: { usageScale: 1.35, workshop: { width: 250, height: 100 } },
   play: async ({ canvasElement }) => {
     const chip = canvasElement.querySelector<HTMLElement>('.usage-chip')!
-    await expect(Math.round(chip.getBoundingClientRect().width)).toBe(238)
+    await expect(chip.getBoundingClientRect().width / chip.offsetWidth).toBeCloseTo(1.35, 1)
     await expect(chip).toHaveAttribute('data-layout', 'compact')
+  },
+}
+
+export const EdgeValues: Story = {
+  name: 'Краевые значения · слева и справа',
+  parameters: {workshop: {width: 420, height: 500}},
+  render: () => <div style={{display: 'grid', gap: 16}}>{[0, 9, 99, 100, null].map((value) => <div key={String(value)} style={{display: 'flex', justifyContent: 'space-between', gap: 40}}>{(['codex', 'claude'] as const).map((provider) => <UsageStatusChip key={provider} enabledProviders={[provider]} snapshot={{...snapshot, [provider]: {...snapshot[provider], windows: [{...snapshot[provider].windows[0], remainingPercent: value}]}}} />)}</div>)}</div>,
+  play: async ({canvasElement}) => {
+    for (const node of canvasElement.querySelectorAll<HTMLElement>('.usage-chip__compact-provider')) {
+      await expect(node.scrollWidth).toBeLessThanOrEqual(node.clientWidth)
+      const bounds=node.getBoundingClientRect(), ring=node.querySelector('.usage-chip__ring-logo')!.getBoundingClientRect(), value=node.querySelector('.usage-chip__compact-value')!.getBoundingClientRect()
+      await expect(Math.abs((ring.left-bounds.left)-(bounds.right-value.right))).toBeLessThan(1)
+      await expect(ring.width).toBe(32)
+    }
   },
 }

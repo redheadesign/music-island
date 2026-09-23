@@ -1,4 +1,5 @@
 .release-scene { width:1080px; height:1350px; position:relative; overflow:hidden; display:flex; flex-direction:column; padding:100px 80px 70px; color:#f1f0ed; background:#101113; font-family:var(--font-sans); -webkit-font-smoothing:antialiased; }
+.release-scene { isolation:isolate; }
 .release-heading { flex-shrink:0; }
 .release-heading h1 { margin:0; font-size:78px; line-height:1.07; letter-spacing:-.055em; font-weight:650; }
 .release-description { max-width:810px; margin:28px 0 0; font-size:29px; line-height:1.46; letter-spacing:-.018em; color:#a7a8ac; }

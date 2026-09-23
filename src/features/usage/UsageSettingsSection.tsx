@@ -1,4 +1,5 @@
-import { RotateCw, Unplug } from 'lucide-react'
+import { Button } from '../../shared/ui/SettingsControls'
+import { RotateCw, Unplug } from '../../shared/ui/SettingsIcons'
 import type {
   UsagePreferences,
   UsageProvider,
@@ -121,13 +122,13 @@ function ProviderCard({
       ) : null}
       <div className="usage-settings__actions">
         {!enabled ? (
-          <button className="usage-settings__primary" disabled={busy} onClick={onConnect}>
+          <Button variant="primary" disabled={busy} onClick={onConnect}>
             {busy ? text.connecting : text.connect}
-          </button>
+          </Button>
         ) : (
           <>
-            <button disabled={busy} onClick={onRefresh}><RotateCw aria-hidden="true" />{text.refresh}</button>
-            <button disabled={busy} onClick={onDisconnect}><Unplug aria-hidden="true" />{text.disconnect}</button>
+            <Button disabled={busy} onClick={onRefresh}><RotateCw aria-hidden="true" />{text.refresh}</Button>
+            <Button disabled={busy} onClick={onDisconnect}><Unplug aria-hidden="true" />{text.disconnect}</Button>
           </>
         )}
       </div>

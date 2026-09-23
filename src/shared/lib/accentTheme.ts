@@ -3,12 +3,12 @@ export const DEFAULT_ACCENT = '#F76100'
 
 const PRESET_ACCENTS = [
   '#F76100',
-  '#ff8a33',
-  '#8fb8ff',
-  '#6bd8ff',
-  '#9fe1bd',
-  '#b7a5ff',
-  '#ff6b9d',
+  '#b98916',
+  '#548dec',
+  '#28a39d',
+  '#56a36b',
+  '#9d7ae5',
+  '#d8648d',
 ] as const
 
 export const ACCENT_PRESETS: readonly string[] = PRESET_ACCENTS
@@ -70,8 +70,14 @@ export function buildAccentTokens(hex: string) {
     accentSoftRgb: `${soft.r}, ${soft.g}, ${soft.b}`,
     accentGlow: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.34)`,
     accentMuted: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18)`,
-    accentInk: '#1a1410',
+    accentInk: relativeLuminance(normalizeHexColor(hex)) > .179 ? '#000000' : '#ffffff',
   }
+}
+
+export function relativeLuminance(hex: string) {
+  const rgb = hexToRgb(hex)!
+  const linear = (value: number) => { const v = value / 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4 }
+  return .2126 * linear(rgb.r) + .7152 * linear(rgb.g) + .0722 * linear(rgb.b)
 }
 
 export function applyAccentTheme(hex: string, target: HTMLElement = document.documentElement) {

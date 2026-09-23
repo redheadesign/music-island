@@ -1,8 +1,8 @@
 {
   "name": "music-island",
   "private": true,
-  "version": "2.0.0",
-  "description": "Windows top-edge media controller with SMTC and opt-in direct desktop integration.",
+  "version": "3.0.0",
+  "description": "Music controls and local voice typing for Windows.",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
@@ -12,7 +12,8 @@
     "check:storybook": "tsc -p tsconfig.storybook.json --noEmit",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
+    "tauri:build": "node scripts/build-portable.mjs",
+    "dictation:bundle": "node scripts/build-dictation-runtime.mjs",
     "posttauri:build": "node scripts/copy-release-artifacts.mjs",
     "release:copy": "node scripts/copy-release-artifacts.mjs",
     "plugin:pack-voice": "node scripts/package-better-voice-plugin.mjs",
@@ -23,15 +24,17 @@
     "check:boundaries": "node scripts/check-import-boundaries.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "media:serve": "node scripts/release-media-server.mjs",
+    "media:encode": "node scripts/encode-release-media.mjs"
   },
   "dependencies": {
     "@paper-design/shaders-react": "^0.0.78",
+    "@phosphor-icons/react": "^2.1.10",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-autostart": "^2.5.1",
     "@tauri-apps/plugin-log": "^2.8.0",
     "@tauri-apps/plugin-opener": "^2.5.4",
-    "@tauri-apps/plugin-updater": "^2.10.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.23.0",
     "react": "^19.2.7",
@@ -40,6 +43,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@storybook/addon-a11y": "10.6.0",
     "@storybook/addon-docs": "10.6.0",
     "@storybook/react-vite": "10.6.0",
@@ -50,6 +54,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "happy-dom": "^20.14.0",
     "html-to-image": "^1.11.13",
+    "jsqr": "^1.4.0",
     "oxlint": "^1.71.0",
     "png-to-ico": "^3.0.2",
     "sharp": "^0.35.3",

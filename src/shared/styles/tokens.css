@@ -75,15 +75,44 @@
   --focus-offset: 3px;
   --glass-blur: 24px;
   --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.3);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.22);
+  --badge-accent-surface: #d7c8ff;
+  --badge-accent-text: #32244e;
   --motion-fast: 120ms;
   --motion-normal: 200ms;
   --motion-slow: 320ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --drop-zone-ready: color-mix(in srgb, var(--accent, #f76100) 12%, transparent);
+  --drop-zone-active: color-mix(in srgb, var(--accent, #f76100) 24%, transparent);
 }
 
+/* Auxiliary windows have their own material. The media island retains its tokens. */
+.auxiliary-ui, .settings-window-root, .settings-panel, .direct-connection-backdrop, .onboarding, .dictation-overlay {
+  --surface-canvas: #1e1e1e;
+  --surface-panel: #272727;
+  --surface-raised: #303030;
+  --surface-glass: #303030;
+  --surface-sunken: #272727;
+  --surface-hover: #343434;
+  --surface-selected: #444444;
+  --surface-selected-subtle: #303030;
+  --control-surface: #343434;
+  --control-surface-hover: #444444;
+  --fg-primary: #f5f5f5;
+  --fg-secondary: #b7b7b7;
+  --fg-muted: #929292;
+  --border-subtle: transparent;
+  --border-strong: #585858;
+  --highlight-inset: transparent;
+  --shadow-control: none;
+  --window-titlebar: #1e1e1e;
+}
 /* Color changes are scoped to Settings. Spacing, type and motion stay shared. */
+.auxiliary-ui[data-color-scheme='light'],
 .settings-window-root[data-color-scheme='light'],
+.settings-panel[data-color-scheme='light'],
+.onboarding[data-color-scheme='light'],
 [data-color-scheme='light'].direct-connection-backdrop {
   color-scheme: light;
   --surface-canvas: #f3f3f5;
@@ -121,6 +150,9 @@
   --highlight-inset: rgba(255, 255, 255, 0.72);
   --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.12);
   --shadow-panel: 0 24px 80px rgba(28, 28, 32, 0.16);
+  --shadow-popover: 0 6px 20px rgba(28, 28, 32, 0.12);
+  --badge-accent-surface: #e4dafa;
+  --badge-accent-text: #483466;
   --focus-ring: 2px solid var(--accent, #f76100);
 }
 
@@ -130,4 +162,43 @@
     --motion-normal: 0ms;
     --motion-slow: 0ms;
   }
+}
+
+/* Real preview components always keep the island material, including light Settings. */
+.island-root {
+  --surface-canvas: #101113;
+  --surface-panel: #18191c;
+  --surface-raised: #222326;
+  --surface-glass: rgba(32, 33, 36, 0.78);
+  --surface-glass-subtle: rgba(255, 255, 255, 0.045);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --surface-selected: rgba(255, 255, 255, 0.12);
+  --surface-selected-subtle: rgba(255, 255, 255, 0.025);
+  --surface-sunken: #111214;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --fg-primary: #f5f5f7;
+  --fg-secondary: #aaaab2;
+  --fg-muted: #85858f;
+  --fg-on-solid: #101113;
+  --fg-on-glass: rgba(255, 255, 255, 0.9);
+  --fg-on-glass-secondary: rgba(255, 255, 255, 0.78);
+  --status-success: #9fe1bd;
+  --status-warning: #ffe09d;
+  --status-danger: #ffb1b1;
+  --status-success-surface: rgba(70, 199, 135, 0.11);
+  --status-warning-surface: rgba(240, 180, 70, 0.12);
+  --status-danger-surface: rgba(255, 90, 118, 0.1);
+  --control-off: #414247;
+  --control-thumb: #ffffff;
+  --control-surface: rgba(255, 255, 255, 0.075);
+  --control-surface-hover: rgba(255, 255, 255, 0.14);
+  --control-primary-hover: #dedee3;
+  --overlay-scrim: rgba(8, 9, 11, 0.66);
+  --overlay-scrim-strong: rgba(8, 9, 11, 0.92);
+  --window-titlebar: rgba(255, 255, 255, 0.025);
+  --window-danger-hover: rgba(255, 84, 106, 0.7);
+  --highlight-inset: rgba(255, 255, 255, 0.06);
+  --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.18);
+
 }

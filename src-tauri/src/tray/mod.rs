@@ -32,7 +32,7 @@ pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
                 let _ = window::open_settings_window(app);
             }
             "quit" => {
-                app.exit(0);
+                crate::shutdown::request(app);
             }
             _ => {}
         })

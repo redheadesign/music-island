@@ -8,6 +8,7 @@ import type {
   MediaCommand,
   MediaSessionInfo,
   MediaSnapshot,
+  MonitorSnapshot,
   PluginRuntimeInfo,
   SmtcHealthSnapshot,
   TaskbarStatus,
@@ -17,6 +18,21 @@ import type {
   WaveCatalogResult,
   WaveSelectionResult,
 } from '../shared/lib/types'
+
+export async function getMonitorSnapshot(): Promise<MonitorSnapshot> {
+  if (!isTauriRuntime()) return { revision: 0, monitors: [], activeId: null, preferredId: null }
+  return invoke<MonitorSnapshot>('get_monitor_snapshot')
+}
+
+export async function onMonitorsChanged(callback: (snapshot: MonitorSnapshot) => void): Promise<() => void> {
+  if (!isTauriRuntime()) return () => {}
+  return listen<MonitorSnapshot>('window:monitors', event => callback(event.payload))
+}
+
+export async function showOverlayReady(width: number, height: number): Promise<boolean> {
+  if (!isTauriRuntime()) return true
+  return invoke<boolean>('show_overlay_ready', { viewportWidth: width, viewportHeight: height })
+}
 
 const fallbackSnapshot: MediaSnapshot = {
   hasSession: false,
@@ -196,6 +212,7 @@ export async function resetWindowPosition(): Promise<void> {
   await invoke('reset_window_position')
 }
 
+let overlayBoundsGeneration = Date.now() * 1000
 export async function setOverlayBounds(
   expanded: boolean,
   visualWidth: number,
@@ -209,6 +226,7 @@ export async function setOverlayBounds(
     expanded,
     visualWidth,
     visualHeight,
+    generation: ++overlayBoundsGeneration,
   })
 }
 
@@ -269,7 +287,17 @@ export async function onIntroClosed(callback: () => void): Promise<() => void> {
   if (!isTauriRuntime()) {
     return () => undefined
   }
-  return listen('intro:closed', () => callback())
+  let generation = 0
+  const deliver = (state: { generation: number; closed: boolean }) => {
+    if (state.closed && state.generation > generation) { generation = state.generation; callback() }
+  }
+  const unlisten = await listen<{ generation: number; closed: boolean }>('intro:closed', (event) => deliver(event.payload))
+  try { deliver(await invoke('get_intro_state')) } catch { /* An event can still deliver after a failed read. */ }
+  return unlisten
+}
+
+export async function replayOnboarding(): Promise<void> {
+  if (isTauriRuntime()) await invoke('replay_onboarding')
 }
 
 export interface InstallHandoff {

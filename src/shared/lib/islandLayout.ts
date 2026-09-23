@@ -5,7 +5,7 @@ export const ISLAND_LAYOUT_VERSION = 2 as const
 export type IslandProviderElement = 'codex' | 'claude'
 export type IslandPlayerElement = 'previous' | 'artwork' | 'transport' | 'next' | 'progress'
 export type IslandReactionElement = 'like' | 'dislike' | 'shuffle' | 'repeat'
-export type IslandActionElement = 'settings' | 'pin'
+export type IslandActionElement = 'settings' | 'pin' | 'microphone'
 export type IslandLayoutElement = IslandProviderElement | IslandPlayerElement | IslandReactionElement | IslandActionElement
 export type IslandLayoutZone = 'left' | 'player' | 'right' | 'reactionLeft' | 'reactionRight' | 'actions'
 export type IslandLayoutDropTarget = IslandLayoutZone | 'catalog'
@@ -28,7 +28,7 @@ export type IslandLayoutV1 = IslandLayout
 const PROVIDERS: readonly IslandProviderElement[] = ['codex', 'claude']
 const PLAYER_DEFAULT_ORDER: readonly IslandPlayerElement[] = ['previous', 'artwork', 'transport', 'next', 'progress']
 const REACTIONS: readonly IslandReactionElement[] = ['shuffle', 'dislike', 'like', 'repeat']
-const ACTIONS: readonly IslandActionElement[] = ['settings', 'pin']
+const ACTIONS: readonly IslandActionElement[] = ['settings', 'pin', 'microphone']
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)

@@ -24,6 +24,11 @@ export type WarpMaterialProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'>
   className?: string
   /** Lets an established wrapper keep its field hook while sharing this renderer. */
   fieldClassName?: string
+  variant?: 'default' | 'onboarding'
+  /** Deterministic shader time in milliseconds for stills and motion exports. */
+  frame?: number
+  /** Soft-field raster budget; does not change its logical layout or preset. */
+  maxPixelCount?: number
 }
 
 /** Decorative warm graphite material. It performs no polling or device access. */
@@ -33,6 +38,9 @@ export const WarpMaterial = memo(function WarpMaterial({
   reducedMotion = false,
   className,
   fieldClassName,
+  variant = 'default',
+  frame,
+  maxPixelCount = 3_000_000,
   ...attributes
 }: WarpMaterialProps) {
   const root = useRef<HTMLDivElement>(null)
@@ -58,7 +66,7 @@ export const WarpMaterial = memo(function WarpMaterial({
     return () => observer.disconnect()
   }, [])
 
-  const moving = active && documentVisible && intersecting && !reducedMotion && !systemReducedMotion
+  const moving = frame == null && active && documentVisible && intersecting && !reducedMotion && !systemReducedMotion
   const effectiveSpeed = moving ? speed : 0
 
   return (
@@ -73,11 +81,13 @@ export const WarpMaterial = memo(function WarpMaterial({
       <div className={['warp-material__field', fieldClassName].filter(Boolean).join(' ')}>
         <Warp
           {...PAPER_WARP_PRESET}
+          {...(variant === 'onboarding' ? { colors: ['#231c2c', '#ad867e', '#ebc8a6', '#c4adf0'], distortion: .28, softness: .85 } : {})}
           width="100%"
           height="100%"
           speed={effectiveSpeed}
+          frame={frame}
           minPixelRatio={2}
-          maxPixelCount={3_000_000}
+          maxPixelCount={maxPixelCount}
         />
       </div>
     </div>

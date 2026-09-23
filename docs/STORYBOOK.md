@@ -98,3 +98,52 @@ npm run build
 `build-storybook` создаёт автономный каталог в `storybook-static/`. Каталог и зависимости Storybook не входят в сборку приложения. Эта команда ничего не публикует на GitHub и не создаёт релиз. Статический каталог и логи исключены из Git.
 
 Конфигурация основана на [Storybook для React + Vite](https://storybook.js.org/docs/get-started/frameworks/react-vite) и [toolbars/globals](https://storybook.js.org/docs/essentials/toolbars-and-globals).
+
+## Единая оболочка и контролы
+
+`Screens/Settings` использует production-компонент `SettingsWindow`, включая шапку,
+фиксированную навигацию и единственный правый scroll. Проверяйте размеры именно
+в этом примере: отдельная история `SettingsPanel` не заменяет геометрию окна.
+
+`Atoms/SettingsControls` показывает общие Button, FeatureToggle, Switch, Input,
+Select, SettingsNavigation и секции в тёмной/светлой теме и disabled-состоянии.
+`Foundations` показывает семантические токены вспомогательных экранов; материал
+островка выделен отдельно. Править палитру нужно в `tokens.css`, компоненты — в
+`shared/ui`, а не поверхностями внутри каждой feature.
+
+`Screens/Dictation/ImportedRnnt` отличает скачанную/выбранную модель от загруженной
+в память. Дополнительно есть выключенная диктовка с доступными настройками, запись,
+загрузка, ошибка, согласие на скачивание и импорт. `Atoms/PlaybackFeedback` использует
+настоящий `IslandFeedback`: волна принадлежит поверхности островка. У reduced-motion
+истории проверяется отсутствие волны. Истории знакомства используют реальные элементы
+и не скачивают модели или подключают сервисы.
+
+## Release 3
+
+`Molecules/ModelCard` covers recommendations, installed/loaded, download progress, retry, long names and action-menu keyboard behavior. `Screens/Onboarding` covers four steps, explicit startup consent, skip, already enabled and failure states. The drag geometry story measures the SVG itself as well as the portal container.
+
+`Screens/Release3` reuses the shared ReleaseScene compositions plus dictation/model scenes. `Screens/Release3Motion` is the editable 46-second timeline for both video formats. Export instructions are in RELEASES.md. None of these helpers or fixtures is part of the production bundle.
+
+`Molecules/MonitorSetting` covers primary/secondary, disconnected, light and EN
+states using fictional displays. `Screens/Settings/ScopeStartsAtFirstPage` checks
+navigation reset. Both layout editors have `PointerGrabGeometry` stories that
+measure the actual cloned SVG at multiple preview scales and cancel with Escape.
+`SearchField` is included in the shared controls rather than a dictation-only skin.
+
+The opening motion scene reuses `IslandTopIndicator`, a halfway track and cursor
+approach before the real player opens. Final scenes contain a repository QR.
+The RU encode includes Strophe-generated music; EN remains silent. Source, attribution,
+original demo artwork and reproduction details: [media sources](releases/3.0-media-sources.md).
+
+`Atoms/AppLogo` reviews standard, intro and portrait logo variants at 16/24/40/80/128/256px in both
+themes. The SVG owns the circular photo mask; no outer image rounding is allowed.
+The release-only theme wipe clips two rendered copies of the same settings page.
+Static theme snapshots are cached during export; only the reveal boundary moves.
+The image exporter waits for a decoded alpha frame of the real fox video.
+
+The current logo roles and usage rules are in [BRAND.md](BRAND.md).
+All three variants are explicit in Atoms/AppLogo. Release3Motion adds Continuous
+(40s) and Rhythm (36s) stories with RU output, video-aware deterministic capture,
+separate Handy transfer and independent frame/output namespaces. Production and
+export details: [MOTION_PRODUCTION.md](MOTION_PRODUCTION.md).
+

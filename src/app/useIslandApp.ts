@@ -4,6 +4,7 @@ import type { IslandAppState, OverlayMode, UseIslandAppOptions } from './islandA
 import { useDirectStatus } from './media/useDirectStatus'
 import { useMediaController } from './media/useMediaController'
 import { useWaveController } from './media/useWaveController'
+import { useOverlayReady } from './window/useOverlayReady'
 import { useWindowController } from './window/useWindowController'
 
 export type { IslandAppState, OverlayMode, UseIslandAppOptions } from './islandApp.types'
@@ -15,6 +16,7 @@ export function useIslandApp({ mediaEnabled = true, timelineEnabled = true, wind
   const noSessionTimerRef = useRef<number | null>(null)
   const initialMediaModeSetRef = useRef(false)
   const configController = useAppConfig(mediaEnabled)
+  useOverlayReady(mediaEnabled && windowEventsEnabled && configController.configLoaded)
   const mediaController = useMediaController({
     enabled: mediaEnabled,
     timelineEnabled,
@@ -95,3 +97,9 @@ export function useIslandApp({ mediaEnabled = true, timelineEnabled = true, wind
     restartDirect: directController.restartDirect,
   }
 }
+
+export { useDictationController, type DictationController } from './dictation/useDictationController'
+export { useDictationOverlay } from './dictation/useDictationOverlay'
+export { useDictationAction } from './dictation/useDictationAction'
+export { useDictationShortcut } from './dictation/useDictationShortcut'
+export { useDataController } from './data/useDataController'

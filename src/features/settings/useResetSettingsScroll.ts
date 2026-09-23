@@ -12,7 +12,9 @@ export function useResetSettingsScrollOnChange(
     if (previousPage.current === page) return
     previousPage.current = page
 
-    const scrollContainer = panelRef.current?.closest<HTMLElement>('.settings-scroll')
-    if (scrollContainer) scrollContainer.scrollTop = 0
+    // A scope may stay mounted while hidden. Reset the newly selected content,
+    // leaving the navigation and title bar fixed in place.
+    const containers = panelRef.current?.querySelectorAll<HTMLElement>('[data-settings-scroll]')
+    containers?.forEach((container) => { container.scrollTop = 0; container.classList.remove('settings-content--enter'); void container.offsetWidth; container.classList.add('settings-content--enter') })
   }, [page, panelRef])
 }

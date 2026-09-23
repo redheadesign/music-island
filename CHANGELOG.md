@@ -1,5 +1,36 @@
 # Changelog
 
+## 3.0.0 — 2026-09-23
+
+### A new design system
+
+- Rebuilt settings around shared controls, fixed navigation and one scrolling content area. Graphite and light themes use the same documented surface, type and spacing tokens.
+- Added quieter dropdown shadows, compact model cards, clear download actions and locale-aware model recommendations: GigaAM for Russian and Parakeet Unified EN for English.
+- Added a four-step introduction with real controls, a brighter Paper Warp scene and an explicit Windows autostart option. Existing users can replay it from settings.
+- Kept the original orange/white app icon and white startup mark; added the author portrait only to About and large release end cards, without clipping the silhouette.
+- Added continuous Play/Pause morphing and island-wide feedback, including an inward wave on Pause and Unlike.
+
+### Local dictation
+
+- Integrated the Windows pipeline from Handy v0.9.7, commit `05e0aedd2906f0d82722735f930465950c476b90`, under its MIT license. Music Island remains GPL-3.0-or-later.
+- Added microphone and shortcut selection, model download/import, history with audio, dictionary, filler-word cleanup and optional AI processing with a separate shortcut.
+- Added a nonactivating recording overlay and an optional microphone control in the island.
+- Embedded the native runtime in the portable EXE. Models, recordings, runtime and private cache stay in Music Island's AppData folder; import copies from Handy without modifying its files.
+- Added storage controls and confirmed cleanup, plus DPAPI protection for provider keys. No telemetry was added. Recognition is local; external AI processing is opt-in.
+
+### Interaction and lifecycle fixes
+
+- Added display selection, automatic placement after rotation/resolution changes and remembered preference after reconnect. The overlay starts hidden until its final viewport is ready.
+- Settings now comes to the foreground on the first press; changing settings scope opens its first page.
+- Unified taskbar/island drag previews and accented drop targets, balanced settings panels, improved preset accent contrast and fixed the model search surface.
+- Preserved the pointer's grab point and rendered control appearance when dragging out of a scaled preview; replaced coordinate-sensitive CSS zoom on the preview camera.
+- Fixed quota chip spacing, layout reset preserving connected widgets, settings scrolling and first-launch/replay state races.
+- Guarded seek and track navigation against stale position events, preserving the accepted fill-only timeline transition.
+- Coordinated tray exit, recording cancellation and model unloading outside the Windows event loop, with a bounded shutdown fallback.
+
+The EXE is unsigned. SHA-256 checks validate release integrity, not publisher identity.
+
+
 ## 2.0.0 — 2026-09-14
 
 Music Island 2.0 is a major update to the island, taskbar player, media sources,

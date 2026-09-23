@@ -1,0 +1,9 @@
+.app-modal { width: min(480px, calc(100vw - 48px)); max-height: calc(100vh - 48px); box-sizing: border-box; overflow: auto; padding: 28px; border: 0; border-radius: 22px; background: var(--surface-panel); color: var(--fg-primary); font: 14px/1.6 var(--font-sans); box-shadow: var(--shadow-panel); }
+.app-modal::backdrop { background: var(--overlay-scrim); }
+.app-modal h3 { margin: 0 0 12px; font-size: 20px; font-weight: 600; }
+.app-modal p { color: var(--fg-secondary); }
+.app-modal button { min-height: 38px; padding: 8px 14px; border: 0; border-radius: 10px; background: var(--control-surface); color: var(--fg-primary); font: inherit; cursor: pointer; }
+.app-modal button:hover { background: var(--control-surface-hover); }
+.app-modal button:disabled { opacity: .4; cursor: default; }
+.app-modal :is(button,input):focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.dictation-dialog__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }

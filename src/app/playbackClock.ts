@@ -166,7 +166,7 @@ export function reconcilePlaybackAnchor(
   }
 }
 
-function isSameTrack(previous: MediaSnapshot, next: MediaSnapshot): boolean {
+export function isSameTrack(previous: MediaSnapshot, next: MediaSnapshot): boolean {
   if (previous.sourceAppId !== next.sourceAppId) {
     return false
   }

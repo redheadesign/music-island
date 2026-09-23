@@ -1,4 +1,6 @@
-import { Pin, Settings2 } from 'lucide-react'
+import { IslandFeedback } from '../../shared/ui/PressFeedback'
+import { SettingsFilled } from '../../shared/ui/SettingsIcons'
+import { Mic, Pin } from 'lucide-react'
 import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import type { AppConfig } from '../../shared/lib/types'
@@ -27,6 +29,11 @@ export function IslandPreview({ config, label, usage, onResize, active = true, r
   const layout = getIslandLayout(config)
   const host = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
+  const frame = useRef<HTMLDivElement>(null)
+  const [frameHeight, setFrameHeight] = useState(170)
+  const leftContent = useRef<HTMLDivElement>(null)
+  const rightContent = useRef<HTMLDivElement>(null)
+  const [measuredSides, setMeasuredSides] = useState({ left: 0, right: 0 })
   const gesture = useRef<{ id: number; x: number; y: number; dimension: 'width' | 'scale'; direction: number; width: number; height: number; initial: { width: number; scale: number }; next: { width: number; scale: number } } | null>(null)
   const [dimensions, setDimensions] = useState<{ width: number; scale: number } | null>(null)
   const sizing = dimensions ?? config.layout
@@ -40,16 +47,35 @@ export function IslandPreview({ config, label, usage, onResize, active = true, r
     observer.observe(node)
     return () => observer.disconnect()
   }, [])
+  useLayoutEffect(() => {
+    const node = frame.current
+    if (!node) return
+    const measure = () => setFrameHeight(node.offsetHeight)
+    const observer = new ResizeObserver(measure)
+    observer.observe(node); measure()
+    return () => observer.disconnect()
+  }, [])
   const snapshot = usage && 'snapshot' in usage ? usage.snapshot : usage
   const compact = getUsageWidgetCompact(config)
   const usageScale = getUsageWidgetScale(config)
-  const sideWidth = (side: 'left' | 'right') => Math.max(56, (compact ? layout.zones[side].length * 84 + Math.max(0, layout.zones[side].length - 1) * 8 : layout.zones[side].length ? 124 : 0) * usageScale + 12)
+  const sideWidth = (side: 'left' | 'right') => Math.max(56, measuredSides[side] + 12)
   const width = 500 * sizing.width / 100
   const sceneWidth = sideWidth('left') + width + sideWidth('right')
   // A stable camera leaves room for the entire allowed resize range. Fitting on
   // every pointer move would cancel the user's scale change or move the handles.
   const cameraScale = Math.min(1, Math.max(.15, (available - 24) / (sideWidth('left') + 625 + sideWidth('right')) / 1.2))
   const scale = cameraScale * sizing.scale / 100
+  useLayoutEffect(() => {
+    const measure = () => setMeasuredSides((current) => {
+      const next = { left: leftContent.current?.offsetWidth ?? 0, right: rightContent.current?.offsetWidth ?? 0 }
+      return current.left === next.left && current.right === next.right ? current : next
+    })
+    const observer = new ResizeObserver(measure)
+    if (leftContent.current) observer.observe(leftContent.current)
+    if (rightContent.current) observer.observe(rightContent.current)
+    measure()
+    return () => observer.disconnect()
+  }, [])
   const clamp = (value: number, dimension: 'width' | 'scale') => Math.round(Math.max(dimension === 'width' ? 80 : 70, Math.min(dimension === 'width' ? 125 : 120, value)))
   const cancelResize = () => { gesture.current = null; setDimensions(null) }
   const resizeHandles = (dimension: 'width' | 'scale', direction = 1) => ({
@@ -97,25 +123,27 @@ export function IslandPreview({ config, label, usage, onResize, active = true, r
     '--artwork-primary': '168, 98, 55',
     '--artwork-secondary': '87, 63, 49',
     '--preview-left': `${sideWidth('left')}px`, '--preview-right': `${sideWidth('right')}px`,
-    width: sceneWidth, zoom: scale,
+    width: sceneWidth, transform: `scale(${scale})`, transformOrigin: 'top left',
   } as CSSProperties
   const satellite = (side: 'left' | 'right') => renderZone(side, layout.zones[side].map((provider) => <Fragment key={provider}>{renderElement(provider, <div style={{ zoom: usageScale }}><UsageStatusChip snapshot={snapshot ?? null} enabledProviders={[provider]} compact={compact} locale={config.appearance.locale} /></div>)}</Fragment>))
-  return <div ref={host} className="island-preview" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined}>
+  return <div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined}>
     {active ? <WarpMaterial className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
-    <div className={`island-preview__frame island-root theme-${config.appearance.theme}`} style={style}>
-      <aside className="island-preview__satellite island-preview__satellite--left">{satellite('left')}</aside>
+    <div className="island-preview__camera" style={{ width: sceneWidth * scale, height: frameHeight * scale }}>
+    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} style={style}>
+      <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
-        <section className="island-card island-surface">
+        <IslandFeedback className="island-card island-surface">
           <MusicModule media={media} layout={layout} progressMs={media.positionMs} progressPercent={34} density={previewConfig.layout.density} showArtwork={previewConfig.layout.showArtwork} showTitle={previewConfig.layout.showTitle} showArtist={previewConfig.layout.showArtist} showProgress={previewConfig.layout.showProgress} showSource={previewConfig.layout.showSource} showPreviousNext={previewConfig.layout.showPreviousNext} locale={config.appearance.locale} reducedMotion onCommand={() => undefined} renderElement={renderElement} renderZone={renderZone} />
-        </section>
-        <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => <Fragment key={element}>{renderElement(element, <button type="button" className="icon-button" aria-label={element === 'settings' ? 'Open settings' : 'Pin island'}>{element === 'settings' ? <Settings2 size={16} /> : <Pin size={16} />}</button>)}</Fragment>))}</header>
+        </IslandFeedback>
+        <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => <Fragment key={element}>{renderElement(element, <button type="button" className="icon-button" aria-label={element === 'settings' ? 'Open settings' : 'Pin island'}>{element === 'settings' ? <SettingsFilled weight="fill" size={16} /> : element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>)}</Fragment>))}</header>
         {onResize ? <>
           <div className="island-preview__resize-edge island-preview__resize-edge--left" {...resizeHandles('width', -1)} />
           <div className="island-preview__resize-edge island-preview__resize-edge--right" {...resizeHandles('width')} />
           <div className="island-preview__resize-corner" {...resizeHandles('scale')}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 13h8V5M9 13l4-4" /></svg></div>
         </> : null}
       </div>
-      <aside className="island-preview__satellite island-preview__satellite--right">{satellite('right')}</aside>
+      <aside className="island-preview__satellite island-preview__satellite--right"><div className="island-preview__satellite-content" ref={rightContent}>{satellite('right')}</div></aside>
+    </div>
     </div>
     {onResize ? <div className="island-preview__dimensions" aria-hidden="true"><span data-active={dimensions ? gesture.current?.dimension === 'width' : undefined}>{ru ? 'Ширина' : 'Width'} <output>{sizing.width}%</output></span><span data-active={dimensions ? gesture.current?.dimension === 'scale' : undefined}>{ru ? 'Масштаб' : 'Scale'} <output>{sizing.scale}%</output></span></div> : null}
   </div>
@@ -129,5 +157,5 @@ export function IslandElementSample({ element, usage, locale = 'ru' }: { element
   if (element === 'like' || element === 'dislike') return <ReactionButton kind={element} />
   if (element === 'shuffle' || element === 'repeat') return <PlaybackModeButton kind={element} locale={locale} />
   if (element === 'progress') return <button type="button" className="progress-track" aria-label="Seek track" style={{ '--progress': .34, width: 210 } as CSSProperties}><ProgressStrip frame={{ trackKey: 'catalog', ratio: .34, positionMs: media.positionMs, durationMs: media.durationMs, label: 'Music Island · Evening Light' }} navigation={null} reducedMotion scrubbing={false} /></button>
-  return <button type="button" className="icon-button" aria-label={element}><Pin size={16} /></button>
+  return <button type="button" className="icon-button" aria-label={element}>{element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>
 }

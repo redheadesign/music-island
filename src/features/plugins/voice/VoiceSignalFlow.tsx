@@ -1,4 +1,4 @@
-import { AudioLines, Mic2, Volume2 } from 'lucide-react'
+import { AudioLines, Mic2, Volume2 } from '../../../shared/ui/SettingsIcons'
 import type { CSSProperties, ReactNode } from 'react'
 import { DarkSelect } from './DarkSelect'
 import { levelToPct } from './levels'

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Music Island",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "identifier": "com.redheadesign.music-island",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -11,7 +11,8 @@
   },
   "app": {
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": { "enable": true, "scope": ["$APPDATA/Music Island/dictation/recordings/**"] }
     },
     "windows": [
       {
@@ -26,7 +27,7 @@
         "shadow": false,
         "alwaysOnTop": true,
         "skipTaskbar": true,
-        "visible": true,
+        "visible": false,
         "center": false,
         "x": 0,
         "y": 0
@@ -90,8 +91,8 @@
     "createUpdaterArtifacts": false,
     "publisher": "Fedor Svetlov",
     "category": "Utility",
-    "shortDescription": "Low-distraction top-edge media controller for Windows.",
-    "longDescription": "Music Island controls Windows media sessions through SMTC and offers an explicit opt-in direct connection to Yandex Music Desktop.",
+    "shortDescription": "Music controls and local voice typing for Windows.",
+    "longDescription": "Control music from the top edge of your Windows desktop and type with your voice in the active application. Optional local dictation is based on Handy.",
     "windows": {
       "nsis": {
         "displayLanguageSelector": true,

@@ -63,6 +63,28 @@ async function mountEditor() {
 }
 
 describe('TaskbarLayoutEditor', () => {
+  it('portals the rendered copy and preserves an off-center grab inside a scaled preview', async () => {
+    const mounted = await mountEditor()
+    try {
+      const source = item(mounted.container, 'previous')
+      mockPointerCapture(source)
+      vi.spyOn(source, 'getBoundingClientRect').mockReturnValue(new DOMRect(350, 120, 60, 50))
+      Object.defineProperties(source, { offsetWidth: { value: 30 }, offsetHeight: { value: 25 } })
+      await act(async () => source.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, isPrimary: true, pointerId: 81, clientX: 361, clientY: 139 })))
+      await act(async () => source.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, isPrimary: true, pointerId: 81, clientX: 511, clientY: 299 })))
+      const ghost = document.body.querySelector<HTMLElement>('.island-layout-drag-ghost')!
+      expect(ghost).not.toBeNull()
+      expect(ghost.parentElement).toBe(document.body)
+      expect(ghost.style.left).toBe('500px')
+      expect(ghost.style.top).toBe('280px')
+      expect(ghost.style.width).toBe('60px')
+      expect(ghost.style.height).toBe('50px')
+      expect(ghost.querySelector('svg')).not.toBeNull()
+      await press(source, 'Escape')
+      expect(document.querySelector('.island-layout-drag-ghost')).toBeNull()
+      expect(mounted.changes).not.toHaveBeenCalled()
+    } finally { await mounted.unmount() }
+  })
   it('reorders the actual control row by pointer, including the cover', async () => {
     const mounted = await mountEditor()
     try {

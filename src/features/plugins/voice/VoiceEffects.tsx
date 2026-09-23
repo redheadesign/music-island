@@ -1,4 +1,4 @@
-import { Bot, Check, Radio, Zap } from 'lucide-react'
+import { Bot, Check, Radio, Zap } from '../../../shared/ui/SettingsIcons'
 import type { Locale } from '../../../shared/lib/types'
 import { EXPLODE_EFFECTS } from './presets'
 import './VoiceEffects.css'

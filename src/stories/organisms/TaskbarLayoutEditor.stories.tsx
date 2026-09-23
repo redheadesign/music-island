@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fireEvent, userEvent } from 'storybook/test'
+import { expect, fireEvent, userEvent, waitFor } from 'storybook/test'
 import { TaskbarLayoutEditor } from '../../features/settings/TaskbarLayoutEditor'
 import { getDefaultConfig } from '../../app/tauriApi'
 import type { AppConfig, Locale } from '../../shared/lib/types'
@@ -78,6 +78,39 @@ export const Default: Story = {
     await expect(element(canvasElement, 'shuffle', 'catalog')).toBeInTheDocument()
     await expect(element(canvasElement, 'repeat', 'catalog')).toBeInTheDocument()
     await expect(canvasElement.querySelectorAll('[aria-label="Сбросить состав мини-плеера"]')).toHaveLength(1)
+  },
+}
+
+export const PointerGrabGeometry: Story = {
+  name: 'Точка захвата · масштаб, прокрутка, Escape',
+  play: async ({ canvasElement }) => {
+    const frame = canvasElement.querySelector<HTMLElement>('.taskbar-preview__bar')!
+    const source = element(canvasElement, 'previous')
+    const restore = mockSyntheticPointerCapture(source)
+    try {
+      for (const scale of [.75, 1, 1.25, 1.5, 2]) {
+        frame.style.transform = `scale(${scale})`
+        source.scrollIntoView({ block: 'center', behavior: 'instant' })
+        const bounds = source.getBoundingClientRect(), ink = source.querySelector('svg')!.getBoundingClientRect()
+        const x = bounds.left + bounds.width * .27, y = bounds.top + bounds.height * .4
+        await fireEvent.pointerDown(source, { button: 0, isPrimary: true, pointerId: 91, clientX: x, clientY: y })
+        await fireEvent.pointerMove(source, { pointerId: 91, clientX: x + 17, clientY: y + 12 })
+        await waitFor(() => {
+          const ghost = document.querySelector<HTMLElement>('.island-layout-drag-ghost')!
+          expect(ghost.parentElement).toBe(document.body)
+          const b = ghost.getBoundingClientRect(), g = ghost.querySelector('svg')!.getBoundingClientRect()
+          expect(b.left).toBeCloseTo(bounds.left + 17, 1)
+          expect(b.top).toBeCloseTo(bounds.top + 12, 1)
+          expect(b.width).toBeCloseTo(bounds.width, 1)
+          expect(g.left).toBeCloseTo(ink.left + 17, 1)
+          expect(g.top).toBeCloseTo(ink.top + 12, 1)
+          expect(g.width).toBeCloseTo(ink.width, 1)
+        })
+        await userEvent.keyboard('{Escape}')
+        await expect(document.querySelector('.island-layout-drag-ghost')).toBeNull()
+      }
+      await expect(order(canvasElement)).toEqual(['cover', 'previous', 'transport', 'next'])
+    } finally { frame.style.transform = ''; restore() }
   },
 }
 

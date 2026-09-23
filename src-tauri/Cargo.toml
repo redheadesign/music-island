@@ -1,10 +1,16 @@
 [package]
 name = "music-island"
-version = "2.0.0"
+version = "3.0.0"
 description = "Windows top-edge media controller with SMTC and opt-in direct desktop integration."
 authors = ["Music Island contributors"]
 edition = "2021"
 license = "GPL-3.0-or-later"
+
+[workspace]
+members = ["crates/handy-core", "crates/dictation-protocol"]
+exclude = ["crates/dictation-runtime"]
+default-members = ["."]
+resolver = "2"
 
 [lib]
 name = "music_island_lib"
@@ -14,6 +20,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+music-island-handy-core = { path = "crates/handy-core" }
+tauri-plugin-store = "2.4.1"
+tauri-plugin-clipboard-manager = "2.3.2"
+tauri-plugin-global-shortcut = "2.3.1"
 anyhow = "1"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
@@ -32,12 +42,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 sysinfo = "0.39.6"
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-log = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
-tauri-plugin-updater = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
 tokio-tungstenite = "0.30.0"
 tracing = "0.1"
