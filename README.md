@@ -6,9 +6,7 @@ Control music from the top edge of your Windows desktop and type with your voice
 
 [**Download the latest published version**](https://github.com/redheadesign/music-island/releases/latest) · [What's new](CHANGELOG.md) · [Component workshop](docs/STORYBOOK.md)
 
-[![Watch Music Island 3.0 — music controls and local dictation (English, 46 seconds)](docs/media/v3/showreel-en.webp)](https://github.com/redheadesign/music-island/releases/download/v3.0.0/music-island-3.0-en.mp4)
-
-[Watch the English overview · 46 seconds](https://github.com/redheadesign/music-island/releases/download/v3.0.0/music-island-3.0-en.mp4)
+https://github.com/user-attachments/assets/87c23079-ffd6-4856-96a2-23a88e987366
 
 Download `music-island.exe`, save it in a folder you want to keep and open it — no installation is needed. Existing settings stay in `%APPDATA%\Music Island\`. The executable is unsigned; Windows may show SmartScreen. Portable updates require the release SHA-256 checksum and verify the PE before replacement. A checksum is an integrity check, not an Authenticode publisher signature. [Security details](SECURITY.md).
 
