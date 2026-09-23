@@ -192,3 +192,22 @@ The Rhythm film now retains each natural video layer through its transition to
 the interface, including its held final frame, without remounting or restarting
 the reveal at the scene boundary. The end card uses darkened moving water from
 the opening. These are Storybook/export-only changes.
+
+Final media verification passed for all four current movies: full decode,
+H.264/30fps, expected frame counts, no black frames and a readable repository QR.
+Classic RU/EN contain 1,380 frames each, Continuous 1,200 and Rhythm 1,080.
+The final Rhythm is 36.01 seconds and 11,675,476 bytes. Mean/peak audio levels:
+classic RU/EN and Continuous -14.9/-2.7 dB; Rhythm -15.0/-2.7 dB. Audio inspection
+remains technical; no real-time listening review is claimed.
+
+Full-timeline compositions, all three nature-to-interface seams and the final
+eight-second hold were inspected. Source frames and media.json remain local.
+The release archive is `release/media-3.0/archive-2026-09-23-before-stock-audio`.
+The GitHub-uploaded EXE and first three movie digests match the local artifacts.
+
+Final current video SHA-256:
+
+- Classic RU: e48555a71eeb9f13e9dbc087bfb62e8f3fdf7cf757f79e70757f9fbe4449190c
+- Classic EN: d1fe35934c032d0767c06f2d9babbebf228ebb187e9fca5a6bcb88b884d79a45
+- Continuous RU: 2b7d48ad3294cca5d2692fdb242d925b10f062beba303f88b0f34d804799e990
+- Rhythm RU: 2db22aaadf80d8c1ba4cf427335af32c393f3e1702d710fbb0d2052f65481c17
