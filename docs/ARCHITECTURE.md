@@ -16,7 +16,7 @@ flowchart LR
   AppFacade --> Overlay[Overlay shell]
   Overlay --> Music[Music module]
   AppFacade --> Settings[Settings window]
-  Settings --> BetterVoice[Better Voice UI]
+  Settings -->|renders| BetterVoice[Better Voice UI]
   Overlay --> Registry[Module registry]
   BetterVoice -->|voice_invoke| VoiceCmds[voice commands]
   VoiceCmds --> VoiceEngine[Rust voice engine]
@@ -73,6 +73,10 @@ flowchart LR
 - `src/features/notice`: already-running notice window.
 - `src/features/modules`: module contract and reserved future modules.
 - `src/shared`: scoped tokens, shared settings controls/navigation/selects/icons, island material and press feedback, i18n, `uiPrefs` and formatting. See [design-system ownership](DESIGN_SYSTEM.md).
+
+`SettingsPanel` renders `VoiceSettingsView`. Better Voice sends its feature-specific
+`voice_invoke` commands through `pluginApi` and receives native meters/status;
+that path does not go through the `useIslandApp` media facade.
 
 Dependencies point inward: `shared` does not import app or feature code, `app` does not import feature UI, and features consume app-owned state through `useIslandApp`. A lightweight check in `scripts/check-import-boundaries.mjs` enforces these constraints as part of `npm run lint`. Feature-specific native interactions may use `tauriApi` until they become facade responsibilities.
 

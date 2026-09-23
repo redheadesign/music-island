@@ -6,7 +6,11 @@ Control music from the top edge of your Windows desktop and type with your voice
 
 [**Download the latest published version**](https://github.com/redheadesign/music-island/releases/latest) · [What's new](CHANGELOG.md) · [Component workshop](docs/STORYBOOK.md)
 
+### Music Island 3.0 in 46 seconds
+
 https://github.com/user-attachments/assets/87c23079-ffd6-4856-96a2-23a88e987366
+
+[Open the English video file](https://github.com/redheadesign/music-island/releases/download/v3.0.0/music-island-3.0-en.mp4)
 
 Download `music-island.exe`, save it in a folder you want to keep and open it — no installation is needed. Existing settings stay in `%APPDATA%\Music Island\`. The executable is unsigned; Windows may show SmartScreen. Portable updates require the release SHA-256 checksum and verify the PE before replacement. A checksum is an integrity check, not an Authenticode publisher signature. [Security details](SECURITY.md).
 
@@ -59,7 +63,9 @@ flowchart LR
   Direct --> Media
   Media --> Native[Native taskbar player]
   Media <-->|Tauri events / commands| App[useIslandApp]
-  App --> Island[Island / settings]
+  App --> Island[Island UI]
+  App --> Settings[Settings UI]
+  Settings --> BetterVoice[Better Voice UI]
   Usage[Opt-in usage workers] --> App
   Voice[Rust voice engine] <-->|Meters / commands| BetterVoice[Better Voice UI]
   Dictation[Handy Rust coordinator] <-->|ABI 1| Runtime[Embedded inference DLL]
