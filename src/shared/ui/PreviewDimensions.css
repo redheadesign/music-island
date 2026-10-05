@@ -1,0 +1,15 @@
+/* Readouts use the main island's accepted typography in every widget preview. */
+.preview-dimensions {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--fg-secondary);
+}
+.preview-dimensions span { display: flex; gap: 7px; }
+.preview-dimensions output { min-width: 32px; font-weight: inherit; font-variant-numeric: tabular-nums; color: var(--fg-primary); }
+.preview-dimensions [data-active='true'] { color: var(--fg-primary); }
+@media (forced-colors: active) {
+  .preview-dimensions { color: CanvasText; text-shadow: none; }
+  .preview-dimensions output, .preview-dimensions [data-active='true'] { color: CanvasText; }
+}

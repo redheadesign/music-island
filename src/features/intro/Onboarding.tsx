@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Button } from '../../shared/ui/SettingsControls'
+import { Button, Notice } from '../../shared/ui/SettingsControls'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
 import { WarpMaterial } from '../../shared/ui/WarpMaterial'
 import { ArrowLeft, ArrowRight, Check, Mouse } from '../../shared/ui/SettingsIcons'
@@ -65,7 +65,7 @@ export function Onboarding({ config, onFinish, exePath, initialStep = 0 }: Onboa
           <div className="onboarding__detail">{step === 2 ? <small>{ru ? 'Диктовку можно настроить после знакомства. Better Voice поможет убрать шум микрофона' : 'Set up dictation after this tour. Better Voice can also reduce microphone noise'}</small> : step === 3 ? <><small>{autostart ? ru ? 'Автозагрузка уже включена' : 'Launch at startup is already enabled' : ru ? 'Оставьте файл приложения в этой папке' : 'Keep the application file in this folder'}</small>{exePath ? <details><summary>{ru ? 'Путь к приложению' : 'Application location'}</summary><code>{exePath}</code></details> : null}</> : null}</div>
         </motion.div>
       </AnimatePresence>
-      <div className="onboarding__message" aria-live="polite">{error ? <span role="alert">{ru ? 'Не удалось завершить настройку. Повторите или нажмите «Не сейчас».' : 'Could not finish setup. Try again or choose “Not now”.'}</span> : null}</div>
+      <div className="onboarding__message">{error ? <Notice tone="danger">{ru ? 'Не удалось завершить настройку. Повторите или нажмите «Не сейчас».' : 'Could not finish setup. Try again or choose “Not now”.'}</Notice> : null}</div>
       <footer className="onboarding__footer"><Button variant="ghost" className="onboarding__back" disabled={step === 0 || busy} aria-label={ru ? 'Назад' : 'Back'} onClick={() => setStep(step - 1)}><ArrowLeft size={18} /></Button><div className="onboarding__steps" role="group" aria-label={`${step + 1} / 4`}>{titles.map((title, index) => <button type="button" key={title} disabled={busy} aria-label={title} aria-current={step === index ? 'step' : undefined} onClick={() => setStep(index)} />)}</div><div className="onboarding__actions">{step === 3 && !autostart ? <Button variant="ghost" disabled={busy} onClick={() => void finish()}>{ru ? 'Не сейчас' : 'Not now'}</Button> : null}<Button variant="primary" disabled={busy} onClick={() => step < 3 ? setStep(step + 1) : void finish(autostart ? undefined : true)}>{busy ? ru ? 'Сохранение…' : 'Saving…' : step < 3 ? ru ? 'Далее' : 'Next' : autostart ? ru ? 'Начать' : 'Start' : ru ? 'Включить и начать' : 'Enable and start'}{step < 3 ? <ArrowRight size={17} /> : null}</Button></div></footer>
     </section>
   </main>

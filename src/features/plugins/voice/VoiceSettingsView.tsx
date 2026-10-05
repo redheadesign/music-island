@@ -1,4 +1,4 @@
-import { Toggle } from '../../../shared/ui/SettingsControls'
+import { Toggle, Notice, Button, SettingsIconButton } from '../../../shared/ui/SettingsControls'
 import {
   AudioLines,
   SlidersHorizontal,
@@ -146,31 +146,7 @@ export function VoiceSettingsView({
 
       </VoiceControlCard>
 
-      {showExperimentalBanner ? (
-        <div className="voice-experimental-banner" role="status">
-          <p className="voice-experimental-banner__text">
-            {ti('settings.voiceExperimental')}
-            <button
-              type="button"
-              className="voice-experimental-banner__link"
-              onClick={() => setGuideOpen(true)}
-            >
-              {ti('settings.voiceExperimentalLink')}
-            </button>
-            .
-          </p>
-          {onDismissExperimentalBanner ? (
-            <button
-              type="button"
-              className="voice-experimental-banner__close"
-              aria-label={ti('settings.voiceExperimentalClose')}
-              onClick={onDismissExperimentalBanner}
-            >
-              <X size={14} aria-hidden />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      {showExperimentalBanner ? <Notice tone="info" action={<div className="voice-notice-actions"><Button variant="ghost" size="compact" onClick={() => setGuideOpen(true)}>{ti('settings.voiceExperimentalLink')}</Button>{onDismissExperimentalBanner ? <SettingsIconButton variant="ghost" size="compact" label={ti('settings.voiceExperimentalClose')} onClick={onDismissExperimentalBanner}><X size={14} /></SettingsIconButton> : null}</div>}>{ti('settings.voiceExperimental')}</Notice> : null}
 
       <div className="voice-devices-flow">
         <VoiceLiveMeters

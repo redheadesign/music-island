@@ -1,3 +1,4 @@
+import { Notice } from '../../../shared/ui/SettingsControls'
 import { Headphones, LoaderCircle, Mic2, Square } from '../../../shared/ui/SettingsIcons'
 import { useId, type ReactNode } from 'react'
 import type { Locale } from '../../../shared/lib/types'
@@ -62,7 +63,7 @@ export function VoiceControlCard({
         <VoiceEffects locale={locale} label={t.extras}
           disabled={!running || busy || !hydrated} activeEffect={activeEffect} onToggle={onToggleEffect} />
       </div>
-      {error ? <p className="voice-control-card__error" role="alert">{error.replace(/^Error:\s*/, '')}</p> : null}
+      {error ? <Notice className="voice-control-card__error" tone="danger">{error.replace(/^Error:\s*/, '')}</Notice> : null}
       {children ? <div className="voice-control-card__developer">{children}</div> : null}
     </section>
   )

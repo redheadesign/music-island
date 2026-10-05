@@ -9,7 +9,7 @@
   max-width: 144px;
   height: var(--taskbar-player-height, 40px);
   padding: 1px var(--space-1);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   background: var(--surface-glass);
@@ -68,7 +68,7 @@
 
 .taskbar-player .taskbar-player__button--play { color: var(--fg-primary); }
 .taskbar-player .taskbar-player__button:hover:not(:disabled) { color: var(--fg-primary); background: var(--surface-hover); }
-.taskbar-player .taskbar-player__button:active:not(:disabled) { background: var(--border-strong); }
+.taskbar-player .taskbar-player__button:active:not(:disabled) { background: var(--surface-selected); }
 .taskbar-player .taskbar-player__button:disabled { color: var(--fg-muted); background: transparent; opacity: .4; cursor: default; }
 .taskbar-player button:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
 .taskbar-player[data-reduced-motion='true'] * { transition: none; animation: none; }
@@ -87,7 +87,7 @@
   .taskbar-player { background: var(--surface-panel); }
 }
 /* Compact controls and a single material shared with the native renderer. */
-.taskbar-player { width: calc(var(--taskbar-width,144px) * var(--taskbar-scale,1)); min-width: 0; max-width: none; gap: 0; padding: 0 calc(8px * var(--taskbar-scale,1)) 0 calc(4px * var(--taskbar-scale,1)); border: 0; border-radius: 10px; color: #b9bbc0; background: rgba(24,24,26,.82); }
+.taskbar-player { width: calc(var(--taskbar-width,144px) * var(--taskbar-scale,1)); min-width: 0; max-width: none; gap: 0; padding: 0 calc(6px * var(--taskbar-scale,1)); border: 0; border-radius: 10px; color: #b9bbc0; background: rgba(24,24,26,.82); }
 .taskbar-player > .taskbar-player__cover:not(:last-child), .taskbar-player > [data-taskbar-element='cover']:not(:last-child) { margin-right: calc(4px * var(--taskbar-scale,1)); }
 .taskbar-player__cover { width: calc(32px * var(--taskbar-scale,1)); flex-basis: calc(32px * var(--taskbar-scale,1)); }
 .taskbar-player__artwork { width: min(calc(28px * var(--taskbar-scale,1)),32px); height: min(calc(28px * var(--taskbar-scale,1)),32px); }

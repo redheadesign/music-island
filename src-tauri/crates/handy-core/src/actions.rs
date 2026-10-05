@@ -458,6 +458,11 @@ pub(crate) async fn process_transcription_output(
         post_processed_text = Some(final_text.clone());
     }
 
+    crate::text_output::remove_trailing_period(&mut final_text, settings.remove_trailing_period);
+    if post_processed_text.is_some() || final_text != transcription {
+        post_processed_text = Some(final_text.clone());
+    }
+
     ProcessedTranscription {
         final_text,
         post_processed_text,

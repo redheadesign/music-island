@@ -6,7 +6,6 @@ import './Select.css'
 type Option = { value: string; label: string; danger?: boolean }
 
 const PORTAL_THEME_PROPERTIES = [
-  '--border-strong',
   '--focus-ring',
   '--shadow-popover',
   '--status-danger',

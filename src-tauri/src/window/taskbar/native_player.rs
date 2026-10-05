@@ -292,9 +292,11 @@ static INPUT_COMMAND_LOGGED: AtomicBool = AtomicBool::new(false);
 static NEXT_INSTANCE_ID: AtomicU64 = AtomicU64::new(1);
 static ARTWORK_DECODE_GATE: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(1);
 
+const LOGICAL_SIDE_PADDING: i32 = 6;
+
 pub(super) fn logical_width(options: PlayerOptions) -> i32 {
     let options = options.normalized();
-    let mut width = 12;
+    let mut width = LOGICAL_SIDE_PADDING * 2;
     for (index, element) in options.layout.iter().enumerate() {
         width += 32;
         if element == TaskbarElement::Cover && index + 1 < options.layout.len {
@@ -499,7 +501,7 @@ unsafe fn layout_buttons(hwnd: HWND, state_ptr: *const PlayerState) -> bool {
         .min(client_height);
     let y = (client_height - size) / 2;
     let mut positions = [None; CONTROL_COUNT];
-    let mut left = 4;
+    let mut left = LOGICAL_SIDE_PADDING;
     for (order, element) in options.layout.iter().enumerate() {
         if let Some(index) = button_index(element.id()) {
             positions[index] = Some(left);
@@ -2325,6 +2327,14 @@ fn wide(value: &str) -> Vec<u16> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mini_player_has_symmetric_six_pixel_padding() {
+        let options = PlayerOptions::default();
+        let content = 32 * options.layout.len as i32 + 4;
+        assert_eq!(LOGICAL_SIDE_PADDING, 6);
+        assert_eq!(logical_width(options) - content, 2 * LOGICAL_SIDE_PADDING);
+    }
 
     #[test]
     fn options_bound_scale_and_width_tracks_the_ordered_layout() {

@@ -14,7 +14,7 @@
   left: 12%;
   height: 2px;
   overflow: hidden;
-  background: var(--border-subtle);
+  background: var(--control-track);
   transform: translateY(-50%);
 }
 
@@ -41,7 +41,7 @@
   min-width: 0;
   min-height: 126px;
   padding: var(--space-4);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-md);
   background: var(--surface-panel);
 }
@@ -50,7 +50,7 @@
   align-content: center;
   justify-items: center;
   text-align: center;
-  background: var(--surface-canvas);
+  background: var(--surface-panel);
 }
 
 .voice-signal-node__header {
@@ -135,7 +135,7 @@
   gap: 6px;
   min-height: 28px;
   padding: 0 var(--space-3);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: 999px;
   color: var(--fg-secondary);
   background: var(--surface-raised);
@@ -153,7 +153,7 @@
 }
 
 .voice-signal-status--running {
-  border-color: color-mix(in srgb, var(--status-success) 28%, var(--border-subtle));
+  border-color: transparent;
   color: var(--fg-primary);
 }
 

@@ -1,0 +1,7 @@
+.preview-scale { display: grid; gap: var(--space-2); min-width: 0; }
+.preview-scale__stage { width: 100%; }
+.preview-scale__scene { position: relative; z-index: 1; display: grid; place-items: center; min-height: 150px; padding: var(--space-5); }
+.preview-scale__body { position: relative; width: max-content; max-width: 100%; }
+.preview-scale__value { display: flex; align-items: center; justify-content: center; min-height: 32px; }
+/* Half-sized visual grip; retain the full pointer and keyboard focus target. */
+.preview-scale__body > .preview-resize-handle svg { position: absolute; right: 7px; bottom: 7px; width: 11.5px; height: 11.5px; }

@@ -8,6 +8,7 @@ commands.allow = [
   "cancel_import",
   "cancel_operation",
   "change_append_trailing_space_setting",
+  "change_remove_trailing_period_setting",
   "change_audio_feedback_setting",
   "change_audio_feedback_volume_setting",
   "change_auto_submit_key_setting",

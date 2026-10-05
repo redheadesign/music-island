@@ -74,7 +74,7 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-model__badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: 14px; }
 .dictation-model__loaded { color: var(--fg-muted); font-size: 11px; padding-inline: 4px; }
 .dictation-model__actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-5); }
-.dictation-model__details { margin-left: auto; }
+.dictation-model__delete { margin-left: auto; }
 .dictation-model__download { display: flex; align-items: center; flex: 1; min-width: 180px; gap: var(--space-2); color: var(--fg-secondary); font-size: var(--text-caption); }
 .dictation-model__download progress { flex: 1; min-width: 50px; width: 100px; height: 4px; accent-color: var(--accent); }
 .dictation-model p.dictation-model__error { color: var(--status-danger); margin-bottom: 0; overflow-wrap: anywhere; }
@@ -87,5 +87,39 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-model__heading { gap: 12px; }
 .dictation-model__size { padding-top: 3px; white-space: nowrap; }
 .dictation-model__description { overflow-wrap: anywhere; }
-.dictation-model__badges { margin-top: 12px; }
+.dictation-model__actions .dictation-model__badges { margin-top: 0; }
+.dictation-model__actions { margin-top: var(--space-3); }
 .dictation-models__language { flex: 0 0 auto; }
+.dictation-preview__scene { position: relative; display: grid; place-items: center; min-height: 136px; padding: 24px; }
+.dictation-preview__scene .dictation-overlay { max-width: 100%; }
+.dictation-preview__scene .dictation-overlay__text { max-width: 100%; box-sizing: border-box; margin: 0; color: inherit; }
+.dictation-preview__hidden { color: #e5e5e5; font-size: 12px; }
+.dictation-volume { display: flex; align-items: center; gap: 12px; width: 100%; }
+.dictation-volume > input[type='range'] { min-width: 60px; width: 100%; flex: 1; accent-color: var(--accent); }
+.dictation-number { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 12px; color: var(--fg-secondary); }
+.dictation-number .ui-input { width: 88px; text-align: right; font-variant-numeric: tabular-nums; }
+.dictation-volume .dictation-number .ui-input { width: 60px; padding-inline: 6px; }
+.dictation-models { gap: var(--space-4); }
+.dictation-models > h3:not(:first-child) { margin-top: var(--space-4); }
+.dictation-card > h3 { margin-bottom: var(--space-2); }
+.dictation-history-settings { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); }
+.dictation-history-settings .ui-setting-row { flex: 1 1 240px; padding: 0; min-height: 40px; gap: var(--space-3); flex-wrap: nowrap; }
+.dictation-history-settings .ui-setting-row__copy { flex: 0 0 auto; }
+.dictation-history-settings .ui-setting-row__control { flex: 1 1 auto; }
+.dictation-history-settings .ui-input { width: 72px; text-align: right; }
+.dictation-history-settings .ui-setting-row:last-child { flex: 0 1 auto; }
+.dictation-history-settings .ui-setting-row__control > .ui-input { width: 72px; }
+.dictation-preview__scene[data-static='true'] .dictation-overlay__spinner { animation: none; }
+.dictation-preview__scene[data-phase='recording'] .dictation-overlay__levels i { animation: dictation-demo-level 800ms ease-in-out infinite alternate; animation-delay: calc(var(--level-index) * -110ms); }
+@keyframes dictation-demo-level { from { transform: scaleY(.35); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .dictation-preview__scene .dictation-overlay__levels i { animation: none !important; } }
+.dictation-preview__scene[data-static='true'] .dictation-overlay__levels i { animation: none; }
+
+.dictation-preview__scene .dictation-overlay__levels i:nth-child(1) { --level-index: 0; }
+.dictation-preview__scene .dictation-overlay__levels i:nth-child(2) { --level-index: 1; }
+.dictation-preview__scene .dictation-overlay__levels i:nth-child(3) { --level-index: 2; }
+.dictation-preview__scene .dictation-overlay__levels i:nth-child(4) { --level-index: 3; }
+.dictation-preview__scene .dictation-overlay__levels i:nth-child(5) { --level-index: 4; }
+.dictation-preview__scene .dictation-overlay__levels i:nth-child(6) { --level-index: 5; }
+.dictation-preview__scene .dictation-overlay__levels i:nth-child(7) { --level-index: 6; }
+.dictation-preview__scene .dictation-overlay__levels i:nth-child(8) { --level-index: 7; }

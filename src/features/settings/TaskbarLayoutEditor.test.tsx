@@ -63,6 +63,18 @@ async function mountEditor() {
 }
 
 describe('TaskbarLayoutEditor', () => {
+  it('resets scale from the single top reset action without a footer button', async () => {
+    const mounted = await mountEditor()
+    try {
+      const scale = mounted.container.querySelector<HTMLElement>('[aria-label="Масштаб мини-плеера"]')!
+      await press(scale, 'End')
+      expect(mounted.changes).toHaveBeenLastCalledWith(expect.objectContaining({ taskbar: expect.objectContaining({ scale: 1.25 }) }))
+      expect(mounted.container.querySelector('.preview-dimensions button')).toBeNull()
+      await act(async () => mounted.container.querySelector<HTMLButtonElement>('[aria-label="Сбросить настройки мини-плеера"]')!.click())
+      expect(mounted.changes).toHaveBeenLastCalledWith(expect.objectContaining({ taskbar: expect.objectContaining({ scale: 1 }) }))
+      expect(scale.getAttribute('aria-valuenow')).toBe('100')
+    } finally { await mounted.unmount() }
+  })
   it('portals the rendered copy and preserves an off-center grab inside a scaled preview', async () => {
     const mounted = await mountEditor()
     try {

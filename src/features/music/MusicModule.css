@@ -21,7 +21,7 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-md);
   color: var(--fg-secondary);
   background: var(--surface-glass);
@@ -51,7 +51,7 @@
   gap: var(--space-2);
   min-height: 34px;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-strong);
+  border: 0;
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   background: var(--surface-raised);
@@ -69,7 +69,7 @@
   flex-wrap: wrap;
   padding: var(--space-3);
   gap: var(--space-3);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-md);
   background: var(--surface-glass);
   color: var(--fg-secondary);
@@ -79,7 +79,7 @@
 .music-module .artwork-placeholder {
   color: var(--fg-secondary);
   background: var(--surface-raised);
-  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  box-shadow: none;
 }
 
 .music-reactions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }

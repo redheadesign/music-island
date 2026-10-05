@@ -25,6 +25,7 @@ mod settings;
 mod shortcut;
 mod signal_handle;
 mod status;
+mod text_output;
 pub mod storage;
 mod transcription_coordinator;
 mod tray;
@@ -277,6 +278,7 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             shortcut::resume_all_bindings,
             shortcut::change_mute_while_recording_setting,
             shortcut::change_append_trailing_space_setting,
+            shortcut::change_remove_trailing_period_setting,
             shortcut::change_lazy_stream_close_setting,
             shortcut::change_vad_enabled_setting,
             shortcut::change_vad_backend_setting,

@@ -56,7 +56,7 @@
   max-width: 100%;
   gap: var(--space-3);
   padding: var(--space-3);
-  border: 1px solid var(--border-strong);
+  border: 0;
   border-radius: var(--radius-md);
   background: var(--surface-raised);
   box-shadow: var(--shadow-panel);
@@ -69,7 +69,7 @@
 
 .accent-picker .accent-picker__hex input {
   height: var(--control-height-compact);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   background: var(--surface-panel);

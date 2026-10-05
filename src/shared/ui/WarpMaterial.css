@@ -10,6 +10,7 @@
   position: absolute;
   inset: 0;
 }
+.warp-shared-host { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .warp-material__field { animation: none; }

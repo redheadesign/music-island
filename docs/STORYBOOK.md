@@ -147,3 +147,43 @@ All three variants are explicit in Atoms/AppLogo. Release3Motion adds Continuous
 separate Handy transfer and independent frame/output namespaces. Production and
 export details: [MOTION_PRODUCTION.md](MOTION_PRODUCTION.md).
 
+## Settings consistency pass · October 2026
+
+- `Atoms/SettingsControls/Messages` shows semantic notices and named icon buttons.
+- `Screens/Dictation/AdvancedLight`, `AdvancedEnglish`, `AdvancedNarrow`,
+  `AdvancedLoading` and `AdvancedLoadError` cover the grouped advanced page,
+  compact numeric inputs, sound controls and device discovery states.
+- `Screens/Dictation/MicrophoneDiagnostic` exercises the microphone permission
+  status and expandable technical details using a typed local mock.
+- `Screens/Dictation/GeneralLight` shows the production dictation overlay on
+  Paper Warp, its enable control and separate shortcuts card. The preview is
+  always compact; General demonstrates recording/transcription/done in a loop,
+  while GeneralLight uses reduced motion. No preview style selector is shown.
+- `Screens/Dictation/ImportPreview` opens Handy import through the models menu;
+  `Molecules/ModelCard/Actions` exercises the named delete icon with the keyboard.
+- Taskbar and assistant-limit stories use the production corner-scale control.
+  Check pointer commit/cancel, Escape, arrow keys, Home/End and reset; the local
+  draft must not save on every pointer movement.
+- `Screens/Settings/ShaderRetention` navigates the production settings pages and
+  checks that the canvas remains the same DOM node.
+- `Screens/Settings/PreviewReadouts`, `PreviewReadoutsLight` and
+  `PreviewReadoutsNarrow` check the shared width/scale surface across all three
+  editors: transparent background, no text effects, readouts below the shader, 11 px regular typography
+  and contained layout in the narrow window.
+- `Organisms/StatefulWarpSurface` covers full-color enabled, dimmed disabled and
+  re-enabled surfaces in both themes, plus reduced motion. Its interaction checks
+  assert opacity 1/.14, speed 1.1625/.225 and persistent canvas identity. The shared
+  palette comes from `Screens/Release3/Dictation` (the README dictation visual).
+- `Organisms/WarpNavigation/RemountBaseline` and `Persistent` compare 12 transitions
+  with the same shader and preview sizes. Run both in the same browser without
+  other work. Their two-frame timing is a development diagnostic, not a GPU or
+  native Windows benchmark. The hide button checks suspension without disposal.
+
+Native taskbar DPI, actual audio output, settings persistence across process
+restarts and hidden-window CPU/GPU usage still require the portable application.
+See [the implementation report](UI_UX_PASS_2026-10-06.md) for recorded checks.
+
+
+Дополнительные состояния UI/UX: `Screens/Dictation/DisabledLight` показывает общий фон Better Voice при выключенной диктовке; `Molecules/ModelCard/SelectedLight` — зелёный тег выбранной модели в светлой теме.
+
+`Screens/Settings/DictationInput` checks real key capture, native-adapter mock persistence across navigation, and the trailing-period switch in Advanced → Text insertion.

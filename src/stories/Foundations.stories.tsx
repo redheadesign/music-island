@@ -78,10 +78,7 @@ export const Palette: StoryObj = {
           <div><StatusChip tone="warning" className="sample-pill">Нужна настройка</StatusChip><code>--status-warning</code><p>Состояние, требующее внимания</p></div>
           <div><StatusChip tone="danger" className="sample-pill">Нет подключения</StatusChip><code>--status-danger</code><p>Ошибка, которую можно исправить</p></div>
         </div>
-        <div className="foundation-border-grid">
-          <div><span style={{ borderColor: 'var(--border-subtle)' }} /><code>--border-subtle</code><p>Скрыт у обычных панелей</p></div>
-          <div><span style={{ borderColor: 'var(--border-strong)' }} /><code>--border-strong</code><p>Фокус и необходимые границы</p></div>
-        </div>
+        <p className="foundation-note">Поверхности разделяются тоном и отступами. Обводки обозначают только фокус и допустимые места перетаскивания.</p>
       </FoundationSection>
       <FoundationSection title="Личный акцент" description="Выбранный цвет отмечает активный выбор и основное действие. Палитра берется из настроек приложения.">
         <div className="foundation-accents">

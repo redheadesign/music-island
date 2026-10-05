@@ -70,3 +70,8 @@ Baseline remains **Handy v0.9.7 / 05e0aedd2906f0d82722735f930465950c476b90**; th
 - A single localized catalog policy ranks GigaAM RNN-T Q8 first for RU and Parakeet Unified EN Q8 first for EN; selected/installed models remain visible and switching UI language never changes recognition settings.
 - ModelCard shares installed, download, import and failure states. Model terms stay separate from Handy's MIT license.
 - “AI processing” / «Обработка с ИИ» explains the upstream path: local recognition → explicitly configured provider via the dedicated shortcut → result pasted into the active app and saved in history. It is not an automatic forwarding mode for ordinary dictation.
+
+### 2026-10-06 — shortcut capture and trailing period
+
+- Settings shortcut capture now uses focused WebView keyboard events, with native suspend/change/resume commands; no dependency on a secondary handy-keys recording hook. Existing binding validation/storage remain native.
+- Added remove_trailing_period (serde default false), settings-only command/ACL and final-output normalization shared by live transcription and history retry. Raw transcription remains available in history; the delivered result is stored as processed text when changed.

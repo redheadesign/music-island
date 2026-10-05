@@ -92,15 +92,16 @@ and feedback, not the desktop navigation geometry.
 - `--shadow-popover`: dark `0 8px 24px rgba(0,0,0,.22)`; light `0 6px 20px rgba(28,28,32,.12)`. Popovers never reuse the larger panel shadow. Select and ActionMenu share portal placement, theme propagation, focus, Escape and keyboard navigation.
 - `StatusChip appearance="flat"` removes glass and border for auxiliary UI. Accent badges use the paired `--badge-accent-surface` / `--badge-accent-text` tokens for stable contrast in both themes. Existing glass chips are preserved.
 - ModelCard owns title/size, one language/capability line, recommendation/selection statuses and the action footer. Selected models do not show a disabled Use button. Import is secondary to downloading.
-- Onboarding uses one idea per screen, a stable action area and a separate brighter Warp preset. Its UI is demonstrative except for the final explicit autostart choice.
+- Onboarding uses one idea per screen, a stable action area and the shared Warp palette with its existing softer geometry. Its UI is demonstrative except for the final explicit autostart choice.
 - Ripple direction is outward for Play/Like and inward for Pause/Unlike; both fade fully within 420 ms. Button geometry and authoritative player state remain independent.
 
 ## Spacing and interaction polish
 
 - Keep section panels in auxiliary views. Appearance groups monitor, accent and
   delay controls on one panel; its live preview and catalog keep their own layout.
-  Taskbar uses a feature switch panel, the preview/catalog, and a size panel,
-  separated by 20px. Do not nest an extra padded panel around that entire editor.
+  Taskbar combines its switch and corner scaling with the gradient preview;
+  the element catalog follows after 20px. Do not nest an extra padded panel
+  around that entire editor.
 - The model recommendation sits next to the title and may wrap with it. Size is
   a non-shrinking top-right value; selection and memory state belong below the
   capability line. `SearchField` owns a single surface, icon, focus and clear action.
@@ -109,8 +110,78 @@ and feedback, not the desktop navigation geometry.
   are preserved. Preset marks meet 3:1 against white and graphite `#303030`;
   primary button ink chooses black or white for at least 4.5:1 contrast.
 - `--drop-zone-ready` / `--drop-zone-active` control the shared accent treatment.
+  `--drag-indicator` supplies the full-opacity line color in both editors,
+  including the island's nested theme. Lines compensate for preview scale.
   Only compatible drop targets light up. Both editors use `LayoutDragGhost` and
   viewport geometry, including the actual SVG and the original grab point.
+
+## Unified settings pass · October 2026
+
+- Surface hierarchy: window canvas → panel → raised nested content → control.
+  Decorative `--border-subtle`, `--border-strong`, and `--highlight-inset` tokens
+  were removed. Functional slider tracks use `--control-track`; scrollbars use
+  muted foreground. Keep keyboard focus, drop indicators and forced colors.
+- `SettingRow` is a labelled group, not a label wrapped around several controls.
+  Direct fields receive `aria-labelledby` and hint references. Compound controls
+  must provide names to their own fields; action buttons keep their own labels.
+- `SettingsIconButton` uses 40px or compact 32px targets, an accessible label and
+  matching tooltip. Busy actions show a spinner and prevent duplicate activation;
+  destructive actions use the danger variant. Use Phosphor icons.
+- `Notice` owns info/success/warning/danger surfaces, icon, text and optional
+  action. Errors use `role="alert"`; ordinary updates use `role="status"`.
+  Text remains readable foreground; the icon and surface carry semantic color.
+- Gradient preview controls use the graphite palette in both settings themes.
+  The taskbar switch, dictation switch and quota style selector belong to
+  the preview. Other settings follow in their own panels. Music sources each
+  have their own panel without a shared outer plate.
+- `PreviewScale` keeps a local draft during a gesture, commits on release,
+  cancels on Escape/pointer cancellation, and supports arrows, Home/End and reset.
+  `projectPreviewScale` is shared with the island editor. Existing per-widget
+  bounds and stored settings are unchanged.
+- `PreviewResizeHandle` reuses the island's corner grip across island, taskbar
+  and quota previews. Taskbar/quota use a half-sized 11.5 px visual, retaining
+  the 30 px interaction target; the island keeps its 23 px visual. Do not replace
+  it with an arrow icon. `PreviewDimensions.css` shares the island's 11 px / 1.4
+  regular readout typography across all three previews.
+- Width/scale readouts occupy a quiet centered row immediately below the shader
+  preview, on the Settings canvas. Use theme text tokens and the same 11 px
+  regular typography in all three editors. No plate, text shadow or blend effect:
+  the user rejected both the plate and shadow approaches. No reset icon beside
+  scale. The taskbar editor's top reset restores layout and scale together.
+- `StatefulWarpSurface` owns the accepted Better Voice running/resting material
+  including its opaque graphite base (panel surface in dark Settings, #18191c
+  in light Settings), shader opacity 1/.14 and speed 1.1625/.225. Better Voice,
+  taskbar and dictation use the same component. Only the shader changes opacity;
+  the base must remain opaque to avoid inheriting a warm brown stage underneath.
+- Every Warp uses the `Screens/Release3/Dictation` palette from `warpPreset.ts`:
+  #231c2c / #ad867e / #ebc8a6 / #c4adf0. Enabled surfaces and ordinary widget
+  previews display it at full opacity; only disabled surfaces are dimmed.
+  The enable speed increase is half the former .225 → 2.1 increase.
+- Quota satellites appear only with the expanded island. The former
+  `usageAlwaysVisible` preference is no longer exposed or read.
+- Models: language/capability, recommendation, selection/memory, primary action,
+  red delete icon with confirmation. No details action or redundant post-recording
+  caption. The page action menu contains Handy import and custom model import.
+- Installed-model badges and the delete icon share one footer row. History
+  retention and count are one unplated control row, wrapping only when necessary.
+  The selected-model badge uses the semantic success surface and text in both themes.
+- Dictation starts with its real overlay view and a dedicated shortcuts panel.
+  Advanced settings group sound, recording, insertion, compute, Windows and
+  diagnostics. Number inputs commit valid bounded values; units stay outside.
+- Dictation preview is always compact, with no style selector. It demonstrates
+  recording → transcription → done on a loop without changing recording settings
+  or accessing the microphone. Pause while hidden/inactive; reduced motion uses
+  a static recording state. About's first section has no outer panel; secondary
+  actions use regular settings rows with the standard section padding.
+- `WarpSurfaceProvider` owns one renderer inside Settings. `WarpSurface` moves
+  its stable host to the visible page, preserving canvas/GPU resources. With no
+  active slot it parks paused. Outside a provider it renders independently for
+  component review and frame exports. Existing visibility and reduced-motion
+  controls remain in `WarpMaterial`.
+
+This pass uses the relevant [deslop](https://github.com/mishanaer/deslop)
+primitives and Sasha writing guidance within the accepted Music Island palette,
+typography, shader preset and fox composition.
 
 ## Brand mark and introductory copy
 

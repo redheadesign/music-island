@@ -8,8 +8,6 @@ export type SettingsColorScheme = 'dark' | 'light'
 export interface UiPrefs {
   /** Ordered controls rendered in the native taskbar player. */
   taskbarLayout?: TaskbarLayoutV1
-  /** Keep quota satellites visible while the main island is collapsed. */
-  usageAlwaysVisible?: boolean
   /** Independent visual scale for quota satellites. */
   usageWidgetScale?: number
   /** Render quota satellites with their compact presentation. */

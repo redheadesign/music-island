@@ -194,7 +194,7 @@ export const ResizePointerGestures: Story = {
     const body = canvasElement.querySelector<HTMLElement>('.island-preview__body')!
     const right = canvasElement.querySelector<HTMLElement>('.island-preview__resize-edge--right')!
     const left = canvasElement.querySelector<HTMLElement>('.island-preview__resize-edge--left')!
-    const corner = canvasElement.querySelector<HTMLElement>('.island-preview__resize-corner')!
+    const corner = canvasElement.querySelector<HTMLElement>('.preview-resize-handle')!
     const bounds = body.getBoundingClientRect()
     const initialWidth = Number(root.dataset.configWidth)
     const initialScale = Number(root.dataset.configScale)
@@ -245,7 +245,7 @@ export const ResizeKeyboardControls: Story = {
   play: async ({ canvasElement }) => {
     const root = canvasElement.querySelector<HTMLElement>('.settings-window-root')!
     const width = canvasElement.querySelector<HTMLElement>('.island-preview__resize-edge--right')!
-    const scale = canvasElement.querySelector<HTMLElement>('.island-preview__resize-corner')!
+    const scale = canvasElement.querySelector<HTMLElement>('.preview-resize-handle')!
     const initialWidth = Number(width.getAttribute('aria-valuenow'))
 
     width.focus()

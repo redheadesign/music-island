@@ -1,5 +1,6 @@
 import { ArrowDownToLine, PackageCheck, TriangleAlert } from 'lucide-react'
 import { useId } from 'react'
+import { Notice } from './SettingsControls'
 import { ReleaseNotesFallback, ReleaseNotesMarkdown } from './ReleaseNotesMarkdown'
 import './UpdateBanner.css'
 
@@ -104,7 +105,7 @@ export function UpdateBanner({
           <UpdateProgress variant="settings" percent={percent} label={heading} />
         ) : null}
         {hasError && error ? (
-          <p className="update-banner__error" role="alert">{error}</p>
+          <Notice tone="danger">{error}</Notice>
         ) : null}
         {!busy ? (
           <div className="update-banner__actions">

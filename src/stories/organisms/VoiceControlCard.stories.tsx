@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { VoiceControlCard, type VoiceControlCardProps } from '../../features/plugins/voice/VoiceControlCard'
 import type { Locale } from '../../shared/lib/types'
 
@@ -35,14 +35,17 @@ export const Running: Story = { name: 'Обработка включена', arg
 export const MaterialStates: Story = {
   name: 'Материал · остановка и запуск',
   play: async ({ canvas, canvasElement }) => {
-    const field = () => canvasElement.querySelector('.voice-atmosphere')!
+    const field = () => canvasElement.querySelector('.voice-atmosphere [data-speed]')!
+    const shader = () => canvasElement.querySelector('.stateful-warp-surface__shader')!
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
-    await expect(field()).toHaveAttribute('data-speed', reduced ? '0' : '0.225')
+    await waitFor(() => expect(field()).toHaveAttribute('data-speed', reduced ? '0' : '0.225'))
     await expect(getComputedStyle(field()).maskImage).toBe('none')
     await userEvent.click(canvas.getByRole('button', { name: /Включить обработку|Start processing/ }))
-    await expect(field()).toHaveAttribute('data-speed', reduced ? '0' : '2.1')
+    await expect(field()).toHaveAttribute('data-speed', reduced ? '0' : '1.1625')
+    await waitFor(() => expect(getComputedStyle(shader()).opacity).toBe('1'))
     await userEvent.click(canvas.getByRole('button', { name: /Остановить|Stop processing/ }))
     await expect(field()).toHaveAttribute('data-speed', reduced ? '0' : '0.225')
+    await waitFor(() => expect(getComputedStyle(shader()).opacity).toBe('0.14'))
   },
 }
 export const Monitoring: Story = { name: 'Прослушивание', args: { running: true, monitorEnabled: true } }
@@ -66,14 +69,14 @@ export const Zoom200: Story = {
 export const Inactive: Story = {
   name: 'Скрытая вкладка · движение остановлено', args: { running: true, active: false },
   play: async ({ canvasElement }) => {
-    await expect(canvasElement.querySelector('.voice-atmosphere')).toHaveAttribute('data-motion', 'paused')
+    await expect(canvasElement.querySelector('.voice-atmosphere [data-motion]')).toHaveAttribute('data-motion', 'paused')
   },
 }
 export const ReducedMotion: Story = {
   name: 'Без движения', args: { running: true, reducedMotion: true },
   decorators: [(Story) => <div className="settings-panel" data-reduced-motion="true"><Story /></div>],
   play: async ({ canvasElement }) => {
-    await expect(canvasElement.querySelector('.voice-atmosphere')).toHaveAttribute('data-motion', 'paused')
+    await expect(canvasElement.querySelector('.voice-atmosphere [data-motion]')).toHaveAttribute('data-motion', 'paused')
   },
 }
 export const Interactions: Story = {

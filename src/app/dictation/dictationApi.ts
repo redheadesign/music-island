@@ -55,6 +55,7 @@ export const dictationApi = {
   resumeAllBindings: () => invoke<null>('plugin:dictation|resume_all_bindings'),
   changeMuteWhileRecordingSetting: (enabled: boolean) => invoke<null>('plugin:dictation|change_mute_while_recording_setting', { enabled }),
   changeAppendTrailingSpaceSetting: (enabled: boolean) => invoke<null>('plugin:dictation|change_append_trailing_space_setting', { enabled }),
+  changeRemoveTrailingPeriodSetting: (enabled: boolean) => invoke<null>('plugin:dictation|change_remove_trailing_period_setting', { enabled }),
   changeLazyStreamCloseSetting: (enabled: boolean) => invoke<null>('plugin:dictation|change_lazy_stream_close_setting', { enabled }),
   changeVadEnabledSetting: (enabled: boolean) => invoke<null>('plugin:dictation|change_vad_enabled_setting', { enabled }),
   changeVadBackendSetting: (backend: VadBackend) => invoke<null>('plugin:dictation|change_vad_backend_setting', { backend }),

@@ -299,7 +299,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
 
   useEffect(() => {
     let cancelled = false
-    const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: uiPrefs.usageAlwaysVisible === true, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) })
+    const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: false, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) })
     const phase = windowPhase
     const generation = transitionRef.current.generation
     void syncOverlayWindow(phase, bounds).then(async (applied) => {
@@ -327,7 +327,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
     return () => {
       cancelled = true
     }
-  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, uiPrefs.usageAlwaysVisible, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
+  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
 
   // Native keep-alive band must cover Settings/Pin in *physical* px (DPR-aware).
   // 1.3.21 only hugged height in CSS px — on 125%/150% the band was too narrow and mid-path closed.
@@ -870,11 +870,6 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
             windowPhase === 'opening' ? 'island-top-chrome--opening' : '',
           ].join(' ')}
         >
-          {uiPrefs.usageAlwaysVisible === true && windowPhase === 'collapsed' ? (['left', 'right'] as const).map((side) => (
-            islandLayout.zones[side].length > 0 ? <div key={side} className={`island-usage-collapsed island-usage-collapsed--${side}`}>
-              <UsageStatusChip snapshot={usage?.snapshot ?? null} enabledProviders={islandLayout.zones[side]} compact locale={locale} />
-            </div> : null
-          )) : null}
           <div
             className={[
               'edge-trigger',

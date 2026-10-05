@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.0.1 — 2026-10-06
+
+### Dictation fixes
+
+- Capture shortcut changes from the focused Settings window, preventing indefinite waiting for a second global keyboard hook; retain native registration, persistence and cancellation.
+- Add an opt-in setting to remove one trailing period after transcription or AI processing, preserving other punctuation and ellipses.
+- Add an animated compact dictation preview and a separate shortcuts section. Group advanced settings, combine volume and sound preview, validate numeric inputs and expose device-loading errors.
+- Simplify model cards, highlight the selected model in green, keep delete beside model status and move Handy import into the page menu. Compact history controls.
+
+### Settings and previews
+
+- Share the peach/lavender Paper Warp palette across previews, restore full color while enabled, unify disabled dimming and halve the enable-speed increase.
+- Reuse one shader canvas across Settings pages; pause hidden and reduced-motion rendering.
+- Balance native and React taskbar padding at 6/6 px. Unify accent-aware drag indicators and corner scaling controls with commit/cancel and keyboard support.
+- Move width/scale readouts below the shader and remove duplicate scale-reset buttons. The taskbar editor's top reset restores layout and scale.
+- Rework assistant-limit cards, notifications, surfaces, music-source and About layouts; restore the Better Voice processing surface. Remove the option to show limits while the island is closed.
+- Extend production-component Storybook coverage and regression tests.
+
+Existing settings remain compatible. Verification details and limitations are recorded in [release QA](docs/QA_RELEASE_3_0_1.md).
+
 ## 3.0.0 — 2026-09-23
 
 ### A new design system

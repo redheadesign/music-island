@@ -26,7 +26,7 @@
 .voice-effect-toggle svg { flex-shrink: 0; }
 .voice-quick-effects .voice-effect-toggle:hover:not(:disabled) { color: var(--fg-primary); background: var(--surface-hover); }
 .voice-quick-effects .voice-effect-toggle[aria-pressed='true'],
-.voice-quick-effects .voice-effect-toggle[aria-pressed='true']:hover:not(:disabled) { color: var(--fg-primary); background: var(--surface-raised); border-color: var(--border-strong); }
+.voice-quick-effects .voice-effect-toggle[aria-pressed='true']:hover:not(:disabled) { color: var(--fg-primary); background: var(--surface-raised); border-color: transparent; }
 .voice-quick-effects .voice-effect-toggle:active:not(:disabled) { background: var(--surface-hover); }
 .voice-effect-toggle:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 .voice-quick-effects .voice-effect-toggle:disabled { cursor: default; opacity: .45; }

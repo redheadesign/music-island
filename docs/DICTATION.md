@@ -150,3 +150,9 @@ process. Ordinary idle unloading and app shutdown are different lifecycle paths.
 The Russian interface recommends GigaAM v3 E2E-RNN-T Q8; the English interface recommends Parakeet Unified EN 0.6B Q8. The existing pinned catalog supplies capabilities, download addresses and model terms. Language changes do not select, delete or download models automatically. Installed/imported models remain available in either UI language.
 
 Settings → Dictation → **AI processing** connects an explicitly chosen provider and model. Use the dedicated AI shortcut to send recognized text for processing before inserting its response. Regular dictation stays local. The resulting text is also available in History. Provider processing and auto-submit remain off by default; a custom endpoint may itself be local or remote.
+
+## Editing shortcuts and final punctuation
+
+Shortcut editing captures keydown/keyup in the focused Settings WebView using physical key codes, so RU/EN layouts produce the same binding. It temporarily suspends native bindings, commits on key release and restores native shortcuts on save, error, Escape or focus loss. The editor no longer waits for a second global keyboard listener. Handy Keys retains left/right modifiers; Tauri uses generic modifiers. Native validation, registration and persistence remain authoritative.
+
+Advanced → Text insertion includes **Remove trailing period** (off by default). It removes one final full stop after recognition and optional AI processing, before history/result delivery and before the existing trailing-space option. Internal periods, ellipses and other punctuation are preserved. Older settings default to false without migration.

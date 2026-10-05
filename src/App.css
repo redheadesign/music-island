@@ -338,15 +338,6 @@
   gap: 8px;
 }
 
-.island-usage-collapsed {
-  position: absolute;
-  right: calc(100% + 12px);
-  top: 3px;
-  pointer-events: none;
-  transform: scale(var(--usage-scale, 1));
-  transform-origin: top right;
-}
-.island-usage-collapsed--right { left: calc(100% + 12px); right: auto; transform-origin: top left; }
 .island-usage-rail {
   position: absolute;
   top: calc(12px * var(--island-scale, 1));

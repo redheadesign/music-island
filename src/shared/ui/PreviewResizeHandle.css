@@ -1,0 +1,4 @@
+.preview-resize-handle { position: absolute; z-index: 3; width: 30px; height: 30px; right: -12px; bottom: -12px; cursor: nwse-resize; touch-action: none; color: #fff7; outline: none; }
+.preview-resize-handle svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.preview-resize-handle:is(:hover,:focus-visible,:active), [data-resizing] .preview-resize-handle { color: #fffd; }
+.preview-resize-handle:focus-visible { outline: 2px solid #fffa; outline-offset: 2px; border-radius: 5px; }

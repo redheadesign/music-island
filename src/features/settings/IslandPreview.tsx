@@ -1,3 +1,4 @@
+import '../../shared/ui/PreviewDimensions.css'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
 import { SettingsFilled } from '../../shared/ui/SettingsIcons'
 import { Mic, Pin } from 'lucide-react'
@@ -11,7 +12,9 @@ import { MusicModule } from '../music/MusicModule'
 import { MediaArtwork, NavigationButton, PlaybackButton, ReactionButton, PlaybackModeButton } from '../music/MusicControls'
 import { ProgressStrip } from '../music/ProgressStrip'
 import { UsageStatusChip } from '../usage/UsageStatusChip'
-import { WarpMaterial } from '../../shared/ui/WarpMaterial'
+import { WarpSurface } from '../../shared/ui/WarpSurface'
+import { projectPreviewScale } from '../../shared/lib/previewSizing'
+import { PreviewResizeHandle } from '../../shared/ui/PreviewResizeHandle'
 import { APPEARANCE_PREVIEW_MEDIA as media } from './previewMedia'
 import './IslandPreview.css'
 
@@ -93,7 +96,7 @@ export function IslandPreview({ config, label, usage, onResize, active = true, r
       const dx = event.clientX - current.x, dy = event.clientY - current.y
       const value = dimension === 'width'
         ? current.initial.width * (1 + dx * 2 * current.direction / current.width)
-        : current.initial.scale * (1 + 2 * (dx * current.width + dy * current.height) / (current.width ** 2 + current.height ** 2))
+        : projectPreviewScale(current.initial.scale, dx, dy, current.width, current.height)
       current.next = { ...current.initial, [dimension]: clamp(value, dimension) }
       setDimensions(current.next)
     },
@@ -117,6 +120,10 @@ export function IslandPreview({ config, label, usage, onResize, active = true, r
     'aria-valuenow': sizing[dimension], 'aria-valuetext': `${sizing[dimension]}%`,
   })
   const style = {
+    '--drag-indicator': config.appearance.accentColor,
+    '--preview-render-scale': scale,
+    '--drop-zone-ready': 'color-mix(in srgb, var(--drag-indicator) 12%, transparent)',
+    '--drop-zone-active': 'color-mix(in srgb, var(--drag-indicator) 24%, transparent)',
     '--island-width': sizing.width / 100,
     '--island-scale': 1,
     '--actions-scale': 1,
@@ -126,8 +133,8 @@ export function IslandPreview({ config, label, usage, onResize, active = true, r
     width: sceneWidth, transform: `scale(${scale})`, transformOrigin: 'top left',
   } as CSSProperties
   const satellite = (side: 'left' | 'right') => renderZone(side, layout.zones[side].map((provider) => <Fragment key={provider}>{renderElement(provider, <div style={{ zoom: usageScale }}><UsageStatusChip snapshot={snapshot ?? null} enabledProviders={[provider]} compact={compact} locale={config.appearance.locale} /></div>)}</Fragment>))
-  return <div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined}>
-    {active ? <WarpMaterial className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
+  return <div className="island-preview-section"><div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined}>
+    {active ? <WarpSurface className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
     <div className="island-preview__camera" style={{ width: sceneWidth * scale, height: frameHeight * scale }}>
     <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} style={style}>
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
@@ -139,13 +146,14 @@ export function IslandPreview({ config, label, usage, onResize, active = true, r
         {onResize ? <>
           <div className="island-preview__resize-edge island-preview__resize-edge--left" {...resizeHandles('width', -1)} />
           <div className="island-preview__resize-edge island-preview__resize-edge--right" {...resizeHandles('width')} />
-          <div className="island-preview__resize-corner" {...resizeHandles('scale')}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 13h8V5M9 13l4-4" /></svg></div>
+          <PreviewResizeHandle {...resizeHandles('scale')} />
         </> : null}
       </div>
       <aside className="island-preview__satellite island-preview__satellite--right"><div className="island-preview__satellite-content" ref={rightContent}>{satellite('right')}</div></aside>
     </div>
     </div>
-    {onResize ? <div className="island-preview__dimensions" aria-hidden="true"><span data-active={dimensions ? gesture.current?.dimension === 'width' : undefined}>{ru ? 'Ширина' : 'Width'} <output>{sizing.width}%</output></span><span data-active={dimensions ? gesture.current?.dimension === 'scale' : undefined}>{ru ? 'Масштаб' : 'Scale'} <output>{sizing.scale}%</output></span></div> : null}
+    </div>
+    {onResize ? <div className="island-preview__dimensions preview-dimensions" aria-hidden="true"><span data-active={dimensions ? gesture.current?.dimension === 'width' : undefined}>{ru ? 'Ширина' : 'Width'} <output>{sizing.width}%</output></span><span data-active={dimensions ? gesture.current?.dimension === 'scale' : undefined}>{ru ? 'Масштаб' : 'Scale'} <output>{sizing.scale}%</output></span></div> : null}
   </div>
 }
 

@@ -1,0 +1,7 @@
+.stateful-warp-surface { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; background: var(--surface-panel); }
+/* The accepted Better Voice stage stays graphite in light Settings, too. */
+[data-color-scheme='light'] .stateful-warp-surface { background: #18191c; }
+.stateful-warp-surface__shader { opacity: .14; transition: opacity 700ms ease; }
+.stateful-warp-surface[data-running='true'] > .stateful-warp-surface__shader { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .stateful-warp-surface__shader { transition: none; } }
+[data-reduced-motion='true'] .stateful-warp-surface__shader { transition: none; }

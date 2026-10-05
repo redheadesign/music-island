@@ -113,6 +113,42 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = { name: 'Настройки приложения' }
+export const PreviewReadouts: Story = { name: 'Превью · контраст ширины и масштаба', play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement)
+  for (const [page, selector] of [['Внешний вид', '.settings-appearance'], ['Панель задач', '.settings-taskbar'], ['Лимиты ИИ', '.settings-usage-page']]) {
+    await userEvent.click(canvas.getByRole('button', { name: page }))
+    await waitFor(() => expect(canvas.getByRole('heading', { name: page })).toBeVisible())
+    // Other editors remain mounted but hidden to retain their local state.
+    const pageRoot = canvasElement.querySelector<HTMLElement>(selector)!
+    const readout = pageRoot.querySelector<HTMLElement>('.preview-dimensions')!
+    await waitFor(() => expect(readout).toBeVisible())
+    const style = getComputedStyle(readout)
+    await expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    await expect(style.textShadow).toBe('none')
+    await expect(style.mixBlendMode).toBe('normal')
+    await expect(readout.querySelector('button')).toBeNull()
+    const stage = pageRoot.querySelector<HTMLElement>('.island-preview, .preview-scale__stage')!
+    await expect(readout.getBoundingClientRect().top).toBeGreaterThanOrEqual(stage.getBoundingClientRect().bottom)
+    await expect(style.fontSize).toBe('11px')
+    await expect(style.fontWeight).toBe('400')
+    await expect(readout.getBoundingClientRect().width).toBeLessThanOrEqual(readout.parentElement!.getBoundingClientRect().width)
+  }
+} }
+export const PreviewReadoutsLight: Story = { ...PreviewReadouts, name: 'Превью · контраст в светлой теме', parameters: { settingsColorScheme: 'light' } }
+export const PreviewReadoutsNarrow: Story = { ...PreviewReadouts, name: 'Превью · подписи в узком окне', parameters: { settingsColorScheme: 'light', workshop: { width: 420 } } }
+export const ShaderRetention: Story = { name: 'Навигация · один canvas', play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement)
+  await waitFor(() => expect(canvasElement.querySelector('.warp-shared-host canvas')).not.toBeNull())
+  const renderer = canvasElement.querySelector('.warp-shared-host canvas')
+  for (const page of ['Панель задач', 'Лимиты ИИ', 'Внешний вид', 'Панель задач']) {
+    await userEvent.click(canvas.getByRole('button', { name: page }))
+    await expect(canvasElement.querySelector('.warp-shared-host canvas')).toBe(renderer)
+  }
+  await userEvent.click(canvas.getByRole('button', { name: 'Better Voice Бета' }))
+  await waitFor(() => expect(canvasElement.querySelector('.voice-atmosphere canvas')).toBe(renderer))
+  await userEvent.click(canvas.getByRole('button', { name: 'Music Island' }))
+  await expect(canvasElement.querySelector('.warp-shared-host canvas')).toBe(renderer)
+} }
 export const ScopeStartsAtFirstPage: Story = { name: 'Раздел открывается с первого пункта', play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
   const scopes = within(canvas.getByRole('group', { name: 'Раздел настроек' }))
@@ -255,7 +291,7 @@ export const Taskbar: Story = {
   play: async ({ canvasElement, args, parameters }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /^(Панель задач|Taskbar)$/ }))
-    await expect(canvas.getByRole('heading', { level: 2, name: /^(Панель задач|Taskbar)$/ })).toBeVisible()
+    await waitFor(() => expect(canvas.getByRole('heading', { level: 2, name: /^(Панель задач|Taskbar)$/ })).toBeVisible())
     const toggle = () => canvas.getByRole('switch', { name: /^(Мини-плеер в панели задач|Taskbar mini-player)$/ })
     await expect(toggle()).not.toBeChecked()
     await userEvent.click(toggle())
@@ -265,12 +301,13 @@ export const Taskbar: Story = {
     await waitFor(() => expect(toggle()).toBeChecked())
     if (parameters.reducedMotion === true) {
       await waitFor(() => {
-        expect(canvasElement.querySelector('.taskbar-preview__material')).toHaveAttribute('data-speed', '0')
-        expect(canvasElement.querySelector('.taskbar-preview__material')).toHaveAttribute('data-motion', 'paused')
+        expect(canvasElement.querySelector('.taskbar-preview__material .warp-material')).toHaveAttribute('data-speed', '0')
+        expect(canvasElement.querySelector('.taskbar-preview__material .warp-material')).toHaveAttribute('data-motion', 'paused')
       })
     }
-    const size = canvas.getByRole('slider', { name: /^(Размер кнопок|Button size)/ })
-    fireEvent.change(size, { target: { value: '125' } })
+    const size = canvas.getByRole('slider', { name: /^(Масштаб мини-плеера|Mini-player scale)/ })
+    size.focus()
+    await userEvent.keyboard('{End}')
     await waitFor(() => expect(args.onChange).toHaveBeenCalledWith(
       expect.objectContaining({ taskbar: expect.objectContaining({ enabled: true, scale: 1.25 }) }),
     ))
@@ -418,7 +455,7 @@ export const TaskbarNoSpace: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /^(Панель задач|Taskbar)$/ }))
     await userEvent.click(canvas.getByRole('switch', { name: /^(Мини-плеер в панели задач|Taskbar mini-player)$/ }))
-    await expect(await canvas.findByRole('status')).toHaveTextContent(/не хватает места|not enough room/)
+    await expect(await canvas.findByText(/не хватает места|not enough room/)).toBeVisible()
   },
 }
 export const SourceAttention: Story = {
@@ -565,3 +602,20 @@ export const VoiceDeveloperEnglish: Story = {
   globals: { locale: 'en' },
   play: VoiceDeveloperMode.play,
 }
+
+export const DictationInput: Story = { name: 'Диктовка · сочетание и точка в конце', play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement)
+  await userEvent.click(within(canvas.getByRole('group', { name: 'Раздел настроек' })).getByRole('button', { name: 'Диктовка' }))
+  const shortcut = await canvas.findByRole('button', { name: 'Ctrl+Space' })
+  await userEvent.click(shortcut)
+  await userEvent.keyboard('[ControlLeft>][KeyK][/ControlLeft]')
+  await waitFor(() => expect(canvas.getByRole('button', { name: 'ctrl_left+k' })).toBeVisible())
+  await userEvent.click(canvas.getByRole('button', { name: 'Дополнительно' }))
+  const period = await canvas.findByRole('switch', { name: 'Убирать точку в конце' })
+  await userEvent.click(period)
+  await expect(period).toHaveAttribute('aria-checked', 'true')
+  await userEvent.click(canvas.getByRole('button', { name: 'Основное' }))
+  await waitFor(() => expect(canvas.getByRole('button', { name: 'ctrl_left+k' })).toBeVisible())
+  await userEvent.click(canvas.getByRole('button', { name: 'Дополнительно' }))
+  await expect(await canvas.findByRole('switch', { name: 'Убирать точку в конце' })).toHaveAttribute('aria-checked', 'true')
+} }

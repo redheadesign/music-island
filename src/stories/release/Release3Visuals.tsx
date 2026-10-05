@@ -22,7 +22,7 @@ export function DictationVisual({ locale, phase = 'recording', progress, frame =
 
 export function ModelsVisual({ locale, downloading = false, progress = 0, selected = true, showImport = true }: { locale: 'ru' | 'en'; downloading?: boolean; progress?: number; selected?: boolean; showImport?: boolean }) {
   const model = releaseModel(locale)
-  return <div className="release3-models auxiliary-ui dictation-page"><ModelCard model={{ ...model, is_downloaded: selected && !downloading }} locale={locale} selected={selected && !downloading} downloading={downloading} progress={progress} onDownload={noop} onSelect={noop} onCancel={noop} onDelete={noop} onDetails={noop} />{showImport ? <div className="release3-import"><HandyImport controller={releaseDictation(locale)} locale={locale} /><span>{locale === 'ru' ? 'Файлы для распознавания можно скопировать из Handy' : 'Copy your existing speech recognition files from Handy'}</span></div> : null}</div>
+  return <div className="release3-models auxiliary-ui dictation-page"><ModelCard model={{ ...model, is_downloaded: selected && !downloading }} locale={locale} selected={selected && !downloading} downloading={downloading} progress={progress} onDownload={noop} onSelect={noop} onCancel={noop} onDelete={noop} />{showImport ? <div className="release3-import"><HandyImport controller={releaseDictation(locale)} locale={locale} /><span>{locale === 'ru' ? 'Файлы для распознавания можно скопировать из Handy' : 'Copy your existing speech recognition files from Handy'}</span></div> : null}</div>
 }
 
 export function Release3NewScene({ feature, format }: { feature: 'dictation' | 'models'; format: 'readme' | 'telegram' }) {

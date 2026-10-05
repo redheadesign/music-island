@@ -12,8 +12,6 @@
   --surface-selected: rgba(255, 255, 255, 0.12);
   --surface-selected-subtle: rgba(255, 255, 255, 0.025);
   --surface-sunken: #111214;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
   --fg-primary: #f5f5f7;
   --fg-secondary: #aaaab2;
   --fg-muted: #85858f;
@@ -26,6 +24,7 @@
   --status-success-surface: rgba(70, 199, 135, 0.11);
   --status-warning-surface: rgba(240, 180, 70, 0.12);
   --status-danger-surface: rgba(255, 90, 118, 0.1);
+  --control-track: #585858;
   --control-off: #414247;
   --control-thumb: #ffffff;
   --control-surface: rgba(255, 255, 255, 0.075);
@@ -35,7 +34,6 @@
   --overlay-scrim-strong: rgba(8, 9, 11, 0.92);
   --window-titlebar: rgba(255, 255, 255, 0.025);
   --window-danger-hover: rgba(255, 84, 106, 0.7);
-  --highlight-inset: rgba(255, 255, 255, 0.06);
   --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.18);
 
   /* Related content is close; independent sections have more breathing room. */
@@ -84,6 +82,7 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
   --drop-zone-ready: color-mix(in srgb, var(--accent, #f76100) 12%, transparent);
+  --drag-indicator: var(--accent, #f76100);
   --drop-zone-active: color-mix(in srgb, var(--accent, #f76100) 24%, transparent);
 }
 
@@ -102,9 +101,6 @@
   --fg-primary: #f5f5f5;
   --fg-secondary: #b7b7b7;
   --fg-muted: #929292;
-  --border-subtle: transparent;
-  --border-strong: #585858;
-  --highlight-inset: transparent;
   --shadow-control: none;
   --window-titlebar: #1e1e1e;
 }
@@ -124,8 +120,6 @@
   --surface-selected: rgba(24, 24, 27, 0.09);
   --surface-selected-subtle: rgba(24, 24, 27, 0.035);
   --surface-sunken: #e2e2e7;
-  --border-subtle: rgba(24, 24, 27, 0.1);
-  --border-strong: rgba(24, 24, 27, 0.2);
   --fg-primary: #1d1d1f;
   --fg-secondary: #5e5e66;
   --fg-muted: #7a7a84;
@@ -138,6 +132,7 @@
   --status-success-surface: rgba(23, 107, 67, 0.1);
   --status-warning-surface: rgba(134, 87, 0, 0.1);
   --status-danger-surface: rgba(165, 38, 53, 0.09);
+  --control-track: #c5c5cc;
   --control-off: #b9bac1;
   --control-thumb: #ffffff;
   --control-surface: rgba(24, 24, 27, 0.07);
@@ -147,7 +142,6 @@
   --overlay-scrim-strong: rgba(32, 32, 36, 0.72);
   --window-titlebar: rgba(255, 255, 255, 0.5);
   --window-danger-hover: rgba(197, 45, 64, 0.84);
-  --highlight-inset: rgba(255, 255, 255, 0.72);
   --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.12);
   --shadow-panel: 0 24px 80px rgba(28, 28, 32, 0.16);
   --shadow-popover: 0 6px 20px rgba(28, 28, 32, 0.12);
@@ -175,8 +169,6 @@
   --surface-selected: rgba(255, 255, 255, 0.12);
   --surface-selected-subtle: rgba(255, 255, 255, 0.025);
   --surface-sunken: #111214;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
   --fg-primary: #f5f5f7;
   --fg-secondary: #aaaab2;
   --fg-muted: #85858f;
@@ -189,6 +181,7 @@
   --status-success-surface: rgba(70, 199, 135, 0.11);
   --status-warning-surface: rgba(240, 180, 70, 0.12);
   --status-danger-surface: rgba(255, 90, 118, 0.1);
+  --control-track: #585858;
   --control-off: #414247;
   --control-thumb: #ffffff;
   --control-surface: rgba(255, 255, 255, 0.075);
@@ -198,7 +191,6 @@
   --overlay-scrim-strong: rgba(8, 9, 11, 0.92);
   --window-titlebar: rgba(255, 255, 255, 0.025);
   --window-danger-hover: rgba(255, 84, 106, 0.7);
-  --highlight-inset: rgba(255, 255, 255, 0.06);
   --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.18);
 
 }

@@ -10,7 +10,7 @@
   gap: var(--space-6);
   min-width: 0;
   padding: var(--space-6);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-xl);
   color: var(--fg-primary);
   background: var(--surface-panel);
@@ -25,7 +25,7 @@
   --surface-panel: #18191c;
   --surface-raised: #222326;
   --surface-hover: rgba(255, 255, 255, 0.08);
-  --border-subtle: rgba(255, 255, 255, 0.08);
+
   --fg-primary: #f5f5f7;
   --fg-secondary: #d6d6db;
   --fg-muted: #85858f;
@@ -77,12 +77,12 @@
   transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast);
 }
 .voice-control-card__monitor:hover:not(:disabled) { background: var(--surface-hover); color: var(--fg-primary); }
-.voice-control-card__monitor[aria-pressed='true'] { background: var(--surface-raised); border-color: var(--border-subtle); color: var(--fg-primary); }
+.voice-control-card__monitor[aria-pressed='true'] { background: var(--surface-raised); border-color: transparent; color: var(--fg-primary); }
 .voice-control-card__monitor-dot { position: absolute; bottom: 4px; width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: 0; }
 .voice-control-card__monitor[aria-pressed='true'] .voice-control-card__monitor-dot { opacity: 1; }
 .voice-control-card__primary:disabled, .voice-control-card__monitor:disabled { cursor: default; opacity: .45; }
 .voice-control-card button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
-.voice-control-card__error { grid-column: 1 / -1; margin: 0; padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); color: var(--status-danger); font-size: var(--text-label); line-height: 1.6; }
+.voice-control-card__error { grid-column: 1 / -1; margin: 0; padding-top: var(--space-3); border: 0; color: var(--status-danger); font-size: var(--text-label); line-height: 1.6; }
 .voice-control-card__developer { grid-column: 1 / -1; min-width: 0; }
 .voice-control-card__spinner { animation: voice-control-busy 1s linear infinite; }
 @keyframes voice-control-busy { to { transform: rotate(360deg); } }

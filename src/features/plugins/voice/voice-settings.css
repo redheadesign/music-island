@@ -14,7 +14,7 @@
   width: min(100%, 360px);
   margin: 0;
   padding-top: var(--space-4);
-  border-top: 1px solid var(--border-subtle);
+  border: 0;
 }
 
 .voice-settings .voice-experimental-banner {
@@ -22,7 +22,7 @@
   gap: var(--space-3);
   margin: calc(-1 * var(--space-3)) 0 0;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-md);
   color: var(--fg-secondary);
   background: var(--surface-panel);
@@ -54,7 +54,7 @@
   gap: 0;
   overflow: visible;
   padding: var(--space-5);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-lg);
   background: var(--surface-panel);
   box-shadow: none;
@@ -117,7 +117,7 @@
   max-width: 300px;
   min-height: var(--control-height);
   padding-inline: var(--space-3);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   background: var(--surface-raised);
@@ -125,7 +125,7 @@
 
 .voice-settings .dark-select:hover,
 .voice-settings .dark-select--open {
-  border-color: var(--border-strong);
+  border-color: transparent;
   background: var(--surface-hover);
 }
 
@@ -176,7 +176,7 @@
 .voice-settings .voice-chip {
   min-height: 36px;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-sm);
   color: var(--fg-secondary);
   background: var(--surface-raised);
@@ -208,7 +208,7 @@
 .voice-settings .voice-segment-switch {
   height: var(--control-height);
   padding: 3px;
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-sm);
   background: var(--surface-canvas);
 }
@@ -249,7 +249,7 @@
 .voice-settings .voice-meters-elevated {
   margin: var(--space-1) 0 0;
   padding: var(--space-4);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-md);
   background: var(--surface-canvas);
 }
@@ -304,7 +304,7 @@
 .voice-settings .secondary-button {
   min-height: var(--control-height);
   padding: 0 var(--space-3);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   background: var(--surface-raised);
@@ -321,7 +321,7 @@
 
 .voice-guide-page .voice-guide-page__top {
   margin-bottom: var(--space-6);
-  border-bottom-color: var(--border-subtle);
+  border-color: transparent;
 }
 
 .voice-guide-page .voice-guide-article {
@@ -353,7 +353,7 @@
 
 .voice-guide-page .voice-guide-callout {
   padding: var(--space-4);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-md);
   color: var(--fg-primary);
   background: var(--surface-raised);

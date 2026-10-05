@@ -112,7 +112,7 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
     const defaults = getLegacyIslandLayout(config)
     commit({ ...defaults, zones: { ...defaults.zones, player: [...ISLAND_LAYOUT_ELEMENTS.player], actions: ['settings', 'pin'] } })
   }
-  return <section ref={editorRef} className="island-layout-editor" data-dragging={Boolean(dragging) || undefined}>
+  return <section ref={editorRef} style={{ '--drag-indicator': config.appearance.accentColor } as import('react').CSSProperties} className="island-layout-editor" data-dragging={Boolean(dragging) || undefined}>
     <header className="island-layout-editor__header"><div>{showHeading ? <h3>{locale === 'ru' ? 'Ваш островок' : 'Your island'}</h3> : null}<p>{locale === 'ru' ? 'Перетаскивайте элементы. Тяните за край, чтобы изменить ширину, за угол — масштаб.' : 'Drag elements. Resize the width from an edge and the scale from a corner.'}</p></div><button type="button" className="island-layout-editor__reset" aria-label={locale === 'ru' ? 'Сбросить настройки островка' : 'Reset island settings'} title={locale === 'ru' ? 'Сбросить' : 'Reset'} onClick={onReset ?? reset}><RotateCcw size={15} /></button></header>
     <IslandPreview active={active} config={config} label={locale === 'ru' ? 'Редактируемый островок' : 'Editable island'} usage={usage} renderElement={elementView} renderZone={zoneView} onResize={(dimensions) => onChange({ ...config, layout: { ...config.layout, ...dimensions, size: 'medium' } })} />
     <div className="island-layout-catalog" role="group" aria-label={zones.catalog} data-layout-target="catalog" data-ready={Boolean(dragging && canPlaceIslandElement(layout, dragging, 'catalog')) || undefined} data-over={over?.zone === 'catalog' || undefined}>

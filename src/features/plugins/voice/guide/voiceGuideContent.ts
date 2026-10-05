@@ -37,7 +37,7 @@ const ru: GuideDoc = {
     {
       id: 'microphone',
       title: 'Выберите свой микрофон',
-      text: 'В Better Voice откройте раздел «Устройства». В поле «Микрофон» выберите устройство, в которое говорите.',
+      text: 'В Better Voice откройте «Микрофон и эффекты». В поле «Микрофон» выберите устройство, в которое говорите.',
     },
     {
       id: 'output',
@@ -54,7 +54,7 @@ const ru: GuideDoc = {
     {
       id: 'start',
       title: 'Включите обработку',
-      text: 'Вернитесь в Better Voice и нажмите «Включить обработку». Говорите в микрофон: индикаторы уровня должны двигаться.',
+      text: 'Вернитесь в Better Voice и нажмите «Включить» в блоке «Обработка голоса». Говорите в микрофон: индикаторы уровня должны двигаться.',
       note: 'Оставьте Music Island запущенным, пока используете этот микрофон.',
     },
   ],
@@ -93,7 +93,7 @@ const en: GuideDoc = {
     {
       id: 'microphone',
       title: 'Choose your microphone',
-      text: 'Open Devices in Better Voice. Under Microphone, choose the device you speak into.',
+      text: 'Open Microphone and effects in Better Voice. Under Microphone, choose the device you speak into.',
     },
     {
       id: 'output',
@@ -110,7 +110,7 @@ const en: GuideDoc = {
     {
       id: 'start',
       title: 'Start processing',
-      text: 'Return to Better Voice and select Start processing. Speak into your microphone: the level meters should move.',
+      text: 'Return to Better Voice and select Start under Voice processing. Speak into your microphone: the level meters should move.',
       note: 'Keep Music Island running while you use this microphone.',
     },
   ],

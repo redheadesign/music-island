@@ -1,13 +1,25 @@
-import { useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
+import { Children, cloneElement, isValidElement, useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import './SettingsControls.css'
-import { Search, X } from './SettingsIcons'
+import { Search, X, Info, TriangleAlert, CheckCircle2, LoaderCircle } from './SettingsIcons'
 
 export function Button({ variant = 'secondary', size = 'normal', className = '', type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; size?: 'normal' | 'compact' }) {
   return <button type={type} className={`ui-button ui-button--${variant} ui-button--${size} ${className}`} {...props} />
 }
 
 export function SettingRow({ label, hint, children, className = '' }: { label: string; hint?: string; children: ReactNode; className?: string }) {
-  return <label className={`ui-setting-row ${className}`}><span className="ui-setting-row__copy"><strong>{label}</strong>{hint ? <small>{hint}</small> : null}</span><span className="ui-setting-row__control">{children}</span></label>
+  const id = useId()
+  const controls = Children.map(children, child => isValidElement<{ 'aria-label'?: string; 'aria-labelledby'?: string; 'aria-describedby'?: string }>(child) && child.type !== Button && child.type !== SettingsIconButton && child.type !== 'span' && child.type !== 'div'
+    ? cloneElement(child, { 'aria-labelledby': child.props['aria-labelledby'] ?? (child.props['aria-label'] ? undefined : id), 'aria-describedby': child.props['aria-describedby'] ?? (hint ? `${id}-hint` : undefined) }) : child)
+  return <div className={`ui-setting-row ${className}`} role="group" aria-labelledby={id}><span className="ui-setting-row__copy"><strong id={id}>{label}</strong>{hint ? <small id={`${id}-hint`}>{hint}</small> : null}</span><div className="ui-setting-row__control">{controls}</div></div>
+}
+
+export function SettingsIconButton({ label, busy = false, children, ...props }: Omit<Parameters<typeof Button>[0], 'aria-label' | 'title'> & { label: string; busy?: boolean }) {
+  return <Button {...props} className={`ui-button--icon ${props.className ?? ''}`} aria-label={label} title={label} aria-busy={busy || undefined} disabled={busy || props.disabled}>{busy ? <LoaderCircle className="ui-spinner" size={18} aria-hidden="true" /> : children}</Button>
+}
+
+export function Notice({ tone = 'info', title, children, action, className = '' }: { tone?: 'info' | 'success' | 'warning' | 'danger'; title?: string; children: ReactNode; action?: ReactNode; className?: string }) {
+  const Icon = tone === 'danger' || tone === 'warning' ? TriangleAlert : tone === 'success' ? CheckCircle2 : Info
+  return <div className={`ui-notice ui-notice--${tone} ${className}`} role={tone === 'danger' ? 'alert' : 'status'}><Icon size={19} aria-hidden="true" /><div className="ui-notice__copy">{title ? <strong>{title}</strong> : null}<div>{children}</div></div>{action ? <div className="ui-notice__action">{action}</div> : null}</div>
 }
 
 export function Toggle({ checked, onChange, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> & { checked: boolean; onChange: (checked: boolean) => void }) {

@@ -1,9 +1,11 @@
+import { Switch } from '../../shared/ui/SettingsControls'
+import { PreviewScale } from '../../shared/ui/PreviewScale'
 import { RotateCcw } from '../../shared/ui/SettingsIcons'
 import { useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import type { AppConfig } from '../../shared/lib/types'
 import { DEFAULT_TASKBAR_ELEMENTS, TASKBAR_ELEMENTS, TASKBAR_ELEMENT_LABELS, getTaskbarLayout, normalizeTaskbarLayout, withTaskbarLayout, type TaskbarElement } from '../../shared/lib/taskbarLayout'
-import { WarpMaterial } from '../../shared/ui/WarpMaterial'
+import { StatefulWarpSurface } from '../../shared/ui/StatefulWarpSurface'
 import { TaskbarControl, TaskbarPlayer } from '../taskbar/TaskbarPlayer'
 import { APPEARANCE_PREVIEW_MEDIA as media } from './previewMedia'
 import './IslandLayoutEditor.css'
@@ -80,16 +82,13 @@ export function TaskbarLayoutEditor({ config, onChange, active = true }: { confi
   }
   const sample = (element: TaskbarElement) => <div className="taskbar-player taskbar-control-sample"><TaskbarControl element={element} snapshot={media} locale={locale} onCommand={() => undefined} /></div>
   const view = (element: TaskbarElement, node: ReactNode, catalog = false) => <div key={element} className={`taskbar-editor-element${catalog ? ' taskbar-editor-element--catalog' : ''}`} data-taskbar-element={element} data-picked={dragging === element || undefined} data-insert={over?.zone === 'controls' && layout.elements.filter((value) => value !== dragging)[over.index ?? -1] === element || undefined} role="button" tabIndex={0} aria-label={TASKBAR_ELEMENT_LABELS[locale][element]} aria-pressed={dragging === element} title={TASKBAR_ELEMENT_LABELS[locale][element]} draggable={false} {...pointerHandlers(element)} onKeyDown={(event) => keyboard(event, element)}><div className="taskbar-editor-element__visual" inert aria-hidden="true">{node}</div></div>
-  return <section ref={root} className="taskbar-layout-editor" aria-label={ru ? 'Редактор мини-плеера' : 'Mini-player editor'} data-dragging={Boolean(dragging) || undefined}>
-    <header className="island-layout-editor__header"><p className="taskbar-layout-editor__hint">{ru ? 'Перетаскивайте элементы прямо в превью.' : 'Drag the elements directly in the preview.'}</p><button type="button" className="island-layout-editor__reset" aria-label={ru ? 'Сбросить состав мини-плеера' : 'Reset mini-player layout'} onClick={() => onChange(withTaskbarLayout(config, normalizeTaskbarLayout({ elements: DEFAULT_TASKBAR_ELEMENTS })))}><RotateCcw size={15} /></button></header>
-    <div className="taskbar-preview taskbar-preview--editable" aria-label={ru ? 'Превью мини-плеера в панели задач' : 'Taskbar mini-player preview'}>
-      {active ? <WarpMaterial className="taskbar-preview__material" speed={0.225} reducedMotion={config.appearance.reducedMotion} /> : null}
-      <div className="taskbar-preview__bar">
+  return <section ref={root} style={{ '--drag-indicator': config.appearance.accentColor } as import('react').CSSProperties} className="taskbar-layout-editor" aria-label={ru ? 'Редактор мини-плеера' : 'Mini-player editor'} data-dragging={Boolean(dragging) || undefined}>
+    <header className="island-layout-editor__header"><p className="taskbar-layout-editor__hint">{ru ? 'Перетаскивайте элементы прямо в превью.' : 'Drag the elements directly in the preview.'}</p><button type="button" className="island-layout-editor__reset" aria-label={ru ? 'Сбросить настройки мини-плеера' : 'Reset mini-player settings'} onClick={() => onChange(withTaskbarLayout({ ...config, taskbar: { ...config.taskbar, enabled: Boolean(config.taskbar?.enabled), scale: 1 } }, normalizeTaskbarLayout({ elements: DEFAULT_TASKBAR_ELEMENTS })))}><RotateCcw size={15} /></button></header>
+      <PreviewScale previewClassName="taskbar-preview taskbar-preview--editable" previewLabel={ru ? 'Превью мини-плеера в панели задач' : 'Taskbar mini-player preview'} backdrop={<StatefulWarpSurface className="taskbar-preview__material" running={config.taskbar?.enabled === true} reducedMotion={config.appearance.reducedMotion} active={active} />} header={<div className="settings-preview__header"><Switch label={ru ? 'Мини-плеер в панели задач' : 'Taskbar mini-player'} checked={Boolean(config.taskbar?.enabled)} onChange={enabled => onChange({ ...config, taskbar: { ...config.taskbar, enabled } })} /></div>} value={Math.round((config.taskbar?.scale ?? 1) * 100)} min={75} max={125} step={5} label={ru ? 'Масштаб мини-плеера' : 'Mini-player scale'} onCommit={value => onChange({ ...config, taskbar: { ...config.taskbar, enabled: Boolean(config.taskbar?.enabled), scale: value / 100 } })}>{value => <div className="taskbar-preview__bar">
         <div className="taskbar-editor-controls" data-taskbar-target="controls" data-over={over?.zone === 'controls' || undefined} data-ready={Boolean(dragging) || undefined}>
-          <TaskbarPlayer snapshot={media} locale={locale} layout={layout} scale={config.taskbar?.scale ?? 1} onCommand={() => undefined} renderElement={view} reducedMotion />
+          <TaskbarPlayer snapshot={media} locale={locale} layout={layout} scale={value / 100} onCommand={() => undefined} renderElement={view} reducedMotion />
         </div>
-      </div>
-    </div>
+      </div>}</PreviewScale>
     <div className="island-layout-catalog" data-taskbar-target="catalog" data-over={over?.zone === 'catalog' || undefined} aria-label={ru ? 'Доступные элементы мини-плеера' : 'Available mini-player elements'} data-ready={Boolean(dragging && dragging !== 'transport') || undefined}>
       <h4>{dragging ? ru ? 'Перетащите сюда, чтобы убрать' : 'Drop here to remove' : ru ? 'Добавить в мини-плеер' : 'Add to mini-player'}</h4>
       <div className="taskbar-layout-catalog__items">{available.map((element) => view(element, sample(element), true))}{!available.length ? <span className="island-layout-catalog__empty">{ru ? 'Все элементы добавлены' : 'All elements added'}</span> : null}</div>

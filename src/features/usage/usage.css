@@ -45,10 +45,10 @@
   box-sizing: border-box;
   min-width: 0;
   padding: var(--space-5);
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 84%, #b88970 16%);
+  border: 0;
   border-radius: 20px;
-  background: color-mix(in srgb, var(--surface-raised) 66%, transparent);
-  box-shadow: inset 0 1px 0 var(--highlight-inset);
+  background: var(--surface-panel);
+
 }
 
 .usage-settings__heading {
@@ -65,7 +65,7 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: 50%;
   color: var(--fg-primary);
   background: color-mix(in srgb, var(--surface-panel) 76%, transparent);
@@ -76,7 +76,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 12px 4px 8px;
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-pill);
   color: var(--fg-muted);
   background: color-mix(in srgb, var(--surface-panel) 58%, transparent);
@@ -94,7 +94,7 @@
 
 .usage-settings__limits {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   margin-top: var(--space-4);
 }
@@ -103,15 +103,15 @@
   min-width: 0;
   gap: 9px;
   padding: var(--space-3);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-panel) 62%, transparent);
+  background: var(--surface-raised);
 }
 .usage-settings__limit-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
 .usage-settings__limit-label { color: var(--fg-secondary); font-size: var(--text-caption); font-weight: var(--weight-medium); }
-.usage-settings__limit-value { color: var(--fg-primary); font-size: 21px; font-weight: 650; line-height: 1; letter-spacing: -.04em; }
-.usage-settings__limit-value small { margin-left: 4px; color: var(--fg-muted); font-size: 9px; font-weight: var(--weight-medium); letter-spacing: 0; }
-.usage-settings__limit-reset { min-height: 14px; color: var(--fg-muted); font-size: 10px; }
+.usage-settings__limit-value { color: var(--fg-primary); font-size: var(--text-body); font-weight: 600; line-height: 1.4; }
+.usage-settings__limit-value small { margin-left: 6px; color: var(--fg-secondary); font-size: var(--text-caption); font-weight: var(--weight-regular); }
+.usage-settings__limit-reset { min-height: 14px; color: var(--fg-secondary); font-size: var(--text-caption); }
 .usage-settings__meter {
   height: 6px;
   overflow: hidden;

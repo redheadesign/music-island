@@ -77,7 +77,7 @@ export const Default: Story = {
     await expect(order(canvasElement)).toEqual(['cover', 'previous', 'transport', 'next'])
     await expect(element(canvasElement, 'shuffle', 'catalog')).toBeInTheDocument()
     await expect(element(canvasElement, 'repeat', 'catalog')).toBeInTheDocument()
-    await expect(canvasElement.querySelectorAll('[aria-label="Сбросить состав мини-плеера"]')).toHaveLength(1)
+    await expect(canvasElement.querySelectorAll('[aria-label="Сбросить настройки мини-плеера"]')).toHaveLength(1)
   },
 }
 

@@ -1,4 +1,4 @@
-import { Button } from '../../shared/ui/SettingsControls'
+import { Notice, Button } from '../../shared/ui/SettingsControls'
 import { FlaskConical, LoaderCircle, Monitor, Music2 } from '../../shared/ui/SettingsIcons'
 import { useId } from 'react'
 import type { Ref } from 'react'
@@ -54,10 +54,7 @@ export function DirectConnectionDialog({
           <li><FlaskConical size={17} aria-hidden="true" /><span>{t('consent.li2')}</span></li>
         </ul>
         {error && !busy ? (
-          <div className="direct-connection-dialog__error" role="alert">
-            <strong>{t('consent.errorTitle')}</strong>
-            <p>{error}</p>
-          </div>
+          <Notice tone="danger" title={t('consent.errorTitle')}>{error}</Notice>
         ) : null}
       </div>
       <footer className="direct-connection-dialog__footer">

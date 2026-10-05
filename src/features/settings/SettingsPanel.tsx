@@ -25,7 +25,8 @@ import { TaskbarLayoutEditor } from './TaskbarLayoutEditor'
 import { IslandLayoutEditor } from './IslandLayoutEditor'
 import { getLegacyIslandLayout, withIslandLayout } from '../../shared/lib/islandLayout'
 import { BrandLogo } from '../../shared/ui/BrandLogo'
-import { WarpMaterial } from '../../shared/ui/WarpMaterial'
+import { WarpSurface, WarpSurfaceProvider } from '../../shared/ui/WarpSurface'
+import { PreviewScale } from '../../shared/ui/PreviewScale'
 import { UsageStatusChip } from '../usage/UsageStatusChip'
 import { UsageSettingsSection } from '../usage/UsageSettingsSection'
 import { getUsagePreferences, withUsageProviderEnabled, type UsageController } from '../../app/useIslandApp'
@@ -60,12 +61,12 @@ import { GitHubBrandIcon, TelegramBrandIcon } from '../../shared/ui/BrandIcons'
 import { RangeSlider } from '../../shared/ui/RangeSlider'
 import { StatusChip } from '../../shared/ui/StatusChip'
 import { UpdateBanner } from '../../shared/ui/UpdateBanner'
-import { FeatureToggle, Button, Switch, SettingsSection, SettingsNavigation } from '../../shared/ui/SettingsControls'
+import { Notice, Button, Switch, SettingsSection, SettingsNavigation } from '../../shared/ui/SettingsControls'
 import { AppLogo } from '../../shared/ui/AppLogo'
 import './settings.css'
 export { IslandPreview as AppearancePreview } from './IslandPreview'
 
-const APP_VERSION = '3.0.0'
+const APP_VERSION = '3.0.1'
 
 interface SettingsPanelProps {
   usage?: UsageController
@@ -406,7 +407,7 @@ export function SettingsPanel({
   const directMessage = directStatusMessage(directStatus.state, directStatus.message, t)
 
   return (
-    <section ref={panelRef} className="settings-panel" aria-label={t('settings.title')} data-color-scheme={settingsColorScheme} data-reduced-motion={reducedMotion || undefined}>
+    <WarpSurfaceProvider><section ref={panelRef} className="settings-panel" aria-label={t('settings.title')} data-color-scheme={settingsColorScheme} data-reduced-motion={reducedMotion || undefined}>
       <header className="settings-hero">
         <div className="settings-scope-switch" role="group" aria-label={t('settings.scope')}>
           <button
@@ -504,7 +505,7 @@ export function SettingsPanel({
           const Icon = { general: Mic, models: Database, history: ClockCounterClockwise, dictionary: BookOpen, processing: TextAa, advanced: SlidersHorizontal }[id]
           return { id, label: dictationPages[id][locale === 'ru' ? 0 : 1], icon: (active: boolean) => <Icon size={20} weight={active ? 'fill' : 'regular'} /> }
         })} />
-        <div className="settings-content" data-settings-scroll><DictationSettings controller={dictation} page={dictationPage} locale={locale} onPage={setDictationPage} onDisable={async () => { await dictation.disable(); previewAndSave({ ...draft, plugins: { ...draft.plugins, enabled: draft.plugins.enabled.filter((id) => id !== 'dictation') } }) }} onEnable={async () => {
+        <div className="settings-content" data-settings-scroll><DictationSettings active={settingsVisible} reducedMotion={reducedMotion} controller={dictation} page={dictationPage} locale={locale} onPage={setDictationPage} onDisable={async () => { await dictation.disable(); previewAndSave({ ...draft, plugins: { ...draft.plugins, enabled: draft.plugins.enabled.filter((id) => id !== 'dictation') } }) }} onEnable={async () => {
           await dictation.enable()
           const enabled = [...new Set([...draft.plugins.enabled, 'dictation'])]
           previewAndSave({ ...draft, plugins: { ...draft.plugins, enabled } })
@@ -600,23 +601,11 @@ export function SettingsPanel({
 
       {settingsPage === 'usage' ? (
         <div className="settings-usage-page">
-          <SettingsSection title={locale === 'ru' ? 'Виджет лимитов' : 'Usage widget'} icon={<SquareTerminal />}>
-            <div className="usage-widget-preview" role="group" aria-label={locale === 'ru' ? 'Превью виджета лимитов' : 'Usage widget preview'}>
-              {settingsVisible ? <WarpMaterial className="preview-warp-material" reducedMotion={draft.appearance.reducedMotion} /> : null}
-              <div className="usage-widget-preview__content" style={{ zoom: usageScale }}><UsageStatusChip snapshot={usage?.snapshot ?? null} enabledProviders={['codex', 'claude']} compact={usageCompact} locale={locale} /></div>
-            </div>
-            <div className="settings-control-row settings-control-row--after-preview">
-              <span><strong>{locale === 'ru' ? 'Вид' : 'Style'}</strong></span>
+            <PreviewScale previewClassName="usage-widget-preview" previewLabel={locale === 'ru' ? 'Превью виджета лимитов' : 'Usage widget preview'} backdrop={<WarpSurface className="preview-warp-material" active={settingsVisible} reducedMotion={draft.appearance.reducedMotion} />} header={<div className="settings-preview__header settings-preview__header--end">
               <div className="settings-theme-choice" role="group" aria-label={locale === 'ru' ? 'Вид виджета' : 'Widget style'}>
                 {[false, true].map((compact) => <button key={String(compact)} type="button" aria-pressed={usageCompact === compact} className={`settings-theme-choice__button ${usageCompact === compact ? 'settings-theme-choice__button--active' : ''}`} onClick={() => previewAndSave(withUiPrefs(draft, { usageWidgetCompact: compact }))}>{locale === 'ru' ? compact ? 'Компактный' : 'Подробный' : compact ? 'Compact' : 'Detailed'}</button>)}
               </div>
-            </div>
-            <label className="settings-control-row"><span><strong>{locale === 'ru' ? 'Масштаб виджета' : 'Widget scale'}</strong></span><div className="range-control">
-              <RangeSlider min={65} max={135} step={5} value={Math.round(usageScale * 100)} onChange={(event) => previewAndSave(withUiPrefs(draft, { usageWidgetScale: Number(event.currentTarget.value) / 100 }))} />
-              <output>{Math.round(usageScale * 100)}%</output>
-            </div></label>
-            <Switch label={locale === 'ru' ? 'Показывать при закрытом островке' : 'Show while the island is closed'} checked={uiPrefs.usageAlwaysVisible === true} onChange={(usageAlwaysVisible) => previewAndSave(withUiPrefs(draft, { usageAlwaysVisible }))} />
-          </SettingsSection>
+            </div>} value={Math.round(usageScale * 100)} min={65} max={135} step={5} label={locale === 'ru' ? 'Масштаб виджета' : 'Widget scale'} onCommit={value => previewAndSave(withUiPrefs(draft, { usageWidgetScale: value / 100 }))}>{value => <div className="usage-widget-preview__content" style={{ zoom: value / 100 }}><UsageStatusChip snapshot={usage?.snapshot ?? null} enabledProviders={['codex', 'claude']} compact={usageCompact} locale={locale} /></div>}</PreviewScale>
           <UsageSettingsSection
             preferences={getUsagePreferences(draft)} snapshot={usage?.snapshot ?? null}
             busyProvider={usage?.busyProvider ?? null} locale={locale}
@@ -624,35 +613,22 @@ export function SettingsPanel({
             onDisconnect={(provider) => void changeUsageConnection(provider, false)}
             onRefresh={(provider) => { setUsageError(false); void usage?.refresh(provider).catch(() => setUsageError(true)) }}
           />
-          {usageError ? <p role="alert" className="settings-taskbar-note">{t('settings.usageError')}</p> : null}
+          {usageError ? <Notice tone="danger">{t('settings.usageError')}</Notice> : null}
         </div>
       ) : null}
 
       <SettingsSection className="settings-taskbar" hidden={settingsPage !== 'taskbar'} title={t('settings.taskbar')} icon={<PanelBottom />} showTitle={false}>
-        <FeatureToggle icon={<PanelBottom size={24} weight={draft.taskbar?.enabled ? 'fill' : 'regular'} />}
-            label={t('settings.taskbarEnabled')}
-            hint={locale === 'ru' ? 'Управление музыкой рядом с треем Windows' : 'Music controls beside the Windows system tray'}
-            checked={Boolean(draft.taskbar?.enabled)}
-            onChange={(enabled) => previewAndSave({ ...draft, taskbar: { ...draft.taskbar, enabled } })}
-        />
         <TaskbarLayoutEditor config={draft} onChange={previewAndSave} active={settingsVisible && settingsPage === 'taskbar'} />
-        <label className="settings-control-row">
-          <span><strong>{locale === 'ru' ? 'Размер кнопок' : 'Button size'}</strong></span>
-          <div className="range-control">
-            <RangeSlider min={75} max={125} step={5} value={Math.round((draft.taskbar?.scale ?? 1) * 100)} onChange={(event) => previewAndSave({ ...draft, taskbar: { ...draft.taskbar, enabled: Boolean(draft.taskbar?.enabled), scale: Number(event.currentTarget.value) / 100 } })} />
-            <output>{Math.round((draft.taskbar?.scale ?? 1) * 100)}%</output>
-          </div>
-        </label>
         {draft.taskbar?.enabled && ['no-space', 'unsupported', 'error'].includes(taskbarStatus.state) ? (
-          <p className="settings-taskbar-note" role="status">
+          <Notice tone={taskbarStatus.state === 'error' ? 'danger' : 'warning'}>
             {t(taskbarStatus.state === 'no-space' ? 'settings.taskbarNoSpace'
               : taskbarStatus.state === 'unsupported' ? 'settings.taskbarUnsupported'
               : 'settings.taskbarError')}
-          </p>
+          </Notice>
         ) : null}
       </SettingsSection>
 
-      <SettingsSection hidden={settingsPage !== 'source'} title={t('settings.source')} icon={<Activity />} showTitle={false}>
+      <SettingsSection className="settings-section--plain" hidden={settingsPage !== 'source'} title={t('settings.source')} icon={<Activity />} showTitle={false}>
         <div className="protocol-list">
           <article className={`protocol-row ${windowsSelected ? 'protocol-row--selected' : ''}`}>
             <span className="protocol-icon"><BrandLogo brand="windows" size={30} /></span>
@@ -727,7 +703,7 @@ export function SettingsPanel({
             {mediaSessions.map((session) => <option key={session.sourceAppId} value={session.sourceAppId}>{isSpotifySource(session.sourceAppId) ? 'Spotify' : session.sourceAppId}</option>)}
           </select>
         </label> : null}
-        {sourceError ? <p className="settings-taskbar-note" role="alert">{sourceError}</p> : null}
+        {sourceError ? <Notice tone="danger">{sourceError}</Notice> : null}
       </SettingsSection>
 
       <SettingsSection hidden={settingsPage !== 'system'} title={t('settings.system')} icon={<Power />} showTitle={false}>
@@ -739,18 +715,17 @@ export function SettingsPanel({
             onChange={(launchAtStartup) => patchBehavior({ launchAtStartup })}
           />
           {autostartError ? (
-            <p className="autostart-feedback autostart-feedback--error">{autostartError}</p>
+            <Notice tone="danger">{autostartError}</Notice>
           ) : null}
           {!autostartError && autostartStatus && !autostartStatus.ok ? (
-            <p className="autostart-feedback autostart-feedback--error">
+            <Notice tone="danger">
               {autostartStatus.message ?? t('settings.autostartFail')}
-            </p>
+            </Notice>
           ) : null}
           {!autostartError && autostartStatus?.ok && draft.behavior.launchAtStartup && autostartStatus.exePath ? (
-            <p className="autostart-feedback" title={autostartStatus.command ?? autostartStatus.exePath}>
-              <span className="autostart-feedback__state">{t('settings.autostartOk')}</span>
-              <span className="autostart-feedback__path">{autostartStatus.exePath}</span>
-            </p>
+            <Notice tone="success" title={t('settings.autostartOk')}>
+              <span className="autostart-feedback__path" title={autostartStatus.command ?? autostartStatus.exePath}>{autostartStatus.exePath}</span>
+            </Notice>
           ) : null}
         </div>
       </SettingsSection>
@@ -762,7 +737,7 @@ export function SettingsPanel({
         <Button onClick={onCopyDiagnostics}><Copy size={16} />{t('settings.copyDiagnostics')}</Button>
       </SettingsSection>
 
-      <SettingsSection hidden={settingsPage !== 'about'} title={t('settings.about')} icon={<Info />} showTitle={false}>
+      <SettingsSection className="settings-section--plain" hidden={settingsPage !== 'about'} title={t('settings.about')} icon={<Info />} showTitle={false}>
         <div className="about-block">
           <div className="about-identity">
             <AppLogo variant="portrait" className="about-identity__logo" size={80} />
@@ -851,7 +826,7 @@ export function SettingsPanel({
                 </small>
               </div>
             )}
-            {updater.error ? <p className="about-update-error">{updater.error}</p> : null}
+            {updater.error ? <Notice tone="danger">{updater.error}</Notice> : null}
           </div>
 
           <div className="about-links">
@@ -874,12 +849,12 @@ export function SettingsPanel({
           </div>
         </div>
       </SettingsSection>
-      <SettingsSection hidden={settingsPage !== 'about'} title={locale === 'ru' ? 'Приложение' : 'Application'} showTitle={false}>
-        <div className="ui-action-row"><span>{locale === 'ru' ? 'Знакомство с Music Island' : 'Meet Music Island'}</span><Button disabled={launchBusy} onClick={() => void replayLaunch(true)}>{locale === 'ru' ? 'Открыть' : 'Open'}</Button></div>
+      <SettingsSection className="settings-about-actions" hidden={settingsPage !== 'about'} title={locale === 'ru' ? 'Приложение' : 'Application'} showTitle={false}>
+        <div className="ui-setting-row"><span className="ui-setting-row__copy"><strong>{locale === 'ru' ? 'Знакомство с Music Island' : 'Meet Music Island'}</strong></span><Button disabled={launchBusy} onClick={() => void replayLaunch(true)}>{locale === 'ru' ? 'Открыть' : 'Open'}</Button></div>
         <Switch label={t('settings.devMode')} checked={Boolean(uiPrefs.developerMode)} onChange={(developerMode) => previewAndSave(withUiPrefs(draft, { developerMode,
           ...(!developerMode ? { forceSettingsUpdateBanner: false, forceIslandUpdateBanner: false, forceVoiceExperimentalBanner: false, forceSameVersionUpdate: false } : {}),
         }))} />
-        {launchError ? <p role="alert" className="about-update-error">{launchError}</p> : null}
+        {launchError ? <Notice tone="danger">{launchError}</Notice> : null}
       </SettingsSection>
       {uiPrefs.developerMode ? (
         <SettingsSection hidden={settingsPage !== 'developer'} title={t('settings.devPreview')} showTitle={false}>
@@ -925,7 +900,7 @@ export function SettingsPanel({
             >
               {locale === 'ru' ? 'Повторить запуск с подсказкой' : 'Replay startup and hint'}
             </Button>
-            {launchError ? <p role="alert" className="about-update-error">{launchError}</p> : null}
+            {launchError ? <Notice tone="danger">{launchError}</Notice> : null}
           </div>
         </SettingsSection>
       ) : null}
@@ -950,7 +925,7 @@ export function SettingsPanel({
           />
         </div>
       ), document.body) : null}
-    </section>
+    </section></WarpSurfaceProvider>
   )
 }
 

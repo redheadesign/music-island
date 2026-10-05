@@ -39,7 +39,8 @@ export const DownloadConsent: Story = { name: 'Перед загрузкой · 
 } }
 export const ImportPreview: Story = { name: 'Импорт · выбор файлов', play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
-  await userEvent.click(canvas.getByRole('button', { name: 'Импорт из Handy' }))
+  await userEvent.click(canvas.getByRole('button', { name: 'Добавить модель' }))
+  await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Импорт из Handy' }))
   const dialog = await canvas.findByRole('dialog')
   await expect(dialog).toHaveTextContent('История и ключи сервисов не переносятся')
   await expect(within(dialog).getByRole('button', { name: /Скопировать/ })).toBeDisabled()
@@ -54,4 +55,18 @@ export const ImportedRnnt: Story = { name: 'Импортирована GigaAM ·
   await expect(installed).not.toHaveTextContent('В памяти')
 } }
 export const Disabled: Story = { name: 'Диктовка выключена · настройки доступны', args: { page: 'general', controller: { ...controller, enabled: false } } }
+export const DisabledLight: Story = { ...Disabled, name: 'Диктовка выключена · светлая тема', parameters: { light: true } }
 export const Recording: Story = { name: 'Идёт запись', args: { page: 'general', controller: { ...controller, data: { ...controller.data!, status: { revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null } } } } }
+export const AdvancedLight: Story = { name: 'Дополнительно · светлая тема', args: { page: 'advanced' }, parameters: { light: true } }
+export const AdvancedEnglish: Story = { name: 'Дополнительно · английский', args: { page: 'advanced', locale: 'en' } }
+export const AdvancedNarrow: Story = { name: 'Дополнительно · узкое окно', args: { page: 'advanced' }, parameters: { workshop: { width: 420 } } }
+export const AdvancedLoadError: Story = { name: 'Дополнительно · устройства недоступны', args: { page: 'advanced', controller: { ...controller, api: { ...dictationApi, getAvailableOutputDevices: fn(async () => { throw new Error('Unavailable') }), getAvailableAccelerators: fn(async () => { throw new Error('Unavailable') }) } } } }
+export const AdvancedLoading: Story = { name: 'Дополнительно · загрузка устройств', args: { page: 'advanced', controller: { ...controller, api: { ...dictationApi, getAvailableOutputDevices: fn(async () => { await new Promise(() => {}); return dictationApi.getAvailableOutputDevices() }), getAvailableAccelerators: fn(async () => { await new Promise(() => {}); return dictationApi.getAvailableAccelerators() }) } } } }
+export const GeneralLight: Story = { name: 'Превью диктовки · светлая тема', args: { page: 'general', reducedMotion: true }, parameters: { light: true } }
+export const MicrophoneDiagnostic: Story = { name: 'Диагностика · микрофон доступен', args: { page: 'advanced' }, play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement)
+  await userEvent.click(canvas.getByRole('button', { name: 'Проверить микрофон' }))
+  await expect(await canvas.findByText('Доступ к микрофону разрешён')).toBeVisible()
+  await userEvent.click(canvas.getByText('Технические данные'))
+  await expect(canvas.getByText(/"overall_access": "allowed"/)).toBeVisible()
+} }

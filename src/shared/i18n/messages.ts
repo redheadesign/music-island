@@ -126,8 +126,8 @@ const ru = {
   'settings.scopeVoice': 'Better Voice',
   'settings.scopeVoiceBeta': 'Бета',
   'settings.voiceExperimental':
-    'Better Voice в бета-версии. Для настройки виртуального микрофона ',
-  'settings.voiceExperimentalLink': 'откройте инструкцию',
+    'Better Voice в бета-версии. Виртуальный микрофон подключается отдельно.',
+  'settings.voiceExperimentalLink': 'Как подключить',
   'settings.voiceExperimentalClose': 'Скрыть уведомление',
   'settings.updateBannerTitle': 'Доступно обновление',
   'settings.updateBannerTitleVersion': 'Доступна версия',
@@ -284,8 +284,8 @@ const en: Record<MessageKey, string> = {
   'settings.scopeVoice': 'Better Voice',
   'settings.scopeVoiceBeta': 'Beta',
   'settings.voiceExperimental':
-    'Better Voice is in beta. To set up a virtual microphone, ',
-  'settings.voiceExperimentalLink': 'open the guide',
+    'Better Voice is in beta. Set up a virtual microphone to use it in other apps.',
+  'settings.voiceExperimentalLink': 'Connection guide',
   'settings.voiceExperimentalClose': 'Dismiss notice',
   'settings.updateBannerTitle': 'Update available',
   'settings.updateBannerTitleVersion': 'Version available',

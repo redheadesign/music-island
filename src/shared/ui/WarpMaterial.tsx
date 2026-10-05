@@ -2,20 +2,8 @@ import { Warp } from '@paper-design/shaders-react'
 import { useReducedMotion } from 'framer-motion'
 import { memo, useEffect, useRef, useState } from 'react'
 import type { HTMLAttributes } from 'react'
+import { PAPER_WARP_PRESET, WARP_SPEED } from './warpPreset'
 import './WarpMaterial.css'
-
-const PAPER_WARP_PRESET = {
-  colors: ['#171412', '#897263', '#d7c8b8'],
-  proportion: 0.24,
-  softness: 1,
-  distortion: 0.21,
-  swirl: 0.57,
-  swirlIterations: 10,
-  shape: 'edge' as const,
-  shapeScale: 0.75,
-  scale: 2,
-  rotation: 0,
-}
 
 export type WarpMaterialProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   speed?: number
@@ -31,9 +19,9 @@ export type WarpMaterialProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'>
   maxPixelCount?: number
 }
 
-/** Decorative warm graphite material. It performs no polling or device access. */
+/** Decorative peach/lavender material. It performs no polling or device access. */
 export const WarpMaterial = memo(function WarpMaterial({
-  speed = 0.225,
+  speed = WARP_SPEED.resting,
   active = true,
   reducedMotion = false,
   className,
@@ -81,7 +69,7 @@ export const WarpMaterial = memo(function WarpMaterial({
       <div className={['warp-material__field', fieldClassName].filter(Boolean).join(' ')}>
         <Warp
           {...PAPER_WARP_PRESET}
-          {...(variant === 'onboarding' ? { colors: ['#231c2c', '#ad867e', '#ebc8a6', '#c4adf0'], distortion: .28, softness: .85 } : {})}
+          {...(variant === 'onboarding' ? { distortion: .28, softness: .85 } : {})}
           width="100%"
           height="100%"
           speed={effectiveSpeed}

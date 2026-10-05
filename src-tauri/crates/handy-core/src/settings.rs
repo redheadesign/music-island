@@ -488,6 +488,8 @@ pub struct AppSettings {
     pub mute_while_recording: bool,
     #[serde(default)]
     pub append_trailing_space: bool,
+    #[serde(default)]
+    pub remove_trailing_period: bool,
     #[serde(default = "default_app_language")]
     pub app_language: String,
     #[serde(default = "default_theme")]
@@ -977,6 +979,7 @@ pub fn get_default_settings() -> AppSettings {
         post_process_selected_prompt_id: None,
         mute_while_recording: false,
         append_trailing_space: false,
+        remove_trailing_period: false,
         app_language: default_app_language(),
         theme: default_theme(),
         experimental_enabled: false,
@@ -1731,6 +1734,15 @@ mod tests {
         assert!(!debug_output.contains("sk-proj-secret-key-12345"));
         assert!(!debug_output.contains("sk-ant-secret-key-67890"));
         assert!(debug_output.contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn trailing_period_setting_defaults_off_and_round_trips() {
+        let mut settings: AppSettings = serde_json::from_value(default_settings_json()).unwrap();
+        assert!(!settings.remove_trailing_period);
+        settings.remove_trailing_period = true;
+        let restored: AppSettings = serde_json::from_value(serde_json::to_value(settings).unwrap()).unwrap();
+        assert!(restored.remove_trailing_period);
     }
 
     #[test]

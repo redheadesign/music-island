@@ -96,7 +96,7 @@ function ProviderCard({
       </div>
       {enabled && data?.windows.length ? (
         <div className="usage-settings__limits">
-          {data.windows.slice(0, 2).map((window) => (
+          {data.windows.map((window) => (
             <div className="usage-settings__limit" data-tone={getUsageQuotaTone(window.remainingPercent)} key={window.id}>
               <div className="usage-settings__limit-top">
                 <b className="usage-settings__limit-label">{formatUsageWindowLabel(window.label, locale)}</b>

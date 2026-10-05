@@ -6,11 +6,11 @@
   min-width: 0;
   margin: 0;
   padding: var(--space-6);
-  border: 1px solid var(--border-strong);
+  border: 0;
   border-radius: var(--radius-lg);
   color: var(--fg-primary);
   background: var(--surface-panel);
-  box-shadow: inset 0 1px 0 var(--highlight-inset);
+  box-shadow: none;
 }
 
 .update-notice .update-banner__main {
@@ -31,7 +31,7 @@
   flex: 0 0 32px;
   height: 32px;
   place-items: center;
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-sm);
   color: var(--fg-secondary);
   background: var(--surface-raised);
@@ -87,7 +87,7 @@
 .update-notice :is(.update-banner__ghost, .island-update-rail__ghost) {
   color: var(--fg-secondary);
   background: transparent;
-  border-color: var(--border-subtle);
+  border-color: transparent;
 }
 
 .update-notice :is(.update-banner__ghost, .island-update-rail__ghost):hover {
@@ -187,8 +187,8 @@
 .update-notice .release-notes-md__body pre { max-width: 100%; padding: var(--space-3); overflow: auto; border-radius: var(--radius-sm); background: var(--surface-canvas); }
 .update-notice .release-notes-md__body code { color: var(--fg-primary); font-family: var(--font-mono); font-size: 11px; }
 .update-notice .release-notes-md__body table { display: block; max-width: 100%; overflow: auto; border-collapse: collapse; }
-.update-notice .release-notes-md__body :is(td, th) { padding: var(--space-2); border: 1px solid var(--border-subtle); text-align: left; }
-.update-notice .release-notes-md__body blockquote { padding-left: var(--space-3); border-left: 2px solid var(--border-strong); }
+.update-notice .release-notes-md__body :is(td, th) { padding: var(--space-2); border: 0; text-align: left; }
+.update-notice .release-notes-md__body blockquote { padding-left: var(--space-3); border: 0; }
 
 .update-notice .release-notes-md__link {
   margin: 0;
@@ -237,7 +237,7 @@
   margin: var(--space-2) auto 0;
   padding: var(--space-3);
   gap: var(--space-3);
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-lg);
   background: rgba(24, 25, 28, .96);
   box-shadow: inset 0 1px 0 #ffffff05;

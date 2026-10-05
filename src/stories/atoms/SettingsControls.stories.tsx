@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, userEvent, within, waitFor } from 'storybook/test'
-import { Button, FeatureToggle, Input, SearchField, SettingRow, SettingsNavigation, SettingsSection, Switch } from '../../shared/ui/SettingsControls'
+import { Button, FeatureToggle, Input, Notice, SettingsIconButton, SearchField, SettingRow, SettingsNavigation, SettingsSection, Switch } from '../../shared/ui/SettingsControls'
 import { Select } from '../../shared/ui/Select'
-import { Mic, SlidersHorizontal } from '../../shared/ui/SettingsIcons'
+import { Mic, SlidersHorizontal, Volume2, Trash2 } from '../../shared/ui/SettingsIcons'
 
 function Controls({ light = false, disabled = false }: { light?: boolean; disabled?: boolean }) {
   const [enabled, setEnabled] = useState(true)
@@ -30,6 +30,10 @@ type Story = StoryObj<typeof meta>
 export const Dark: Story = {name:'Единые контролы · графит'}
 export const Light: Story = {name:'Единые контролы · светлая тема',args:{light:true}}
 export const Disabled: Story = {name:'Недоступные действия',args:{disabled:true}}
+export const Messages: Story = { name: 'Сообщения и кнопки-иконки', render: () => <div className="auxiliary-ui" style={{ display: 'grid', gap: 16, padding: 24, background: 'var(--surface-canvas)' }}>
+  <div className="ui-action-row"><SettingsIconButton label="Прослушать сигнал"><Volume2 size={18} /></SettingsIconButton><SettingsIconButton size="compact" label="Удалить модель" variant="danger"><Trash2 size={16} /></SettingsIconButton><SettingsIconButton label="Загрузка устройств" busy /><SettingsIconButton label="Прослушать сигнал · недоступно" disabled><Volume2 size={18} /></SettingsIconButton></div>
+  <Notice>Загружаем устройства…</Notice><Notice tone="success">Доступ к микрофону разрешён</Notice><Notice tone="warning" action={<Button size="compact">Проверить микрофон</Button>}>Windows запрещает доступ к микрофону.</Notice><Notice tone="danger" action={<Button size="compact">Повторить</Button>}>Не удалось загрузить список устройств.</Notice>
+</div> }
 
 function EdgeMenu({ light = false }: { light?: boolean }) {
   const [value, setValue] = useState('0')

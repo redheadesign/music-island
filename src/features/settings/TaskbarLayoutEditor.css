@@ -1,18 +1,17 @@
 .taskbar-layout-editor { display: grid; gap: var(--space-5); min-width: 0; container-type: inline-size; }
 .taskbar-layout-editor__hint { margin: 0; font-size: var(--text-caption); line-height: 1.5; color: var(--fg-secondary); }
-.taskbar-preview { position: relative; isolation: isolate; height: 124px; overflow: hidden; border-radius: var(--radius-lg); background: #171412; }
-.taskbar-preview__material { opacity: .38; }
-.taskbar-preview__bar { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding-inline: 8px; overflow-x: auto; scrollbar-width: thin; color: #f5f5f7; }
-.taskbar-preview .taskbar-player { --fg-primary: #f5f5f7; --fg-secondary: #aaaab2; --fg-muted: #85858f; --surface-glass: rgba(32,33,36,.78); --surface-raised: #222326; --border-subtle: rgba(255,255,255,.08); }
+.taskbar-preview { position: relative; isolation: isolate; min-height: 216px; overflow: hidden; border-radius: var(--radius-lg); background: #171412; }
+.taskbar-preview__bar { position: relative; display: flex; align-items: center; justify-content: center; padding-inline: 8px; color: #f5f5f7; }
+.taskbar-preview .taskbar-player { --fg-primary: #f5f5f7; --fg-secondary: #aaaab2; --fg-muted: #85858f; --surface-glass: rgba(32,33,36,.78); --surface-raised: #222326;  }
 .taskbar-layout-editor > .island-layout-catalog { min-height: 110px; }
 @media (forced-colors: active) { .taskbar-preview { background: Canvas; border: 1px solid CanvasText; } }
 .taskbar-editor-controls { flex: 0 0 auto; position: relative; outline: 1.5px dashed transparent; outline-offset: 4px; border-radius: 10px; }
-.taskbar-editor-controls[data-ready] { outline-color: var(--accent); background: var(--drop-zone-ready); }
-.taskbar-editor-controls[data-over] { outline: 2px solid var(--accent); background: var(--drop-zone-active); }
+.taskbar-editor-controls[data-ready] { outline: 2px dashed var(--drag-indicator); background: var(--drop-zone-ready); }
+.taskbar-editor-controls[data-over] { outline: 2px solid var(--drag-indicator); background: var(--drop-zone-active); }
 .taskbar-editor-element { position: relative; flex: 0 0 auto; display: flex; align-items: center; min-height: 32px; cursor: grab; touch-action: none; user-select: none; border-radius: 7px; outline: 1.5px solid transparent; }
 .taskbar-editor-element:hover { outline-color: #ffffff42; }
 .taskbar-editor-element[data-picked] { opacity: .25; }
-.taskbar-editor-element[data-insert]::before { position: absolute; content: ''; left: -2px; top: 2px; bottom: 2px; width: 2px; border-radius: 2px; background: var(--accent); }
+.taskbar-editor-element[data-insert]::before { position: absolute; content: ''; left: -2px; top: 2px; bottom: 2px; width: 2px; border-radius: 2px; background: var(--drag-indicator); }
 .taskbar-editor-element:focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
 .taskbar-editor-element__visual { display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .taskbar-layout-catalog__items { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
