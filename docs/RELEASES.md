@@ -38,6 +38,10 @@ if ((Get-Content release/SHA256.txt -Raw).Trim() -ne "$hash  music-island.exe") 
 9. Upload `release/music-island.exe`, `release/SHA256.txt` and the repository's `THIRD_PARTY_NOTICES.md` to the same GitHub Release (tag like `v3.0.0`). The updater requires the first two exact, case-sensitive asset names and ignores the documentation asset.
 10. Put the changelog body on the GitHub Release (the in-app update banner renders that markdown).
 
+Write public release notes and changelog entries in English for the repository's
+English-speaking audience. Keep the versioned release-notes file and the published
+GitHub Release body in sync when correcting the copy.
+
 If you already built the app and only need to refresh `release/`, run:
 
 ```powershell
