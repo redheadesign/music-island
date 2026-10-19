@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.0.3 — 2026-10-20
+
+### Dictation
+
+- Fixed Windows dictation pasting previous clipboard contents under load: clipboard restoration now waits for a read from the target process. Unconfirmed pastes keep the transcript available, and newer user copies are preserved.
+- Set Fox as the default theme for profiles without a saved choice; order the picker Fox, Waves, Classic.
+- Made the Classic recording capsule compact, with equal gaps before and after the listening label and matching outer insets.
+- Reduced repeated language-name formatting work when opening and updating dictation settings.
+- Show the Fox character and recording controls before visual effects initialize.
+- Reuse graphics resources between recordings and compile only the effects in use.
+- Reduce animation work on high-refresh-rate displays and pause hidden artwork while preserving the existing visual effects.
+
 ## 3.0.2 — 2026-10-12
 
 ### Dictation appearance

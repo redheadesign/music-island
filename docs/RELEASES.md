@@ -2,6 +2,22 @@
 
 Music Island ships as a **portable** `music-island.exe` under GPL-3.0-or-later. That remains the forever distribution model: users download or auto-update the same single file from GitHub Releases. There is no installer requirement.
 
+## 3.0.3 release
+
+The user accepted revision 2 after Windows testing and authorized publication on
+2026-10-20. Publish the exact accepted packet under `release/v3.0.3-r2/`:
+`music-island.exe`, `SHA256.txt` and `THIRD_PARTY_NOTICES.md`, using the English
+body in `docs/releases/3.0.3-release-notes.md`. The version tag is `v3.0.3`.
+Do not rebuild the accepted executable or commit generated release artifacts.
+
+The executable is 76,403,200 bytes (72.86 MiB), SHA-256
+`347a12a958273a84e7b2e1438e84e8072d4ade1a68600a930a7181c22b4e07ca`.
+The earlier `release/v3.0.3` packet is superseded and must not be uploaded.
+Verification and user acceptance are recorded in
+[3.0.3 release QA](QA_RELEASE_3_0_3.md). This patch fixes Windows clipboard timing,
+compacts Classic spacing, improves Fox/effect rendering and language formatting,
+and defaults the theme picker to Fox, Waves, Classic while preserving saved choices.
+
 ## 3.0.2 release
 
 The user accepted the final Windows candidate and authorized publication on

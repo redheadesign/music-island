@@ -1,7 +1,7 @@
 import type { AppConfig } from './types'
 import { getUiPrefs } from './uiPrefs'
 
-export const dictationThemes = ['classic', 'wave', 'pixels'] as const
+export const dictationThemes = ['pixels', 'wave', 'classic'] as const
 export const dictationPalettes = ['accent', 'white', 'prism', 'aurora', 'lagoon', 'sakura', 'ember', 'dune'] as const
 
 export interface DictationAppearance {
@@ -11,7 +11,7 @@ export interface DictationAppearance {
 }
 
 export const defaultDictationAppearance: DictationAppearance = {
-  theme: 'classic', palette: 'accent', chromatic: false,
+  theme: 'pixels', palette: 'accent', chromatic: false,
 }
 
 /** Fixed artwork tuning; old per-profile controls no longer affect the recorder. */
@@ -24,7 +24,7 @@ function choice<T extends string>(value: unknown, options: readonly T[], fallbac
 export function normalizeDictationAppearance(value: unknown): DictationAppearance {
   const raw = value && typeof value === 'object' ? value as Partial<DictationAppearance> : {}
   return {
-    theme: choice(raw.theme, dictationThemes, 'classic'),
+    theme: choice(raw.theme, dictationThemes, defaultDictationAppearance.theme),
     palette: choice(raw.palette, dictationPalettes, 'accent'),
     chromatic: raw.chromatic === true,
   }

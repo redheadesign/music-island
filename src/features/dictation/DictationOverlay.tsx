@@ -33,7 +33,8 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   const noticeShown = status.phase === 'streaming' && loadNotice === status.operationId
   const loadingNotice = noticeShown && status.modelLoading && !hasText
   const previewText = recording && (hasText || noticeShown) ? <p className="dictation-overlay__text">{loadingNotice ? loadingLabel : text.committed}<span>{text.tentative}</span></p> : null
-  if (!visible) return null
+  // Keep the canvas/context between recordings; hidden artwork has no clock.
+  const artworkActive = active && visible
   if (appearance.theme !== 'classic') {
     const expanded = Boolean(previewText)
     const fox = appearance.theme === 'pixels'
@@ -42,21 +43,22 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
     const close = () => { void cancel().catch(() => {}) }
     const end = () => { void finish?.().catch(() => {}) }
     const copyText = () => { setCopyFailure(null); void copy().catch(() => setCopyFailure(status.operationId)) }
-    const visual = fox ? <DictationVisual appearance={appearance} phase={status.phase} levels={levels} still={still} active={active} demo={demo} operationId={status.operationId} /> : <Icon className="dictation-cloud__fallback" size={18} aria-hidden="true" />
-    return <div className="dictation-overlay dictation-overlay--cloud" data-theme={appearance.theme} data-phase={status.phase} data-recording-control={recordingControl || undefined} data-expanded={expanded || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
-      <DictationCloudSurface appearance={appearance} phase={status.phase} levels={levels} still={still} active={active} demo={demo} coreRef={core} expanded={expanded} singleControl />
+    const visual = fox ? <DictationVisual appearance={appearance} phase={status.phase} levels={levels} still={still} active={artworkActive} demo={demo} operationId={status.operationId} /> : <Icon className="dictation-cloud__fallback" size={18} aria-hidden="true" />
+    return <div hidden={!visible} className="dictation-overlay dictation-overlay--cloud" data-theme={appearance.theme} data-phase={status.phase} data-recording-control={recordingControl || undefined} data-expanded={expanded || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
+      <DictationCloudSurface appearance={appearance} phase={status.phase} levels={levels} still={still} active={artworkActive} demo={demo} coreRef={core} expanded={expanded} singleControl />
       {previewText}
       <div className="dictation-cloud__bar" role="status">
         <span className="dictation-overlay__sr">{copyFailure === status.operationId ? ru ? 'Не удалось скопировать' : 'Could not copy' : label}</span>
         <div ref={core} className="dictation-cloud__core">
-          {visual}
+          {visible ? visual : null}
           {!recording ? <button className="dictation-cloud__interaction" type="button" aria-label={failed || status.phase === 'completed' ? ru ? 'Закрыть' : 'Dismiss' : ru ? 'Отменить обработку' : 'Cancel processing'} title={label} onPointerDown={event => event.preventDefault()} onClick={close} /> : null}
         </div>
         {status.phase === 'error' && status.text ? <button className="dictation-cloud__copy" type="button" aria-label={ru ? 'Скопировать текст' : 'Copy text'} title={ru ? 'Скопировать текст' : 'Copy text'} onPointerDown={event => event.preventDefault()} onClick={copyText}><Copy size={16} /></button> : recordingControl ? <button className="dictation-cloud__satellite dictation-cloud__satellite--right" type="button" aria-label={ru ? 'Завершить запись' : 'Finish recording'} title={ru ? 'Завершить запись' : 'Finish recording'} disabled={!recording} aria-hidden={!recording} onPointerDown={event => event.preventDefault()} onClick={end}><Stop weight="fill" size={13} /></button> : null}
       </div>
     </div>
   }
-  return <div className="dictation-overlay" data-theme={appearance.theme} data-phase={status.phase} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
+  if (!visible) return null
+  return <div className="dictation-overlay" data-theme={appearance.theme} data-phase={status.phase} data-expanded={Boolean(previewText) || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
     <div className="dictation-overlay__bar" role="status">
       <div className="dictation-overlay__art"><DictationVisual key={`${appearance.theme}:${status.operationId}:${status.phase}`} appearance={appearance} phase={status.phase} levels={levels} still={still} active={active} demo={demo} operationId={status.operationId} /></div>
       <span className={appearance.theme !== 'classic' && !['completed', 'error', 'cancelled'].includes(status.phase) ? 'dictation-overlay__sr' : 'dictation-overlay__label'}>{copyFailure === status.operationId ? ru ? 'Не удалось скопировать' : 'Could not copy' : label}</span>

@@ -1,4 +1,4 @@
-//! Receipt-sequenced clipboard paste ("reliable paste", debug-gated).
+//! Receipt-sequenced clipboard paste (default on Windows, opt-in on macOS).
 //!
 //! The legacy clipboard paste (`clipboard::paste_via_clipboard`) restores the
 //! previous clipboard after a fixed delay. The paste keystroke is only
@@ -15,21 +15,14 @@
 //! - macOS: `declareTypes:owner:` with an owner object, the pasteboard calls
 //!   `pasteboard:provideDataForType:` on read.
 //!
-//! Two rules make the receipt trustworthy:
+//! Receipts before injection never acknowledge a paste. On Windows a receipt
+//! additionally has to come from the original foreground process: a background
+//! clipboard manager can otherwise trigger early restoration (#502). If delayed
+//! rendering was consumed by another process, or the reader cannot be identified,
+//! Windows leaves plain transcript text after the bounded wait, without restoring
+//! stale content over a potentially queued paste. New user copies take precedence.
+//! The macOS opt-in path retains upstream receipt/timeout behavior.
 //!
-//! 1. Only receipts observed *after* the paste chord was injected count. A
-//!    read before that is an eager third party (clipboard manager, antivirus)
-//!    reacting to the clipboard change itself.
-//! 2. Restoration only happens while we still own the clipboard
-//!    (sequence number / changeCount unchanged, no ownership-lost event). If
-//!    the user copied something else in the meantime, their action wins.
-//!
-//! The restore is additionally gated on a short quiet period after the *last*
-//! receipt, because some applications read the clipboard several times per
-//! paste (Chromium probes, then reads). A bounded timeout caps how long the
-//! transcript may occupy the clipboard; the failure mode is always "the
-//! transcript stays on the clipboard a bit longer", never "stale content gets
-//! pasted".
 
 // The shared transaction state is compiled on all platforms (for the unit
 // tests), but only the macOS/Windows platform modules consume all of it.
@@ -132,6 +125,21 @@ pub(crate) enum WaitDecision {
     KeepWaiting,
     /// Stop waiting; settle the transaction (auto-submit + guarded restore).
     Finish,
+}
+
+/// Windows only acknowledges a read from the original foreground process.
+/// An eager clipboard manager can render the promise first; that is not proof
+/// that the target has processed its queued paste chord.
+#[cfg(any(target_os = "windows", test))]
+fn record_target_receipt(state: &mut TxState, target: u32, reader: u32, at: Instant) {
+    if target != 0 && reader == target {
+        state.record_receipt(at);
+    }
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn keep_transcript(state: &TxState, requested: bool) -> bool {
+    requested || !state.any_receipt_after_injection()
 }
 
 /// Pure decision: given the current transaction state, keep waiting for the
@@ -279,5 +287,39 @@ mod tests {
         let mut s = state_after_publish(Duration::from_millis(10));
         s.ownership_lost = true;
         assert!(matches!(evaluate(&s, Instant::now()), WaitDecision::Finish));
+    }
+    #[test]
+    fn manager_read_after_injection_does_not_acknowledge_target() {
+        let mut s = state_after_publish(Duration::from_secs(2));
+        s.injected_at = Some(Instant::now() - Duration::from_secs(1));
+        record_target_receipt(&mut s, 42, 99, Instant::now() - QUIET_PERIOD);
+        assert!(!s.any_receipt_after_injection());
+        assert!(matches!(
+            evaluate(&s, Instant::now()),
+            WaitDecision::KeepWaiting
+        ));
+        assert!(keep_transcript(&s, false));
+    }
+
+    #[test]
+    fn confirmed_target_read_allows_restore_but_unknown_reader_does_not() {
+        let mut s = state_after_publish(Duration::from_secs(2));
+        s.injected_at = Some(Instant::now() - Duration::from_secs(1));
+        record_target_receipt(&mut s, 42, 0, Instant::now());
+        assert!(keep_transcript(&s, false));
+        record_target_receipt(&mut s, 42, 42, Instant::now() - QUIET_PERIOD);
+        assert!(!keep_transcript(&s, false));
+        assert!(keep_transcript(&s, true));
+        assert!(matches!(evaluate(&s, Instant::now()), WaitDecision::Finish));
+    }
+
+    #[test]
+    fn timeout_without_target_read_keeps_transcript_for_late_paste() {
+        let mut s = state_after_publish(RESTORE_TIMEOUT);
+        s.injected_at = Some(Instant::now() - RESTORE_TIMEOUT);
+        assert!(matches!(evaluate(&s, Instant::now()), WaitDecision::Finish));
+        assert!(keep_transcript(&s, false));
+        s.injection_failed = true;
+        assert!(keep_transcript(&s, false));
     }
 }

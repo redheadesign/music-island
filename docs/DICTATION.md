@@ -43,7 +43,7 @@ Colors use labeled circular swatches from the shared settings
 DS control, with native radio/keyboard behavior. The compact
 preview renders the same production component as the recording window, restarts
 its recording → recognition → done cycle after a theme/color/colored-edge change,
-and never starts audio capture. Classic remains the default for existing profiles.
+and never starts audio capture. Fox is the default when a profile has no saved theme; explicit saved choices are preserved. The picker order is Fox, Waves, Classic.
 
 Waves use the source recorder's multilayer glow, soft energy limiter, diffuse
 material, refraction and full bevel. The central 84 × 44 capsule leaves generous
@@ -234,3 +234,16 @@ Settings → Dictation → **AI processing** connects an explicitly chosen provi
 Shortcut editing captures keydown/keyup in the focused Settings WebView using physical key codes, so RU/EN layouts produce the same binding. It temporarily suspends native bindings, commits on key release and restores native shortcuts on save, error, Escape or focus loss. The editor no longer waits for a second global keyboard listener. Handy Keys retains left/right modifiers; Tauri uses generic modifiers. Native validation, registration and persistence remain authoritative.
 
 Advanced → Text insertion includes **Remove trailing period** (off by default). It removes one final full stop after recognition and optional AI processing, before history/result delivery and before the existing trailing-space option. Internal periods, ellipses and other punctuation are preserved. Older settings default to false without migration.
+
+### Windows clipboard timing
+
+The Windows clipboard path waits for the original target process to read delayed
+Unicode text before restoring the saved clipboard. Background/unknown readers do
+not acknowledge the target. After an unconfirmed timeout the transcript remains
+available for manual paste; a newer user copy always wins. This path is enabled
+for existing profiles as well. Automatic Enter requires a confirmed read and the
+original foreground process. See [the adaptation journal](HANDY_ADAPTATIONS.md).
+
+Classic recording uses content width with 9px on both sides of its listening label
+and 14px outer insets. Theme chooser thumbnails and the selected live preview render the production
+components. Language names share one memoized formatter per model and locale.

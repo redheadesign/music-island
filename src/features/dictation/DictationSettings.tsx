@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Check, Copy, Mic, RotateCcw, Trash2 } from '../../shared/ui/SettingsIcons'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import type { DictationController } from '../../app/useIslandApp'
@@ -27,6 +27,12 @@ export function DictationSettings({ controller: c, page, locale, onEnable, onDis
   const [copied, setCopied] = useState<number | null>(null)
   const [historyAudio, setHistoryAudio] = useState<{ id: number; url: string } | null>(null)
   const { api, data } = c
+  const model = data?.models.find(item => item.id === data.settings.selected_model)
+  const languageOptions = useMemo(() => {
+    if (!model?.supports_language_selection) return []
+    const names = new Intl.DisplayNames([locale], { type: 'language' })
+    return model.supported_languages.map((language): [string, string] => [language, names.of(language) ?? language])
+  }, [model, locale])
   const run = (id: string, action: () => Promise<unknown>) => { void c.run(id, action).catch(() => undefined) }
   const microphone = data?.settings.selected_microphone
   const initialized = Boolean(data)
@@ -39,7 +45,6 @@ export function DictationSettings({ controller: c, page, locale, onEnable, onDis
   const error = c.error ? <Notice tone="danger" title={t('Не удалось выполнить действие', 'Could not complete the action')} action={<Button onClick={() => run('refresh', () => c.refresh())}>{t('Повторить', 'Retry')}</Button>}>{c.error}</Notice> : null
   if (!data) return <div className="dictation-page"><h2 className="settings-page-heading">{t('Диктовка', 'Dictation')}</h2><section className="dictation-welcome"><span className="dictation-welcome__icon"><Mic size={30} /></span><h3>{t('Говорите — текст появится там, где курсор', 'Speak where you type')}</h3><p>{t('Распознавание работает на компьютере. Выберите модель, сочетание клавиш и попробуйте короткую запись.', 'Speech is recognized on your computer. Choose a model and a shortcut, then try a short recording.')}</p><Button type="button" variant="primary" disabled={Boolean(c.busy)} onClick={() => { void onEnable().then(() => onPage('models')).catch(() => undefined) }}>{c.busy ? t('Подготовка…', 'Preparing…') : t('Настроить диктовку', 'Set up dictation')}</Button><small>{t('На этом шаге модели не скачиваются.', 'No models are downloaded at this step.')}</small></section>{error}</div>
   const s = data.settings
-  const model = data.models.find((item) => item.id === s.selected_model)
   const recording = data.status?.phase === 'recording' || data.status?.phase === 'streaming'
   const selectedProvider = s.post_process_providers?.find((item) => item.id === s.post_process_provider_id)
   const selectedPrompt = s.post_process_prompts?.find((item) => item.id === s.post_process_selected_prompt_id)
@@ -59,7 +64,7 @@ export function DictationSettings({ controller: c, page, locale, onEnable, onDis
       <section className="dictation-card"><DictationField label={t('Модель', 'Model')} hint={model?.name ?? t('Сначала выберите и скачайте модель.', 'Choose and download a model first.')}><Button type="button" onClick={() => onPage('models')}>{t('Выбрать', 'Choose')}</Button></DictationField>
         {select(t('Микрофон', 'Microphone'), s.selected_microphone ?? 'default', [['default', t('Системный', 'System default')], ...data.microphones.map((device): [string, string] => [device.name, device.name])], api.setSelectedMicrophone, t('Выберите исходный микрофон. Виртуальный вход Better Voice можно выбрать отдельно.', 'Choose your original microphone. You can select the Better Voice virtual input explicitly.'))}
         {channels > 1 ? select(t('Канал', 'Channel'), s.selected_channel ?? 'all', [['all', t('Все каналы', 'All channels')], ...Array.from({ length: channels }, (_, index): [string, string] => [String(index), String(index + 1)])], (value) => api.setSelectedChannel(value === 'all' ? null : Number(value))) : null}
-        {model?.supports_language_selection ? select(t('Язык речи', 'Speech language'), s.selected_language ?? 'auto', [...(model.supports_language_detection ? [['auto', t('Определять', 'Detect')] as [string, string]] : []), ...model.supported_languages.map((language): [string, string] => [language, new Intl.DisplayNames([locale], { type: 'language' }).of(language) ?? language])], api.changeSelectedLanguageSetting) : null}
+        {model?.supports_language_selection ? select(t('Язык речи', 'Speech language'), s.selected_language ?? 'auto', [...(model.supports_language_detection ? [['auto', t('Определять', 'Detect')] as [string, string]] : []), ...languageOptions], api.changeSelectedLanguageSetting) : null}
         {model?.supports_translation ? toggle(t('Переводить на английский', 'Translate to English'), 'translate_to_english', api.changeTranslateToEnglishSetting) : null}
       </section>
       <section className="dictation-card"><h3>{t('Короткая проба', 'Try a short recording')}</h3><p>{t('Откройте текстовое поле в любом приложении и нажмите сочетание. Результат также останется в истории.', 'Open a text field in any app and press the shortcut. The result will also be available in History.')}</p><Button type="button" variant="primary" disabled={!c.enabled || !model?.is_downloaded} onClick={() => run('try', () => api.toggle())}><Mic size={16} />{recording ? t('Закончить запись', 'Stop recording') : t('Начать запись', 'Start recording')}</Button><Button type="button" disabled={!c.enabled || !recording} onClick={() => run('cancel', () => api.cancelOperation())}>{t('Отменить запись', 'Cancel recording')}</Button></section>

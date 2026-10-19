@@ -8,9 +8,13 @@ export function useDictationMotion(active: boolean, still: boolean, level: numbe
   const [frame, setFrame] = useState({ time: 0, level: 0 })
   useEffect(() => {
     if (!active || still) return
-    let raf = 0, last = 0
+    let raf = 0, last: number | null = null
     const tick = (now: number) => {
-      const delta = last ? Math.min(100, now - last) : 0
+      if (last !== null && now - last < 1000 / 30 - .5) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
+      const delta = last === null ? 0 : Math.min(100, now - last)
       last = now; clock.current.elapsed += delta
       const time = clock.current.elapsed / 1000
       // Short silent pauses show the face between spoken phrases in the preview.
@@ -21,7 +25,7 @@ export function useDictationMotion(active: boolean, still: boolean, level: numbe
       raf = requestAnimationFrame(tick)
     }
     const update = () => {
-      cancelAnimationFrame(raf); last = 0
+      cancelAnimationFrame(raf); last = null
       if (document.visibilityState === 'visible') raf = requestAnimationFrame(tick)
     }
     document.addEventListener('visibilitychange', update)

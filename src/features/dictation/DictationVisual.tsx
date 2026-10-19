@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { memo, type CSSProperties } from 'react'
 import { AnimatePresence, motion as animated } from 'framer-motion'
 import { Check, LoaderCircle, Mic, X } from '../../shared/ui/SettingsIcons'
 import { dictationArtworkDefaults, dictationPaletteColors, type DictationAppearance } from '../../shared/lib/dictationAppearance'
@@ -15,9 +15,9 @@ const faces = {
   love: ['01010', '11111', '11111', '01110', '00100'],
 } as const
 const ears = ['0010000', '0011000', '0111000', '0111100', '0111100', '1111110', '1111110', '1111111', '1111111']
-function Glyph({ rows, x, y, className }: { rows: readonly string[]; x: number; y: number; className?: string }) {
+const Glyph = memo(function Glyph({ rows, x, y, className }: { rows: readonly string[]; x: number; y: number; className?: string }) {
   return <g className={className}>{rows.flatMap((row, iy) => [...row].flatMap((cell, ix) => cell === '1' ? <rect key={`${iy}:${ix}`} x={x + ix * 2} y={y + iy * 2} width="1.7" height="1.7" rx=".25" /> : []))}</g>
-}
+})
 
 function Arcade({ time, operationId, still }: { time: number; operationId: number; still: boolean }) {
   const selected = (['pong', 'starship', 'snake', 'breakout'] as const)[(Math.floor(time / 6) + operationId) % 4]

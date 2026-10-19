@@ -3,8 +3,10 @@ import { defaultDictationAppearance, getDictationAppearance, normalizeDictationA
 import type { AppConfig } from './types'
 import { withUiPrefs } from './uiPrefs'
 
-it('keeps the established theme for old profiles and salvages malformed artwork preferences', () => {
+it('defaults to Fox, preserves explicit saved themes and salvages malformed preferences', () => {
   expect(normalizeDictationAppearance(undefined)).toEqual(defaultDictationAppearance)
+  expect(defaultDictationAppearance.theme).toBe('pixels')
+  expect(normalizeDictationAppearance({ theme: 'classic' }).theme).toBe('classic')
   expect(normalizeDictationAppearance({ theme: 'unknown', character: 'cat', brightness: NaN })).toEqual(defaultDictationAppearance)
   expect(normalizeDictationAppearance({ theme: 'wave', palette: 'siri' })).toEqual({ theme: 'wave', palette: 'accent', chromatic: false })
   expect(normalizeDictationAppearance({ theme: 'pixels', palette: 'white' })).toEqual({ theme: 'pixels', palette: 'white', chromatic: false })

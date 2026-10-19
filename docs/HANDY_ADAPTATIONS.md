@@ -117,3 +117,29 @@ core action. Cancellation shortcuts and failed-insertion Copy/Dismiss remain.
 The existing toggle command is explicitly allowed in the recording overlay ACL;
 it previously had a frontend Finish button without permission to invoke it.
 Settings preview reads the same saved activation mode. No new IPC command.
+
+## Windows clipboard correction (3.0.3)
+
+Upstream [#502](https://github.com/cjpais/Handy/issues/502) remains open. The latest
+stable [Handy 0.9.8](https://github.com/cjpais/Handy/releases/tag/v0.9.8), checked
+2026-10-20, does not list a fix for this race; our vendored baseline remains 0.9.7.
+Music Island now always uses delayed-render paste on Windows, without the unsafe
+60ms legacy fallback. The foreground process must request CF_UNICODETEXT after
+injection before restoration is permitted. Clipboard managers and unknown readers
+are not target acknowledgements. If no acknowledgement arrives within 8s, or
+injection partially fails, leave the transcript available for late/manual paste.
+The unique owner HWND is checked while the clipboard is locked, preserving a newer
+user copy. Auto-submit also requires an acknowledged paste and original foreground
+process. The configurable before delay is retained; after delay is a minimum quiet
+period after acknowledged reading (at least 200ms). The old experimental reliable
+paste flag remains serialized for compatibility but cannot disable Windows safety.
+macOS/Linux behavior and the inference ABI/bundle are unchanged.
+
+The Windows integration regression runs in a dedicated test process with its own
+window station and desktop (including the worker thread), so it never borrows the
+interactive clipboard. It covers a 900ms delayed target read, actual restoration,
+a foreign-process receipt followed by timeout, and a newer user copy. Run it via
+`cargo test --manifest-path src-tauri/Cargo.toml -p music-island-handy-core isolated_windows_delayed_read_manager_and_new_copy -- --ignored --test-threads=1`.
+The core test binary embeds Common Controls v6, matching the host manifest.
+The finished transaction suppresses WM_RENDERALLFORMATS so window teardown cannot
+replace a restored snapshot with the transcript again.

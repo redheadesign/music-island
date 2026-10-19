@@ -186,4 +186,13 @@ See [the implementation report](UI_UX_PASS_2026-10-06.md) for recorded checks.
 
 Дополнительные состояния UI/UX: `Screens/Dictation/DisabledLight` показывает общий фон Better Voice при выключенной диктовке; `Molecules/ModelCard/SelectedLight` — зелёный тег выбранной модели в светлой теме.
 
+`Molecules/DictationOverlay/ClassicHold` проверяет равные отступы у микрофона и
+волны. `FoxRestart` скрывает и снова показывает production-overlay, проверяя
+сохранение canvas и появление лисы; скрытая SVG-анимация не остаётся в DOM.
+
 `Screens/Settings/DictationInput` checks real key capture, native-adapter mock persistence across navigation, and the trailing-period switch in Advanced → Text insertion.
+
+Dictation General uses the same default appearance and theme order as production:
+Fox, Waves, Classic. Classic recording stories explicitly choose Classic. Wave
+thumbnails use the real cloud renderer with a fixed speech sample, rather than
+alternate artwork. ClassicHold checks both 9px label gaps and 14px outer insets.

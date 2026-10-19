@@ -8,18 +8,20 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
   coreRef?: RefObject<HTMLElement | null>; expanded?: boolean; singleControl?: boolean
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
-  const input = useRef({ appearance, phase, levels, demo, coreRef, expanded, singleControl })
-  input.current = { appearance, phase, levels, demo, coreRef, expanded, singleControl }
+  const input = useRef({ appearance, phase, levels, demo, coreRef, expanded, singleControl, active, still })
+  input.current = { appearance, phase, levels, demo, coreRef, expanded, singleControl, active, still }
   const redraw = useRef<(() => void) | null>(null)
-  const [failed, setFailed] = useState(false)
+  // A cheap, visible material while WebGL is being prepared (or unavailable).
+  const [ready, setReady] = useState(false)
   useEffect(() => {
     const surface = canvas.current
     if (!surface) return
     let renderer: DictationCloudRenderer | null = null
-    let raf = 0, last = 0, time = 0, envelope = 0
+    let raf = 0, last: number | null = null, time = 0, envelope = 0, attempted = false
+    let accent = [94/255,106/255,210/255]
     const paint = (delta: number) => {
       if (!renderer) return
-      const next = input.current, recording = ['recording','streaming'].includes(next.phase)
+      const next = input.current, { still, active } = next, recording = ['recording','streaming'].includes(next.phase)
       const peak = Math.max(0,...next.levels.filter(Number.isFinite))
       const sample = next.demo && recording ? Math.sin(time*2.4)>-.25 ? .25+.55*Math.abs(Math.sin(time*4.1)) : 0 : recording ? peak : 0
       const target = Math.max(0,Math.min(1,sample))
@@ -29,33 +31,41 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
         width: surface.clientWidth, height: surface.clientHeight, bounds, coreBounds, expanded: next.expanded,
       })
       const controls = !next.expanded && next.coreRef ? Math.max(0,Math.min(1,(width-92)/(next.singleControl ? 40 : 80))) : 0
-      const accent = getComputedStyle(surface).getPropertyValue('--accent').trim()
-      const match = accent.match(/^#([\da-f]{6})$/i)
-      const color = match ? [0,2,4].map(at=>parseInt(match[1].slice(at,at+2),16)/255) : [94/255,106/255,210/255]
       const frame: CloudFrame = { time: still ? 0 : time, delta, level: envelope, phase: next.phase, instant: still || !active,
         appearance: next.appearance, controls, coreWidth, coreX, singleControl: next.singleControl, coreHeight: next.expanded ? height-6 : 44,
-        coreY: next.expanded ? height/2 : height-25, accent: color }
-      try { renderer.render(frame) } catch { setFailed(true); cancelAnimationFrame(raf); renderer.dispose(); renderer=null }
+        coreY: next.expanded ? height/2 : height-25, accent }
+      try { renderer.render(frame); setReady(true) } catch { setReady(false); cancelAnimationFrame(raf); renderer.dispose(); renderer=null }
     }
     const tick = (now: number) => {
-      const delta = last ? Math.min(.1,(now-last)/1000) : 0
-      last=now; time+=delta; paint(delta)
+      // The tiny surface does not need to run at a 120/144 Hz monitor's rate.
+      if (last === null || now-last >= 1000/30-.5) {
+        const delta = last === null ? 0 : Math.min(.1,(now-last)/1000)
+        last=now; time+=delta; paint(delta)
+      }
       if (renderer) raf=requestAnimationFrame(tick)
     }
     const update = () => {
-      cancelAnimationFrame(raf); last=0
-      if (document.visibilityState !== 'visible') return
-      paint(0)
-      if (active && !still && renderer) raf=requestAnimationFrame(tick)
+      cancelAnimationFrame(raf); last=null
+      const next = input.current
+      if (!next.active || document.visibilityState !== 'visible') return
+      const match = getComputedStyle(surface).getPropertyValue('--accent').trim().match(/^#([\da-f]{6})$/i)
+      accent = match ? [0,2,4].map(at=>parseInt(match[1].slice(at,at+2),16)/255) : [94/255,106/255,210/255]
+      if (renderer) {
+        paint(0)
+        if (!next.still && renderer) raf=requestAnimationFrame(tick)
+      } else if (!attempted) {
+        // Let the SVG fox and fallback capsule paint before compiling shaders.
+        raf=requestAnimationFrame(() => { raf=requestAnimationFrame(initialize) })
+      }
     }
     const initialize = () => {
-      try { renderer=new DictationCloudRenderer(surface); setFailed(false); update() }
-      catch { setFailed(true) }
+      attempted=true
+      try { renderer=new DictationCloudRenderer(surface); update() }
+      catch { renderer?.dispose(); renderer=null; setReady(false) }
     }
-    const lost = (event: Event) => { event.preventDefault(); cancelAnimationFrame(raf); renderer?.dispose(); renderer=null; setFailed(true) }
-    const restored = () => initialize()
-    initialize()
-    redraw.current = () => { if ((!active || still) && document.visibilityState === 'visible') paint(0) }
+    const lost = (event: Event) => { event.preventDefault(); cancelAnimationFrame(raf); attempted=true; renderer?.dispose(); renderer=null; setReady(false) }
+    const restored = () => { attempted=false; update() }
+    redraw.current = update
     document.addEventListener('visibilitychange',update)
     surface.addEventListener('webglcontextlost',lost)
     surface.addEventListener('webglcontextrestored',restored)
@@ -64,8 +74,9 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
       document.removeEventListener('visibilitychange',update)
       surface.removeEventListener('webglcontextlost',lost);surface.removeEventListener('webglcontextrestored',restored)
     }
-  }, [active,still])
-  useEffect(() => { redraw.current?.() }, [appearance,phase,levels,expanded,singleControl])
-  return <canvas ref={canvas} className={'dictation-cloud-surface'+(appearance.theme==='wave'?' dictation-visual--wave':'')} data-fallback={failed || undefined} aria-hidden="true" />
+  }, [])
+  useEffect(() => { redraw.current?.() }, [active,still,appearance,phase,expanded,singleControl])
+  useEffect(() => { if (active && still) redraw.current?.() }, [active,still,levels])
+  return <canvas ref={canvas} className={'dictation-cloud-surface'+(appearance.theme==='wave'?' dictation-visual--wave':'')} data-fallback={!ready || undefined} aria-hidden="true" />
 }
 

@@ -31,3 +31,25 @@ it('preserves the clock across speech, recognition and a paused result, and canc
     expect(time()).toBeCloseTo(.25)
   } finally { await act(async () => root.unmount()); raf.mockRestore(); cancel.mockRestore(); container.remove() }
 })
+
+it('limits React artwork updates to 30 fps while preserving elapsed time', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  let tick: FrameRequestCallback = () => {}
+  const raf = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(callback => { tick = callback; return 42 })
+  const cancel = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {})
+  const container = document.createElement('div'), root = createRoot(container)
+  let renders = 0
+  function Probe() {
+    const frame = useDictationMotion(true, false, .5, false)
+    renders++
+    return <output data-time={frame.time} />
+  }
+  try {
+    await act(async () => root.render(<Probe />))
+    renders = 0
+    for (let at = 100; at <= 1100; at += 8) await act(async () => tick(at))
+    expect(renders).toBeLessThanOrEqual(31)
+    expect(renders).toBeGreaterThanOrEqual(24)
+    expect(Number(container.querySelector('output')?.dataset.time)).toBeCloseTo(1, 1)
+  } finally { await act(async () => root.unmount()); raf.mockRestore(); cancel.mockRestore() }
+})

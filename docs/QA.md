@@ -106,6 +106,11 @@ October 7 Handy fixes need these additional interactive Windows checks:
 
 - Classic/Waves/Fox: hold recording and live capture show no Stop/Cancel;
   releasing the binding finishes. Toggle/combined show one working Finish.
+- Classic hold: microphone and waveform have equal 14px horizontal insets.
+  Fox/Waves: compare first and repeated hotkey-to-visible latency under Windows
+  CPU/GPU load; the character/control must remain visible while effects initialize.
+  Check hide/show, hold/toggle, expanded text and GPU context recovery. Retaining
+  the canvas must not leave animation running in a hidden overlay.
 - Tap/release repeatedly, then use Escape in another app; the cancel binding
   must not remain registered. Repeat with both keyboard backends and a switch.
 - In a disposable profile with no usable model, starting dictation must not
@@ -151,3 +156,19 @@ recorded automated/headless results and the interactive Windows checks still ope
   Reopen after quitting and confirm devices work and partial downloads remain recoverable.
 
 Latest recorded evidence: [23 September consistency pass](QA_CONSISTENCY_2026-09-23.md).
+
+### 3.0.3 Windows paste regression
+
+- Copy a distinct marker, dictate a different phrase into the target editor, and
+  repeat with the target busy for more than the previous 60ms restore delay.
+- Repeat with clipboard history/manager enabled, and Ctrl+V, Ctrl+Shift+V and
+  Shift+Insert. The target must receive the transcript, never the saved marker.
+- In Restore mode, an acknowledged target read restores the old clipboard after
+  the quiet period. Unknown/third-party first readers keep the transcript at
+  timeout; this is a deliberate safe fallback for late/manual paste.
+- Copy new content while a paste waits: it must survive transaction completion.
+- Enable auto-submit, change foreground windows while waiting: Enter must not go
+  to the new window. Injection/setup failures must offer the existing Copy action.
+- In Classic hold mode, verify both label gaps are 9px and outer insets 14px.
+- Reopen General and switch all themes; thumbnails match the production renderer,
+  and the selected live preview and settings controls remain functional.

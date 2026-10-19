@@ -153,6 +153,12 @@ Native media events carry provider/command generation and track identity. Naviga
 
 The model catalog lives in the dictation feature: locale changes recommendation/filter policy only. `DictationModels` coordinates actions and dialogs; `ModelCard` is the reusable rendering component. Shared `ActionMenu` reuses Select's portal, placement and keyboard implementation. Production imports never point to release scenes or mocks.
 
+Dictation's cloud canvas retains its WebGL context between recordings and pauses
+all artwork clocks while hidden or inactive. The SVG fox and a CSS fallback
+capsule paint before deferred GPU initialization; material programs are cached,
+and wave/particle shaders compile only when used. GPU and fox updates are capped
+at 30 fps independently of monitor refresh rate; reduced motion paints on changes.
+
 `get_launch_state` includes the current executable path. `finish_onboarding(generation, enableAutostart?)` preserves the launch-generation guard and performs registration outside the Windows event loop. Only an explicit true enables startup; omission preserves the preference. Registration/save failures return an error and restore the prior autostart preference where possible. Existing profiles and `--startup` do not open the introduction.
 
 The preview camera uses a transform with a measured layout footprint. Drag hit-testing and copy placement use viewport coordinates. The portal copy freezes computed appearance before leaving ancestor selectors and inherited tokens.
@@ -177,3 +183,8 @@ Release images and the seekable 46-second motion scenes live only in Storybook. 
 animation, About and release scenes share it. The icon generator derives PNG/ICO
 from that source. Static brand assets are the only root-asset dependency accepted
 by the shared import boundary (no app or feature modules).
+
+Windows dictation uses target-process-attributed delayed-render clipboard paste
+by default. Restoration checks the unique owner HWND under the clipboard lock;
+unacknowledged timeouts keep plain transcript text available. Theme thumbnails
+render production artwork; language names share one memoized Intl.DisplayNames instance.

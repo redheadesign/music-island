@@ -34,9 +34,11 @@ dialog.dictation-confirm:not([open]) { display: none; }
 dialog.dictation-confirm::backdrop { background: var(--overlay-scrim); }
 dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-overlay { width: 224px; max-width: calc(100vw - 8px); margin: 4px auto; color: var(--fg-primary); background: var(--surface-panel, #272727); border-radius: 22px; overflow: hidden; animation: dictation-arrive 320ms var(--ease-enter); transition: width 320ms var(--ease-standard), background-color 200ms ease; }
-.dictation-overlay__bar { min-height: 40px; box-sizing: border-box; padding: 0 8px 0 14px; display: flex; align-items: center; gap: 9px; font-size: 12px; }
+.dictation-overlay__bar { min-height: 40px; box-sizing: border-box; padding: 0 14px; display: flex; align-items: center; gap: 9px; font-size: 12px; }
 .dictation-overlay__art { display: grid; place-items: center; flex-shrink: 0; }
 .dictation-overlay__label { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dictation-overlay[data-theme='classic']:not([data-expanded]):is([data-phase='recording'], [data-phase='streaming']) { width: fit-content; }
+.dictation-overlay[data-theme='classic']:not([data-expanded]):is([data-phase='recording'], [data-phase='streaming']) .dictation-overlay__label { flex: 0 1 auto; }
 .dictation-overlay__bar button { flex-shrink: 0; }
 .dictation-overlay__bar button { display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
 .dictation-overlay__bar button:hover { background: var(--control-surface-hover); }
@@ -179,10 +181,10 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-overlay.dictation-overlay--cloud {
   position: relative; width: 92px; height: 50px; margin: 0 auto; background: transparent;
   border-radius: 0; overflow: visible; isolation: isolate;
-  animation: dictation-cloud-arrive 320ms ease;
+  animation: none;
   transition: width 520ms cubic-bezier(.2,.78,.22,1), height 520ms cubic-bezier(.2,.78,.22,1);
 }
-@keyframes dictation-cloud-arrive { from { opacity: 0; } }
+.dictation-overlay[hidden] { display: none; }
 .dictation-overlay--cloud:is([data-phase='recording'],[data-phase='streaming']) { width: 92px; }
 .dictation-overlay.dictation-overlay--cloud:is([data-phase='preparing'],[data-phase='transcribing'],[data-phase='processing'],[data-phase='completed'],[data-phase='cancelled'],[data-phase='error']) { width: 92px; }
 .dictation-overlay--cloud .dictation-cloud-surface { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }

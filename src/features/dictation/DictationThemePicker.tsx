@@ -7,6 +7,7 @@ import { DictationVisual } from './DictationVisual'
 
 const themeNames = { classic: ['Классическая', 'Classic'], wave: ['Волны', 'Waves'], pixels: ['Лиса', 'Fox'] }
 const paletteNames = { accent: ['Акцент', 'Accent'], white: ['Белый', 'White'], prism: ['Призма', 'Prism'], aurora: ['Аврора', 'Aurora'], lagoon: ['Лагуна', 'Lagoon'], sakura: ['Сакура', 'Sakura'], ember: ['Угли', 'Ember'], dune: ['Дюны', 'Dune'] }
+const previewLevels = [.65]
 
 export function DictationThemePicker({ value, onChange, locale }: { value: DictationAppearance; onChange: (value: DictationAppearance) => void; locale: 'ru' | 'en' }) {
   const ru = locale === 'ru', index = ru ? 0 : 1
@@ -17,7 +18,7 @@ export function DictationThemePicker({ value, onChange, locale }: { value: Dicta
     <div className="dictation-theme-picker" role="radiogroup" aria-label={t('Тема диктовки', 'Dictation theme')}>
       {dictationThemes.map(theme => <label className="dictation-theme-choice" key={theme} data-selected={value.theme === theme}>
         <input type="radio" name={`${id}-theme`} value={theme} checked={value.theme === theme} onChange={() => patch({ theme })} />
-        <span className="dictation-theme-choice__art" aria-hidden="true"><DictationVisual appearance={{ ...value, theme }} phase={theme === 'pixels' ? 'preparing' : 'recording'} levels={[]} still /></span>
+        <span className="dictation-theme-choice__art" aria-hidden="true"><DictationVisual appearance={{ ...value, theme }} phase={theme === 'pixels' ? 'preparing' : 'recording'} levels={previewLevels} still /></span>
         <span className="dictation-theme-choice__name">{themeNames[theme][index]}</span>
         {value.theme === theme ? <Check className="dictation-theme-choice__check" size={15} aria-hidden="true" /> : null}
       </label>)}

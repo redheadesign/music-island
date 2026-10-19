@@ -2,7 +2,7 @@
 
 Control music from the top edge of your Windows desktop and type with your voice in the app you are using
 
-**3.0.2** · Windows 10/11 · [GPL-3.0-or-later](LICENSE) · local-first · no telemetry
+**3.0.3** · Windows 10/11 · [GPL-3.0-or-later](LICENSE) · local-first · no telemetry
 
 [**Download the latest published version**](https://github.com/redheadesign/music-island/releases/latest) · [Website](https://music-island.space/) · [What's new](CHANGELOG.md) · [Component workshop](docs/STORYBOOK.md)
 

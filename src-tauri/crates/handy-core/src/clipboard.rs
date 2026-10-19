@@ -803,13 +803,11 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
             )?;
         }
         PasteMethod::CtrlV | PasteMethod::CtrlShiftV | PasteMethod::ShiftInsert => {
-            // Debug-gated receipt-sequenced paste (#502): restore the clipboard
-            // after the target actually reads the transcript, not on a timer.
-            // On success it fully handles the paste (including auto-submit and
-            // clipboard handling) asynchronously; on failure fall through to
-            // the legacy path untouched.
+            // Windows always uses target-attributed delayed rendering. Never
+            // fall back to a fixed restore delay after queuing a paste (#502).
+            // macOS retains the upstream opt-in compatibility path.
             #[cfg(any(target_os = "macos", target_os = "windows"))]
-            if settings.reliable_paste {
+            if cfg!(target_os = "windows") || settings.reliable_paste {
                 let reliable_result = with_enigo(&app_handle, |enigo| {
                     crate::paste_tx::try_reliable_paste(
                         &text,
@@ -824,6 +822,10 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
                 match reliable_result {
                     Ok(()) => return Ok(()),
                     Err(e) => {
+                        // Never enqueue a Windows paste on the unsafe fixed-delay path.
+                        #[cfg(target_os = "windows")]
+                        return Err(e);
+                        #[cfg(not(target_os = "windows"))]
                         log::warn!("Reliable paste unavailable ({e}); falling back to legacy paste")
                     }
                 }

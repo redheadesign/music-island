@@ -39,7 +39,7 @@ const waveDefaults = {
 export class DictationCloudRenderer {
   private canvas: HTMLCanvasElement
   private gl: WebGL2RenderingContext
-  private programs: Program[] = []
+  private programs = new Map<number, Program>()
   private targets: Target[] = []
   private vao: WebGLVertexArrayObject | null
   private empty: WebGLTexture
@@ -61,9 +61,6 @@ export class DictationCloudRenderer {
     this.vao = gl.createVertexArray()
     this.empty = this.texture()
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([3,4,8,255]))
-    try {
-      for (const source of [wave,dots,background,composite,glass]) this.programs.push(this.program(source))
-    } catch (error) { this.dispose(); throw error }
   }
   private program(source: string): Program {
     const gl = this.gl
@@ -111,7 +108,13 @@ export class DictationCloudRenderer {
     return this.targets[index] = {texture,framebuffer,width,height}
   }
   private draw(index: number, uniforms: Record<string, Uniform>, textures: [string,WebGLTexture][] = []) {
-    const gl = this.gl, program = this.programs[index]
+    const gl = this.gl
+    if (!this.programs.has(index)) {
+      // Fox uses only the material passes. Compile wave/particle programs only
+      // when that artwork is actually drawn, then reuse them across recordings.
+      this.programs.set(index,this.program([wave,dots,background,composite,glass][index]))
+    }
+    const program = this.programs.get(index)!
     gl.useProgram(program.value); gl.bindVertexArray(this.vao)
     const location = (name: string) => {
       if (!program.locations.has(name)) program.locations.set(name,gl.getUniformLocation(program.value,name))

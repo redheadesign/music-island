@@ -1,6 +1,14 @@
 use std::{env, fs, path::PathBuf};
 mod embed_assets;
 fn main() {
+    // Clipboard integration tests reach Tauri's Windows APIs. Their standalone
+    // test EXE needs the same Common Controls version as the host application.
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
+        && env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc")
+    {
+        println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
+        println!("cargo:rustc-link-arg=/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'");
+    }
     println!("cargo:rerun-if-env-changed=MUSIC_ISLAND_DICTATION_BUNDLE");
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     embed_assets::embed_directory(
