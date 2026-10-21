@@ -508,7 +508,8 @@ pub struct AppSettings {
     pub paste_delay_after_ms: u64,
     /// Debug-gated ("beta") receipt-sequenced paste: restore the clipboard only
     /// after the target app actually reads the transcript, instead of after a
-    /// fixed delay. See `paste_tx`. macOS and Windows only.
+    /// fixed delay. See `paste_tx`. macOS only; retained but ignored on Windows
+    /// after the 3.0.3 experimental path was withdrawn.
     #[serde(default)]
     pub reliable_paste: bool,
     #[serde(default = "default_typing_tool")]

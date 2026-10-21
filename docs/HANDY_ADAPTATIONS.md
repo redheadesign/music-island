@@ -118,7 +118,30 @@ The existing toggle command is explicitly allowed in the recording overlay ACL;
 it previously had a frontend Finish button without permission to invoke it.
 Settings preview reads the same saved activation mode. No new IPC command.
 
-## Windows clipboard correction (3.0.3)
+## Windows clipboard rollback (3.0.4 candidate)
+
+User reports on 2026-10-21 exposed regressions in 3.0.3, especially consecutive
+phrases. DontModify could leave a transcript indefinitely after an unattributed
+read/timeout, and subsequent workers could snapshot it as the user's clipboard.
+Transient OpenClipboard contention failed immediately instead of using the old
+clipboard library's retries. Withdraw the Windows transaction implementation from
+production compilation entirely, including saved experimental opt-ins. Retain the
+3.0.3 appearance and rendering changes.
+
+Return to synchronous 3.0.2 insertion and check the Windows sequence before restoring
+saved content. Hold FinishGuard until the scheduled main-thread insertion actually
+returns: merely scheduling it previously drained the coordinator early and let a
+new recording replace the captured target/status under load. This rollback retains
+the fixed-delay path's known late-read limitation; do not claim #502 is solved.
+
+Windows events confirm two 3.0.3 heap-corruption crashes (0xc0000374) on October 21
+at 13:54:45 and 14:25:37 Moscow. WER archived reports remain but their temporary
+dumps do not. They identify detection in ntdll, not the corrupting call; the cause
+is unconfirmed. A separate October 20 Tao Destroyed-state panic also predates this
+report. Add a bounded, text-free lifecycle log independent of the empty host logger
+and capture future Rust panic backtraces. No global dump/registry configuration.
+
+## Windows clipboard experiment (3.0.3; withdrawn on Windows)
 
 Upstream [#502](https://github.com/cjpais/Handy/issues/502) remains open. The latest
 stable [Handy 0.9.8](https://github.com/cjpais/Handy/releases/tag/v0.9.8), checked

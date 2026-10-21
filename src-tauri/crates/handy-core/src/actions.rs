@@ -48,6 +48,21 @@ impl Drop for FinishGuard {
     }
 }
 
+/// Keep pipeline ownership until a queued insertion actually finishes. Closing
+/// the scheduler/early cancellation also drops the sender and releases the wait.
+async fn complete_scheduled_insertion<E>(
+    schedule: impl FnOnce(Box<dyn FnOnce() + Send>) -> Result<(), E>,
+    insert: impl FnOnce() + Send + 'static,
+) -> Result<(), E> {
+    let (done, finished) = tokio::sync::oneshot::channel::<()>();
+    schedule(Box::new(move || {
+        let _done = done;
+        insert();
+    }))?;
+    let _ = finished.await;
+    Ok(())
+}
+
 // Shortcut Action Trait
 pub trait ShortcutAction: Send + Sync {
     fn start(&self, app: &AppHandle, binding_id: &str, shortcut_str: &str);
@@ -836,7 +851,7 @@ impl ShortcutAction for TranscribeAction {
                                 let paste_time = Instant::now();
                                 let final_text = processed.final_text;
                                 let rm_for_paste = Arc::clone(&rm);
-                                ah.run_on_main_thread(move || {
+                                complete_scheduled_insertion(|job| ah.run_on_main_thread(job), move || {
                                     if rm_for_paste.was_cancelled_since(cancel_generation) {
                                         debug!("Transcription operation cancelled before paste");
                                         utils::hide_recording_overlay(&ah_clone);
@@ -845,6 +860,7 @@ impl ShortcutAction for TranscribeAction {
                                     }
 
                                     let text_for_status = final_text.clone();
+                                    crate::diagnostics::event("insertion begin (synchronous clipboard rollback)");
                                     let paste_result = (if matches!(
                                         crate::settings::get_settings(&ah_clone).paste_method,
                                         crate::settings::PasteMethod::None
@@ -854,6 +870,10 @@ impl ShortcutAction for TranscribeAction {
                                         crate::focus_target::restore()
                                     })
                                     .and_then(|_| utils::paste(final_text, ah_clone.clone()));
+                                    crate::diagnostics::event(&match &paste_result {
+                                        Ok(()) => format!("insertion complete elapsed_ms={}", paste_time.elapsed().as_millis()),
+                                        Err(error) => format!("insertion failed: {error}"),
+                                    });
                                     crate::status::result(
                                         &ah_clone,
                                         text_for_status,
@@ -871,7 +891,7 @@ impl ShortcutAction for TranscribeAction {
                                     }
                                     utils::hide_recording_overlay(&ah_clone);
                                     set_tray_state(&ah_clone, TrayIconState::Idle);
-                                })
+                                }).await
                                 .unwrap_or_else(|e| {
                                     error!("Failed to run paste on main thread: {:?}", e);
                                     utils::hide_recording_overlay(&ah);
@@ -990,7 +1010,7 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
 #[cfg(test)]
 mod tests {
     use super::{
-        complete_unless_cancelled, is_blank_transcription, should_use_streaming_overlay,
+        complete_scheduled_insertion, complete_unless_cancelled, is_blank_transcription, should_use_streaming_overlay,
         strip_think_block,
     };
     use crate::settings::OverlayStyle;
@@ -999,6 +1019,32 @@ mod tests {
     use std::sync::Arc;
     use std::thread;
     use std::time::Duration;
+
+    #[test]
+    fn queued_insertion_holds_pipeline_until_execution() {
+        tauri::async_runtime::block_on(async {
+            let (sender, receiver) = std::sync::mpsc::channel();
+            let inserted = Arc::new(AtomicBool::new(false));
+            let flag = inserted.clone();
+            let mut pending = Box::pin(complete_scheduled_insertion(
+                |job| sender.send(job),
+                move || { flag.store(true, Ordering::SeqCst); },
+            ));
+            assert!(futures_util::poll!(pending.as_mut()).is_pending());
+            assert!(!inserted.load(Ordering::SeqCst));
+            receiver.recv().unwrap()();
+            assert!(futures_util::poll!(pending.as_mut()).is_ready());
+            assert!(inserted.load(Ordering::SeqCst));
+        });
+    }
+
+    #[test]
+    fn discarded_or_rejected_insertion_does_not_strand_pipeline() {
+        tauri::async_runtime::block_on(async {
+            assert!(complete_scheduled_insertion(|_job| Ok::<_, ()>(()), || {}).await.is_ok());
+            assert!(complete_scheduled_insertion(|_job| Err::<(), _>("closed"), || {}).await.is_err());
+        });
+    }
 
     #[test]
     fn blank_transcription_is_detected() {

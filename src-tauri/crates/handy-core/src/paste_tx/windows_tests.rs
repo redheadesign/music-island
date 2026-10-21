@@ -179,6 +179,34 @@ fn isolated_windows_delayed_read_manager_and_new_copy() {
         write(reader, "new user copy wins");
         worker.join().unwrap();
         assert_eq!(read(reader), "new user copy wins");
+
+        // Production Windows now uses the synchronous 3.0.2 finish path.
+        // Exercise its ordering and sequence guard with a real isolated
+        // clipboard, including a newer copy between injection and restore.
+        use crate::clipboard::{clipboard_is_unchanged, finish_clipboard_paste};
+        write(reader, "original rapid-dictation marker");
+        for phrase in ["phrase one", "phrase two", "phrase three"].into_iter().cycle().take(60) {
+            let saved = read(reader);
+            write(reader, phrase);
+            let published = GetClipboardSequenceNumber();
+            assert_eq!(read(reader), phrase);
+            finish_clipboard_paste(Ok(()), 0, || {
+                if clipboard_is_unchanged(published, GetClipboardSequenceNumber()) {
+                    write(reader, &saved);
+                }
+            }).unwrap();
+            assert_eq!(read(reader), "original rapid-dictation marker");
+        }
+        let saved = read(reader);
+        write(reader, "dictated text before a new copy");
+        let published = GetClipboardSequenceNumber();
+        write(reader, "new user copy during synchronous insertion");
+        finish_clipboard_paste(Ok(()), 0, || {
+            if clipboard_is_unchanged(published, GetClipboardSequenceNumber()) {
+                write(reader, &saved);
+            }
+        }).unwrap();
+        assert_eq!(read(reader), "new user copy during synchronous insertion");
         DestroyWindow(reader).unwrap();
     }
 }

@@ -67,7 +67,7 @@ import { AppLogo } from '../../shared/ui/AppLogo'
 import './settings.css'
 export { IslandPreview as AppearancePreview } from './IslandPreview'
 
-const APP_VERSION = '3.0.3'
+const APP_VERSION = '3.0.4'
 
 interface SettingsPanelProps {
   usage?: UsageController

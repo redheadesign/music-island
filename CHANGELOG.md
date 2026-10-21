@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.0.4 — 2026-10-21
+
+- Withdraw the Windows delayed-render insertion introduced in 3.0.3 after clipboard and consecutive-dictation regressions; restore the synchronous 3.0.2 path.
+- Keep the dictation pipeline busy until queued insertion and clipboard restoration actually finish.
+- Skip clipboard restoration after a newer Windows clipboard change.
+- Add bounded local lifecycle diagnostics without dictated text or clipboard contents, and capture native panic backtraces.
+
+The existing fixed-delay limitation under extreme target stalls remains. Appearance and rendering improvements from 3.0.3 are preserved. Verification, user acceptance and crash investigation are recorded in [release QA](docs/QA_DICTATION_ROLLBACK_3_0_4.md).
+
 ## 3.0.3 — 2026-10-20
 
 ### Dictation

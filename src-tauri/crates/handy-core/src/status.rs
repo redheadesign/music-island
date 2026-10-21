@@ -29,6 +29,10 @@ fn update(app: &AppHandle, f: impl FnOnce(&mut Snapshot)) {
         s.revision += 1;
         s.clone()
     };
+    crate::diagnostics::event(&format!(
+        "operation={} phase={} ready={} error={}",
+        snapshot.operation_id, snapshot.phase, snapshot.ready, snapshot.error.is_some()
+    ));
     let _ = app.emit("dictation:status", snapshot);
 }
 pub fn begin(app: &AppHandle) {

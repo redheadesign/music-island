@@ -2,6 +2,21 @@
 
 Music Island ships as a **portable** `music-island.exe` under GPL-3.0-or-later. That remains the forever distribution model: users download or auto-update the same single file from GitHub Releases. There is no installer requirement.
 
+## 3.0.4 release
+
+The user accepted the tested build and explicitly authorized publication on
+2026-10-21. Publish the exact packet under `release/v3.0.4/`: `music-island.exe`,
+`SHA256.txt` and `THIRD_PARTY_NOTICES.md`, with tag `v3.0.4` and the English
+body in `docs/releases/3.0.4-release-notes.md`. Do not rebuild the accepted EXE.
+The executable is 76,377,600 bytes, SHA-256
+`be890622ed301005686b6dac765f5c5f86547aa7f415696e492685403557629c`.
+
+Following October 21 dictation regressions, withdraw the
+3.0.3 Windows clipboard experiment and hold pipeline ownership through queued
+insertion. Preserve appearance and rendering changes. The earlier fixed-delay
+limitation and unconfirmed native heap-corruption cause remain documented in
+[rollback QA](QA_DICTATION_ROLLBACK_3_0_4.md).
+
 ## 3.0.3 release
 
 The user accepted revision 2 after Windows testing and authorized publication on

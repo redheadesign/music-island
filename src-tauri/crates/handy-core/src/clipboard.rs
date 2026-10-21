@@ -41,7 +41,7 @@ fn write_text_to_clipboard(app_handle: &AppHandle, text: &str) -> Result<(), Str
         .map_err(|e| format!("Failed to write to clipboard: {}", e))
 }
 
-fn finish_clipboard_paste(
+pub(crate) fn finish_clipboard_paste(
     paste_result: Result<(), String>,
     paste_delay_after_ms: u64,
     restore_clipboard: impl FnOnce(),
@@ -49,6 +49,16 @@ fn finish_clipboard_paste(
     std::thread::sleep(Duration::from_millis(paste_delay_after_ms));
     restore_clipboard();
     paste_result
+}
+
+#[cfg(target_os = "windows")]
+fn clipboard_sequence() -> u32 {
+    unsafe { windows::Win32::System::DataExchange::GetClipboardSequenceNumber() }
+}
+
+#[cfg(any(target_os = "windows", test))]
+pub(crate) fn clipboard_is_unchanged(published: u32, current: u32) -> bool {
+    published != 0 && published == current
 }
 
 /// Pastes text using the clipboard: saves current content, writes text, sends paste keystroke, restores clipboard.
@@ -72,6 +82,9 @@ fn paste_via_clipboard(
 
     // Write text to clipboard first
     write_text_to_clipboard(app_handle, text)?;
+
+    #[cfg(target_os = "windows")]
+    let published_sequence = clipboard_sequence();
 
     std::thread::sleep(Duration::from_millis(paste_delay_ms));
 
@@ -101,6 +114,13 @@ fn paste_via_clipboard(
     })();
 
     finish_clipboard_paste(paste_result, paste_delay_after_ms, || {
+        // A user copy during insertion takes precedence over our saved content.
+        // Windows advances this token even when the new copy contains equal text.
+        #[cfg(target_os = "windows")]
+        if !clipboard_is_unchanged(published_sequence, clipboard_sequence()) {
+            info!("Clipboard changed during paste; skipping saved content restoration");
+            return;
+        }
         // Restore original clipboard content even when key injection failed.
         // Text takes priority so this path stays identical to the previous behavior;
         // an image is only restored when the clipboard held no text at all, which is
@@ -803,11 +823,11 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
             )?;
         }
         PasteMethod::CtrlV | PasteMethod::CtrlShiftV | PasteMethod::ShiftInsert => {
-            // Windows always uses target-attributed delayed rendering. Never
-            // fall back to a fixed restore delay after queuing a paste (#502).
-            // macOS retains the upstream opt-in compatibility path.
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
-            if cfg!(target_os = "windows") || settings.reliable_paste {
+            // Windows rolls back to the synchronous 3.0.2 path. The experimental
+            // delayed-render worker must not run even for a saved debug opt-in.
+            // macOS retains its existing opt-in path.
+            #[cfg(target_os = "macos")]
+            if settings.reliable_paste {
                 let reliable_result = with_enigo(&app_handle, |enigo| {
                     crate::paste_tx::try_reliable_paste(
                         &text,
@@ -822,10 +842,6 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
                 match reliable_result {
                     Ok(()) => return Ok(()),
                     Err(e) => {
-                        // Never enqueue a Windows paste on the unsafe fixed-delay path.
-                        #[cfg(target_os = "windows")]
-                        return Err(e);
-                        #[cfg(not(target_os = "windows"))]
                         log::warn!("Reliable paste unavailable ({e}); falling back to legacy paste")
                     }
                 }
@@ -975,6 +991,28 @@ e.g. 28:1 28:0 means pressing on the Enter button on a standard US keyboard.
 
         assert_eq!(result.unwrap_err(), "input failed");
         assert!(restored.get());
+    }
+
+    #[test]
+    fn consecutive_phrases_finish_restoring_before_the_next_snapshot() {
+        let clipboard = std::cell::RefCell::new("original copy".to_string());
+        for phrase in ["first", "second", "third", "fourth"] {
+            let snapshot = clipboard.borrow().clone();
+            *clipboard.borrow_mut() = phrase.into();
+            // The synchronous path completes restoration before it reports success.
+            finish_clipboard_paste(Ok(()), 0, || {
+                *clipboard.borrow_mut() = snapshot;
+            }).unwrap();
+            assert_eq!(*clipboard.borrow(), "original copy");
+        }
+    }
+
+    #[test]
+    fn newer_copy_cannot_be_treated_as_the_published_transcript() {
+        assert!(clipboard_is_unchanged(41, 41));
+        assert!(!clipboard_is_unchanged(41, 42));
+        assert!(!clipboard_is_unchanged(0, 0));
+        assert!(!clipboard_is_unchanged(41, 0));
     }
 
     #[cfg(unix)]

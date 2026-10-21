@@ -7,6 +7,7 @@ mod catalog;
 pub mod embedded_assets;
 mod clipboard;
 mod commands;
+mod diagnostics;
 mod focus_target;
 mod helpers;
 mod input;
@@ -14,6 +15,10 @@ mod llm_client;
 mod managers;
 mod memory;
 mod overlay;
+// Windows 3.0.3 delayed-render transactions are withdrawn: they could retain
+// transcripts over DontModify and overlap subsequent insertions. Keep the
+// experimental implementation available to isolated tests, never production.
+#[cfg(any(target_os = "macos", test))]
 mod paste_tx;
 pub mod portable;
 mod runtime;

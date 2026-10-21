@@ -11,6 +11,7 @@ use std::{
 pub fn install_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
         append_event(&format!("panic captured: {panic_info}"));
+        append_event(&format!("panic backtrace: {}", std::backtrace::Backtrace::force_capture()));
         tracing::error!("panic captured: {panic_info}");
     }));
 }

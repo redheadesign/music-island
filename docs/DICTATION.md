@@ -237,12 +237,18 @@ Advanced → Text insertion includes **Remove trailing period** (off by default)
 
 ### Windows clipboard timing
 
-The Windows clipboard path waits for the original target process to read delayed
-Unicode text before restoring the saved clipboard. Background/unknown readers do
-not acknowledge the target. After an unconfirmed timeout the transcript remains
-available for manual paste; a newer user copy always wins. This path is enabled
-for existing profiles as well. Automatic Enter requires a confirmed read and the
-original foreground process. See [the adaptation journal](HANDY_ADAPTATIONS.md).
+The 3.0.4 candidate withdraws Windows delayed-render paste introduced in 3.0.3.
+Windows uses the synchronous 3.0.2 insertion path again, restoring the saved text
+or image before reporting completion. A sequence check skips restoration if the
+clipboard changed during insertion. The next recording stays queued until the
+previous insertion and status update finish. The old fixed-delay limitation under
+extreme target stalls remains; this rollback is not a new read-acknowledgement fix.
+See [the adaptation journal](HANDY_ADAPTATIONS.md).
+
+Local `dictation/logs/lifecycle.log` records operation phases, insertion duration
+and insertion failures, without dictated text or clipboard contents. It is capped
+at 1 MiB and resets when full. Native panic reports also capture a backtrace in
+`logs/app.log`; Windows heap-corruption failures may terminate before that hook.
 
 Classic recording uses content width with 9px on both sides of its listening label
 and 14px outer insets. Theme chooser thumbnails and the selected live preview render the production
