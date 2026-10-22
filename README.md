@@ -18,6 +18,8 @@ Download `music-island.exe`, save it in a folder you want to keep and open it �
 
 Press your shortcut, speak and finish the recording. Recognition runs on your computer; the result is inserted into the active app and can be kept with its audio in History. Download speech recognition for your language in Settings → Dictation, reuse files from Handy and manage your dictionary and optionally use **AI processing** through a provider you configure. Regular dictation stays local; provider processing is off by default and uses a separate shortcut.
 
+Choose **Classic**, **Waves** or **Fox** in Settings → Dictation → General to change the recording overlay. Waves and Fox offer color palettes; Waves also supports colored wave edges. Fox adds a pixel character with animated expressions and recognition games. [Recorder appearance](docs/DICTATION.md#recorder-appearance).
+
 Dictation is adapted from [Handy v0.9.7](https://github.com/cjpais/Handy/tree/v0.9.7), commit `05e0aedd2906f0d82722735f930465950c476b90` (CJ Pais, MIT), with selected 0.9.8 fixes and October 7 loading notices. See [setup and storage](docs/DICTATION.md), the [adaptation and upgrade journal](docs/HANDY_ADAPTATIONS.md), and [third-party notices](THIRD_PARTY_NOTICES.md). Models have their own licenses. Downloaded files live under `%APPDATA%\Music Island\dictation\`; deleting the EXE does not remove them. Manage them in System → Data.
 
 ![Music Island's live layout editor with a media player, assistant quota and a component tray](docs/media/v3/01-island.webp)
@@ -97,6 +99,10 @@ npm run tauri:build     # release/music-island.exe
 Browser previews do not test native input, media sessions or the audio engine. Run the checks in [QA](docs/QA.md) and [Releases](docs/RELEASES.md) before distributing a build.
 
 The [component workshop](docs/STORYBOOK.md) covers Foundations, Atoms, Molecules, Organisms and Screens. The six release scenes use production components and local sample data. [Release media](docs/RELEASES.md#30-preparation) includes three Russian Telegram cards, the retained 46-second RU/EN showreels, and two new Russian films: 40-second Continuous and 36-second Rhythm. [Motion production](docs/MOTION_PRODUCTION.md) documents sources, timelines and export; [Brand](docs/BRAND.md) defines standard, intro and portrait logo roles
+
+## Contributors
+
+- [Darling Design (@Darlingfxx02)](https://github.com/Darlingfxx02) — fox mascot artwork, design references, and ideas for the dictation themes.
 
 ## Author
 
