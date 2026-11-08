@@ -1,4 +1,5 @@
 import { dictationApi as nativeApi } from '../../app/dictation/dictationApi'
+import type { TranscribeAcceleratorSetting } from '../../shared/lib/dictationTypes'
 import { dictationModels, dictationSettings } from '../dictationFixtures'
 let settings = structuredClone(dictationSettings)
 let models = structuredClone(dictationModels)
@@ -8,7 +9,15 @@ const preview = {
   getModelLoadStatus: async () => ({ is_loaded: false, current_model: null }),
   getStatus: async () => ({revision: 1, operationId: 0, phase: 'idle' as const, ready: false, text: '', error: null}),
   getAvailableOutputDevices: async () => [{ index: '0', name: 'Speakers (USB Audio)', is_default: true }],
-  getAvailableAccelerators: async () => ({transcribe: ['auto', 'cpu', 'gpu'], ort: ['auto', 'cpu'], gpu_devices: [{id: 'preview', name: 'Preview GPU', total_vram_mb: 8192}]}),
+  getAvailableAccelerators: async () => ({transcribe: ['auto', 'cpu', 'vulkan'], ort: ['auto', 'cpu'], gpu_devices: [{id: 'preview', name: 'Preview GPU', total_vram_mb: 8192}]}),
+  changeTranscribeAcceleratorSetting: async (accelerator: TranscribeAcceleratorSetting) => {
+    settings = { ...settings, transcribe_accelerator: accelerator }
+    return null
+  },
+  changeTranscribeGpuDevice: async (device: string | null) => {
+    settings = { ...settings, transcribe_gpu_device: device }
+    return null
+  },
   previewHandyImport: async () => ({items: [{id: 'models/whisper-small.bin', name: 'Whisper Small', source: 'Handy/models/whisper-small.bin', bytes: 257_000_000, exists: false}], settings: ['bindings','custom_words'], settingsPath: 'Handy/settings_store.json'}),
   fetchPostProcessModels: async () => ['preview-model'],
   changeRemoveTrailingPeriodSetting: async (enabled: boolean) => { settings = { ...settings, remove_trailing_period: enabled }; return null },

@@ -67,7 +67,7 @@ import { AppLogo } from '../../shared/ui/AppLogo'
 import './settings.css'
 export { IslandPreview as AppearancePreview } from './IslandPreview'
 
-const APP_VERSION = '3.0.4'
+const APP_VERSION = '3.1.0'
 
 interface SettingsPanelProps {
   usage?: UsageController
@@ -138,7 +138,7 @@ export function SettingsPanel({
     if (launchBusy) return
     setLaunchBusy(true); setLaunchError(null)
     try { await (onboarding ? replayOnboarding() : replayIntroWindow()) }
-    catch { setLaunchError(locale === 'ru' ? 'Не удалось открыть знакомство. Попробуйте ещё раз.' : 'Could not open the introduction. Try again.') }
+    catch { setLaunchError(locale === 'ru' ? 'Не удалось открыть знакомство.' : 'Could not open the introduction. Try again.') }
     finally { setLaunchBusy(false) }
   }
   const [usageError, setUsageError] = useState(false)
@@ -274,7 +274,7 @@ export function SettingsPanel({
 
   const resetIslandSettings = () => {
     const defaults = getDefaultConfig()
-    previewAndSave(withIslandLayout({
+    previewAndSave(withIslandLayout(withUiPrefs({
       ...draft,
       layout: {
         ...draft.layout,
@@ -287,7 +287,7 @@ export function SettingsPanel({
         hoverDelayMs: defaults.behavior.hoverDelayMs,
       },
       appearance: { ...draft.appearance, accentColor: defaults.appearance.accentColor },
-    }, getLegacyIslandLayout({ ...defaults, plugins: draft.plugins })))
+    }, { localServersWidgetScale: 100 }), getLegacyIslandLayout({ ...defaults, plugins: draft.plugins })))
   }
 
   const connectDirect = async () => {
@@ -506,7 +506,10 @@ export function SettingsPanel({
           const Icon = { general: Mic, models: Database, history: ClockCounterClockwise, dictionary: BookOpen, processing: TextAa, advanced: SlidersHorizontal }[id]
           return { id, label: dictationPages[id][locale === 'ru' ? 0 : 1], icon: (active: boolean) => <Icon size={20} weight={active ? 'fill' : 'regular'} /> }
         })} />
-        <div className="settings-content" data-settings-scroll><DictationSettings appearance={getDictationAppearance(draft)} onAppearanceChange={dictationAppearance => previewAndSave(withUiPrefs(draft, { dictationAppearance }))} active={settingsVisible} reducedMotion={reducedMotion} controller={dictation} page={dictationPage} locale={locale} onPage={setDictationPage} onDisable={async () => { await dictation.disable(); previewAndSave({ ...draft, plugins: { ...draft.plugins, enabled: draft.plugins.enabled.filter((id) => id !== 'dictation') } }) }} onEnable={async () => {
+        <div className="settings-content" data-settings-scroll><DictationSettings appearance={getDictationAppearance(draft)} onAppearanceChange={dictationAppearance => previewAndSave(withUiPrefs(draft, { dictationAppearance }))}
+          showLatestMessage={uiPrefs.showLatestDictationMessage === true}
+          onShowLatestMessage={showLatestDictationMessage => previewAndSave(withUiPrefs(draft, { showLatestDictationMessage }))}
+          active={settingsVisible} reducedMotion={reducedMotion} controller={dictation} page={dictationPage} locale={locale} onPage={setDictationPage} onDisable={async () => { await dictation.disable(); previewAndSave({ ...draft, plugins: { ...draft.plugins, enabled: draft.plugins.enabled.filter((id) => id !== 'dictation') } }) }} onEnable={async () => {
           await dictation.enable()
           const enabled = [...new Set([...draft.plugins.enabled, 'dictation'])]
           previewAndSave({ ...draft, plugins: { ...draft.plugins, enabled } })
@@ -578,6 +581,7 @@ export function SettingsPanel({
         <IslandLayoutEditor config={draft} onChange={previewAndSave} onReset={resetIslandSettings} usage={usage?.snapshot ?? null} showHeading={false} active={settingsVisible && settingsPage === 'appearance'} />
 
         <div className="settings-control-group">
+
         <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
 
         <AccentColorPicker
@@ -590,7 +594,6 @@ export function SettingsPanel({
         <label className="settings-control-row">
           <span>
             <strong>{t('settings.hoverDelay')}</strong>
-            <small>{t('settings.hoverDelayHint')}</small>
           </span>
           <div className="range-control">
             <RangeSlider min={80} max={1200} step={20} value={draft.behavior.hoverDelayMs} onChange={(event) => patchBehavior({ hoverDelayMs: Number(event.currentTarget.value) })} />
@@ -604,9 +607,9 @@ export function SettingsPanel({
         <div className="settings-usage-page">
             <PreviewScale previewClassName="usage-widget-preview" previewLabel={locale === 'ru' ? 'Превью виджета лимитов' : 'Usage widget preview'} backdrop={<WarpSurface className="preview-warp-material" active={settingsVisible} reducedMotion={draft.appearance.reducedMotion} />} header={<div className="settings-preview__header settings-preview__header--end">
               <div className="settings-theme-choice" role="group" aria-label={locale === 'ru' ? 'Вид виджета' : 'Widget style'}>
-                {[false, true].map((compact) => <button key={String(compact)} type="button" aria-pressed={usageCompact === compact} className={`settings-theme-choice__button ${usageCompact === compact ? 'settings-theme-choice__button--active' : ''}`} onClick={() => previewAndSave(withUiPrefs(draft, { usageWidgetCompact: compact }))}>{locale === 'ru' ? compact ? 'Компактный' : 'Подробный' : compact ? 'Compact' : 'Detailed'}</button>)}
+                {[false, true].map((compact) => <button key={String(compact)} type="button" aria-pressed={usageCompact === compact} className={`settings-theme-choice__button ${usageCompact === compact ? 'settings-theme-choice__button--active' : ''}`} onClick={() => previewAndSave(withUiPrefs(draft, { usageWidgetCompact: compact }))}>{locale === 'ru' ? compact ? 'Компактно' : 'Подробно' : compact ? 'Compact' : 'Detailed'}</button>)}
               </div>
-            </div>} value={Math.round(usageScale * 100)} min={65} max={135} step={5} label={locale === 'ru' ? 'Масштаб виджета' : 'Widget scale'} onCommit={value => previewAndSave(withUiPrefs(draft, { usageWidgetScale: value / 100 }))}>{value => <div className="usage-widget-preview__content" style={{ zoom: value / 100 }}><UsageStatusChip snapshot={usage?.snapshot ?? null} enabledProviders={['codex', 'claude']} compact={usageCompact} locale={locale} /></div>}</PreviewScale>
+            </div>} value={Math.round(usageScale * 100)} min={65} max={135} step={5} locale={locale} readoutLabel={t('settings.scale')} label={locale === 'ru' ? 'Масштаб виджета' : 'Widget scale'} onCommit={value => previewAndSave(withUiPrefs(draft, { usageWidgetScale: value / 100 }))}>{value => <div className="usage-widget-preview__content" style={{ zoom: value / 100 }}><UsageStatusChip snapshot={usage?.snapshot ?? null} enabledProviders={['codex', 'claude']} compact={usageCompact} locale={locale} /></div>}</PreviewScale>
           <UsageSettingsSection
             preferences={getUsagePreferences(draft)} snapshot={usage?.snapshot ?? null}
             busyProvider={usage?.busyProvider ?? null} locale={locale}
@@ -656,7 +659,7 @@ export function SettingsPanel({
             <span className="protocol-icon"><BrandLogo brand="spotify" size={32} /></span>
             <div className="protocol-copy">
               <div className="protocol-heading"><strong>Spotify</strong>{spotifySelected ? <StatusChip tone={spotifyUnavailable ? 'warning' : spotifySession ? 'success' : 'neutral'} className="status-pill">{spotifyUnavailable ? <TriangleAlert /> : spotifySession ? <CheckCircle2 /> : null}{spotifyUnavailable ? t('settings.needsAttention') : spotifySession ? t('settings.connected') : locale === 'ru' ? 'Ожидание' : 'Waiting'}</StatusChip> : null}</div>
-              <small>{spotifyUnavailable ? locale === 'ru' ? 'Системное управление музыкой Windows недоступно.' : 'Windows media controls are unavailable.' : spotifySelected && !spotifySession ? locale === 'ru' ? 'Включите любой трек в приложении Spotify.' : 'Play a track in the Spotify app.' : locale === 'ru' ? 'Музыка из приложения Spotify' : 'Music from the Spotify app'}</small>
+              <small>{spotifyUnavailable ? locale === 'ru' ? 'Системное управление музыкой Windows недоступно.' : 'Windows media controls are unavailable.' : spotifySelected && !spotifySession ? locale === 'ru' ? 'Включите трек в Spotify.' : 'Play a track in Spotify.' : locale === 'ru' ? 'Плеер Spotify' : 'Spotify player'}</small>
             </div>
             <div className="protocol-actions">
               {!spotifySelected ? <Button type="button" variant="secondary" disabled={directBusy} onClick={() => void switchToLegacy('spotify')}>{t('settings.use')}</Button>
@@ -711,7 +714,6 @@ export function SettingsPanel({
         <div className="autostart-block">
           <Switch
             label={t('settings.launchAtStartup')}
-            hint={t('settings.launchAtStartupHint')}
             checked={draft.behavior.launchAtStartup}
             onChange={(launchAtStartup) => patchBehavior({ launchAtStartup })}
           />
@@ -743,7 +745,6 @@ export function SettingsPanel({
           <div className="about-identity">
             <AppLogo variant="portrait" className="about-identity__logo" size={80} />
             <h3>Music Island</h3><span className="about-identity__version">{APP_VERSION}</span>
-            <p>{locale === 'ru' ? 'Плеер и голосовой ввод для Windows' : 'Music controls and voice typing for Windows'}</p>
           </div>
           <p className="about-block__body">
             {t('settings.aboutBody')}{' '}
@@ -899,7 +900,7 @@ export function SettingsPanel({
               className="settings-dev-replay"
               disabled={launchBusy} onClick={() => void replayLaunch(false)}
             >
-              {locale === 'ru' ? 'Повторить запуск с подсказкой' : 'Replay startup and hint'}
+              {locale === 'ru' ? 'Показать подсказку' : 'Replay startup and hint'}
             </Button>
             {launchError ? <Notice tone="danger">{launchError}</Notice> : null}
           </div>

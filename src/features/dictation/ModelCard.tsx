@@ -34,9 +34,10 @@ export function ModelCard({ model, locale, selected, loaded, downloading = model
     <footer className="dictation-model__footer">
       <div className="dictation-model__details">
         <p className="dictation-model__description">{modelLanguages(model, locale)}{model.supports_streaming ? ru ? ' · Текст во время записи' : ' · Live transcription' : ''}</p>
-        {selected || loaded ? <div className="dictation-model__badges">
+        {model.is_downloaded || selected || loaded ? <div className="dictation-model__badges">
+          {model.is_downloaded ? <StatusChip appearance="flat">{ru ? 'Скачано' : 'Downloaded'}</StatusChip> : null}
           {selected ? <StatusChip appearance="flat" tone="success"><Check size={12} />{ru ? 'Выбрана' : 'Selected'}</StatusChip> : null}
-      {loaded ? <span className="dictation-model__loaded">{ru ? 'В памяти' : 'In memory'}</span> : null}
+          {loaded ? <span className="dictation-model__loaded">{ru ? 'В памяти' : 'In memory'}</span> : null}
         </div> : null}
       </div>
       <div className="dictation-model__actions">

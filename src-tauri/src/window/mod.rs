@@ -31,6 +31,67 @@ struct OverlayHitLayout {
     expanded: bool,
     hit_width: f64,
     hit_height: f64,
+    widgets: OverlayWidgetRegions,
+    widget_generation: u64,
+}
+
+impl OverlayHitLayout {
+    // The first flag drives the island gesture, the second drives HWND input capture.
+    fn pointer_targets(&self, in_island: bool, x: f64, y: f64) -> (bool, bool) {
+        if !self.expanded {
+            return (in_island, false);
+        }
+        let capture = in_island
+            || self.widgets.local_servers.is_some_and(|bounds| bounds.contains(x, y))
+            || self.widgets.latest_message.is_some_and(|bounds| bounds.contains(x, y));
+        if capture {
+            return (true, true);
+        }
+
+        // Leave room to move between the two stacked cards without closing the island.
+        let over_gap = match (self.widgets.local_servers, self.widgets.latest_message) {
+            (Some(servers), Some(message)) => {
+                y >= servers.top + servers.height
+                    && y < message.top
+                    && x >= servers.left.max(message.left)
+                    && x < (servers.left + servers.width).min(message.left + message.width)
+            }
+            _ => false,
+        };
+        (over_gap, false)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, serde::Deserialize)]
+struct OverlayWidgetBounds {
+    left: f64,
+    top: f64,
+    width: f64,
+    height: f64,
+}
+
+impl OverlayWidgetBounds {
+    fn is_valid(self) -> bool {
+        self.left.is_finite()
+            && self.top.is_finite()
+            && self.left >= 0.0
+            && self.top >= 0.0
+            && self.width.is_finite()
+            && self.height.is_finite()
+            && self.width > 0.0
+            && self.height > 0.0
+    }
+
+    fn contains(self, x: f64, y: f64) -> bool {
+        x >= self.left && x < self.left + self.width && y >= self.top && y < self.top + self.height
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OverlayWidgetRegions {
+    local_servers: Option<OverlayWidgetBounds>,
+    latest_message: Option<OverlayWidgetBounds>,
 }
 
 impl Default for OverlayHitLayout {
@@ -39,6 +100,8 @@ impl Default for OverlayHitLayout {
             expanded: false,
             hit_width: DEFAULT_HIT_WIDTH,
             hit_height: COLLAPSED_HIT_HEIGHT,
+            widgets: OverlayWidgetRegions::default(),
+            widget_generation: 0,
         }
     }
 }
@@ -144,15 +207,15 @@ pub fn set_overlay_bounds(
         let mut layout = hit_layout()
             .lock()
             .expect("overlay hit layout lock poisoned");
-        let next = OverlayHitLayout {
-            expanded,
-            hit_width,
-            hit_height,
-        };
-        if *layout == next {
+        if layout.expanded == expanded
+            && (layout.hit_width - hit_width).abs() < 0.5
+            && (layout.hit_height - hit_height).abs() < 0.5
+        {
             return Ok(());
         }
-        *layout = next;
+        layout.expanded = expanded;
+        layout.hit_width = hit_width;
+        layout.hit_height = hit_height;
     }
 
     // Keep monitor coverage if the user moved monitors / DPI changed.
@@ -190,23 +253,37 @@ fn set_overlay_clickthrough_ex(
     Ok(())
 }
 
-fn sync_clickthrough_from_cursor(app: &AppHandle) -> tauri::Result<()> {
-    sync_clickthrough_from_cursor_ex(app, false)
+/// Widgets capture only their own rectangles in overlay-relative physical pixels.
+#[tauri::command]
+pub async fn set_overlay_widget_regions(
+    app: AppHandle,
+    window: tauri::WebviewWindow,
+    regions: OverlayWidgetRegions,
+    generation: u64,
+) -> Result<(), String> {
+    if window.label() != "main" {
+        return Err("Only the overlay can set its input bounds".into());
+    }
+    if [regions.local_servers, regions.latest_message].into_iter().flatten().any(|bounds| !bounds.is_valid()) {
+        return Err("Invalid overlay widget bounds".into());
+    }
+    {
+        let mut layout = hit_layout().lock().unwrap_or_else(|e| e.into_inner());
+        if generation <= layout.widget_generation {
+            return Ok(());
+        }
+        layout.widget_generation = generation;
+        if layout.widgets == regions {
+            return Ok(());
+        }
+        layout.widgets = regions;
+    }
+    sync_clickthrough_from_cursor_ex(&app, true).map_err(|error| error.to_string())
 }
 
 fn sync_clickthrough_from_cursor_ex(app: &AppHandle, force: bool) -> tauri::Result<()> {
-    let expanded = hit_layout()
-        .lock()
-        .map(|layout| layout.expanded)
-        .unwrap_or(false);
-    // Collapsed: always pass clicks through (native gesture poll still works).
-    // Expanded: only capture when the cursor is over the island hit-band.
-    let clickthrough = if !expanded {
-        true
-    } else {
-        !get_collapsed_gesture_state(app)?.active
-    };
-    set_overlay_clickthrough_ex(app, clickthrough, force)
+    let (_, capture) = overlay_pointer_state(app)?;
+    set_overlay_clickthrough_ex(app, !capture, force)
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -237,20 +314,16 @@ impl CollapsedGestureState {
     }
 }
 
-impl PartialEq for OverlayHitLayout {
-    fn eq(&self, other: &Self) -> bool {
-        self.expanded == other.expanded
-            && (self.hit_width - other.hit_width).abs() < 0.5
-            && (self.hit_height - other.hit_height).abs() < 0.5
-    }
+pub fn get_collapsed_gesture_state(app: &AppHandle) -> tauri::Result<CollapsedGestureState> {
+    overlay_pointer_state(app).map(|(gesture, _)| gesture)
 }
 
-pub fn get_collapsed_gesture_state(app: &AppHandle) -> tauri::Result<CollapsedGestureState> {
+fn overlay_pointer_state(app: &AppHandle) -> tauri::Result<(CollapsedGestureState, bool)> {
     let Some(window) = app.get_webview_window("main") else {
-        return Ok(CollapsedGestureState::inactive());
+        return Ok((CollapsedGestureState::inactive(), false));
     };
 
-    platform::collapsed_gesture_state(&window)
+    platform::pointer_state(&window)
 }
 
 pub fn start_gesture_watcher(app: AppHandle) {
@@ -263,17 +336,17 @@ pub fn start_gesture_watcher(app: AppHandle) {
                 monitor_check = std::time::Instant::now();
             }
             GESTURE_POLLS.fetch_add(1, Ordering::Relaxed);
-            let next = get_collapsed_gesture_state(&app)
-                .unwrap_or_else(|_| CollapsedGestureState::inactive());
+            let (next, capture) = overlay_pointer_state(&app)
+                .unwrap_or_else(|_| (CollapsedGestureState::inactive(), false));
 
-            let _ = sync_clickthrough_from_cursor(&app);
+            let _ = set_overlay_clickthrough_ex(&app, !capture, false);
 
             if next != previous {
                 let _ = app.emit("overlay:gesture-state", next.clone());
                 GESTURE_EVENTS.fetch_add(1, Ordering::Relaxed);
                 previous = next;
             }
-            sleep(Duration::from_millis(if previous.active {
+            sleep(Duration::from_millis(if previous.active || capture {
                 33
             } else {
                 100
@@ -307,14 +380,14 @@ mod platform {
         }
     }
 
-    pub fn collapsed_gesture_state(window: &WebviewWindow) -> tauri::Result<CollapsedGestureState> {
+    pub fn pointer_state(window: &WebviewWindow) -> tauri::Result<(CollapsedGestureState, bool)> {
         let native = window.hwnd()?;
         let hwnd = HWND(native.0);
         let mut bounds = RECT::default();
         let mut point = POINT::default();
         unsafe {
             if GetWindowRect(hwnd, &mut bounds).is_err() || GetCursorPos(&mut point).is_err() {
-                return Ok(CollapsedGestureState::inactive());
+                return Ok((CollapsedGestureState::inactive(), false));
             }
         }
 
@@ -324,12 +397,12 @@ mod platform {
         let height = (bounds.bottom - bounds.top).max(0) as f64;
 
         if width <= 0.0 || height <= 0.0 {
-            return Ok(CollapsedGestureState::inactive());
+            return Ok((CollapsedGestureState::inactive(), false));
         }
 
         // Outside the fullscreen HWND (other monitor) → inactive.
         if local_x < 0.0 || local_y < 0.0 || local_x > width || local_y > height {
-            return Ok(CollapsedGestureState::inactive());
+            return Ok((CollapsedGestureState::inactive(), false));
         }
 
         let layout = *hit_layout()
@@ -347,32 +420,22 @@ mod platform {
         let top = 0.0;
         let bottom = hit_h;
 
-        let active = local_x >= left && local_x <= right && local_y >= top && local_y <= bottom;
-        if !active {
-            return Ok(CollapsedGestureState {
-                active: false,
+        let in_island = local_x >= left && local_x <= right && local_y >= top && local_y <= bottom;
+        let (active, capture) = layout.pointer_targets(in_island, local_x, local_y);
+
+        Ok((
+            CollapsedGestureState {
+                active,
                 local_x,
                 local_y,
                 client_x: point.x,
                 client_y: point.y,
-                in_top_edge: false,
+                in_top_edge: active && local_y <= 3.0,
                 window_width: width,
                 window_height: height,
-            });
-        }
-
-        let in_top_edge = local_y <= 3.0;
-
-        Ok(CollapsedGestureState {
-            active: true,
-            local_x,
-            local_y,
-            client_x: point.x,
-            client_y: point.y,
-            in_top_edge,
-            window_width: width,
-            window_height: height,
-        })
+            },
+            capture,
+        ))
     }
 }
 
@@ -383,10 +446,10 @@ mod platform {
 
     pub fn mark_non_rude_hwnd(_window: &WebviewWindow) {}
 
-    pub fn collapsed_gesture_state(
+    pub fn pointer_state(
         _window: &WebviewWindow,
-    ) -> tauri::Result<CollapsedGestureState> {
-        Ok(CollapsedGestureState::inactive())
+    ) -> tauri::Result<(CollapsedGestureState, bool)> {
+        Ok((CollapsedGestureState::inactive(), false))
     }
 }
 
@@ -504,5 +567,65 @@ mod viewport_tests {
         assert!(!viewport_matches(1436, 2558, 1.5, 2045.0, 1150.0));
         assert!(viewport_matches(1436, 2558, 1.5, 957.0, 1705.0));
         assert!(!viewport_matches(2556, 1438, 1.25, f64::NAN, 1150.0));
+    }
+
+    #[test]
+    fn local_server_rows_capture_clicks_only_while_the_island_is_expanded() {
+        let mut layout = OverlayHitLayout {
+            widgets: OverlayWidgetRegions { local_servers: Some(OverlayWidgetBounds {
+                left: 600.0,
+                top: 28.0,
+                width: 300.0,
+                height: 48.0,
+            }), ..Default::default() },
+            ..Default::default()
+        };
+        assert_eq!(layout.pointer_targets(true, 740.0, 0.0), (true, false));
+        assert_eq!(layout.pointer_targets(true, 740.0, 28.0), (true, false));
+        assert_eq!(layout.pointer_targets(false, 740.0, 45.0), (false, false));
+        assert_eq!(layout.pointer_targets(false, 900.0, 28.0), (false, false));
+
+        layout.expanded = true;
+        assert_eq!(layout.pointer_targets(false, 740.0, 45.0), (true, true));
+        assert_eq!(layout.pointer_targets(false, 740.0, 76.0), (false, false));
+
+        layout.widgets.local_servers = None;
+        assert_eq!(layout.pointer_targets(false, 740.0, 45.0), (false, false));
+    }
+
+    #[test]
+    fn latest_message_captures_clicks_only_while_the_island_is_expanded() {
+        let mut layout = OverlayHitLayout {
+            widgets: OverlayWidgetRegions { latest_message: Some(OverlayWidgetBounds {
+                left: 600.0, top: 28.0, width: 300.0, height: 48.0,
+            }), ..Default::default() },
+            ..Default::default()
+        };
+        assert_eq!(layout.pointer_targets(true, 740.0, 0.0), (true, false));
+        assert_eq!(layout.pointer_targets(true, 740.0, 45.0), (true, false));
+        assert_eq!(layout.pointer_targets(false, 740.0, 45.0), (false, false));
+        assert_eq!(layout.pointer_targets(false, 900.0, 45.0), (false, false));
+        layout.expanded = true;
+        assert_eq!(layout.pointer_targets(false, 740.0, 45.0), (true, true));
+        assert_eq!(layout.pointer_targets(false, 740.0, 76.0), (false, false));
+    }
+
+    #[test]
+    fn bottom_rail_gap_keeps_the_island_open_and_passes_clicks_through() {
+        let layout = OverlayHitLayout {
+            expanded: true,
+            widgets: OverlayWidgetRegions {
+                local_servers: Some(OverlayWidgetBounds {
+                    left: 600.0, top: 28.0, width: 300.0, height: 48.0,
+                }),
+                latest_message: Some(OverlayWidgetBounds {
+                    left: 600.0, top: 84.0, width: 300.0, height: 48.0,
+                }),
+            },
+            ..Default::default()
+        };
+        assert_eq!(layout.pointer_targets(false, 740.0, 79.0), (true, false));
+        assert_eq!(layout.pointer_targets(false, 930.0, 79.0), (false, false));
+        assert_eq!(layout.pointer_targets(false, 740.0, 90.0), (true, true));
     }
 }

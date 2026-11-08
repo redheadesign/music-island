@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   cssToPhysicalHitPx,
   getOverlayBounds,
+  measureOverlayWidgetRect,
   shouldDeferOverlayClose,
 } from './overlayWindow'
 
@@ -33,6 +34,21 @@ describe('overlayWindow', () => {
     expect(cssToPhysicalHitPx(612)).toBe(918)
     vi.stubGlobal('window', { devicePixelRatio: 1 })
     expect(cssToPhysicalHitPx(612)).toBe(612)
+  })
+
+  it('maps the local servers panel to its own physical hit rectangle', () => {
+    vi.stubGlobal('window', { innerWidth: 1200, innerHeight: 800, devicePixelRatio: 1.5 })
+    const panel = {
+      getBoundingClientRect: () => ({ left: 410, top: 208, width: 380, height: 64 }),
+    } as unknown as HTMLElement
+
+    expect(measureOverlayWidgetRect(panel)).toEqual({ left: 615, top: 312, width: 570, height: 96 })
+  })
+
+  it('uses only the visible part of a widget on a narrow monitor', () => {
+    vi.stubGlobal('window', { innerWidth: 360, innerHeight: 720, devicePixelRatio: 1.5 })
+    const panel = { getBoundingClientRect: () => ({ left: -45, top: 240, width: 450, height: 48 }) } as HTMLElement
+    expect(measureOverlayWidgetRect(panel)).toEqual({ left: 0, top: 360, width: 540, height: 72 })
   })
 
   it('keeps the legacy boolean usage reservation backward compatible', () => {

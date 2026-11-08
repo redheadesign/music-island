@@ -43,6 +43,7 @@ describe('island layout policy', () => {
         reactionLeft: ['shuffle', 'like', 'dislike'],
         reactionRight: ['repeat'],
         actions: ['settings', 'pin'],
+        bottom: [],
       },
     })
   })
@@ -58,6 +59,7 @@ describe('island layout policy', () => {
       reactionLeft: ['dislike'],
       reactionRight: ['like'],
       actions: ['settings'],
+      bottom: [],
     } })
   })
 
@@ -70,6 +72,7 @@ describe('island layout policy', () => {
       reactionLeft: ['dislike'],
       reactionRight: ['like'],
       actions: ['settings', 'pin'],
+      bottom: [],
     })
   })
 
@@ -78,6 +81,23 @@ describe('island layout policy', () => {
     const moved = moveIslandElement(value, 'codex', 'right', 0)
     expect(moved.zones.left).toEqual([])
     expect(moved.zones.right).toEqual(['codex', 'claude'])
+  })
+
+  it('moves an enabled legacy server widget into the bottom zone and persists its removal', () => {
+    const base = config()
+    base.plugins.settings.ui = {
+      localServersEnabled: true,
+      islandLayout: { version: 2, zones: { player: ['transport'], actions: ['settings'] } },
+    }
+    const layout = getIslandLayout(base)
+    expect(layout.zones.bottom).toEqual(['localServers'])
+    expect(canPlaceIslandElement(layout, 'localServers', 'player')).toBe(false)
+    expect(canPlaceIslandElement(layout, 'localServers', 'catalog')).toBe(false)
+    const removed = moveIslandElement(layout, 'localServers', 'widgetCatalog')
+    const saved = withIslandLayout(base, removed)
+    expect(saved.plugins.settings.ui).toMatchObject({ localServersEnabled: false })
+    expect(getIslandLayout(saved).zones.bottom).toEqual([])
+    expect(moveIslandElement(removed, 'localServers', 'bottom').zones.bottom).toEqual(['localServers'])
   })
 
   it('never removes transport or settings', () => {

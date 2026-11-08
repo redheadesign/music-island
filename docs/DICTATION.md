@@ -20,6 +20,12 @@ text editor. The default recording mode opens the microphone only while recordin
 the default idle model timeout is five minutes. Better Voice is independent: select
 its virtual input explicitly if you want to recognize processed audio.
 
+In **Dictation → Advanced → Compute**, select Automatic, CPU or Vulkan for
+GGML/GGUF models such as GigaAM v3 E2E RNN-T Q8. Vulkan appears when a compatible
+GPU is detected and can use a specific graphics card. A change takes effect on
+the next recording. If Vulkan cannot initialize the model, dictation retries on
+CPU and shows the backend that loaded. ONNX models use CPU.
+
 The optional microphone can be placed in the island layout editor. It is absent
 from the default composition. The bottom overlay does not take keyboard focus.
 The target window is captured at recording start and checked again before paste.
@@ -32,12 +38,23 @@ VAD, feedback sounds, mute during recording, language selection, translation and
 streaming follow upstream capabilities. Unsupported model capabilities are not
 offered as working controls. History supports audio, retry, copying, keeping and
 deleting entries, and configurable retention. Cloud text processing starts disabled.
-Prompt templates use the literal `${output}` placeholder.
+Enabling it reveals the shortcut, connection and prompt settings. Service and prompt
+choices are visible buttons. The connection dialog contains the API key and model,
+and the prompt editor uses the literal `${output}` placeholder.
+
+**Dictation → History → Latest transcript on the island**
+is off by default. When enabled, the most recent completed transcript appears
+below the expanded island. Copy uses the full text, including post-processing
+when available. The close button hides that entry from the island; it remains
+in History. A new recording can appear without enabling the option again.
+
+To check actual insertion, place the cursor in an external text editor and use
+the configured shortcut.
 
 ## Recorder appearance
 
 Open **Settings → Dictation → General** to select Classic, Waves or Fox. Choices sit
-between the dictation preview and a separate Theme settings card, with no visible
+between the dictation preview and the color options, with no visible
 section heading or shared background. The radio group retains its accessible name.
 Colors use labeled circular swatches from the shared settings
 DS control, with native radio/keyboard behavior. The compact
@@ -164,6 +181,8 @@ profile and run `music-island.exe --dictation-runtime-check`. It loads the embed
 runtime, lists devices, runs silence through VAD and writes
 `Music Island/dictation/runtime-check.json`. Optional positional model and WAV
 paths add recognition and unload checks. WAV input must be mono 16 kHz/16-bit.
+After the WAV path, pass `auto`, `cpu` or `vulkan` to compare backends. The
+default is `cpu`. The report includes both the requested and actual backend.
 This command does not open the microphone, show application windows or access
 the real profile when those environment paths are isolated.
 
@@ -185,9 +204,9 @@ code update channel and no independent Handy application updater.
 
 The model catalog and saved preferences are readable while dictation is disabled.
 This prepares metadata/history managers only; it does not load the inference DLL,
-open the microphone or register recording shortcuts. Installed models have their
-own “On this computer” group. Downloaded, selected and loaded-in-memory are separate
-states; an imported selected model remains visible even when a search/language
+open the microphone or register recording shortcuts. Installed cards carry a
+“Downloaded” badge. Downloaded, selected and in-memory are separate states; an
+imported selected model remains visible even when a search/language
 filter would otherwise hide it. Selecting a model while disabled saves the choice
 without starting recognition. Activation is serialized against suspension/shutdown.
 
@@ -237,13 +256,19 @@ Advanced → Text insertion includes **Remove trailing period** (off by default)
 
 ### Windows clipboard timing
 
-The 3.0.4 candidate withdraws Windows delayed-render paste introduced in 3.0.3.
-Windows uses the synchronous 3.0.2 insertion path again, restoring the saved text
-or image before reporting completion. A sequence check skips restoration if the
-clipboard changed during insertion. The next recording stays queued until the
-previous insertion and status update finish. The old fixed-delay limitation under
-extreme target stalls remains; this rollback is not a new read-acknowledgement fix.
-See [the adaptation journal](HANDY_ADAPTATIONS.md).
+Windows publishes the transcript before sending the paste shortcut. If the
+clipboard or foreground window changed before the shortcut, the overlay offers
+the transcript through **Copy text**. **Keep result** writes the transcript once
+and leaves a later copy alone. **Restore** waits at least 400 ms after sending the
+shortcut before restoring the saved text or image. It skips restoration if the
+clipboard changed. The wait runs off the UI thread and the next recording stays
+queued until insertion finishes.
+
+Windows keyboard injection cannot confirm when an editor reads the clipboard.
+An editor that stalls beyond the configured pause can still read the restored
+value. For that editor, increase the pause or choose **Keep result**. The
+delayed-render worker withdrawn in 3.0.4 remains out of the production Windows
+path. See [the adaptation journal](HANDY_ADAPTATIONS.md).
 
 Local `dictation/logs/lifecycle.log` records operation phases, insertion duration
 and insertion failures, without dictated text or clipboard contents. It is capped

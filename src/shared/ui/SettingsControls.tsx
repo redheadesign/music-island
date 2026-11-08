@@ -1,8 +1,8 @@
-import { Children, cloneElement, isValidElement, useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
+import { Children, cloneElement, isValidElement, useId, type ButtonHTMLAttributes, type ComponentPropsWithRef, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import './SettingsControls.css'
 import { Search, X, Info, TriangleAlert, CheckCircle2, LoaderCircle } from './SettingsIcons'
 
-export function Button({ variant = 'secondary', size = 'normal', className = '', type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; size?: 'normal' | 'compact' }) {
+export function Button({ variant = 'secondary', size = 'normal', className = '', type = 'button', ...props }: ComponentPropsWithRef<'button'> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; size?: 'normal' | 'compact' }) {
   return <button type={type} className={`ui-button ui-button--${variant} ui-button--${size} ${className}`} {...props} />
 }
 

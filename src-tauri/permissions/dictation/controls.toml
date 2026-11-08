@@ -1,7 +1,7 @@
 [[permission]]
 identifier = "controls"
-description = "Read state and toggle a user-enabled dictation session."
-commands.allow = ["get_status", "toggle"]
+description = "Control dictation and read or copy the latest history text on the island."
+commands.allow = ["get_status", "toggle", "get_latest_history_message", "copy_history_message"]
 
 [[permission]]
 identifier = "overlay"

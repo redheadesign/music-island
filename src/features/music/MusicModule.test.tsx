@@ -37,7 +37,7 @@ function v2Layout(
 ): IslandLayout {
   return {
     version: 2,
-    zones: { left: [], player, right: [], reactionLeft, reactionRight, actions: ['settings'] },
+    zones: { left: [], player, right: [], reactionLeft, reactionRight, actions: ['settings'], bottom: [] },
   }
 }
 

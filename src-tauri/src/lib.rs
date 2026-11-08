@@ -3,6 +3,7 @@ mod config;
 mod data;
 mod diagnostics;
 mod install;
+mod local_servers;
 mod logging;
 mod media;
 mod onboarding;
@@ -18,7 +19,10 @@ mod yandex;
 
 use config::{AppConfig, ConfigState};
 use media::{health::SmtcHealthSnapshot, MediaCommand, MediaSessionInfo, MediaSnapshot};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager, State};
+
+static AUTOSTART_SYNC_FAILED: AtomicBool = AtomicBool::new(false);
 
 #[tauri::command]
 async fn get_config(state: State<'_, ConfigState>) -> Result<AppConfig, String> {
@@ -46,20 +50,21 @@ async fn save_config(
     }
     let direct = matches!(config.media.protocol, config::MediaProtocol::YandexDirect)
         && config.media.direct_yandex_consent;
-    if !direct {
-        if matches!(previous.media.protocol, config::MediaProtocol::YandexDirect) {
-            yandex::disable(true).await.map_err(|error| error.to_string())?;
-        } else {
-            yandex::reconcile_launch(false).await.map_err(|error| error.to_string())?;
-        }
+    // Startup and explicit Direct actions reconcile shortcuts. A layout save
+    // should only touch them when it is actually leaving Direct.
+    if !direct && matches!(previous.media.protocol, config::MediaProtocol::YandexDirect) {
+        yandex::disable(true).await.map_err(|error| error.to_string())?;
     }
-    let previous_monitor = state.load().ok().and_then(|c| c.behavior.monitor_id);
     let saved = state.save(config).map_err(|error| error.to_string())?;
-    if previous_monitor != saved.behavior.monitor_id {
+    if previous.behavior.launch_at_startup != saved.behavior.launch_at_startup
+        || AUTOSTART_SYNC_FAILED.load(Ordering::Relaxed)
+    {
+        emit_autostart_sync(&app, saved.behavior.launch_at_startup);
+    }
+    if previous.behavior.monitor_id != saved.behavior.monitor_id {
         window::monitors::invalidate();
         window::reset_overlay_position(&app).map_err(|e| e.to_string())?;
     }
-    emit_autostart_sync(&app, saved.behavior.launch_at_startup);
     media::set_preferred_source(saved.media.preferred_source_app_id.clone());
     media::switch_active_provider(
         &app,
@@ -283,7 +288,9 @@ struct AutostartSyncEvent {
 }
 
 fn emit_autostart_sync(app: &tauri::AppHandle, enabled: bool) {
-    match autostart::sync(enabled) {
+    let result = autostart::sync(enabled);
+    AUTOSTART_SYNC_FAILED.store(result.is_err(), Ordering::Relaxed);
+    match result {
         Ok(status) => {
             if status.path_updated {
                 logging::append_event(&format!(
@@ -331,6 +338,7 @@ pub fn run() {
         let result = handy_core::runtime_check::run(
             probe_args.get(2).map(std::path::Path::new),
             probe_args.get(3).map(std::path::Path::new),
+            probe_args.get(4).map(String::as_str),
         );
         let failed = result.is_err();
         let report =
@@ -388,6 +396,7 @@ pub fn run() {
             window::monitors::get_monitor_snapshot,
             window::show_overlay_ready,
             set_overlay_bounds,
+            window::set_overlay_widget_regions,
             get_collapsed_gesture_state,
             open_settings_window,
             close_intro_window,
@@ -399,6 +408,9 @@ pub fn run() {
             data::get_data_snapshot,
             data::open_data_folder,
             data::delete_all_data_and_exit,
+            local_servers::list_local_servers,
+            local_servers::open_local_server,
+            local_servers::stop_local_server,
             get_install_handoff,
             open_newer_install,
             copy_diagnostics,

@@ -20,10 +20,10 @@ export function MonitorSetting({ value, onChange, locale }: { value: string | nu
     return () => { active = false; dispose() }
   }, [])
   const missing = Boolean(snapshot && value && !snapshot.monitors.some(m => m.id === value))
-  const options = [{ value: '', label: ru ? 'Основной монитор Windows' : 'Windows primary display' },
+  const options = [{ value: '', label: ru ? 'Основной монитор' : 'Primary display' },
     ...(snapshot?.monitors ?? []).map(m => ({ value: m.id, label: `${m.name} · ${m.width} × ${m.height}${m.primary ? ru ? ' · Основной' : ' · Primary' : ''}` })),
-    ...(missing ? [{ value: value!, label: ru ? 'Выбранный монитор не подключён' : 'Selected display is disconnected' }] : [])]
-  return <SettingRow label={ru ? 'Монитор островка' : 'Island display'} hint={error ? ru ? 'Не удалось получить список мониторов. Откройте настройки ещё раз.' : 'Could not load displays. Reopen Settings to retry.' : missing ? ru ? 'Пока используем основной. Вернём островок, когда монитор подключится.' : 'Using the primary display for now. The island returns when this display reconnects.' : ru ? 'Положение обновляется при повороте и изменении разрешения.' : 'Position updates when the display rotates or its resolution changes.'}>
+    ...(missing ? [{ value: value!, label: ru ? 'Монитор не подключён' : 'Display disconnected' }] : [])]
+  return <SettingRow label={ru ? 'Монитор островка' : 'Island display'} hint={error ? ru ? 'Не удалось загрузить мониторы. Откройте настройки заново.' : 'Could not load displays. Reopen Settings.' : missing ? ru ? 'Пока островок на основном мониторе.' : 'Using the primary display for now.' : undefined}>
     <Select ariaLabel={ru ? 'Монитор островка' : 'Island display'} value={value ?? ''} options={options} onChange={next => onChange(next || null)} disabled={!snapshot || error} />
   </SettingRow>
 }

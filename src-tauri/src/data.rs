@@ -6,7 +6,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 use tauri_plugin_autostart::ManagerExt;
-use tauri_plugin_opener::OpenerExt;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DataFolder {
@@ -72,12 +71,9 @@ pub async fn get_data_snapshot() -> Result<DataSnapshot, String> {
     .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-pub fn open_data_folder(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn open_data_folder() -> Result<(), String> {
     let root = roots()?.remove(0);
-    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
-    app.opener()
-        .open_path(root.to_string_lossy(), None::<&str>)
-        .map_err(|e| e.to_string())
+    handy_core::shell::open_folder(root, true).await
 }
 #[tauri::command]
 pub async fn delete_all_data_and_exit(app: tauri::AppHandle, confirmation: String) -> Result<(), String> {

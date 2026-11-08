@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Pin, PinOff } from 'lucide-react'
-import { type IslandAppState, type UsageController } from '../../app/useIslandApp'
+import { useLatestDictationMessage, useLocalServersController, type IslandAppState, type LatestDictationMessageController, type LocalServersController, type UsageController } from '../../app/useIslandApp'
 import { getIslandLayout } from '../../shared/lib/islandLayout'
 import {
   getCollapsedGestureState,
@@ -12,6 +12,7 @@ import {
   onIntroClosed,
   onIslandReveal,
   setOverlayBounds,
+  setOverlayWidgetRegions,
   type CollapsedGestureState,
 } from '../../app/tauriApi'
 import { MusicModule } from '../music/MusicModule'
@@ -23,15 +24,19 @@ import {
   getOverlayBounds,
   shouldDeferOverlayClose,
   measureExpandedHitBand,
+  measureOverlayWidgetRect,
   syncOverlayWindow,
   type OverlayWindowPhase,
 } from './overlayWindow'
 import { transitionOverlay, type OverlayTransition } from './overlayTransition'
 import { IslandTopIndicator } from './IslandTopIndicator'
 import { HoverCoach } from './HoverCoach'
+import { LocalServersPanel } from './LocalServersPanel'
+import { LatestDictationPanel } from './LatestDictationPanel'
 import { buildAccentTokens } from '../../shared/lib/accentTheme'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import {
+  getLocalServersWidgetScale,
   getUiPrefs,
   getUsageWidgetCompact,
   getUsageWidgetScale,
@@ -46,6 +51,8 @@ import { UsageStatusChip } from '../usage/UsageStatusChip'
 interface OverlayShellProps {
   app: IslandAppState
   usage?: UsageController
+  localServers?: LocalServersController
+  latestDictation?: LatestDictationMessageController
 }
 
 interface ArtworkTheme {
@@ -59,8 +66,9 @@ const FALLBACK_ARTWORK_THEME: ArtworkTheme = {
 }
 
 const OPEN_PULL_THRESHOLD = 8
+const DISMISSED_DICTATION_KEY = 'island-dismissed-dictation'
 
-export function OverlayShell({ app, usage }: OverlayShellProps) {
+export function OverlayShell({ app, usage, localServers, latestDictation }: OverlayShellProps) {
   const {
     config,
     media,
@@ -144,6 +152,20 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
   const transitionRef = useRef(transition)
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
+  const localServersEnabled = islandLayout.zones.bottom.includes('localServers')
+  const discoveredServers = useLocalServersController(localServersEnabled && expandedVisible && !localServers)
+  const localServersController = localServers ?? discoveredServers
+  const showLocalServers = expandedVisible && localServersEnabled && localServersController.servers.length > 0
+  const localServersRef = useRef<HTMLElement | null>(null)
+  const latestAllowed = config.plugins.enabled.includes('dictation') && uiPrefs.showLatestDictationMessage === true
+  const history = useLatestDictationMessage(latestAllowed && !latestDictation)
+  const { message, copy } = latestDictation ?? history
+  const [dismissedMessage, setDismissedMessage] = useState(() => {
+    try { return latestDictation ? null : localStorage.getItem(DISMISSED_DICTATION_KEY) } catch { return null }
+  })
+  const messageKey = message ? `${message.timestamp}:${message.id}` : null
+  const showLatestMessage = expandedVisible && latestAllowed && Boolean(messageKey && messageKey !== dismissedMessage && message?.text.trim())
+  const latestMessageRef = useRef<HTMLElement | null>(null)
   const setWindowPhase = useCallback((phase: OverlayWindowPhase, expected?: number) => {
     const next = transitionOverlay(transitionRef.current, phase, expected)
     transitionRef.current = next
@@ -227,6 +249,15 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
   const openedAtRef = useRef(0)
   const revealHoldUntilRef = useRef(0)
   windowPhaseRef.current = windowPhase
+  const publishWidgetRegions = useCallback(() => {
+    const expanded = windowPhaseRef.current === 'open'
+    const servers = expanded ? localServersRef.current : null
+    const latest = expanded ? latestMessageRef.current : null
+    void setOverlayWidgetRegions({
+      localServers: servers ? measureOverlayWidgetRect(servers) : null,
+      latestMessage: latest ? measureOverlayWidgetRect(latest) : null,
+    }).catch(() => undefined)
+  }, [])
   const currentArtworkThemeRef = useRef<ArtworkTheme>(FALLBACK_ARTWORK_THEME)
   const [artworkTheme, setArtworkTheme] = useState<ArtworkTheme>(FALLBACK_ARTWORK_THEME)
 
@@ -328,6 +359,22 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
       cancelled = true
     }
   }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
+
+  useEffect(() => {
+    if ((!showLocalServers && !showLatestMessage) || !isTauriRuntime()) return
+    const observer = new ResizeObserver(publishWidgetRegions)
+    for (const panel of [localServersRef.current, latestMessageRef.current]) {
+      if (panel) observer.observe(panel)
+    }
+    if (hoverZoneRef.current) observer.observe(hoverZoneRef.current)
+    window.addEventListener('resize', publishWidgetRegions)
+    publishWidgetRegions()
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', publishWidgetRegions)
+      void setOverlayWidgetRegions({ localServers: null, latestMessage: null }).catch(() => undefined)
+    }
+  }, [showLocalServers, showLatestMessage, messageKey, config.layout.scale, publishWidgetRegions])
 
   // Native keep-alive band must cover Settings/Pin in *physical* px (DPR-aware).
   // 1.3.21 only hugged height in CSS px — on 125%/150% the band was too narrow and mid-path closed.
@@ -845,6 +892,18 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
     handlePointerLeave,
   }
 
+  const localServersPanel = showLocalServers ? <LocalServersPanel ref={localServersRef} {...localServersController}
+    locale={locale} contentScale={getLocalServersWidgetScale(config) / config.layout.scale} /> : null
+  const latestMessagePanel = showLatestMessage && message ? <LatestDictationPanel
+    key={messageKey} message={message} locale={locale} copy={copy}
+    ref={latestMessageRef}
+    dismiss={() => {
+      setDismissedMessage(messageKey)
+      if (!latestDictation && messageKey) {
+        try { localStorage.setItem(DISMISSED_DICTATION_KEY, messageKey) } catch { /* Session state remains available. */ }
+      }
+    }} /> : null
+
   return (
     <main
       className={[
@@ -904,6 +963,7 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
               initial={reducedMotion ? false : { opacity: 0, y: -18 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
+              onAnimationComplete={publishWidgetRegions}
               transition={{
                 duration: reducedMotion ? 0 : 0.26,
                 ease: [0.22, 1, 0.36, 1],
@@ -962,6 +1022,9 @@ export function OverlayShell({ app, usage }: OverlayShellProps) {
                 selection={waveContext.active}
                 onClear={() => void clearWaveSelection()}
               />
+            ) : null}
+            {localServersPanel || latestMessagePanel ? (
+              <div className="island-bottom-rail">{localServersPanel}{latestMessagePanel}</div>
             ) : null}
             </div>
 

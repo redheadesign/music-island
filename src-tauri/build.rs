@@ -1,6 +1,11 @@
 #[path = "crates/handy-core/embed_assets.rs"]
 mod embed_assets;
 fn main() {
+    // `generate_context!` tracks the files already embedded. Watch the output
+    // directory as well so newly added frontend assets trigger a rebuild.
+    if std::path::Path::new("../dist").is_dir() {
+        println!("cargo:rerun-if-changed=../dist");
+    }
     embed_assets::embed_directory(
         std::path::Path::new("resources/voice"),
         &std::path::PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("voice_assets.rs"),

@@ -66,6 +66,7 @@ function CompactProvider({
   const tone = getUsageQuotaTone(remaining)
   const state = data?.state ?? 'connecting'
   const summary = providerSummary(data, locale)
+  const value = remaining == null ? '—' : `${Math.round(remaining)}%`
 
   return (
     <span
@@ -81,7 +82,7 @@ function CompactProvider({
       </svg>
       <BrandLogo brand={provider} size={16} />
       </span>
-      <strong className="usage-chip__compact-value" aria-hidden="true">{remaining == null ? '—' : `${Math.round(remaining)}%`}</strong>
+      <strong key={value} className="usage-chip__compact-value usage-chip__number" aria-hidden="true">{value}</strong>
     </span>
   )
 }
@@ -118,16 +119,17 @@ function QuotaWindow({ window, locale }: { window: UsageWindow; locale: UsageLoc
   const label = formatUsageWindowLabel(window.label, locale)
   const tone = getUsageQuotaTone(remaining)
   const remainingLabel = locale === 'ru' ? 'осталось' : 'remaining'
+  const value = remaining == null ? '—' : `${Math.round(remaining)}%`
   return (
     <div className="usage-chip__window" data-tone={tone}>
       <div className="usage-chip__window-value">
-        <strong>{remaining == null ? '—' : `${Math.round(remaining)}%`}</strong>
+        <strong key={value} className="usage-chip__number">{value}</strong>
         <span>{label}</span>
       </div>
       <span
         className="usage-chip__bar"
         role="progressbar"
-        aria-label={`${label}: ${remaining == null ? '—' : `${Math.round(remaining)}%`} ${remainingLabel}`}
+        aria-label={`${label}: ${value} ${remainingLabel}`}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={remaining == null ? undefined : Math.round(remaining)}

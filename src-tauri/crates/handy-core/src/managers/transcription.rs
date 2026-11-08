@@ -551,21 +551,29 @@ impl TranscriptionManager {
             .as_str()
             .unwrap()
             .to_string();
-        let accelerator = serde_json::to_value(settings.transcribe_accelerator)?
+        let gpu_disabled = transcribe_gpu_disabled_for_host();
+        let accelerator =
+            effective_transcribe_accelerator(settings.transcribe_accelerator, gpu_disabled);
+        let accelerator_id = serde_json::to_value(accelerator)?
             .as_str()
             .unwrap()
             .to_string();
         let loaded_engine = LoadedEngine::load(
             &model_path,
             kind,
-            accelerator,
+            accelerator_id,
             settings.transcribe_gpu_device,
             device_index,
-            transcribe_gpu_disabled_for_host(),
+            gpu_disabled,
         )
         .inspect_err(|e| emit_loading_failed(&e.to_string()))?;
         if loaded_engine.kind == "TranscribeCpp" {
             let caps = &loaded_engine.capabilities;
+            if accelerator == TranscribeAcceleratorSetting::Vulkan
+                && !caps.backend.to_ascii_lowercase().starts_with("vulkan")
+            {
+                warn!("Dictation: Vulkan unavailable, using {}", caps.backend);
+            }
             self.model_manager.set_runtime_capabilities(
                 model_id,
                 caps.streaming,
@@ -644,11 +652,8 @@ impl TranscriptionManager {
         current_model.clone()
     }
 
-    /// The compute backend the currently-loaded engine is bound to, for
-    /// diagnostics (e.g. confirming `--device-index` actually bound a GPU rather
-    /// than falling back to CPU/auto). transcribe-cpp (whisper-family) reports
-    /// its real backend string; ONNX engines report "onnx"; `None` when no
-    /// model is loaded.
+    /// The bound GGML/GGUF backend or "onnx" when an ONNX model is loaded.
+    /// The engine can be temporarily leased by the transcription worker.
     pub fn current_backend(&self) -> Option<String> {
         self.lock_engine()
             .as_ref()
@@ -1675,46 +1680,33 @@ fn effective_transcribe_accelerator(
         setting
     }
 }
-#[cfg(test)]
-#[derive(Debug, PartialEq)]
-enum Backend {
-    Auto,
-    Cpu,
-}
-#[cfg(test)]
-fn select_transcribe_backend_for_host(
-    setting: TranscribeAcceleratorSetting,
-    gpu_disabled: bool,
-) -> Backend {
-    match effective_transcribe_accelerator(setting, gpu_disabled) {
-        TranscribeAcceleratorSetting::Cpu => Backend::Cpu,
-        _ => Backend::Auto,
-    }
-}
-fn transcribe_device_allowed(kind: &str, gpu_disabled: bool) -> bool {
-    !gpu_disabled || matches!(kind, "cpu" | "accel")
-}
-fn available_transcribe_accelerators(gpu_disabled: bool) -> Vec<String> {
+fn available_transcribe_accelerators(gpu_disabled: bool, vulkan_available: bool) -> Vec<String> {
     if gpu_disabled {
         vec!["cpu".into()]
+    } else if vulkan_available {
+        vec!["auto".into(), "cpu".into(), "vulkan".into()]
     } else {
-        vec!["auto".into(), "cpu".into(), "gpu".into()]
+        vec!["auto".into(), "cpu".into()]
     }
 }
 pub fn get_available_accelerators() -> AvailableAccelerators {
     let gpu_disabled = transcribe_gpu_disabled_for_host();
-    let gpu_devices = crate::runtime::devices()
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|d| !gpu_disabled && d.is_gpu)
-        .map(|d| GpuDeviceOption {
-            id: d.id,
-            name: d.name,
-            total_vram_mb: (d.memory_total / (1024 * 1024)) as usize,
-        })
-        .collect();
+    let gpu_devices: Vec<_> = if gpu_disabled {
+        Vec::new()
+    } else {
+        crate::runtime::devices()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|d| d.is_gpu && d.kind == "vulkan")
+            .map(|d| GpuDeviceOption {
+                id: d.id,
+                name: d.name,
+                total_vram_mb: (d.memory_total / (1024 * 1024)) as usize,
+            })
+            .collect()
+    };
     AvailableAccelerators {
-        transcribe: available_transcribe_accelerators(gpu_disabled),
+        transcribe: available_transcribe_accelerators(gpu_disabled, !gpu_devices.is_empty()),
         ort: vec!["auto".into(), "cpu".into()],
         gpu_devices,
     }
@@ -1734,28 +1726,18 @@ mod tests {
             TranscribeAcceleratorSetting::Auto,
             TranscribeAcceleratorSetting::Cpu,
             TranscribeAcceleratorSetting::Gpu,
+            TranscribeAcceleratorSetting::Vulkan,
         ] {
             assert_eq!(effective_transcribe_accelerator(setting, false), setting);
         }
         assert_eq!(
-            available_transcribe_accelerators(false),
-            ["auto", "cpu", "gpu"]
+            available_transcribe_accelerators(false, true),
+            ["auto", "cpu", "vulkan"]
         );
         assert_eq!(
-            select_transcribe_backend_for_host(TranscribeAcceleratorSetting::Auto, false),
-            Backend::Auto
+            available_transcribe_accelerators(false, false),
+            ["auto", "cpu"]
         );
-        assert_eq!(
-            select_transcribe_backend_for_host(TranscribeAcceleratorSetting::Cpu, false),
-            Backend::Cpu
-        );
-        assert_eq!(
-            select_transcribe_backend_for_host(TranscribeAcceleratorSetting::Gpu, false),
-            Backend::Auto
-        );
-        for kind in ["cpu", "accel", "metal", "cuda", "vulkan", "gpu"] {
-            assert!(transcribe_device_allowed(kind, false));
-        }
     }
 
     #[test]
@@ -1764,22 +1746,14 @@ mod tests {
             TranscribeAcceleratorSetting::Auto,
             TranscribeAcceleratorSetting::Cpu,
             TranscribeAcceleratorSetting::Gpu,
+            TranscribeAcceleratorSetting::Vulkan,
         ] {
             assert_eq!(
                 effective_transcribe_accelerator(setting, true),
                 TranscribeAcceleratorSetting::Cpu
             );
-            assert_eq!(
-                select_transcribe_backend_for_host(setting, true),
-                Backend::Cpu
-            );
         }
-        assert_eq!(available_transcribe_accelerators(true), ["cpu"]);
-        assert!(transcribe_device_allowed("cpu", true));
-        assert!(transcribe_device_allowed("accel", true));
-        for kind in ["metal", "cuda", "vulkan", "gpu", "unknown"] {
-            assert!(!transcribe_device_allowed(kind, true));
-        }
+        assert_eq!(available_transcribe_accelerators(true, true), ["cpu"]);
     }
 
     #[test]

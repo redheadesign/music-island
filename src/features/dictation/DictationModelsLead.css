@@ -1,0 +1,14 @@
+.dictation-models__storage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.dictation-models__storage code {
+  flex: 1;
+  min-width: 0;
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}

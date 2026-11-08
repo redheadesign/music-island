@@ -64,6 +64,23 @@ export function cssToPhysicalHitPx(cssPx: number): number {
   return cssPx * dpr
 }
 
+export function measureOverlayWidgetRect(panel: HTMLElement) {
+  const { left, top, width, height } = panel.getBoundingClientRect()
+  // Oversized islands can be clipped on a portrait or high-DPI monitor. Report
+  // the visible part so one offscreen edge does not disable both widgets.
+  const x = Math.max(0, left)
+  const y = Math.max(0, top)
+  const visibleWidth = Math.min(window.innerWidth, left + width) - x
+  const visibleHeight = Math.min(window.innerHeight, top + height) - y
+  if (!(visibleWidth > 0 && visibleHeight > 0)) return null
+  return {
+    left: cssToPhysicalHitPx(x),
+    top: cssToPhysicalHitPx(y),
+    width: cssToPhysicalHitPx(visibleWidth),
+    height: cssToPhysicalHitPx(visibleHeight),
+  }
+}
+
 /**
  * Centered hit-band size that covers the real chrome (including Settings/Pin).
  * Uses the larger of left/right extent from the viewport center so asymmetric

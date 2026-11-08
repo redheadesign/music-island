@@ -53,7 +53,6 @@ export function AlreadyRunningNotice({ locale }: AlreadyRunningNoticeProps) {
     <main className="notice-window-root">
       <GlassSurface as="section" className="notice-card">
         <h1>{t('notice.alreadyRunningTitle')}</h1>
-        <p>{t('notice.alreadyRunningBody')}</p>
         <p className="notice-hint">{t('notice.alreadyRunningHint')}</p>
         <button type="button" className="notice-ok" onClick={() => void hideNotice()}>
           {t('notice.ok')}

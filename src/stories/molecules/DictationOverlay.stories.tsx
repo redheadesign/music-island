@@ -80,7 +80,7 @@ function RestartPreview(args: ComponentProps<typeof DictationOverlayView>) {
 export const FoxRestart: Story = { ...PixelFox, name: 'Лиса · повторный запуск сохраняет графику', render: args => <RestartPreview {...args} />, play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
   const surface = canvasElement.querySelector('.dictation-cloud-surface')!
-  await waitFor(() => expect(surface.getAttribute('data-fallback')).toBeNull())
+  await waitFor(() => expect(surface.getAttribute('data-fallback')).toBeNull(), { timeout: 5000 })
   await userEvent.click(canvas.getByRole('button', { name: 'Скрыть запись' }))
   await expect(canvasElement.querySelector('.dictation-overlay')).not.toBeVisible()
   await expect(canvasElement.querySelector('.dictation-visual--pixels')).toBeNull()

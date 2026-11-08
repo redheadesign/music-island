@@ -50,17 +50,7 @@ fn begin(text: &str, target: u32) -> (Arc<WinTxShared>, thread::JoinHandle<()>) 
     let worker_tx = tx.clone();
     let (ready, receiver) = std::sync::mpsc::channel();
     let worker = thread::spawn(move || {
-        unsafe {
-            use windows::Win32::System::LibraryLoader::GetProcAddress;
-            let user32 = GetModuleHandleW(w!("user32.dll")).unwrap();
-            let set_desktop: unsafe extern "system" fn(isize) -> i32 = std::mem::transmute(
-                GetProcAddress(user32, windows::core::s!("SetThreadDesktop")).unwrap(),
-            );
-            assert_ne!(
-                set_desktop(TEST_DESKTOP.load(std::sync::atomic::Ordering::Acquire)),
-                0
-            );
-        }
+        attach_to_test_desktop();
         pump_thread(worker_tx, ready)
     });
     let deadline = Instant::now() + Duration::from_secs(5);
@@ -75,17 +65,35 @@ fn begin(text: &str, target: u32) -> (Arc<WinTxShared>, thread::JoinHandle<()>) 
         );
         // EmptyClipboard synchronously notifies the marker's owner window.
         // This test thread owns that window, so keep its queue responsive.
-        unsafe {
-            use windows::Win32::UI::WindowsAndMessaging::{PeekMessageW, PM_REMOVE};
-            let mut msg = MSG::default();
-            while PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool() {
-                let _ = DispatchMessageW(&msg);
-            }
-        }
+        pump_test_messages();
         thread::sleep(Duration::from_millis(1));
     }
     tx.state.lock().unwrap().injected_at = Some(Instant::now());
     (tx, worker)
+}
+
+fn attach_to_test_desktop() {
+    unsafe {
+        use windows::Win32::System::LibraryLoader::GetProcAddress;
+        let user32 = GetModuleHandleW(w!("user32.dll")).unwrap();
+        let set_desktop: unsafe extern "system" fn(isize) -> i32 = std::mem::transmute(
+            GetProcAddress(user32, windows::core::s!("SetThreadDesktop")).unwrap(),
+        );
+        assert_ne!(
+            set_desktop(TEST_DESKTOP.load(std::sync::atomic::Ordering::Acquire)),
+            0
+        );
+    }
+}
+
+fn pump_test_messages() {
+    unsafe {
+        use windows::Win32::UI::WindowsAndMessaging::{PeekMessageW, PM_REMOVE};
+        let mut msg = MSG::default();
+        while PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool() {
+            let _ = DispatchMessageW(&msg);
+        }
+    }
 }
 
 #[test]
@@ -183,14 +191,16 @@ fn isolated_windows_delayed_read_manager_and_new_copy() {
         // Production Windows now uses the synchronous 3.0.2 finish path.
         // Exercise its ordering and sequence guard with a real isolated
         // clipboard, including a newer copy between injection and restore.
-        use crate::clipboard::{clipboard_is_unchanged, finish_clipboard_paste};
+        use crate::clipboard::{
+            clipboard_is_unchanged, clipboard_restore_delay_ms, finish_clipboard_paste,
+        };
         write(reader, "original rapid-dictation marker");
         for phrase in ["phrase one", "phrase two", "phrase three"].into_iter().cycle().take(60) {
             let saved = read(reader);
             write(reader, phrase);
             let published = GetClipboardSequenceNumber();
             assert_eq!(read(reader), phrase);
-            finish_clipboard_paste(Ok(()), 0, || {
+            finish_clipboard_paste(Ok(()), 0, ClipboardHandling::DontModify, || {
                 if clipboard_is_unchanged(published, GetClipboardSequenceNumber()) {
                     write(reader, &saved);
                 }
@@ -201,12 +211,78 @@ fn isolated_windows_delayed_read_manager_and_new_copy() {
         write(reader, "dictated text before a new copy");
         let published = GetClipboardSequenceNumber();
         write(reader, "new user copy during synchronous insertion");
-        finish_clipboard_paste(Ok(()), 0, || {
+        finish_clipboard_paste(Ok(()), 0, ClipboardHandling::DontModify, || {
             if clipboard_is_unchanged(published, GetClipboardSequenceNumber()) {
                 write(reader, &saved);
             }
         }).unwrap();
         assert_eq!(read(reader), "new user copy during synchronous insertion");
+
+        // Real Windows Edit control. Deliver WM_PASTE after the old restore
+        // window to reproduce replacing the selection with saved clipboard text.
+        use windows::Win32::{
+            Foundation::{LPARAM, WPARAM},
+            UI::WindowsAndMessaging::{
+                GetWindowTextW, SendMessageW, SetWindowTextW, WM_PASTE, WS_CHILD,
+            },
+        };
+        let editor = CreateWindowExW(
+            WINDOW_EX_STYLE::default(),
+            w!("Edit"),
+            w!("selected text"),
+            WS_CHILD,
+            0,
+            0,
+            160,
+            24,
+            Some(reader),
+            None,
+            Some(instance),
+            None,
+        ).unwrap();
+        const EM_SETSEL: u32 = 0x00b1;
+        let paste_selected = || {
+            SetWindowTextW(editor, w!("selected text")).unwrap();
+            SendMessageW(editor, EM_SETSEL, Some(WPARAM(0)), Some(LPARAM(-1)));
+            SendMessageW(editor, WM_PASTE, None, None);
+            let mut buffer = [0; 64];
+            let length = GetWindowTextW(editor, &mut buffer) as usize;
+            String::from_utf16_lossy(&buffer[..length])
+        };
+
+        let restore = ClipboardHandling::DontModify;
+        let keep = ClipboardHandling::CopyToClipboard;
+        for (handling, delay_ms, expected) in [
+            (restore, 60, "old copied text"),
+            (restore, clipboard_restore_delay_ms(60, restore), "latest dictated phrase"),
+            (keep, clipboard_restore_delay_ms(60, keep), "latest dictated phrase"),
+        ] {
+            write(reader, "latest dictated phrase");
+            let reader_handle = reader.0 as isize;
+            let (started, received_start) = std::sync::mpsc::channel();
+            let worker = thread::spawn(move || {
+                attach_to_test_desktop();
+                started.send(Instant::now()).unwrap();
+                finish_clipboard_paste(Ok(()), delay_ms, handling, || {
+                    write(HWND(reader_handle as *mut _), "old copied text");
+                }).unwrap();
+            });
+            let start = received_start.recv_timeout(Duration::from_secs(2)).unwrap();
+            while start.elapsed() < Duration::from_millis(250) {
+                pump_test_messages();
+                thread::sleep(Duration::from_millis(1));
+            }
+            let inserted = paste_selected();
+            while !worker.is_finished() && start.elapsed() < Duration::from_secs(4) {
+                pump_test_messages();
+                thread::sleep(Duration::from_millis(1));
+            }
+            assert!(worker.is_finished(), "clipboard restore did not finish");
+            worker.join().unwrap();
+            assert_eq!(inserted, expected);
+            assert_eq!(read(reader), if handling == restore { "old copied text" } else { expected });
+        }
+        DestroyWindow(editor).unwrap();
         DestroyWindow(reader).unwrap();
     }
 }

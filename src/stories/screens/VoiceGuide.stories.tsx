@@ -42,7 +42,7 @@ export const Troubleshooting: Story = {
     await expect(disclosure.closest('details')).toHaveAttribute('open')
     await userEvent.click(canvas.getByRole('button', { name: /Сайт VB-Cable|VB-Cable website/ }))
     await expect(args.onOpenCableSite).toHaveBeenCalledTimes(1)
-    await userEvent.click(canvas.getByRole('button', { name: /К настройке микрофона|Back to microphone settings/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /К настройкам|Back to settings/ }))
     await expect(args.onBack).toHaveBeenCalledTimes(1)
   },
 }

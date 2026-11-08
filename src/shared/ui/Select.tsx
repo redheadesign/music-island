@@ -50,26 +50,29 @@ function Menu({
   const menuRef = useRef<HTMLDivElement>(null)
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const focusOnOpen = useRef(0)
-  const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, maxHeight: 280 })
+  const [opening, setOpening] = useState<'pointer' | 'keyboard' | null>(null)
+  const open = opening !== null && !disabled
+  if (disabled && opening !== null) setOpening(null)
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, maxHeight: 280, above: false })
   const [portalTheme, setPortalTheme] = useState<CSSProperties>({})
 
   const selected = options.find((o) => o.value === value)
   const label = selected?.label || placeholder
 
-  const openMenu = (edge?: 'first' | 'last') => {
+  const openMenu = (edge?: 'first' | 'last', byPointer = false) => {
     const selectedIndex = options.findIndex((option) => option.value === value)
     focusOnOpen.current = edge === 'first'
       ? 0
       : edge === 'last'
         ? options.length - 1
         : Math.max(0, selectedIndex)
-    setOpen(true)
+    const reduced = buttonRef.current?.closest('.reduced-motion, [data-reduced-motion="true"]')
+    setOpening(byPointer && !reduced ? 'pointer' : 'keyboard')
   }
 
   const closeMenu = (restoreFocus = false) => {
     if (restoreFocus) buttonRef.current?.focus({ preventScroll: true })
-    setOpen(false)
+    setOpening(null)
   }
 
   const handleMenuKey = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -129,9 +132,10 @@ function Menu({
       const height = Math.min(desiredHeight, maxHeight)
       const anchorTop = openBelow ? r.bottom + gap : r.top - gap - height
       const top = Math.max(inset, Math.min(anchorTop, viewportHeight - height - inset))
-      setPos((previous) => previous.top === top && previous.left === left && previous.width === width && previous.maxHeight === maxHeight
+      const aboveTrigger = !openBelow
+      setPos((previous) => previous.top === top && previous.left === left && previous.width === width && previous.maxHeight === maxHeight && previous.above === aboveTrigger
         ? previous
-        : { top, left, width, maxHeight })
+        : { top, left, width, maxHeight, above: aboveTrigger })
     }
     placeMenu()
     const observer = new ResizeObserver(placeMenu)
@@ -170,7 +174,7 @@ function Menu({
     const onPointer = (event: MouseEvent) => {
       const t = event.target as Node
       if (buttonRef.current?.contains(t) || menuRef.current?.contains(t)) return
-      setOpen(false)
+      setOpening(null)
     }
     document.addEventListener('mousedown', onPointer)
     return () => {
@@ -191,7 +195,7 @@ function Menu({
         aria-label={ariaLabel}
         aria-describedby={ariaLabel && !actions ? `${id}-value` : undefined}
         disabled={disabled}
-        onClick={() => open ? closeMenu() : openMenu()}
+        onClick={(event) => open ? closeMenu() : openMenu(undefined, event.detail > 0)}
         onKeyDown={(event) => {
           if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
             event.preventDefault()
@@ -213,9 +217,10 @@ function Menu({
               ref={menuRef}
               id={`${id}-menu`}
               className="dark-select-menu"
+              data-enter={opening === 'pointer' && pos.width > 0 ? (pos.above ? 'above' : 'below') : undefined}
               role={actions ? 'menu' : 'listbox'}
               aria-labelledby={id}
-              style={{ ...portalTheme, ...pos }}
+              style={{ ...portalTheme, top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight }}
               onKeyDown={handleMenuKey}
             >
               {options.length === 0 ? (

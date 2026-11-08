@@ -2,7 +2,11 @@
 use anyhow::{bail, Result};
 use serde_json::{json, Value};
 use std::{path::Path, time::Instant};
-pub fn run(model: Option<&Path>, audio: Option<&Path>) -> Result<Value> {
+pub fn run(model: Option<&Path>, audio: Option<&Path>, accelerator: Option<&str>) -> Result<Value> {
+    let accelerator = accelerator.unwrap_or("cpu");
+    if !matches!(accelerator, "auto" | "cpu" | "vulkan") {
+        bail!("Probe accelerator must be auto, cpu, or vulkan");
+    }
     crate::portable::init();
     crate::portable::extract_resources()?;
     let started = Instant::now();
@@ -36,11 +40,13 @@ pub fn run(model: Option<&Path>, audio: Option<&Path>) -> Result<Value> {
         let mut engine = crate::runtime::RemoteEngine::load(
             model,
             "TranscribeCpp".into(),
-            "cpu".into(),
+            accelerator.into(),
             None,
             None,
-            true,
+            crate::utils::is_windows_x64_emulated_on_arm64(),
         )?;
+        report["requestedAccelerator"] = json!(accelerator);
+        report["backend"] = json!(engine.capabilities.backend);
         report["loadMs"] = json!(start.elapsed().as_millis());
         let start = Instant::now();
         let result = engine.run(&samples, Default::default())?;

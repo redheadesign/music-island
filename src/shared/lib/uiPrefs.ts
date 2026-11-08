@@ -9,12 +9,18 @@ export type SettingsColorScheme = 'dark' | 'light'
 export interface UiPrefs {
   /** Recorder artwork only; native capture and overlay visibility remain independent. */
   dictationAppearance?: DictationAppearance
+  /** Opt in to a persistent view of the most recent dictation text on the island. */
+  showLatestDictationMessage?: boolean
   /** Ordered controls rendered in the native taskbar player. */
   taskbarLayout?: TaskbarLayoutV1
   /** Independent visual scale for quota satellites. */
   usageWidgetScale?: number
   /** Render quota satellites with their compact presentation. */
   usageWidgetCompact?: boolean
+  /** Show the local TCP listeners widget below the island. */
+  localServersEnabled?: boolean
+  /** Visual size of local server rows, as a percentage. */
+  localServersWidgetScale?: number
   /** Explicit Settings window color scheme. Missing values keep the established dark theme. */
   settingsColorScheme?: SettingsColorScheme
   /** Settings update banner dismissed for this latest version */
@@ -59,6 +65,15 @@ export function getUsageWidgetScale(config: AppConfig | null | undefined): numbe
 
 export function getUsageWidgetCompact(config: AppConfig | null | undefined): boolean {
   return getUiPrefs(config).usageWidgetCompact !== false
+}
+
+export const LOCAL_SERVERS_WIDGET_SCALE_RANGE = { min: 85, max: 115 } as const
+
+export function getLocalServersWidgetScale(config: AppConfig | null | undefined): number {
+  const value = getUiPrefs(config).localServersWidgetScale
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 100
+  const { min, max } = LOCAL_SERVERS_WIDGET_SCALE_RANGE
+  return Math.round(Math.max(min, Math.min(max, value)))
 }
 
 export const ISLAND_NAG_MS = 30 * 24 * 60 * 60 * 1000

@@ -1,0 +1,48 @@
+.island-bottom-rail {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + var(--space-2));
+  left: 50%;
+  width: var(--island-player-width);
+  display: grid;
+  gap: var(--space-2);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.island-root:not(.island-root--open) .island-bottom-rail { visibility: hidden; }
+
+.island-latest-dictation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  color: var(--fg-primary);
+  box-shadow: var(--shadow-popover);
+  pointer-events: auto;
+}
+
+.island-latest-dictation__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+.island-latest-dictation__actions { display: flex; gap: var(--space-1); }
+.island-latest-dictation__error { grid-column: 1 / -1; }
+.island-latest-dictation__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .island-latest-dictation__text {
+    animation: latest-transcript-enter var(--motion-fast) var(--ease-enter);
+  }
+}
+
+@keyframes latest-transcript-enter { from { opacity: .75; } }

@@ -565,8 +565,8 @@ impl HistoryManager {
                 post_process_prompt,
                 post_process_requested
              FROM transcription_history
-             WHERE transcription_text != ''
-             ORDER BY timestamp DESC
+             WHERE trim(transcription_text) != ''
+             ORDER BY id DESC
              LIMIT 1",
         )?;
 
@@ -764,5 +764,18 @@ mod tests {
 
         assert_eq!(entry.timestamp, 100);
         assert_eq!(entry.transcription_text, "completed");
+    }
+
+    #[test]
+    fn latest_completed_entry_uses_insertion_order_when_timestamps_match() {
+        let conn = setup_conn();
+        insert_entry(&conn, 100, "first", None);
+        insert_entry(&conn, 100, "second", Some("edited second"));
+        insert_entry(&conn, 100, " ", None);
+        let entry = HistoryManager::get_latest_completed_entry_with_conn(&conn)
+            .expect("fetch latest completed entry")
+            .expect("completed entry exists");
+        assert_eq!(entry.transcription_text, "second");
+        assert_eq!(entry.post_processed_text.as_deref(), Some("edited second"));
     }
 }

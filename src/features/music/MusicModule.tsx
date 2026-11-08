@@ -92,7 +92,7 @@ export function MusicModule({
         <span className="music-empty-icon" aria-hidden="true">{isDirect ? <Unplug size={22} /> : <Music2 size={22} />}</span>
         <div className="music-empty-copy">
           <strong>{emptyTitle}</strong>
-          <span>{restarting ? t('music.directRestartingHint') : isDirect ? t('music.directOfflineHint') : t('music.noSessionHint')}</span>
+          {!restarting && (!isDirect || !onDirectReload) ? <span>{t(isDirect ? 'music.directOfflineHint' : 'music.noSessionHint')}</span> : null}
         </div>
         {isDirect && onDirectReload ? (
           <Button

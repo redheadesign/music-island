@@ -1,4 +1,37 @@
 .preview-resize-handle { position: absolute; z-index: 3; width: 30px; height: 30px; right: -12px; bottom: -12px; cursor: nwse-resize; touch-action: none; color: #fff7; outline: none; }
 .preview-resize-handle svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .preview-resize-handle:is(:hover,:focus-visible,:active), [data-resizing] .preview-resize-handle { color: #fffd; }
-.preview-resize-handle:focus-visible { outline: 2px solid #fffa; outline-offset: 2px; border-radius: 5px; }
+.preview-resize-handle:focus-visible { outline: 2px solid #fffa; outline-offset: 2px; border-radius: calc(var(--radius-unit) * 1.25); }
+.preview-resize-readout[data-readout]::before {
+  content: attr(data-readout);
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  z-index: 1;
+  padding: calc(var(--space-1) / var(--preview-render-scale, 1)) calc(var(--space-2) / var(--preview-render-scale, 1));
+  border-radius: var(--radius-pill);
+  background: var(--surface-glass);
+  color: var(--fg-primary);
+  font-size: calc(var(--text-small) / var(--preview-render-scale, 1));
+  line-height: var(--leading-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-enter);
+  pointer-events: none;
+}
+.preview-resize-handle[data-readout]::before {
+  inset: auto 100% 100% auto;
+  transform: none;
+}
+.preview-resize-readout[data-readout]:is(:focus-visible,[data-resize-active])::before { opacity: 1; }
+[data-resizing] .preview-resize-readout:not([data-resize-active])::before { opacity: 0; }
+@media (hover: hover) {
+  .preview-resize-readout[data-readout]:hover::before { opacity: 1; }
+  [data-resizing] .preview-resize-readout:not([data-resize-active]):hover::before { opacity: 0; }
+}
+[data-reduced-motion] .preview-resize-readout[data-readout]::before { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .preview-resize-readout[data-readout]::before { transition: none; }
+}

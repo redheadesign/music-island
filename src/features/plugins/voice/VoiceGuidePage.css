@@ -22,10 +22,10 @@
 .voice-setup-guide__intro h1 {
   margin: 0;
   color: var(--fg-primary);
-  font-size: 26px;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.035em;
+  font-size: calc(var(--type-unit) * 26);
+  font-weight: var(--weight-semibold);
+  line-height: calc(var(--leading-unit) * 1.25);
+  letter-spacing: calc(var(--tracking-unit) * -0.035);
 }
 
 .voice-setup-guide__intro p,
@@ -34,7 +34,7 @@
   margin: 0;
   color: var(--fg-secondary);
   font-size: var(--text-body);
-  line-height: 1.7;
+  line-height: calc(var(--leading-unit) * 1.7);
 }
 
 .voice-setup-guide__intro .voice-setup-guide__local,
@@ -68,7 +68,7 @@
   color: var(--fg-primary);
   background: var(--surface-raised);
   font-size: var(--text-label);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
 }
 
@@ -83,10 +83,10 @@
 .voice-setup-guide__help h2 {
   margin: 0;
   color: var(--fg-primary);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: -0.015em;
+  font-size: calc(var(--type-unit) * 16);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-label);
+  letter-spacing: calc(var(--tracking-unit) * -0.015);
 }
 
 .voice-setup-guide__device {
@@ -102,15 +102,15 @@
 .voice-setup-guide__device dt {
   color: var(--fg-secondary);
   font-size: var(--text-caption);
-  line-height: 1.5;
+  line-height: var(--leading-caption);
 }
 
 .voice-setup-guide__device dd {
   margin: 0;
   color: var(--fg-primary);
   font-family: var(--font-mono);
-  font-size: 15px;
-  line-height: 1.4;
+  font-size: calc(var(--type-unit) * 15);
+  line-height: var(--leading-label);
 }
 
 .voice-setup-guide__back,
@@ -129,8 +129,8 @@
   color: var(--fg-primary);
   background: var(--surface-raised);
   font-size: var(--text-label);
-  font-weight: 500;
-  line-height: 1.5;
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-caption);
   cursor: pointer;
   transition: background var(--motion-fast) var(--ease-standard);
 }
@@ -181,7 +181,7 @@
   padding: var(--space-4) 0;
   color: var(--fg-primary);
   font-size: var(--text-label);
-  line-height: 1.5;
+  line-height: var(--leading-caption);
   list-style: none;
   cursor: pointer;
 }
@@ -192,7 +192,7 @@
 .voice-setup-guide__disclosure p { padding-bottom: var(--space-4); }
 
 @container (max-width: 420px) {
-  .voice-setup-guide__intro h1 { font-size: 22px; }
+  .voice-setup-guide__intro h1 { font-size: calc(var(--type-unit) * 22); }
   .voice-setup-guide__step { gap: var(--space-3); padding-block: var(--space-5); }
   .voice-setup-guide__device { padding: var(--space-3); }
 }

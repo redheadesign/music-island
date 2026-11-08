@@ -99,7 +99,9 @@ export function useIslandApp({ mediaEnabled = true, timelineEnabled = true, wind
 }
 
 export { useDictationController, type DictationController } from './dictation/useDictationController'
+export { useLatestDictationMessage, type LatestDictationMessageController } from './dictation/useLatestDictationMessage'
 export { useDictationOverlay } from './dictation/useDictationOverlay'
 export { useDictationAction } from './dictation/useDictationAction'
 export { useDictationShortcut } from './dictation/useDictationShortcut'
 export { useDataController } from './data/useDataController'
+export { useLocalServersController, type LocalServersController } from './localServers/useLocalServersController'

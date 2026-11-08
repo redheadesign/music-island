@@ -851,8 +851,19 @@ impl ShortcutAction for TranscribeAction {
                                 let paste_time = Instant::now();
                                 let final_text = processed.final_text;
                                 let rm_for_paste = Arc::clone(&rm);
-                                complete_scheduled_insertion(|job| ah.run_on_main_thread(job), move || {
-                                    if rm_for_paste.was_cancelled_since(cancel_generation) {
+                                complete_scheduled_insertion(|job| {
+                                    #[cfg(target_os = "windows")]
+                                    {
+                                        // Clipboard waits and SendInput do not need the UI thread.
+                                        // The coordinator still awaits the full insertion.
+                                        tauri::async_runtime::spawn_blocking(job);
+                                        Ok::<(), tauri::Error>(())
+                                    }
+                                    #[cfg(not(target_os = "windows"))]
+                                    ah.run_on_main_thread(job)
+                                }, move || {
+                                    let is_cancelled = || rm_for_paste.was_cancelled_since(cancel_generation);
+                                    if is_cancelled() {
                                         debug!("Transcription operation cancelled before paste");
                                         utils::hide_recording_overlay(&ah_clone);
                                         set_tray_state(&ah_clone, TrayIconState::Idle);
@@ -860,7 +871,7 @@ impl ShortcutAction for TranscribeAction {
                                     }
 
                                     let text_for_status = final_text.clone();
-                                    crate::diagnostics::event("insertion begin (synchronous clipboard rollback)");
+                                    crate::diagnostics::event("insertion begin (guarded clipboard paste)");
                                     let paste_result = (if matches!(
                                         crate::settings::get_settings(&ah_clone).paste_method,
                                         crate::settings::PasteMethod::None
@@ -869,7 +880,11 @@ impl ShortcutAction for TranscribeAction {
                                     } else {
                                         crate::focus_target::restore()
                                     })
-                                    .and_then(|_| utils::paste(final_text, ah_clone.clone()));
+                                    .and_then(|_| utils::paste(final_text, ah_clone.clone(), &is_cancelled));
+                                    if is_cancelled() {
+                                        crate::diagnostics::event("insertion cancelled");
+                                        return;
+                                    }
                                     crate::diagnostics::event(&match &paste_result {
                                         Ok(()) => format!("insertion complete elapsed_ms={}", paste_time.elapsed().as_millis()),
                                         Err(error) => format!("insertion failed: {error}"),
@@ -893,7 +908,7 @@ impl ShortcutAction for TranscribeAction {
                                     set_tray_state(&ah_clone, TrayIconState::Idle);
                                 }).await
                                 .unwrap_or_else(|e| {
-                                    error!("Failed to run paste on main thread: {:?}", e);
+                                    error!("Failed to schedule paste: {:?}", e);
                                     utils::hide_recording_overlay(&ah);
                                     set_tray_state(&ah, TrayIconState::Idle);
                                 });

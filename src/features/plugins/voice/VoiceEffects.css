@@ -18,8 +18,8 @@
   background: transparent;
   color: var(--fg-secondary);
   font-size: var(--text-caption);
-  line-height: 1.4;
-  font-weight: 500;
+  line-height: var(--leading-label);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast), border-color var(--motion-fast);
 }

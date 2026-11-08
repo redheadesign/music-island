@@ -1,15 +1,10 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
+import { writeIfChanged } from './build-files.mjs'
 const root = fileURLToPath(new URL('../', import.meta.url))
-export function writeIfChanged(file, data) {
-  const bytes = Buffer.isBuffer(data) ? data : Buffer.from(data)
-  if (existsSync(file) && readFileSync(file).equals(bytes)) return false
-  writeFileSync(file, bytes)
-  return true
-}
 export function cppBuildOutput(stdout) {
   const messages = stdout.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line))
   const builds = messages.filter(message => message.reason === 'build-script-executed' && /[#/]transcribe-cpp-sys[@/]/.test(message.package_id))

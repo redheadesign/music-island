@@ -10,7 +10,7 @@ import {
 import { useMemo, useState, type ReactNode } from 'react'
 import { AGC_CALLS_RMS, AGC_CONTENT_RMS, dbToLinear, linearToDb } from './levels'
 import { sceneLabel } from './presets'
-import { DarkSelect } from './DarkSelect'
+import { Select } from '../../../shared/ui/Select'
 import { useIslandVoiceApp } from './useIslandVoiceApp'
 import { FOX_CLIP_CATALOG, type FoxClipId } from './VoiceFoxMascot'
 import { VoiceGuidePage } from './VoiceGuidePage'
@@ -181,7 +181,7 @@ export function VoiceSettingsView({
         </label>
         <label className="settings-control-row">
           <span><strong>{t.model}</strong></span>
-          <DarkSelect
+          <Select
             ariaLabel={t.model}
             value={app.model}
             options={app.models.map((model) => ({ value: model, label: prettyModel(model) }))}

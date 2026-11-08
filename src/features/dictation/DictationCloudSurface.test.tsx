@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { DictationCloudSurface } from './DictationCloudSurface'
 import { defaultDictationAppearance } from '../../shared/lib/dictationAppearance'
 
@@ -13,6 +13,7 @@ vi.mock('./DictationCloudRenderer', () => ({
     dispose = gpu.dispose
   },
 }))
+beforeEach(() => { gpu.render.mockReturnValue(true) })
 afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks() })
 
 function setup() {
@@ -60,6 +61,24 @@ it('paints a reduced-motion surface without a continuous frame loop', async () =
     await scene.tick(100)
     await scene.tick(150)
     expect(gpu.render).toHaveBeenCalled()
+    expect(scene.callbacks.size).toBe(0)
+  } finally { await act(async () => scene.root.unmount()) }
+})
+
+it('keeps the fallback during shader preparation, even with reduced motion', async () => {
+  const scene = setup()
+  gpu.render.mockReturnValueOnce(false)
+  try {
+    await scene.render(true, true)
+    await scene.tick(100)
+    await scene.tick(116)
+    expect(scene.container.querySelector('canvas')?.dataset.fallback).toBe('true')
+    expect(scene.callbacks.size).toBe(1)
+    await scene.render(false, true)
+    expect(scene.callbacks.size).toBe(0)
+    await scene.render(true, true)
+    expect(scene.container.querySelector('canvas')?.dataset.fallback).toBeUndefined()
+    expect(gpu.create).toHaveBeenCalledOnce()
     expect(scene.callbacks.size).toBe(0)
   } finally { await act(async () => scene.root.unmount()) }
 })

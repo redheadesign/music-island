@@ -24,9 +24,9 @@ const copy = {
   ru: {
     title: 'Лимиты ассистентов',
     codex: 'Codex',
-    codexConsent: 'Использует вход в установленном Codex.',
+    codexConsent: 'Использует вход в Codex.',
     claude: 'Claude',
-    claudeConsent: 'Использует вход в Claude Code для запроса лимитов Anthropic.',
+    claudeConsent: 'Запрашивает лимиты Anthropic через Claude Code.',
     connect: 'Подключить',
     connecting: 'Подключение…',
     disconnect: 'Отключить',
@@ -35,15 +35,15 @@ const copy = {
     reset: 'Обновится',
     states: {
       disabled: 'Не подключено', connecting: 'Подключение…', connected: 'Подключено', stale: 'Данные устарели',
-      'needs-auth': 'Нужно войти в приложение', unavailable: 'Приложение не найдено', error: 'Лимиты временно недоступны',
+      'needs-auth': 'Войдите в приложение', unavailable: 'Приложение не найдено', error: 'Лимиты недоступны',
     },
   },
   en: {
     title: 'Assistant limits',
     codex: 'Codex',
-    codexConsent: 'Uses your sign-in in the installed Codex app.',
+    codexConsent: 'Uses your Codex sign-in.',
     claude: 'Claude',
-    claudeConsent: 'Uses your Claude Code sign-in to request quota from Anthropic.',
+    claudeConsent: 'Checks Anthropic limits using your Claude Code sign-in.',
     connect: 'Connect',
     connecting: 'Connecting…',
     disconnect: 'Disconnect',
@@ -52,7 +52,7 @@ const copy = {
     reset: 'Resets',
     states: {
       disabled: 'Not connected', connecting: 'Connecting…', connected: 'Connected', stale: 'Data is stale',
-      'needs-auth': 'Sign in to the app', unavailable: 'App not found', error: 'Limits are temporarily unavailable',
+      'needs-auth': 'Sign in to the app', unavailable: 'App not found', error: 'Limits unavailable',
     },
   },
 } as const
@@ -92,7 +92,7 @@ function ProviderCard({
           <strong>{provider === 'codex' ? text.codex : text.claude}</strong>
           {!enabled ? <small>{provider === 'codex' ? text.codexConsent : text.claudeConsent}</small> : null}
         </div>
-        <span className={`usage-settings__state usage-settings__state--${state}`}>{text.states[state]}</span>
+        {enabled || state !== 'disabled' ? <span className={`usage-settings__state usage-settings__state--${state}`}>{text.states[state]}</span> : null}
       </div>
       {enabled && data?.windows.length ? (
         <div className="usage-settings__limits">
@@ -147,8 +147,7 @@ export function UsageSettingsSection({
 }: UsageSettingsSectionProps) {
   const text = copy[locale]
   return (
-    <section className="usage-settings" aria-labelledby="usage-settings-title">
-      <header><h2 id="usage-settings-title">{text.title}</h2></header>
+    <section className="usage-settings" aria-label={text.title}>
       <ProviderCard provider="codex" enabled={preferences.codexEnabled} data={snapshot?.codex} busy={busyProvider === 'codex'} locale={locale} onConnect={() => onConnect('codex')} onDisconnect={() => onDisconnect('codex')} onRefresh={() => onRefresh('codex')} />
       <ProviderCard provider="claude" enabled={preferences.claudeEnabled} data={snapshot?.claude} busy={busyProvider === 'claude'} locale={locale} onConnect={() => onConnect('claude')} onDisconnect={() => onDisconnect('claude')} onRefresh={() => onRefresh('claude')} />
     </section>

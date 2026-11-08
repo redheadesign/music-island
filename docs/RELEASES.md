@@ -2,6 +2,16 @@
 
 Music Island ships as a **portable** `music-island.exe` under GPL-3.0-or-later. That remains the forever distribution model: users download or auto-update the same single file from GitHub Releases. There is no installer requirement.
 
+## 3.1.0 release
+
+Release tag
+`v3.1.0` and the English body in [3.1.0 release notes](releases/3.1.0-release-notes.md).
+Upload the exact `music-island.exe`, `SHA256.txt`, and
+`THIRD_PARTY_NOTICES.md` in `release/v3.1.0-ui/`. The Windows x64 executable is
+76,886,528 bytes. SHA-256:
+`b625365a6357eb31a97926f6ec73436f48b71b731b0150fe61b36b1d24201abe`.
+The earlier `release/v3.1.0/` packet is superseded and must not be uploaded.
+
 ## 3.0.4 release
 
 The user accepted the tested build and explicitly authorized publication on
@@ -120,6 +130,13 @@ The portable build now also builds and embeds the native dictation runtime. Inst
 
 The `tauri:build` script now supplies `--no-bundle` by default, so the plain command
 also creates the portable EXE without downloading NSIS or producing an installer.
+
+Keep Cargo target directories and `.local/embedded-assets-zlib-v1` between
+builds. The latter reuses compressed dictation runtime assets only after
+checking their decoded bytes against the staged source. The Vite build
+preserves timestamps of unchanged files in `dist`, so an identical frontend
+does not invalidate the native build. The optional recognition weights stay
+outside the EXE; the small Silero VAD and GigaAM vocabulary are bundled.
 
 ## 3.0 preparation
 

@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useArgs } from 'storybook/preview-api'
 import { expect, fn, userEvent, within } from 'storybook/test'
-import { DarkSelect } from '../../features/plugins/voice/DarkSelect'
+import { Select } from '../../shared/ui/Select'
 
 const meta = {
   title: 'Molecules/DarkSelect',
-  component: DarkSelect,
+  component: Select,
   tags: ['autodocs'],
   args: {
     value: 'usb',
@@ -24,12 +24,12 @@ const meta = {
     onChange: fn(),
   },
   parameters: { workshop: { width: 300, height: 420 } },
-  render: function Select(args, context) {
+  render: function SelectPreview(args, context) {
     const [, updateArgs] = useArgs()
     return (
       <div className="sample-column">
         {context.parameters.tabNavigation ? <button type="button" className="secondary-button">Предыдущий элемент</button> : null}
-        <DarkSelect
+        <Select
           {...args}
           onChange={(value) => {
             updateArgs({ value })
@@ -40,7 +40,7 @@ const meta = {
       </div>
     )
   },
-} satisfies Meta<typeof DarkSelect>
+} satisfies Meta<typeof Select>
 export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = {

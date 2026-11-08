@@ -137,13 +137,15 @@ pub fn get_windows_microphone_permission_status() -> WindowsMicrophonePermission
 
 #[tauri::command]
 #[specta::specta]
-pub fn open_microphone_privacy_settings() -> Result<(), String> {
+pub async fn open_microphone_privacy_settings() -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        // The opener uses ShellExecuteExW on Windows, without a cmd/start child.
-        tauri_plugin_opener::open_url("ms-settings:privacy-microphone", None::<&str>)
-            .map_err(|e| format!("Failed to open Windows microphone privacy settings: {}", e))?;
-        return Ok(());
+        return tauri::async_runtime::spawn_blocking(|| {
+            tauri_plugin_opener::open_url("ms-settings:privacy-microphone", None::<&str>)
+                .map_err(|e| format!("Failed to open Windows microphone privacy settings: {e}"))
+        })
+        .await
+        .map_err(|error| error.to_string())?;
     }
 
     #[cfg(not(target_os = "windows"))]

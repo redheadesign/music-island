@@ -13,20 +13,20 @@ type Story = StoryObj<typeof meta>
 export const FirstLaunch: Story = { name: 'Первый запуск · четыре шага', play: async ({ canvasElement, args }) => {
   const canvas = within(canvasElement)
   await userEvent.click(canvas.getByRole('button', { name: 'Далее' }))
-  await canvas.findByRole('heading', { name: 'Настройте островок под себя' })
+  await canvas.findByRole('heading', { name: 'Настройка островка' })
   await userEvent.click(canvas.getByRole('button', { name: 'Далее' }))
-  await canvas.findByRole('heading', { name: 'Говорите вместо печати' })
+  await canvas.findByRole('heading', { name: 'Диктовка' })
   await userEvent.click(canvas.getByRole('button', { name: 'Далее' }))
   await canvas.findByRole('heading', { name: 'Запуск вместе с Windows' })
   await userEvent.click(canvas.getByRole('button', { name: 'Включить и начать' }))
   await expect(args.onFinish).toHaveBeenCalledWith(true)
 } }
-export const Layout: Story = { name: '02 · Настройте островок под себя', args: { initialStep: 1 } }
+export const Layout: Story = { name: '02 · Настройка островка', args: { initialStep: 1 } }
 export const Voice: Story = { name: '03 · Диктовка', args: { initialStep: 2 } }
 export const Autostart: Story = { name: '04 · Автозагрузка', args: { initialStep: 3 } }
 export const Skip: Story = { name: 'Пропустить · автозагрузка по согласию', play: async ({ canvasElement, args }) => {
   const canvas = within(canvasElement)
-  await userEvent.click(canvas.getByRole('button', { name: 'Пропустить знакомство' }))
+  await userEvent.click(canvas.getByRole('button', { name: 'Пропустить' }))
   await userEvent.click(await canvas.findByRole('button', { name: 'Не сейчас' }))
   await expect(args.onFinish).toHaveBeenCalledWith(undefined)
 } }

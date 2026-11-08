@@ -18,7 +18,13 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
     if (!surface) return
     let renderer: DictationCloudRenderer | null = null
     let raf = 0, last: number | null = null, time = 0, envelope = 0, attempted = false
+    let materialReady = false
     let accent = [94/255,106/255,210/255]
+    const updateMaterialReady = (next: boolean) => {
+      if (materialReady === next) return
+      materialReady = next
+      setReady(next)
+    }
     const paint = (delta: number) => {
       if (!renderer) return
       const next = input.current, { still, active } = next, recording = ['recording','streaming'].includes(next.phase)
@@ -34,15 +40,17 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
       const frame: CloudFrame = { time: still ? 0 : time, delta, level: envelope, phase: next.phase, instant: still || !active,
         appearance: next.appearance, controls, coreWidth, coreX, singleControl: next.singleControl, coreHeight: next.expanded ? height-6 : 44,
         coreY: next.expanded ? height/2 : height-25, accent }
-      try { renderer.render(frame); setReady(true) } catch { setReady(false); cancelAnimationFrame(raf); renderer.dispose(); renderer=null }
+      try { updateMaterialReady(renderer.render(frame)) }
+      catch { updateMaterialReady(false); cancelAnimationFrame(raf); renderer.dispose(); renderer=null }
     }
     const tick = (now: number) => {
+      if (!input.current.active || document.visibilityState !== 'visible') return
       // The tiny surface does not need to run at a 120/144 Hz monitor's rate.
       if (last === null || now-last >= 1000/30-.5) {
         const delta = last === null ? 0 : Math.min(.1,(now-last)/1000)
         last=now; time+=delta; paint(delta)
       }
-      if (renderer) raf=requestAnimationFrame(tick)
+      if (renderer && (!input.current.still || !materialReady)) raf=requestAnimationFrame(tick)
     }
     const update = () => {
       cancelAnimationFrame(raf); last=null
@@ -52,7 +60,7 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
       accent = match ? [0,2,4].map(at=>parseInt(match[1].slice(at,at+2),16)/255) : [94/255,106/255,210/255]
       if (renderer) {
         paint(0)
-        if (!next.still && renderer) raf=requestAnimationFrame(tick)
+        if (renderer && (!next.still || !materialReady)) raf=requestAnimationFrame(tick)
       } else if (!attempted) {
         // Let the SVG fox and fallback capsule paint before compiling shaders.
         raf=requestAnimationFrame(() => { raf=requestAnimationFrame(initialize) })
@@ -61,9 +69,9 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
     const initialize = () => {
       attempted=true
       try { renderer=new DictationCloudRenderer(surface); update() }
-      catch { renderer?.dispose(); renderer=null; setReady(false) }
+      catch { renderer?.dispose(); renderer=null; updateMaterialReady(false) }
     }
-    const lost = (event: Event) => { event.preventDefault(); cancelAnimationFrame(raf); attempted=true; renderer?.dispose(); renderer=null; setReady(false) }
+    const lost = (event: Event) => { event.preventDefault(); cancelAnimationFrame(raf); attempted=true; renderer?.dispose(); renderer=null; updateMaterialReady(false) }
     const restored = () => { attempted=false; update() }
     redraw.current = update
     document.addEventListener('visibilitychange',update)

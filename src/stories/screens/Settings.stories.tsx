@@ -120,18 +120,13 @@ export const PreviewReadouts: Story = { name: 'Превью · контраст 
     await waitFor(() => expect(canvas.getByRole('heading', { name: page })).toBeVisible())
     // Other editors remain mounted but hidden to retain their local state.
     const pageRoot = canvasElement.querySelector<HTMLElement>(selector)!
-    const readout = pageRoot.querySelector<HTMLElement>('.preview-dimensions')!
-    await waitFor(() => expect(readout).toBeVisible())
-    const style = getComputedStyle(readout)
-    await expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    await expect(style.textShadow).toBe('none')
-    await expect(style.mixBlendMode).toBe('normal')
-    await expect(readout.querySelector('button')).toBeNull()
-    const stage = pageRoot.querySelector<HTMLElement>('.island-preview, .preview-scale__stage')!
-    await expect(readout.getBoundingClientRect().top).toBeGreaterThanOrEqual(stage.getBoundingClientRect().bottom)
-    await expect(style.fontSize).toBe('11px')
-    await expect(style.fontWeight).toBe('400')
-    await expect(readout.getBoundingClientRect().width).toBeLessThanOrEqual(readout.parentElement!.getBoundingClientRect().width)
+    const main = selector === '.settings-appearance'
+    const grip = pageRoot.querySelector<HTMLElement>(main ? '.island-preview__resize-edge--right' : '.preview-resize-handle')!
+    const readout = grip.dataset.readout ?? ''
+    await expect(readout.startsWith(main ? 'Ширина ' : 'Масштаб ') && readout.endsWith('%')).toBe(true)
+    await expect(pageRoot.querySelector('.preview-scale__value, .preview-dimensions')).toBeNull()
+    await expect(getComputedStyle(grip, '::before').opacity).toBe('0')
+    await expect(getComputedStyle(grip, '::before').backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
   }
 } }
 export const PreviewReadoutsLight: Story = { ...PreviewReadouts, name: 'Превью · контраст в светлой теме', parameters: { settingsColorScheme: 'light' } }
@@ -172,6 +167,7 @@ export const DictationNavigation: Story = { name: 'Диктовка · един�
   await userEvent.click(canvas.getByRole('button', { name: 'Модели' }))
   await canvas.findByRole('heading', { name: 'Модели' })
   await userEvent.click(canvas.getByRole('button', { name: 'Дополнительно' }))
+  await expect(await canvas.findByRole('heading', { name: 'Запись' })).toBeVisible()
   const scroller = canvasElement.querySelector<HTMLElement>('[data-settings-scroll]')!
   await waitFor(() => expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight))
   const offset = Math.min(600, scroller.scrollHeight - scroller.clientHeight)
@@ -194,6 +190,26 @@ export const AssistantLimits: Story = {
 export const AppearanceDark: Story = {
   name: 'Внешний вид · тёмное оформление',
   parameters: { settingsColorScheme: 'dark' },
+}
+export const LocalServersToggle: Story = {
+  name: 'Добавление и удаление виджета локальных серверов',
+  play: async ({ canvasElement, args }) => {
+    const widget = (zone: 'bottom' | 'widgetCatalog') => canvasElement.querySelector<HTMLElement>(`[data-layout-target="${zone}"] [data-layout-element="localServers"]`)
+    const expectSaved = (localServersEnabled: boolean) => waitFor(() => expect(args.onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ plugins: expect.objectContaining({
+        settings: expect.objectContaining({ ui: expect.objectContaining({ localServersEnabled }) }),
+      }) }),
+    ))
+    await expect(widget('widgetCatalog')).toBeInTheDocument()
+    widget('widgetCatalog')!.focus()
+    await userEvent.keyboard(' {ArrowRight}{Enter}')
+    await expect(widget('bottom')).toBeInTheDocument()
+    await expectSaved(true)
+    widget('bottom')!.focus()
+    await userEvent.keyboard(' {ArrowLeft}{Enter}')
+    await expect(widget('widgetCatalog')).toBeInTheDocument()
+    await expectSaved(false)
+  },
 }
 export const ResetKeepsConnectedLimits: Story = {
   name: 'Сброс островка сохраняет подключённые лимиты',
@@ -292,7 +308,7 @@ export const Taskbar: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /^(Панель задач|Taskbar)$/ }))
     await waitFor(() => expect(canvas.getByRole('heading', { level: 2, name: /^(Панель задач|Taskbar)$/ })).toBeVisible())
-    const toggle = () => canvas.getByRole('switch', { name: /^(Мини-плеер в панели задач|Taskbar mini-player)$/ })
+    const toggle = () => canvas.getByRole('switch', { name: /^(Мини-плеер|Taskbar mini-player)$/ })
     await expect(toggle()).not.toBeChecked()
     await userEvent.click(toggle())
     await waitFor(() => expect(args.onChange).toHaveBeenCalledWith(
@@ -421,7 +437,7 @@ export const SpotifyUnavailable: Story = {
     const windows = canvas.getByText('Windows', { selector: 'strong' }).closest('article')!
     await waitFor(() => {
       expect(spotify).toHaveClass('protocol-row--selected', 'protocol-row--unavailable')
-      expect(within(spotify).getByText(/^(Требует внимания|Needs attention)$/)).toBeVisible()
+      expect(within(spotify).getByText(/^(Нет связи|Unavailable)$/)).toBeVisible()
       expect(within(spotify).getByText(/^(Системное управление музыкой Windows недоступно\.|Windows media controls are unavailable\.)$/)).toBeVisible()
       expect(within(spotify).queryByText(/^(Подключено|Connected)$/)).toBeNull()
       expect(spotify.querySelector('.status-chip--success')).toBeNull()
@@ -454,7 +470,7 @@ export const TaskbarNoSpace: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /^(Панель задач|Taskbar)$/ }))
-    await userEvent.click(canvas.getByRole('switch', { name: /^(Мини-плеер в панели задач|Taskbar mini-player)$/ }))
+    await userEvent.click(canvas.getByRole('switch', { name: /^(Мини-плеер|Taskbar mini-player)$/ }))
     await expect(await canvas.findByText(/не хватает места|not enough room/)).toBeVisible()
   },
 }
@@ -618,4 +634,8 @@ export const DictationInput: Story = { name: 'Диктовка · сочетан
   await waitFor(() => expect(canvas.getByRole('button', { name: 'ctrl_left+k' })).toBeVisible())
   await userEvent.click(canvas.getByRole('button', { name: 'Дополнительно' }))
   await expect(await canvas.findByRole('switch', { name: 'Убирать точку в конце' })).toHaveAttribute('aria-checked', 'true')
+  await userEvent.click(canvas.getByRole('button', { name: 'Основное' }))
+  const transcribe = within(await canvas.findByRole('group', { name: 'Сочетание клавиш' }))
+  await userEvent.click(transcribe.getByRole('button', { name: 'Сбросить сочетание' }))
+  await expect(await canvas.findByRole('button', { name: 'Ctrl+Space' })).toBeVisible()
 } }

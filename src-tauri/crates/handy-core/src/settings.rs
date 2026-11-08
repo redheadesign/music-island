@@ -303,6 +303,7 @@ pub enum TranscribeAcceleratorSetting {
     Auto,
     Cpu,
     Gpu,
+    Vulkan,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
@@ -1190,13 +1191,19 @@ fn apply_settings_migrations(
         updated = true;
     }
 
-    // The generic GPU choice was removed in favor of Auto or an exact device.
-    // Normalize settings created by builds that exposed that short-lived option.
-    if settings.transcribe_accelerator == TranscribeAcceleratorSetting::Gpu
-        && settings.transcribe_gpu_device.is_none()
-    {
-        settings.transcribe_accelerator = TranscribeAcceleratorSetting::Auto;
-        updated = true;
+    if settings.transcribe_accelerator == TranscribeAcceleratorSetting::Gpu {
+        // Preserve exact Vulkan devices, including those imported from Handy.
+        let migrated = match settings.transcribe_gpu_device.as_deref() {
+            None => Some(TranscribeAcceleratorSetting::Auto),
+            Some(device) => serde_json::from_str::<[String; 3]>(device)
+                .ok()
+                .filter(|parts| parts[0] == "vulkan")
+                .map(|_| TranscribeAcceleratorSetting::Vulkan),
+        };
+        if let Some(accelerator) = migrated {
+            settings.transcribe_accelerator = accelerator;
+            updated = true;
+        }
     }
 
     // One-time overlay migration (only while the new key is absent): the retired
@@ -1727,11 +1734,32 @@ mod tests {
             "transcribe_gpu_device": settings.transcribe_gpu_device
         });
 
-        assert!(!apply_settings_migrations(&mut settings, &raw));
+        assert!(apply_settings_migrations(&mut settings, &raw));
+        assert_eq!(
+            settings.transcribe_accelerator,
+            TranscribeAcceleratorSetting::Vulkan
+        );
         assert_eq!(
             settings.transcribe_gpu_device.as_deref(),
             Some("[\"vulkan\",\"id\",\"0000:01:00.0\"]")
         );
+    }
+
+    #[test]
+    fn explicit_vulkan_keeps_automatic_device_selection() {
+        let raw = serde_json::json!({
+            "settings_schema_version": CURRENT_SETTINGS_SCHEMA_VERSION,
+            "transcribe_accelerator": "vulkan",
+            "transcribe_gpu_device": null
+        });
+        let mut settings: AppSettings = serde_json::from_value(raw.clone()).unwrap();
+
+        apply_settings_migrations(&mut settings, &raw);
+        assert_eq!(
+            settings.transcribe_accelerator,
+            TranscribeAcceleratorSetting::Vulkan
+        );
+        assert_eq!(settings.transcribe_gpu_device, None);
     }
 
     #[test]

@@ -23,114 +23,114 @@ type GuideDoc = {
 
 const ru: GuideDoc = {
   title: 'Подключение Better Voice',
-  lead: 'Для приложений, где шумоподавления нет или его недостаточно. Better Voice убирает фоновый шум и передаёт обработанный голос через виртуальный микрофон.',
-  localNote: 'Звук обрабатывается на вашем компьютере.',
+  lead: 'Better Voice убирает шум и передаёт голос в другие приложения через VB-Cable.',
+  localNote: 'Обработка на компьютере.',
   stepsLabel: 'Первое подключение',
   steps: [
     {
       id: 'install',
       title: 'Установите VB-Cable',
-      text: 'Скачайте драйвер для Windows с сайта VB-Audio. Распакуйте архив, запустите установщик от имени администратора и перезагрузите компьютер.',
-      note: 'Если VB-Cable уже установлен, переходите к шагу 2.',
+      text: 'Скачайте и распакуйте драйвер. Запустите установщик от имени администратора и перезагрузите компьютер.',
+      note: 'Уже установлен? Переходите к шагу 2.',
       action: 'download',
     },
     {
       id: 'microphone',
       title: 'Выберите свой микрофон',
-      text: 'В Better Voice откройте «Микрофон и эффекты». В поле «Микрофон» выберите устройство, в которое говорите.',
+      text: 'В «Микрофоне и эффектах» выберите устройство, в которое говорите.',
     },
     {
       id: 'output',
-      title: 'Направьте звук в кабель',
-      text: 'В том же разделе выберите CABLE Input. Сюда Better Voice отправит обработанный голос.',
+      title: 'Выберите выход',
+      text: 'Выберите CABLE Input в поле «Виртуальный выход».',
       device: { label: 'Better Voice · Виртуальный выход', value: 'CABLE Input' },
     },
     {
       id: 'app',
-      title: 'Выберите кабель в нужном приложении',
-      text: 'Откройте настройки звука приложения и выберите CABLE Output как микрофон. Так оно получит звук из Better Voice.',
+      title: 'Выберите вход в приложении',
+      text: 'В настройках звука выберите CABLE Output как микрофон.',
       device: { label: 'Ваше приложение · Микрофон', value: 'CABLE Output' },
     },
     {
       id: 'start',
       title: 'Включите обработку',
-      text: 'Вернитесь в Better Voice и нажмите «Включить» в блоке «Обработка голоса». Говорите в микрофон: индикаторы уровня должны двигаться.',
-      note: 'Оставьте Music Island запущенным, пока используете этот микрофон.',
+      text: 'В Better Voice нажмите «Включить». Говорите: уровни должны меняться.',
+      note: 'Не закрывайте Music Island, пока нужен микрофон.',
     },
   ],
   helpTitle: 'Если не получается',
   help: [
     {
       title: 'Нет CABLE Input или CABLE Output',
-      text: 'Перезагрузите компьютер после установки VB-Cable и заново откройте приложение. Если устройства не появились, проверьте, завершилась ли установка драйвера.',
+      text: 'Перезагрузите компьютер и откройте приложение заново. Не помогло — проверьте установку VB-Cable.',
     },
     {
       title: 'Меня не слышно',
-      text: 'Проверьте, что обработка включена. В Better Voice должны быть выбраны ваш микрофон и CABLE Input, а в нужном приложении — CABLE Output.',
+      text: 'Проверьте обработку, микрофон и CABLE Input в Better Voice. В другом приложении проверьте CABLE Output.',
     },
     {
       title: 'Слышу себя или эхо',
-      text: 'Выключите «Прослушивать себя» в Better Voice. Если используете колонки, попробуйте наушники.',
+      text: 'Выключите «Прослушивать себя» или смените колонки на наушники.',
     },
   ],
   back: 'Назад',
-  returnToSettings: 'К настройке микрофона',
+  returnToSettings: 'К настройкам',
 }
 
 const en: GuideDoc = {
   title: 'Connect Better Voice',
-  lead: 'For apps with limited or no noise suppression. Better Voice reduces background noise and sends processed audio through a virtual microphone.',
-  localNote: 'Audio is processed on your computer.',
+  lead: 'Better Voice reduces noise and sends audio to other apps through VB-Cable.',
+  localNote: 'Audio stays on your computer.',
   stepsLabel: 'First-time setup',
   steps: [
     {
       id: 'install',
       title: 'Install VB-Cable',
-      text: 'Download the Windows driver from VB-Audio. Extract the archive, run the installer as administrator, then restart your computer.',
-      note: 'If VB-Cable is already installed, continue to step 2.',
+      text: 'Download and extract the driver. Run the installer as administrator, then restart.',
+      note: 'Already installed? Go to step 2.',
       action: 'download',
     },
     {
       id: 'microphone',
       title: 'Choose your microphone',
-      text: 'Open Microphone and effects in Better Voice. Under Microphone, choose the device you speak into.',
+      text: 'Choose the device you speak into under Microphone and effects.',
     },
     {
       id: 'output',
-      title: 'Send audio to the cable',
-      text: 'In the same section, choose CABLE Input. Better Voice sends your processed audio here.',
+      title: 'Choose the output',
+      text: 'Choose CABLE Input under Virtual output.',
       device: { label: 'Better Voice · Virtual output', value: 'CABLE Input' },
     },
     {
       id: 'app',
-      title: 'Choose the cable in your app',
-      text: 'Open the app’s audio settings and select CABLE Output as its microphone. This receives audio from Better Voice.',
+      title: 'Choose the input in your app',
+      text: 'Set CABLE Output as the microphone in the app’s audio settings.',
       device: { label: 'Your app · Microphone', value: 'CABLE Output' },
     },
     {
       id: 'start',
       title: 'Start processing',
-      text: 'Return to Better Voice and select Start under Voice processing. Speak into your microphone: the level meters should move.',
-      note: 'Keep Music Island running while you use this microphone.',
+      text: 'Select Start in Better Voice. Speak and check that the meters move.',
+      note: 'Keep Music Island running.',
     },
   ],
   helpTitle: 'Troubleshooting',
   help: [
     {
       title: 'CABLE Input or CABLE Output is missing',
-      text: 'Restart your computer after installing VB-Cable, then reopen the app. If the devices are still missing, check that the driver installation completed.',
+      text: 'Restart the computer and reopen the app. If it persists, check the VB-Cable installation.',
     },
     {
       title: 'Nobody can hear me',
-      text: 'Check that processing is on. Better Voice should use your microphone and CABLE Input. Your other app should use CABLE Output.',
+      text: 'Check processing, the microphone and CABLE Input in Better Voice. Check CABLE Output in the other app.',
     },
     {
       title: 'I hear myself or an echo',
-      text: 'Turn off Hear yourself in Better Voice. If you use speakers, try headphones.',
+      text: 'Turn off Hear yourself or switch from speakers to headphones.',
     },
   ],
   back: 'Back',
-  returnToSettings: 'Back to microphone settings',
+  returnToSettings: 'Back to settings',
 }
 
 export function getVoiceGuide(locale: Locale): GuideDoc {

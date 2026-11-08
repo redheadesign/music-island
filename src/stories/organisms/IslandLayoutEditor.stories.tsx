@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fireEvent, userEvent, waitFor } from 'storybook/test'
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
 import { useState } from 'react'
 import { IslandLayoutEditor } from '../../features/settings/IslandLayoutEditor'
 import { getDefaultConfig } from '../../app/tauriApi'
 import type { AppConfig, Locale } from '../../shared/lib/types'
+import { getLocalServersWidgetScale } from '../../shared/lib/uiPrefs'
 import { useWorkshopConfig } from '../useWorkshopConfig'
 
 function zone(root: HTMLElement, name: string): HTMLElement {
@@ -58,7 +59,7 @@ function EditorPreview({ locale, accent, light = false }: { locale: Locale; acce
     plugins: { ...config.plugins, settings: { ...config.plugins.settings, usage: { codexEnabled: true, claudeEnabled: false } } },
   }
   const commit = (next: AppConfig) => { setChangeCount((value) => value + 1); setConfig(next) }
-  return <div className="settings-window-root" data-color-scheme={light ? 'light' : 'dark'} data-config-width={config.layout.width} data-config-scale={config.layout.scale} data-change-count={changeCount} style={{ containerType: 'inline-size' }}>
+  return <div className="settings-window-root" data-color-scheme={light ? 'light' : 'dark'} data-config-width={config.layout.width} data-config-scale={config.layout.scale} data-widget-scale={getLocalServersWidgetScale(config)} data-change-count={changeCount} style={{ containerType: 'inline-size' }}>
     <IslandLayoutEditor config={editorConfig} onChange={commit} />
   </div>
 }
@@ -87,6 +88,9 @@ export const Default: Story = {
     await expect(element(canvasElement, 'progress')).toBeInTheDocument()
     await expect(element(zone(canvasElement, 'catalog'), 'shuffle')).toBeInTheDocument()
     await expect(element(zone(canvasElement, 'catalog'), 'repeat')).toBeInTheDocument()
+    await expect(element(zone(canvasElement, 'widgetCatalog'), 'localServers')).toBeInTheDocument()
+    await expect(zone(canvasElement, 'catalog').querySelector('[data-layout-element="localServers"]')).toBeNull()
+    await expect(zone(canvasElement, 'widgetCatalog').querySelector('[data-layout-element="shuffle"]')).toBeNull()
     await expect(canvasElement.querySelectorAll('[aria-label="Сбросить настройки островка"]')).toHaveLength(1)
   },
 }
@@ -266,6 +270,66 @@ export const ResizeKeyboardControls: Story = {
     fireEvent.doubleClick(scale)
     await expect(scale).toHaveAttribute('aria-valuenow', '100')
     await expect(root.dataset.configScale).toBe('100')
+  },
+}
+
+export const LocalServersResize: Story = {
+  name: 'Локальные серверы · отдельный масштаб',
+  play: async ({ canvasElement }) => {
+    const root = canvasElement.querySelector<HTMLElement>('.settings-window-root')!
+    const item = element(zone(canvasElement, 'widgetCatalog'), 'localServers')
+    item.focus()
+    await userEvent.keyboard(' {ArrowRight}{Enter}')
+
+    const bottom = zone(canvasElement, 'bottom')
+    const panel = bottom.querySelector<HTMLElement>('.island-local-servers')!
+    const grip = within(bottom).getByRole('slider', { name: /^(Масштаб виджета|Widget scale)$/ })
+    const island = canvasElement.querySelector<HTMLElement>('.island-preview__body > .island-card')!
+    const row = panel.querySelector<HTMLElement>('li')!
+    const initialRowHeight = row.getBoundingClientRect().height
+    const bounds = panel.getBoundingClientRect()
+    const restore = mockSyntheticPointerCapture(grip)
+
+    try {
+      const drag = (id: number) => {
+        fireEvent.pointerDown(grip, { button: 0, pointerId: id, clientX: bounds.right, clientY: bounds.bottom })
+        fireEvent.pointerMove(grip, { pointerId: id, clientX: bounds.right + 40, clientY: bounds.bottom + 16 })
+      }
+
+      drag(91)
+      await expect(grip).toHaveAttribute('aria-valuenow', '115')
+      await expect(root).toHaveAttribute('data-widget-scale', '100')
+      await expect(row.getBoundingClientRect().height).toBeGreaterThan(initialRowHeight)
+      fireEvent.keyDown(grip, { key: 'Escape' })
+      await expect(grip).toHaveAttribute('aria-valuenow', '100')
+      await expect(root).toHaveAttribute('data-change-count', '1')
+
+      drag(92)
+      fireEvent.pointerUp(grip, { pointerId: 92 })
+      await expect(root).toHaveAttribute('data-widget-scale', '115')
+      await expect(root).toHaveAttribute('data-change-count', '2')
+      await expect(panel.getBoundingClientRect().width).toBeCloseTo(island.getBoundingClientRect().width, 0)
+
+      grip.focus()
+      await userEvent.keyboard('{Home}')
+      await expect(root).toHaveAttribute('data-widget-scale', '85')
+      await waitFor(() => expect(getComputedStyle(grip, '::before').opacity).toBe('1'))
+      await expect(getComputedStyle(grip, '::before').backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+      const rowHeight = row.getBoundingClientRect().height
+      const islandGrip = within(canvasElement).getByRole('slider', { name: /^(Масштаб островка|Island scale)$/ })
+      islandGrip.focus()
+      await userEvent.keyboard('{End}')
+      await expect(root).toHaveAttribute('data-widget-scale', '85')
+      await expect(root).toHaveAttribute('data-config-scale', '120')
+      await expect(panel.getBoundingClientRect().width).toBeCloseTo(island.getBoundingClientRect().width, 0)
+      await expect(Math.abs(row.getBoundingClientRect().height - rowHeight)).toBeLessThan(1)
+
+      await userEvent.click(within(canvasElement).getByRole('button', { name: /^(Сбросить настройки островка|Reset island settings)$/ }))
+      await expect(root).toHaveAttribute('data-widget-scale', '100')
+      await expect(element(zone(canvasElement, 'widgetCatalog'), 'localServers')).toBeInTheDocument()
+    } finally {
+      restore()
+    }
   },
 }
 

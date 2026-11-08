@@ -1,6 +1,6 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { Check, ChevronRight, Music2, Pause, Play } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Music2, Pause, Play } from 'lucide-react'
 import { ACCENT_PRESETS } from '../shared/lib/accentTheme'
 import { GlassSurface } from '../shared/ui/GlassSurface'
 import { IconButton } from '../shared/ui/IconButton'
@@ -8,7 +8,8 @@ import { StatusChip } from '../shared/ui/StatusChip'
 
 export default {
   title: 'Foundations',
-  decorators: [(Story) => <div className="auxiliary-ui" style={{ background: 'var(--surface-canvas)', padding: 24 }}><Story /></div>],
+  decorators: [(Story, context) => <div className="auxiliary-ui" data-color-scheme={context.parameters.settingsColorScheme}
+    style={{ background: 'var(--surface-canvas)', padding: 'var(--space-6)' }}><Story /></div>],
   parameters: { workshop: { width: 920 }, controls: { disable: true } },
 } satisfies Meta
 
@@ -37,11 +38,33 @@ function FoundationSection({ title, description, children }: {
   )
 }
 
+function TokenValue({ token, property }: {
+  token: string
+  property: 'width' | 'fontSize' | 'animationDuration' | 'backgroundColor' | 'color' | 'borderTopLeftRadius'
+}) {
+  const probe = useRef<HTMLSpanElement>(null)
+  const [value, setValue] = useState('')
+  useLayoutEffect(() => {
+    if (!probe.current) return
+    const element = probe.current
+    const read = () => {
+      const computed = getComputedStyle(element)[property]
+      setValue(property === 'animationDuration' ? `${Math.round(Number.parseFloat(computed) * (computed.endsWith('ms') ? 1 : 1000))} мс` : computed)
+    }
+    read()
+    if (property !== 'animationDuration') return
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)')
+    reduced.addEventListener('change', read)
+    return () => reduced.removeEventListener('change', read)
+  }, [token, property])
+  return <>{value}<span ref={probe} aria-hidden="true" style={{ position: 'absolute', visibility: 'hidden', [property]: `var(${token})` }} /></>
+}
+
 const surfaces = [
-  { token: '--surface-canvas', label: 'Основа', value: '#1E1E1E', usage: 'Фон окна и пространство между разделами' },
-  { token: '--surface-panel', label: 'Содержание', value: '#272727', usage: 'Группы настроек и длинный текст' },
-  { token: '--surface-raised', label: 'Управление', value: '#303030', usage: 'Поля ввода, меню и вторичные кнопки' },
-  { token: '--surface-glass', label: 'Меню', value: '#303030', usage: 'Поверхность меню и вложенного содержимого' },
+  { token: '--surface-canvas', label: 'Основа', usage: 'Фон окна и пространство между разделами' },
+  { token: '--surface-panel', label: 'Содержание', usage: 'Группы настроек и длинный текст' },
+  { token: '--surface-raised', label: 'Управление', usage: 'Поля ввода, меню и вторичные кнопки' },
+  { token: '--surface-glass', label: 'Меню', usage: 'Поверхность меню и вложенного содержимого' },
 ] as const
 
 export const Palette: StoryObj = {
@@ -50,10 +73,10 @@ export const Palette: StoryObj = {
     <FoundationPage index="01" title="Цвет с назначением" description="Графитовые поверхности, ясная иерархия текста и один личный акцент. Каждый цвет отвечает за конкретную роль.">
       <FoundationSection title="Поверхности" description="Чем ближе элемент к пользователю, тем светлее его поверхность.">
         <div className="foundation-palette-grid">
-          {surfaces.map(({ token, label, value, usage }) => (
+          {surfaces.map(({ token, label, usage }) => (
             <div className="foundation-swatch-card" key={token}>
               <div className="foundation-swatch" style={{ background: `var(${token})` }}><span>{label}</span></div>
-              <div className="foundation-token-info"><code>{token}</code><span>{value}</span><p>{usage}</p></div>
+              <div className="foundation-token-info"><code>{token}</code><span><TokenValue token={token} property="backgroundColor" /></span><p>{usage}</p></div>
             </div>
           ))}
         </div>
@@ -61,13 +84,13 @@ export const Palette: StoryObj = {
       <FoundationSection title="Текст" description="Важность задается цветом и расстоянием. Второстепенные подписи остаются читаемыми.">
         <div className="foundation-text-colors">
           {[
-            ['--fg-primary', 'Основной текст', '#f5f5f5', 'Названия, значения, активная навигация'],
-            ['--fg-secondary', 'Пояснения', '#b7b7b7', 'Описания настроек и дополнительный контекст'],
-            ['--fg-muted', 'Метаданные', '#929292', 'Версии, единицы измерения, вспомогательные подписи'],
-          ].map(([token, label, value, usage]) => (
+            ['--fg-primary', 'Основной текст', 'Названия, значения, активная навигация'],
+            ['--fg-secondary', 'Пояснения', 'Описания настроек и дополнительный контекст'],
+            ['--fg-muted', 'Метаданные', 'Версии, единицы измерения, вспомогательные подписи'],
+          ].map(([token, label, usage]) => (
             <div className="foundation-text-color" key={token} style={{ color: `var(${token})` }}>
               <span className="foundation-text-specimen" aria-hidden="true">Aa</span>
-              <strong>{label}</strong><code>{token}</code><span>{value}</span><p>{usage}</p>
+              <strong>{label}</strong><code>{token}</code><span><TokenValue token={token} property="color" /></span><p>{usage}</p>
             </div>
           ))}
         </div>
@@ -91,22 +114,23 @@ export const Palette: StoryObj = {
 }
 
 const typeStyles = [
-  { role: 'Заголовок экрана', token: 'display', size: 28, leading: 1.2, weight: 'semibold', example: 'Настройки', usage: 'Один главный заголовок на странице' },
-  { role: 'Заголовок раздела', token: 'title', size: 20, leading: 1.3, weight: 'semibold', example: 'Внешний вид', usage: 'Начало самостоятельного раздела' },
-  { role: 'Основной текст', token: 'body', size: 14, leading: 1.6, weight: 'regular', example: 'Настройте островок под себя.', usage: 'Пояснения, описания и длинный текст' },
-  { role: 'Название настройки', token: 'label', size: 13, leading: 1.4, weight: 'medium', example: 'Запускать вместе с Windows', usage: 'Поля, кнопки и навигация' },
-  { role: 'Подпись', token: 'caption', size: 12, leading: 1.5, weight: 'regular', example: 'Изменения сохраняются автоматически', usage: 'Метаданные и дополнительный контекст' },
+  { role: 'Заголовок экрана', token: 'display', weight: 'semibold', example: 'Настройки', usage: 'Один главный заголовок на странице' },
+  { role: 'Заголовок раздела', token: 'title', weight: 'semibold', example: 'Внешний вид', usage: 'Начало самостоятельного раздела' },
+  { role: 'Основной текст', token: 'body', weight: 'regular', example: 'Настройте островок под себя.', usage: 'Пояснения, описания и длинный текст' },
+  { role: 'Название настройки', token: 'label', weight: 'medium', example: 'Запускать вместе с Windows', usage: 'Поля, кнопки и навигация' },
+  { role: 'Подпись', token: 'caption', weight: 'regular', example: 'Изменения сохраняются автоматически', usage: 'Метаданные и дополнительный контекст' },
+  { role: 'Короткая подсказка', token: 'small', weight: 'regular', example: 'Масштаб 100 %', usage: 'Значение у ручки изменения размера' },
 ] as const
 
 export const Typography: StoryObj = {
   name: 'Типографика и иерархия',
   render: () => (
-    <FoundationPage index="02" title="Пять текстовых ролей" description="Системный шрифт, спокойная плотность и понятная иерархия. Размер выбирается по задаче текста.">
+    <FoundationPage index="02" title="Текстовые роли" description="Размер и плотность текста зависят от его задачи. Примеры показывают текущие значения токенов.">
       <div className="foundation-type-list">
-        {typeStyles.map(({ role, token, size, leading, weight, example, usage }) => (
+        {typeStyles.map(({ role, token, weight, example, usage }) => (
           <div className="foundation-type-row" key={token}>
-            <div className="foundation-type-meta"><strong>{role}</strong><code>--text-{token}</code><span>{size} px / {leading} · {weight}</span></div>
-            <div><p className="foundation-type-example" style={{ fontSize: `var(--text-${token})`, lineHeight: `var(--leading-${token})`, fontWeight: `var(--weight-${weight})` }}>{example}</p><p className="foundation-type-usage">{usage}</p></div>
+            <div className="foundation-type-meta"><strong>{role}</strong><code>--text-{token}</code><span><TokenValue token={`--text-${token}`} property="fontSize" /> · {weight}</span></div>
+            <div><p className="foundation-type-example" style={{ fontSize: `var(--text-${token})`, lineHeight: `var(--leading-${token === 'small' ? 'caption' : token})`, fontWeight: `var(--weight-${weight})` }}>{example}</p><p className="foundation-type-usage">{usage}</p></div>
           </div>
         ))}
       </div>
@@ -122,31 +146,31 @@ export const Typography: StoryObj = {
 }
 
 const spacing = [
-  [1, 4, 'Иконка и короткая подпись'], [2, 8, 'Название и пояснение'],
-  [3, 12, 'Элементы одной группы'], [4, 16, 'Внутренний отступ компактного блока'],
-  [5, 20, 'Внутренний отступ строки настройки'], [6, 24, 'Внутренний отступ панели'],
-  [7, 32, 'Расстояние между разделами'], [8, 40, 'Свободное поле большого экрана'],
-  [9, 48, 'Отступ вокруг самостоятельного блока'],
+  [1, 'Иконка и короткая подпись'], [2, 'Название и пояснение'],
+  [3, 'Элементы одной группы'], [4, 'Внутренний отступ компактного блока'],
+  [5, 'Внутренний отступ строки настройки'], [6, 'Внутренний отступ панели'],
+  [7, 'Расстояние между разделами'], [8, 'Свободное поле большого экрана'],
+  [9, 'Отступ вокруг самостоятельного блока'],
 ] as const
 
 export const Spacing: StoryObj = {
   name: 'Отступы и размеры',
   render: () => (
-    <FoundationPage index="03" title="Ритм с шагом 4 px" description="Связанные элементы стоят ближе, самостоятельные группы — дальше. Это шкала Music Island, а не универсальный набор размеров Apple.">
+    <FoundationPage index="03" title="Шкала отступов" description="Связанные элементы стоят ближе, самостоятельные группы — дальше. Базовый шаг задаёт токен space-unit.">
       <div className="foundation-spacing-list">
-        {spacing.map(([step, size, usage]) => (
+        {spacing.map(([step, usage]) => (
           <div className="foundation-spacing-row" key={step}>
-            <code>--space-{step}</code><strong>{size} px</strong><div className="foundation-spacing-track"><span style={{ width: `var(--space-${step})` }} /></div><p>{usage}</p>
+            <code>--space-{step}</code><strong><TokenValue token={`--space-${step}`} property="width" /></strong><div className="foundation-spacing-track"><span style={{ width: `var(--space-${step})` }} /></div><p>{usage}</p>
           </div>
         ))}
       </div>
-      <FoundationSection title="Как складывается панель" description="24 px внутри панели, 20 px внутри строки, 8 px между названием и пояснением.">
-        <div className="foundation-spacing-panel"><span className="foundation-measure">24 px</span><div className="foundation-spacing-setting"><div><strong>Источник музыки</strong><p>Системный плеер Windows</p></div><ChevronRight size={18} aria-hidden="true" /></div></div>
+      <FoundationSection title="Как складывается панель" description="Отступы задают space-6 для панели, space-5 для строки и space-2 для подписи.">
+        <div className="foundation-spacing-panel"><span className="foundation-measure"><TokenValue token="--space-6" property="width" /></span><div className="foundation-spacing-setting"><div><strong>Источник музыки</strong><p>Системный плеер Windows</p></div><ChevronRight size={18} aria-hidden="true" /></div></div>
       </FoundationSection>
-      <FoundationSection title="Скругления и управление" description="Форма отражает размер и назначение элемента. Основная высота управления — 40 px, компактная — 32 px.">
+      <FoundationSection title="Скругления и управление" description="Форма отражает размер и назначение элемента.">
         <div className="foundation-radius-grid">
-          {[['sm', 8, 'Кнопки'], ['md', 12, 'Поля и меню'], ['lg', 16, 'Группы'], ['xl', 20, 'Оболочка'], ['pill', 999, 'Метки']].map(([name, size, usage]) => (
-            <div key={name}><span style={{ borderRadius: `var(--radius-${name})` }}>{size === 999 ? '∞' : size}</span><strong>{usage}</strong><code>--radius-{name}</code></div>
+          {[['sm', 'Кнопки'], ['md', 'Поля и меню'], ['lg', 'Группы'], ['xl', 'Оболочка'], ['pill', 'Метки']].map(([name, usage]) => (
+            <div key={name}><span style={{ borderRadius: `var(--radius-${name})` }}>{name === 'pill' ? '∞' : <TokenValue token={`--radius-${name}`} property="borderTopLeftRadius" />}</span><strong>{usage}</strong><code>--radius-{name}</code></div>
           ))}
         </div>
       </FoundationSection>
@@ -190,10 +214,10 @@ export const Motion: StoryObj = {
       <MotionDemo />
       <div className="foundation-motion-grid">
         {[
-          ['fast', 120, 'Отклик', 'Наведение, нажатие и изменение цвета'],
-          ['normal', 200, 'Переключение', 'Выбор вкладки и раскрытие элемента'],
-          ['slow', 320, 'Появление', 'Первое появление крупной поверхности'],
-        ].map(([token, duration, label, usage]) => <div key={token}><span>{duration}<small>мс</small></span><h2>{label}</h2><p>{usage}</p><code>--motion-{token}</code></div>)}
+          ['fast', 'Отклик', 'Наведение, нажатие и изменение цвета'],
+          ['normal', 'Переключение', 'Выбор вкладки и раскрытие элемента'],
+          ['slow', 'Появление', 'Первое появление крупной поверхности'],
+        ].map(([token, label, usage]) => <div key={token}><span><TokenValue token={`--motion-${token}`} property="animationDuration" /></span><h2>{label}</h2><p>{usage}</p><code>--motion-{token}</code></div>)}
       </div>
       <FoundationSection title="Кривые и системные предпочтения">
         <div className="foundation-principles">
@@ -207,37 +231,64 @@ export const Motion: StoryObj = {
 }
 
 function contrastRatio(foreground: string, background: string) {
-  const luminance = (hex: string) => {
-    const channels = [1, 3, 5].map((offset) => {
-      const value = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255
+  const luminance = (rgb: string) => {
+    if (!/^rgba?\(/.test(rgb)) return null
+    const components = rgb.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? []
+    if (components.length < 3 || (components[3] ?? 1) !== 1) return null
+    const channels = components.slice(0, 3).map((component) => {
+      const value = component / 255
       return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
     })
     return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
   }
-  const a = luminance(foreground); const b = luminance(background)
-  return ((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toFixed(2)
+  const a = luminance(foreground)
+  const b = luminance(background)
+  return a === null || b === null ? null : (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+}
+
+function ContrastSample({ token, label }: { token: string; label: string }) {
+  const row = useRef<HTMLDivElement>(null)
+  const text = useRef<HTMLElement>(null)
+  const [ratio, setRatio] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    if (row.current && text.current) {
+      setRatio(contrastRatio(getComputedStyle(text.current).color, getComputedStyle(row.current).backgroundColor))
+    }
+  }, [token])
+  return (
+    <div ref={row} style={{ backgroundColor: 'var(--surface-panel)', '--contrast-color': `var(${token})` } as CSSProperties}>
+      <strong ref={text}>{label}</strong><code>{token}</code><span>{ratio === null ? '—' : `${ratio.toFixed(2)} : 1`}</span>
+      {ratio !== null && (ratio >= 4.5 ? <Check size={16} aria-label="Соответствует AA" /> : <CircleAlert className="foundation-contrast-warning" size={16} aria-label="Ниже AA" />)}
+    </div>
+  )
 }
 
 export const Accessibility: StoryObj = {
   name: 'Контраст и доступность',
   render: () => (
     <FoundationPage index="06" title="Читаемо и доступно" description="Контраст, видимый фокус и понятные состояния входят в визуальную систему. Автоматические проверки дополняют просмотр с клавиатуры.">
-      <FoundationSection title="Контраст текста на панели" description="Расчет для непрозрачного фона #18191c. Ориентир WCAG AA для обычного текста — не менее 4,5 : 1.">
+      <FoundationSection title="Контраст текста на панели" description="Расчёт для текущего непрозрачного фона surface-panel. Ориентир WCAG AA для обычного текста — не менее 4,5 : 1.">
         <div className="foundation-contrast-list">
           {[
-            ['--fg-primary', '#f5f5f5', 'Основной текст'],
-            ['--fg-secondary', '#b7b7b7', 'Пояснение к настройке'],
-            ['--fg-muted', '#929292', 'Дополнительная подпись'],
-          ].map(([token, value, label]) => <div key={token} style={{ '--contrast-color': `var(${token})` } as CSSProperties}><strong>{label}</strong><code>{token}</code><span>{contrastRatio(value, '#18191c')} : 1</span><Check size={16} aria-label="Соответствует AA" /></div>)}
+            ['--fg-primary', 'Основной текст'],
+            ['--fg-secondary', 'Пояснение к настройке'],
+            ['--fg-muted', 'Дополнительная подпись'],
+          ].map(([token, label]) => <ContrastSample key={token} token={token} label={label} />)}
         </div>
       </FoundationSection>
       <FoundationSection title="Проверка взаимодействия" description="Нажмите Tab: у кнопок должен появиться заметный контур. Enter и пробел запускают действие."><MotionDemo /></FoundationSection>
       <div className="foundation-principles">
-        <div><span>01</span><strong>Текст остается текстом</strong><p>Подписи не заменяются одним цветом или иконкой. Небольшой текст начинается с 12 px.</p></div>
+        <div><span>01</span><strong>Текст остается текстом</strong><p>Подписи не заменяются одним цветом или иконкой. Для короткой подсказки предусмотрен токен text-small.</p></div>
         <div><span>02</span><strong>Управление с клавиатуры</strong><p>Видимый фокус, последовательный Tab-порядок и подписи у кнопок с иконками.</p></div>
         <div><span>03</span><strong>Проверка на реальном экране</strong><p>Узкая ширина, длинные названия, масштаб Windows и все состояния элементов.</p></div>
       </div>
       <p className="foundation-note">Прозрачные поверхности и пользовательский акцент проверяются отдельно на фактическом фоне. Значения выше относятся только к указанным парам цветов.</p>
     </FoundationPage>
   ),
+}
+
+export const AccessibilityLight: StoryObj = {
+  ...Accessibility,
+  name: 'Контраст в светлой теме',
+  parameters: { settingsColorScheme: 'light' },
 }

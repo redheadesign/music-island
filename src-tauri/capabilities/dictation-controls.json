@@ -1,6 +1,6 @@
 {
   "identifier": "dictation-controls",
-  "description": "The optional island microphone can read status and toggle dictation.",
+  "description": "The island can control dictation and show or copy the latest history text.",
   "windows": ["main"],
   "permissions": ["dictation:controls"]
 }

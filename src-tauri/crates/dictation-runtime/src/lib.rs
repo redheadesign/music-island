@@ -13,8 +13,8 @@ use std::{
     },
 };
 use transcribe_cpp::{
-    Backend, Feature, Model, ModelOptions, RunExtension, Session, StreamOptions, Task,
-    WhisperRunOptions,
+    Backend, DeviceType, Error as CppError, Feature, Model, ModelOptions, RunExtension, Session,
+    StreamOptions, Task, WhisperRunOptions,
 };
 use transcribe_rs::{
     onnx::{
@@ -62,16 +62,16 @@ fn device_id(d: &transcribe_cpp::Device) -> String {
     ))
     .unwrap()
 }
+fn is_gpu(d: &transcribe_cpp::Device) -> bool {
+    matches!(d.device_type, DeviceType::Gpu | DeviceType::Igpu)
+}
 fn devices() -> Vec<Device> {
     transcribe_cpp::devices()
         .into_iter()
         .map(|d| Device {
             index: d.index,
             id: device_id(&d),
-            is_gpu: matches!(
-                d.device_type,
-                transcribe_cpp::DeviceType::Gpu | transcribe_cpp::DeviceType::Igpu
-            ),
+            is_gpu: is_gpu(&d),
             name: if d.description.is_empty() {
                 d.name
             } else {
@@ -128,30 +128,49 @@ fn load(request: &Request) -> Result<(Engine, Capabilities)> {
     };
     let loaded = match engine.as_str() {
         "TranscribeCpp" => {
-            let selected = if *cpu_only {
+            let backend = if *cpu_only || accelerator == "cpu" {
+                Backend::Cpu
+            } else if accelerator == "vulkan" {
+                Backend::Vulkan
+            } else {
+                Backend::Auto
+            };
+            let selected = if *cpu_only || (backend == Backend::Cpu && device_index.is_none()) {
                 None
             } else {
-                transcribe_cpp::devices().into_iter().find(|d| {
-                    device_index.is_some_and(|i| d.index == Some(i))
-                        || (accelerator == "gpu"
-                            && device.as_ref().is_some_and(|id| *id == device_id(d)))
-                })
+                transcribe_cpp::devices()
+                    .into_iter()
+                    .find(|d| match device_index {
+                        Some(index) => d.index == Some(*index),
+                        None => {
+                            let selectable = accelerator == "gpu"
+                                || (backend == Backend::Vulkan && d.kind == "vulkan" && is_gpu(d));
+                            selectable && device.as_ref().is_some_and(|id| *id == device_id(d))
+                        }
+                    })
             };
             if device_index.is_some() && selected.is_none() && !cpu_only {
                 bail!("Selected compute device is unavailable");
             }
-            let backend = if *cpu_only || accelerator == "cpu" {
-                Backend::Cpu
-            } else {
-                Backend::Auto
+            let initialize = |options: ModelOptions| {
+                let model = Model::load_with(path, &options)?;
+                let session = model.session()?;
+                Ok((model, session))
             };
-            let model = Model::load_with(
-                path,
-                &ModelOptions {
-                    backend,
-                    device: selected,
-                },
-            )?;
+            let (model, session) = match initialize(ModelOptions {
+                backend,
+                device: selected,
+            }) {
+                Err(CppError::Backend(_) | CppError::OutOfMemory(_))
+                    if backend == Backend::Vulkan && device_index.is_none() =>
+                {
+                    initialize(ModelOptions {
+                        backend: Backend::Cpu,
+                        device: None,
+                    })?
+                }
+                other => other?,
+            };
             let c = model.capabilities();
             caps.backend = model.backend().to_string();
             caps.arch = model.arch().to_string();
@@ -160,7 +179,7 @@ fn load(request: &Request) -> Result<(Engine, Capabilities)> {
             caps.translate = c.supports_translate;
             caps.language_detection = c.supports_language_detect;
             caps.languages = c.languages;
-            Engine::Cpp(model.session()?)
+            Engine::Cpp(session)
         }
         "Parakeet" => Engine::Parakeet(ParakeetModel::load(path, &Quantization::Int8)?),
         "Moonshine" => Engine::Moonshine(MoonshineModel::load(

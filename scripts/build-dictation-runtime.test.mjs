@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, statSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { cppBuildOutput, writeIfChanged } from './build-dictation-runtime.mjs'
+import { cppBuildOutput } from './build-dictation-runtime.mjs'
+import { writeIfChanged } from './build-files.mjs'
 
 test('uses Cargo selection, including fresh builds, instead of DLL timestamps', () => {
   const message = JSON.stringify({ reason: 'build-script-executed', package_id: 'registry+https://github.com/rust-lang/crates.io-index#transcribe-cpp-sys@0.2.4', out_dir: 'active/out' })

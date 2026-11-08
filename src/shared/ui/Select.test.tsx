@@ -50,3 +50,26 @@ it('keeps a checkbox menu open for multiple changes and restores focus on Escape
     expect(document.activeElement).toBe(trigger)
   } finally { await act(async () => root.unmount()); container.remove() }
 })
+
+it('dismisses open options when the control becomes disabled', async () => {
+  const container = document.createElement('div')
+  document.body.append(container)
+  const root = createRoot(container)
+  const render = (disabled: boolean) => root.render(<Select value="usb" options={[{ value: 'usb', label: 'USB' }]} onChange={vi.fn()} ariaLabel="Device" disabled={disabled} />)
+  try {
+    await act(async () => render(false))
+    const trigger = container.querySelector<HTMLButtonElement>('button')!
+    await act(async () => trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })))
+    expect(document.querySelector('[role="listbox"]')?.hasAttribute('data-enter')).toBe(true)
+    await act(async () => render(true))
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    await act(async () => render(false))
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+    await act(async () => trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })))
+    expect(document.querySelector('[role="listbox"]')?.hasAttribute('data-enter')).toBe(false)
+  } finally {
+    await act(async () => root.unmount())
+    container.remove()
+  }
+})

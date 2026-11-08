@@ -1,6 +1,6 @@
 [package]
 name = "music-island"
-version = "3.0.4"
+version = "3.1.0"
 description = "Windows top-edge media controller with SMTC and opt-in direct desktop integration."
 authors = ["Music Island contributors"]
 edition = "2021"
@@ -61,6 +61,8 @@ windows = { version = "0.62", features = [
   "Storage_Streams",
   "Media_Control",
   "Win32_Foundation",
+  "Win32_NetworkManagement_IpHelper",
+  "Win32_Networking_WinSock",
   "Win32_Security",
   "Win32_UI_WindowsAndMessaging",
   "Win32_UI_Controls",

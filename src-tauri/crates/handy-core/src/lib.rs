@@ -26,6 +26,7 @@ pub mod runtime_check;
 mod secrets;
 mod secure_input;
 mod settings;
+pub mod shell;
 mod shortcut;
 mod signal_handle;
 mod status;
@@ -342,6 +343,8 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             commands::transcription::get_model_load_status,
             commands::transcription::unload_model_manually,
             commands::history::get_history_entries,
+            commands::history::get_latest_history_message,
+            commands::history::copy_history_message,
             commands::history::toggle_history_entry_saved,
             commands::history::get_audio_file_path,
             commands::history::delete_history_entry,

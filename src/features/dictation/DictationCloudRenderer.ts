@@ -9,7 +9,7 @@ import { DictationSpring } from './dictationSpring'
 import { getCloudPixelRatio } from './cloudGeometry'
 
 type Uniform = number | number[]
-type Program = { value: WebGLProgram; locations: Map<string, WebGLUniformLocation | null> }
+type Program = { value: WebGLProgram; linked: boolean; locations: Map<string, WebGLUniformLocation | null> }
 type Target = { texture: WebGLTexture; framebuffer: WebGLFramebuffer; width: number; height: number }
 export type CloudFrame = {
   time: number; delta: number; level: number; phase: string; appearance: DictationAppearance; instant: boolean
@@ -33,12 +33,16 @@ const waveDefaults = {
   uMidAberrationAmplitude: .085, uMidBandFill: 0, uMidSoftness: .4,
   uHighAberration: .5, uHighAberrationAmplitude: .075,
 }
+const shaderSources = [wave, dots, background, composite, glass]
+const materialPasses = [2, 3, 4]
+const wavePasses = [0, 1, ...materialPasses]
 
 /** The source recorder's wave, diffuse material, refraction and bevel passes.
  * Native commands and window ownership remain in the existing app adapter. */
 export class DictationCloudRenderer {
   private canvas: HTMLCanvasElement
   private gl: WebGL2RenderingContext
+  private parallelCompile: KHR_parallel_shader_compile | null
   private programs = new Map<number, Program>()
   private targets: Target[] = []
   private vao: WebGLVertexArrayObject | null
@@ -58,6 +62,7 @@ export class DictationCloudRenderer {
     const gl = canvas.getContext('webgl2', { alpha: true, antialias: false, depth: false, stencil: false, premultipliedAlpha: true })
     if (!gl) throw new Error('WebGL2 unavailable')
     this.gl = gl
+    this.parallelCompile = gl.getExtension('KHR_parallel_shader_compile')
     this.vao = gl.createVertexArray()
     this.empty = this.texture()
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([3,4,8,255]))
@@ -68,20 +73,45 @@ export class DictationCloudRenderer {
       const shader = gl.createShader(type)
       if (!shader) throw new Error('Shader unavailable')
       gl.shaderSource(shader, text); gl.compileShader(shader)
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        const reason = gl.getShaderInfoLog(shader); gl.deleteShader(shader); throw new Error(reason ?? 'Shader compilation failed')
-      }
       return shader
     }
-    const vs = compile(gl.VERTEX_SHADER, vertex), fs = compile(gl.FRAGMENT_SHADER, source)
-    const value = gl.createProgram()
-    if (!value) { gl.deleteShader(vs); gl.deleteShader(fs); throw new Error('Program unavailable') }
-    gl.attachShader(value,vs); gl.attachShader(value,fs); gl.linkProgram(value)
-    gl.deleteShader(vs); gl.deleteShader(fs)
-    if (!gl.getProgramParameter(value,gl.LINK_STATUS)) {
-      const reason = gl.getProgramInfoLog(value); gl.deleteProgram(value); throw new Error(reason ?? 'Shader linking failed')
+    const vs = compile(gl.VERTEX_SHADER, vertex)
+    let fs: WebGLShader | null = null
+    try {
+      fs = compile(gl.FRAGMENT_SHADER, source)
+      const value = gl.createProgram()
+      if (!value) throw new Error('Program unavailable')
+      gl.attachShader(value, vs); gl.attachShader(value, fs); gl.linkProgram(value)
+      return { value, linked: false, locations: new Map() }
+    } finally {
+      gl.deleteShader(vs)
+      if (fs) gl.deleteShader(fs)
     }
-    return {value,locations:new Map()}
+  }
+  private preparePrograms(theme: DictationAppearance['theme']) {
+    const gl = this.gl
+    const passes = theme === 'wave' ? wavePasses : materialPasses
+    const completionStatus = this.parallelCompile?.COMPLETION_STATUS_KHR
+    for (const index of passes) {
+      if (this.programs.has(index)) continue
+      this.programs.set(index, this.program(shaderSources[index]))
+      // On older drivers spread blocking link checks over separate frames.
+      if (completionStatus === undefined) break
+    }
+    let ready = true
+    for (const index of passes) {
+      const program = this.programs.get(index)
+      if (program?.linked) continue
+      if (!program || (completionStatus !== undefined && !gl.getProgramParameter(program.value, completionStatus))) {
+        ready = false
+        continue
+      }
+      if (!gl.getProgramParameter(program.value, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(program.value) || 'Shader linking failed')
+      }
+      program.linked = true
+    }
+    return ready
   }
   private texture() {
     const gl = this.gl, value = gl.createTexture()
@@ -109,11 +139,6 @@ export class DictationCloudRenderer {
   }
   private draw(index: number, uniforms: Record<string, Uniform>, textures: [string,WebGLTexture][] = []) {
     const gl = this.gl
-    if (!this.programs.has(index)) {
-      // Fox uses only the material passes. Compile wave/particle programs only
-      // when that artwork is actually drawn, then reuse them across recordings.
-      this.programs.set(index,this.program([wave,dots,background,composite,glass][index]))
-    }
     const program = this.programs.get(index)!
     gl.useProgram(program.value); gl.bindVertexArray(this.vao)
     const location = (name: string) => {
@@ -135,6 +160,7 @@ export class DictationCloudRenderer {
   }
   render(frame: CloudFrame) {
     const gl = this.gl, {appearance:a,level,time,phase} = frame
+    if (!this.preparePrograms(a.theme)) return false
     const dpr = getCloudPixelRatio({ width: this.canvas.clientWidth, height: this.canvas.clientHeight,
       bounds: this.canvas.getBoundingClientRect(), devicePixelRatio: window.devicePixelRatio,
     })
@@ -211,6 +237,7 @@ export class DictationCloudRenderer {
       uMergeRadius:8*dpr,uPixelScale:dpr,uRimStrength:.30,uRimWidth:3.2*dpr,uRimTime:time,
       uVoiceImpact:level,uVoicePhase:this.wavePhase,uTranslationActive:0},
       [['uSceneTexture',scene.texture],['uBackground',this.empty]])
+    return true
   }
   dispose() {
     const gl=this.gl

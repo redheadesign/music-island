@@ -1,0 +1,25 @@
+.dictation-processing-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.dictation-processing-choices .ui-button {
+  max-width: 100%;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.dictation-processing-choices .ui-button > svg { flex: none; visibility: hidden; }
+.dictation-processing-choices .ui-button[aria-pressed='true'] { background: var(--surface-selected); box-shadow: var(--shadow-control); }
+.dictation-processing-choices .ui-button[aria-pressed='true'] > svg { visibility: visible; }
+.app-modal .dictation-processing-choices .ui-button[aria-pressed='false']:not(:hover) { background: transparent; }
+.dictation-processing-actions { padding-block: var(--space-3) 0; }
+.dictation-processing-provider { display: grid; gap: var(--space-3); margin-block-start: var(--space-4); }
+.dictation-processing-provider .ui-setting-row { padding-block: 0; }
+.dictation-processing-key { display: grid; justify-items: end; gap: var(--space-1); width: 100%; min-width: 0; }
+.dictation-processing-key form { display: flex; align-items: center; gap: var(--space-2); width: 100%; }
+.dictation-processing-key .ui-input { flex: 1 1 0; min-width: 0; }
+.dictation-processing-models { max-height: calc(var(--control-height) * 5); overflow: auto; padding: var(--space-1); }
+.dictation-processing-models .dictation-processing-choices { display: grid; }
+.dictation-processing-models .ui-button { justify-content: flex-start; }
+.dictation-processing-editor-actions { flex-wrap: wrap; }

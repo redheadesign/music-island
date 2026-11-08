@@ -1,10 +1,56 @@
 use crate::actions::process_transcription_output;
 use crate::managers::{
-    history::{HistoryManager, PaginatedHistory},
+    history::{HistoryEntry, HistoryManager, PaginatedHistory},
     transcription::TranscriptionManager,
 };
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_clipboard_manager::ClipboardExt;
+
+#[derive(serde::Serialize)]
+pub struct LatestHistoryMessage {
+    id: i64,
+    timestamp: i64,
+    text: String,
+}
+
+fn message_from_entry(entry: HistoryEntry) -> LatestHistoryMessage {
+    LatestHistoryMessage {
+        id: entry.id,
+        timestamp: entry.timestamp,
+        text: entry
+            .post_processed_text
+            .filter(|text| !text.trim().is_empty())
+            .unwrap_or(entry.transcription_text),
+    }
+}
+
+#[tauri::command]
+pub async fn get_latest_history_message(
+    app: AppHandle,
+) -> Result<Option<LatestHistoryMessage>, String> {
+    crate::prepare_preferences(app.clone()).await?;
+    let history = app.state::<Arc<HistoryManager>>().inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        history
+            .get_latest_completed_entry()
+            .map(|entry| entry.map(message_from_entry))
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn copy_history_message(app: AppHandle, id: i64) -> Result<(), String> {
+    let message = get_latest_history_message(app.clone())
+        .await?
+        .filter(|message| message.id == id)
+        .ok_or("The dictation entry is no longer available")?;
+    app.clipboard()
+        .write_text(message.text)
+        .map_err(|error| error.to_string())
+}
 
 #[tauri::command]
 #[specta::specta]

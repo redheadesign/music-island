@@ -1,11 +1,10 @@
-import './PreviewDimensions.css'
-import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { projectPreviewScale } from '../lib/previewSizing'
 import './PreviewScale.css'
 import { PreviewResizeHandle } from './PreviewResizeHandle'
 
-export function PreviewScale({ value, min, max, step = 1, label, onCommit, children, backdrop, header, previewClassName = '', previewLabel }: {
-  value: number; min: number; max: number; step?: number; label: string
+export function PreviewScale({ value, min, max, step = 1, label, readoutLabel = label, locale = 'en', onCommit, children, backdrop, header, previewClassName = '', previewLabel }: {
+  value: number; min: number; max: number; step?: number; label: string; readoutLabel?: string; locale?: string
   onCommit: (value: number) => void; children: (value: number) => ReactNode
   backdrop?: ReactNode; header?: ReactNode; previewClassName?: string; previewLabel?: string
 }) {
@@ -13,6 +12,8 @@ export function PreviewScale({ value, min, max, step = 1, label, onCommit, child
   const gesture = useRef<{ id: number; x: number; y: number; width: number; height: number; initial: number; next: number } | null>(null)
   const [draft, setDraft] = useState<number | null>(null)
   const current = draft ?? value
+  const percent = useMemo(() => new Intl.NumberFormat(locale, { style: 'percent' }), [locale])
+  const valueText = percent.format(current / 100)
   const clamp = (n: number) => Math.max(min, Math.min(max, Math.round(n / step) * step))
   const cancel = () => { gesture.current = null; setDraft(null) }
   const reset = () => { cancel(); onCommit(clamp(100)) }
@@ -42,11 +43,10 @@ export function PreviewScale({ value, min, max, step = 1, label, onCommit, child
     onCommit(clamp(event.key === 'Home' ? min : event.key === 'End' ? max : current + direction * step * (event.shiftKey ? 5 : 1)))
   }
   return <div className="preview-scale">
-    <div className={`preview-scale__stage settings-preview ${previewClassName}`} role={previewLabel ? 'group' : undefined} aria-label={previewLabel}>
+    <div className={`preview-scale__stage settings-preview ${previewClassName}`} role={previewLabel ? 'group' : undefined} aria-label={previewLabel} data-resizing={draft !== null || undefined}>
     {backdrop}{header}
     <div className="preview-scale__scene">
-    <div ref={body} className="preview-scale__body">{children(current)}<PreviewResizeHandle role="slider" tabIndex={0} aria-label={label} title={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={current} aria-valuetext={`${current}%`} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel} onLostPointerCapture={cancel} onKeyDown={key} onDoubleClick={reset} /></div>
+    <div ref={body} className="preview-scale__body">{children(current)}<PreviewResizeHandle role="slider" tabIndex={0} aria-label={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={current} aria-valuetext={valueText} data-readout={`${readoutLabel} ${valueText}`} data-resize-active={draft !== null || undefined} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel} onLostPointerCapture={cancel} onKeyDown={key} onDoubleClick={reset} /></div>
     </div></div>
-    <div className="preview-scale__value preview-dimensions"><span>{label} <output>{current}%</output></span></div>
   </div>
 }

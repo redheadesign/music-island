@@ -27,18 +27,18 @@ const en = {
   gainMode: "Gain",
   gainManual: "Manual",
   gainAuto: "Auto",
-  gainAutoHint: "Volume may rise after a long pause. Use manual gain for calls.",
+  gainAutoHint: "Volume may rise after a pause. Use manual gain for calls.",
   gainTargetCalls: "Calls",
   gainTargetContent: "Content",
   gainTargetCustom: "Custom",
-  inputOverload: "Input clipping — turn down gain on the interface",
+  inputOverload: "Clipping. Turn down interface gain.",
   meterComfortTip:
-    "Comfortable loud speech (~−12 dBFS peak). Keep normal talk near this; not into the red.",
-  meterYellTip: "Shout / sing ceiling (~−6 dBFS peak). Above this you’re near clipping.",
+    "Loud speech: around −12 dBFS. Stay out of the red.",
+  meterYellTip: "Singing or shouting: around −6 dBFS. Higher may clip.",
   outputHintCable:
-    "Select CABLE Output as the microphone in your app.",
+    "Select CABLE Output in your app.",
   outputHintNeedCable:
-    "Pick CABLE Input here after installing the virtual mic below. No extra app needs to stay open.",
+    "Install VB-Cable and select CABLE Input.",
   running: "Processing is on",
   stopped: "Processing is off",
   start: "Start processing",
@@ -59,9 +59,9 @@ const en = {
   installCable: "Virtual mic…",
   installCableRun: "Open guide",
   uninstallCable: "Remove virtual mic",
-  cableReady: "Virtual mic is ready (CABLE). In apps pick CABLE Output as microphone.",
+  cableReady: "Choose CABLE Output as the mic in other apps.",
   cableNeed:
-    "Install VB-Cable once to use your processed voice in other apps.",
+    "Install VB-Cable to send audio to other apps.",
   cableGuideTitle: "Connect Better Voice",
   cableGuideWhy:
     "Better Voice reduces background noise for apps with limited or no noise suppression. VB-Cable sends the processed audio to your app.",
@@ -112,18 +112,18 @@ const ru: typeof en = {
   gainMode: "Громкость",
   gainManual: "Вручную",
   gainAuto: "Авто",
-  gainAutoHint: "После долгой паузы громкость может вырасти. Для звонков используйте ручное усиление.",
+  gainAutoHint: "После паузы громкость может вырасти. Для звонков лучше ручное усиление.",
   gainTargetCalls: "Звонки",
   gainTargetContent: "Контент",
   gainTargetCustom: "Свой",
-  inputOverload: "Вход перегружен. Уменьшите усиление на аудиокарте.",
+  inputOverload: "Перегрузка. Уменьшите усиление на аудиокарте.",
   meterComfortTip:
-    "Ориентир для громкой речи: пик около −12 dBFS. Избегайте красной области.",
-  meterYellTip: "Пик около −6 dBFS для пения или крика. Более высокий уровень может вызвать искажения.",
+    "Громкая речь: пик около −12 dBFS. Избегайте красного.",
+  meterYellTip: "Пение и крик: пик около −6 dBFS. Выше возможны искажения.",
   outputHintCable:
-    "В приложении выберите микрофон CABLE Output.",
+    "В приложении выберите CABLE Output.",
   outputHintNeedCable:
-    "Установите VB-Cable и выберите здесь CABLE Input. Инструкция — в разделе «Виртуальный микрофон».",
+    "Установите VB-Cable и выберите CABLE Input.",
   running: "Обработка включена",
   stopped: "Обработка выключена",
   start: "Включить обработку",
@@ -144,9 +144,9 @@ const ru: typeof en = {
   installCable: "Виртуальный микрофон…",
   installCableRun: "Как подключить",
   uninstallCable: "Удалить виртуальный микрофон",
-  cableReady: "VB-Cable установлен. В приложениях выберите микрофон CABLE Output.",
+  cableReady: "В приложениях выберите микрофон CABLE Output.",
   cableNeed:
-    "Установите VB-Cable, чтобы использовать обработанный голос в других приложениях. Это нужно сделать один раз.",
+    "Установите VB-Cable для передачи голоса в другие приложения.",
   cableGuideTitle: "Подключение Better Voice",
   cableGuideWhy:
     "Better Voice убирает фоновый шум в приложениях, где шумоподавления нет или его недостаточно. VB-Cable передаёт обработанный голос в нужное приложение.",

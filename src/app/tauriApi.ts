@@ -230,6 +230,15 @@ export async function setOverlayBounds(
   })
 }
 
+export type OverlayWidgetRect = { left: number; top: number; width: number; height: number }
+export async function setOverlayWidgetRegions(regions: {
+  localServers: OverlayWidgetRect | null
+  latestMessage: OverlayWidgetRect | null
+}): Promise<void> {
+  if (!isTauriRuntime()) return
+  await invoke('set_overlay_widget_regions', { regions, generation: ++overlayBoundsGeneration })
+}
+
 export interface CollapsedGestureState {
   active: boolean
   localX: number

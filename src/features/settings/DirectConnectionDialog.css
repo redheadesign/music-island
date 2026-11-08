@@ -57,7 +57,7 @@
   font-size: var(--text-title);
   line-height: var(--leading-title);
   font-weight: var(--weight-semibold);
-  letter-spacing: -.025em;
+  letter-spacing: calc(var(--tracking-unit) * -0.025);
   overflow-wrap: anywhere;
 }
 
@@ -94,7 +94,7 @@
   gap: var(--space-3);
 }
 
-.direct-connection-dialog__facts svg { margin-top: 1px; color: var(--fg-muted); }
+.direct-connection-dialog__facts svg { margin-top: calc(var(--space-unit) * 0.25); color: var(--fg-muted); }
 .direct-connection-dialog__facts span { overflow-wrap: anywhere; }
 
 .direct-connection-dialog__error {
@@ -167,7 +167,7 @@
   .direct-connection-dialog__body { padding: var(--space-6); gap: var(--space-5); }
   .direct-connection-dialog__header { gap: var(--space-3); }
   .direct-connection-dialog__icon { flex-basis: var(--space-8); width: var(--space-8); height: var(--space-8); }
-  .direct-connection-dialog__header h2 { font-size: 18px; }
+  .direct-connection-dialog__header h2 { font-size: calc(var(--type-unit) * 18); }
   .direct-connection-dialog__footer { padding: var(--space-5) var(--space-6) var(--space-6); }
   .direct-connection-dialog__actions button { flex: 1 1 104px; }
 }

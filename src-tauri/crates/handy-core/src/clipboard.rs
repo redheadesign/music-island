@@ -44,11 +44,24 @@ fn write_text_to_clipboard(app_handle: &AppHandle, text: &str) -> Result<(), Str
 pub(crate) fn finish_clipboard_paste(
     paste_result: Result<(), String>,
     paste_delay_after_ms: u64,
+    clipboard_handling: ClipboardHandling,
     restore_clipboard: impl FnOnce(),
 ) -> Result<(), String> {
     std::thread::sleep(Duration::from_millis(paste_delay_after_ms));
-    restore_clipboard();
+    if paste_result.is_err() || clipboard_handling == ClipboardHandling::DontModify {
+        restore_clipboard();
+    }
     paste_result
+}
+
+pub(crate) fn clipboard_restore_delay_ms(configured_ms: u64, handling: ClipboardHandling) -> u64 {
+    // SendInput queues the chord. Give a busy Windows target more time to
+    // consume the transcript before overwriting it with the saved clipboard.
+    if cfg!(target_os = "windows") && handling == ClipboardHandling::DontModify {
+        configured_ms.max(400)
+    } else {
+        configured_ms
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -68,6 +81,8 @@ fn paste_via_clipboard(
     paste_method: &PasteMethod,
     paste_delay_ms: u64,
     paste_delay_after_ms: u64,
+    clipboard_handling: ClipboardHandling,
+    is_cancelled: &impl Fn() -> bool,
 ) -> Result<(), String> {
     let clipboard = app_handle.clipboard();
     let saved_text = clipboard.read_text().ok().filter(|t| !t.is_empty());
@@ -88,9 +103,26 @@ fn paste_via_clipboard(
 
     std::thread::sleep(Duration::from_millis(paste_delay_ms));
 
+    #[cfg(target_os = "windows")]
+    {
+        // Confirm both the sequence and the text. The user can copy between
+        // our write and the first sequence read. In that case leave their copy
+        // alone and offer the transcript through the existing Copy action.
+        let text_matches = matches!(clipboard.read_text(), Ok(current) if current == text);
+        if !text_matches || !clipboard_is_unchanged(published_sequence, clipboard_sequence()) {
+            return Err("Clipboard changed before insertion. Copy the dictated text to paste it.".into());
+        }
+    }
+
     // Capture key injection errors so the original clipboard is restored before
     // propagating them to the caller.
     let paste_result = (|| -> Result<(), String> {
+        if is_cancelled() {
+            return Err("Insertion cancelled".into());
+        }
+        #[cfg(target_os = "windows")]
+        crate::focus_target::ensure_foreground()?;
+
         // Send paste key combo
         #[cfg(target_os = "linux")]
         let key_combo_sent = try_send_key_combo_linux(paste_method)?;
@@ -113,7 +145,7 @@ fn paste_via_clipboard(
         Ok(())
     })();
 
-    finish_clipboard_paste(paste_result, paste_delay_after_ms, || {
+    finish_clipboard_paste(paste_result, paste_delay_after_ms, clipboard_handling, || {
         // A user copy during insertion takes precedence over our saved content.
         // Windows advances this token even when the new copy contains equal text.
         #[cfg(target_os = "windows")]
@@ -791,11 +823,15 @@ fn should_send_auto_submit(auto_submit: bool, paste_method: PasteMethod) -> bool
     auto_submit && paste_method != PasteMethod::None
 }
 
-pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
+pub fn paste(text: String, app_handle: AppHandle, is_cancelled: &impl Fn() -> bool) -> Result<(), String> {
+    if is_cancelled() {
+        return Err("Insertion cancelled".into());
+    }
     let settings = get_settings(&app_handle);
     let paste_method = settings.paste_method;
     let paste_delay_ms = settings.paste_delay_ms;
-    let paste_delay_after_ms = settings.paste_delay_after_ms;
+    let paste_delay_after_ms =
+        clipboard_restore_delay_ms(settings.paste_delay_after_ms, settings.clipboard_handling);
 
     // Append trailing space if setting is enabled
     let text = if settings.append_trailing_space {
@@ -852,6 +888,8 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
                 &paste_method,
                 paste_delay_ms,
                 paste_delay_after_ms,
+                settings.clipboard_handling,
+                is_cancelled,
             )?
         }
         PasteMethod::ExternalScript => {
@@ -866,15 +904,25 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
 
     if should_send_auto_submit(settings.auto_submit, paste_method) {
         std::thread::sleep(Duration::from_millis(50));
-        if let Err(error) = with_enigo(&app_handle, |enigo| {
-            send_return_key(enigo, settings.auto_submit_key)
-        }) {
+        if is_cancelled() {
+            return Ok(());
+        }
+        let submit = || {
+            #[cfg(target_os = "windows")]
+            crate::focus_target::ensure_foreground()?;
+            with_enigo(&app_handle, |enigo| send_return_key(enigo, settings.auto_submit_key))
+        };
+        if let Err(error) = submit() {
             log::warn!("Paste succeeded, but auto-submit failed: {error}");
         }
     }
 
-    // After pasting, optionally copy to clipboard based on settings
-    if settings.clipboard_handling == ClipboardHandling::CopyToClipboard {
+    // Clipboard chords already published the transcript. Rewriting it here
+    // could replace text the user copied while the target was pasting.
+    if settings.clipboard_handling == ClipboardHandling::CopyToClipboard
+        && !matches!(paste_method, PasteMethod::CtrlV | PasteMethod::CtrlShiftV | PasteMethod::ShiftInsert)
+        && !is_cancelled()
+    {
         write_text_to_clipboard(&app_handle, &text)?;
     }
 
@@ -985,12 +1033,14 @@ e.g. 28:1 28:0 means pressing on the Enter button on a standard US keyboard.
     #[test]
     fn clipboard_is_restored_before_key_injection_error_is_returned() {
         let restored = Cell::new(false);
-        let result = finish_clipboard_paste(Err("input failed".into()), 0, || {
-            restored.set(true);
-        });
-
-        assert_eq!(result.unwrap_err(), "input failed");
-        assert!(restored.get());
+        for handling in [ClipboardHandling::DontModify, ClipboardHandling::CopyToClipboard] {
+            restored.set(false);
+            let result = finish_clipboard_paste(Err("input failed".into()), 0, handling, || {
+                restored.set(true);
+            });
+            assert_eq!(result.unwrap_err(), "input failed");
+            assert!(restored.get());
+        }
     }
 
     #[test]
@@ -1000,11 +1050,28 @@ e.g. 28:1 28:0 means pressing on the Enter button on a standard US keyboard.
             let snapshot = clipboard.borrow().clone();
             *clipboard.borrow_mut() = phrase.into();
             // The synchronous path completes restoration before it reports success.
-            finish_clipboard_paste(Ok(()), 0, || {
+            finish_clipboard_paste(Ok(()), 0, ClipboardHandling::DontModify, || {
                 *clipboard.borrow_mut() = snapshot;
             }).unwrap();
             assert_eq!(*clipboard.borrow(), "original copy");
         }
+    }
+
+    #[test]
+    fn keeping_result_never_restores_old_clipboard_before_late_reader() {
+        let clipboard = Cell::new("latest dictated phrase");
+        finish_clipboard_paste(Ok(()), 0, ClipboardHandling::CopyToClipboard, || {
+            clipboard.set("old copied text");
+        }).unwrap();
+        assert_eq!(clipboard.get(), "latest dictated phrase");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_restore_gives_queued_paste_more_time_without_lowering_longer_delays() {
+        assert_eq!(clipboard_restore_delay_ms(60, ClipboardHandling::DontModify), 400);
+        assert_eq!(clipboard_restore_delay_ms(700, ClipboardHandling::DontModify), 700);
+        assert_eq!(clipboard_restore_delay_ms(60, ClipboardHandling::CopyToClipboard), 60);
     }
 
     #[test]

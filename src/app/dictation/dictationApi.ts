@@ -1,5 +1,6 @@
 // Typed command bridge adapted from Handy v0.9.7 (MIT, CJ Pais).
 import { invoke } from '@tauri-apps/api/core'
+import type { LatestDictationMessage } from '../../shared/lib/dictationTypes'
 import type { AppSettings, AudioDevice, AvailableAccelerators, BindingResponse, CustomSounds, ImplementationChangeResult, KeyboardDiagnosticReport, LLMPrompt, LogLevel, ModelInfo, ModelLoadStatus, ModelUnloadTimeout, OrtAcceleratorSetting, PaginatedHistory, SecureInputStatus, ShortcutActivation, TranscribeAcceleratorSetting, VadBackend, WindowsMicrophonePermissionStatus } from '../../shared/lib/dictationTypes'
 
 export const dictationApi = {
@@ -115,6 +116,8 @@ export const dictationApi = {
   getModelLoadStatus: () => invoke<ModelLoadStatus>('plugin:dictation|get_model_load_status'),
   unloadModelManually: () => invoke<null>('plugin:dictation|unload_model_manually'),
   getHistoryEntries: (cursor: number | null, limit: number | null) => invoke<PaginatedHistory>('plugin:dictation|get_history_entries', { cursor, limit }),
+  getLatestHistoryMessage: () => invoke<LatestDictationMessage | null>('plugin:dictation|get_latest_history_message'),
+  copyHistoryMessage: (id: number) => invoke<void>('plugin:dictation|copy_history_message', { id }),
   toggleHistoryEntrySaved: (id: number) => invoke<null>('plugin:dictation|toggle_history_entry_saved', { id }),
   getAudioFilePath: (fileName: string) => invoke<string>('plugin:dictation|get_audio_file_path', { fileName }),
   deleteHistoryEntry: (id: number) => invoke<null>('plugin:dictation|delete_history_entry', { id }),

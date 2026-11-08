@@ -60,7 +60,9 @@ flowchart LR
   Startup version probes, Direct client restarts/`taskkill`,
   usage app-server, sidecars, autostart, updater and cleanup all use it. It preserves
   GUI windows and IPC pipes. The app uses the Windows GUI subsystem in both debug
-  and release; Windows settings/URLs/folders use the opener's native shell API.
+  and release. Folder commands use a blocking worker to start Windows Explorer
+  with one directory argument, without waiting for the shell or its extensions on
+  the window thread. URLs and Windows settings use the opener's native shell API.
 - `src-tauri/src/usage`: opt-in Codex and Claude quota probes, one generation-guarded polling task per enabled provider, backoff-aware retries and the shared native snapshot used by every window. Codex talks to the installed official `codex.exe app-server`; provider credentials are never returned to React.
 - `src-tauri/src/updater`: **portable GitHub Releases updater** — check latest release, download `music-island.exe` plus required `SHA256.txt`, SHA-256 and PE sanity checks, replace running exe and relaunch. This is the intended forever update channel (always portable).
 - `src-tauri/src/voice`: in-process Better Voice engine (capture → DSP/denoise → virtual route / VB-Cable), asset extract to `%APPDATA%\Music Island\voice\`, meters IPC.
@@ -156,7 +158,10 @@ The model catalog lives in the dictation feature: locale changes recommendation/
 Dictation's cloud canvas retains its WebGL context between recordings and pauses
 all artwork clocks while hidden or inactive. The SVG fox and a CSS fallback
 capsule paint before deferred GPU initialization; material programs are cached,
-and wave/particle shaders compile only when used. GPU and fox updates are capped
+and wave/particle shaders compile only when used. The renderer polls completion
+via `KHR_parallel_shader_compile` where supported before reading link status.
+Without the extension, it starts one pass per frame and retains the fallback
+until the canvas paints a full frame. GPU and fox updates are capped
 at 30 fps independently of monitor refresh rate; reduced motion paints on changes.
 
 `get_launch_state` includes the current executable path. `finish_onboarding(generation, enableAutostart?)` preserves the launch-generation guard and performs registration outside the Windows event loop. Only an explicit true enables startup; omission preserves the preference. Registration/save failures return an error and restore the prior autostart preference where possible. Existing profiles and `--startup` do not open the introduction.
@@ -184,7 +189,9 @@ animation, About and release scenes share it. The icon generator derives PNG/ICO
 from that source. Static brand assets are the only root-asset dependency accepted
 by the shared import boundary (no app or feature modules).
 
-Windows dictation uses target-process-attributed delayed-render clipboard paste
-by default. Restoration checks the unique owner HWND under the clipboard lock;
-unacknowledged timeouts keep plain transcript text available. Theme thumbnails
-render production artwork; language names share one memoized Intl.DisplayNames instance.
+Windows dictation queues the paste chord off the UI thread after checking the
+clipboard and the foreground window. Restore mode waits before restoring and
+checks the clipboard sequence again. Keep result publishes once. The
+coordinator holds the insertion slot through the wait and status update.
+Theme thumbnails render production artwork. Language names share one memoized
+Intl.DisplayNames instance.

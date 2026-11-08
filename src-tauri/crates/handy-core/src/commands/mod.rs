@@ -8,7 +8,6 @@ use crate::settings::{
 };
 use crate::utils::cancel_current_operation;
 use tauri::{AppHandle, Manager};
-use tauri_plugin_opener::OpenerExt;
 
 #[tauri::command]
 #[specta::specta]
@@ -80,46 +79,35 @@ pub fn set_log_level(app: AppHandle, level: LogLevel) -> Result<(), String> {
 
 #[specta::specta]
 #[tauri::command]
-pub fn open_recordings_folder(app: AppHandle) -> Result<(), String> {
+pub async fn open_recordings_folder(app: AppHandle) -> Result<(), String> {
     let app_data_dir = crate::portable::app_data_dir(&app)
         .map_err(|e| format!("Failed to get app data directory: {}", e))?;
 
-    let recordings_dir = app_data_dir.join("recordings");
-
-    let path = recordings_dir.to_string_lossy().as_ref().to_string();
-    app.opener()
-        .open_path(path, None::<String>)
-        .map_err(|e| format!("Failed to open recordings folder: {}", e))?;
-
-    Ok(())
+    crate::shell::open_folder(app_data_dir.join("recordings"), false)
+        .await
+        .map_err(|e| format!("Failed to open recordings folder: {e}"))
 }
 
 #[specta::specta]
 #[tauri::command]
-pub fn open_log_dir(app: AppHandle) -> Result<(), String> {
+pub async fn open_log_dir(app: AppHandle) -> Result<(), String> {
     let log_dir = crate::portable::app_log_dir(&app)
         .map_err(|e| format!("Failed to get log directory: {}", e))?;
 
-    let path = log_dir.to_string_lossy().as_ref().to_string();
-    app.opener()
-        .open_path(path, None::<String>)
-        .map_err(|e| format!("Failed to open log directory: {}", e))?;
-
-    Ok(())
+    crate::shell::open_folder(log_dir, false)
+        .await
+        .map_err(|e| format!("Failed to open log directory: {e}"))
 }
 
 #[specta::specta]
 #[tauri::command]
-pub fn open_app_data_dir(app: AppHandle) -> Result<(), String> {
+pub async fn open_app_data_dir(app: AppHandle) -> Result<(), String> {
     let app_data_dir = crate::portable::app_data_dir(&app)
         .map_err(|e| format!("Failed to get app data directory: {}", e))?;
 
-    let path = app_data_dir.to_string_lossy().as_ref().to_string();
-    app.opener()
-        .open_path(path, None::<String>)
-        .map_err(|e| format!("Failed to open app data directory: {}", e))?;
-
-    Ok(())
+    crate::shell::open_folder(app_data_dir, false)
+        .await
+        .map_err(|e| format!("Failed to open app data directory: {e}"))
 }
 
 /// Check if Apple Intelligence is available on this device.

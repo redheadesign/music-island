@@ -82,7 +82,7 @@ body.intro-root,
   width: min(320px, 22vw);
   height: min(96px, 12vh);
   transform: translate(-50%, -8%);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: radial-gradient(
     ellipse 70% 90% at 50% 0%,
     rgba(247, 97, 0, 0.88) 0%,

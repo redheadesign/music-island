@@ -24,11 +24,9 @@ export function DictationThemePicker({ value, onChange, locale }: { value: Dicta
       </label>)}
     </div>
   </section>
-    {value.theme !== 'classic' ? <section className="dictation-card dictation-theme-options" aria-labelledby={`${id}-options`}>
-      <h3 id={`${id}-options`}>{t('Настройки темы', 'Theme settings')}</h3>
-      <h4 className="dictation-theme-options__label">{t('Цвет', 'Color')}</h4>
+    {value.theme !== 'classic' ? <div className="dictation-card dictation-theme-options">
       <ColorSwatches ariaLabel={t('Цвет диктовки', 'Dictation color')} value={value.palette} onChange={palette => patch({ palette })} options={dictationPalettes.map(palette => ({ value: palette, label: paletteNames[palette][index], color: dictationPaletteSwatches[palette] }))} />
       {value.theme === 'wave' ? <Switch label={t('Цветные края волн', 'Colored wave edges')} checked={value.chromatic} onChange={chromatic => patch({ chromatic })} /> : null}
-    </section> : null}
+    </div> : null}
   </>
 }

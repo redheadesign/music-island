@@ -8,6 +8,7 @@ use tauri::{AppHandle, Manager, State};
 pub struct ModelLoadStatus {
     is_loaded: bool,
     current_model: Option<String>,
+    backend: Option<String>,
 }
 
 #[tauri::command]
@@ -26,7 +27,8 @@ pub fn get_model_load_status(
     let manager = app.try_state::<std::sync::Arc<TranscriptionManager>>();
     Ok(ModelLoadStatus {
         is_loaded: manager.as_ref().is_some_and(|m| m.is_model_loaded()),
-        current_model: manager.and_then(|m| m.get_current_model()),
+        current_model: manager.as_ref().and_then(|m| m.get_current_model()),
+        backend: manager.and_then(|m| m.current_backend()),
     })
 }
 

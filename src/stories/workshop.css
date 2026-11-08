@@ -629,6 +629,7 @@ a {
 .foundation-contrast-list strong { color: var(--contrast-color); font-size: var(--text-label); font-weight: var(--weight-regular); }
 .foundation-contrast-list > div > span { font-size: var(--text-label); font-variant-numeric: tabular-nums; }
 .foundation-contrast-list svg { color: var(--status-success); }
+.foundation-contrast-list .foundation-contrast-warning { color: var(--status-warning); }
 @media (prefers-reduced-transparency: reduce) {
   .foundation-material-sample--glass { background: var(--surface-raised); backdrop-filter: none; }
 }

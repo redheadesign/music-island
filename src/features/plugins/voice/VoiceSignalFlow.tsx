@@ -1,6 +1,6 @@
 import { AudioLines, Mic2, Volume2 } from '../../../shared/ui/SettingsIcons'
 import type { CSSProperties, ReactNode } from 'react'
-import { DarkSelect } from './DarkSelect'
+import { Select } from '../../../shared/ui/Select'
 import { levelToPct } from './levels'
 import type { AudioStats } from './pluginApi'
 import { SpectrumVisualizer } from './SpectrumVisualizer'
@@ -104,7 +104,7 @@ function SignalEndpoint({
         <span className="voice-signal-node__icon">{icon}</span>
         <strong>{endpoint.label}</strong>
       </div>
-      <DarkSelect
+      <Select
         ariaLabel={endpoint.label}
         value={endpoint.value}
         options={endpoint.options.map((device) => ({ value: device, label: device }))}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.1.0
+
+- Keep the Windows interface responsive while opening model storage, recordings, logs or app data in File Explorer.
+- Select Vulkan or CPU for supported dictation models and optionally choose a Vulkan device.
+- Add optional Local Servers and latest transcript widgets to the expanded island.
+- Show the active or recommended model above the catalog and mark downloaded models on their cards.
+- Shorten settings copy, remove redundant headings, and show scale on hover, focus, or drag.
+
 ## 3.0.4 — 2026-10-21
 
 - Withdraw the Windows delayed-render insertion introduced in 3.0.3 after clipboard and consecutive-dictation regressions; restore the synchronous 3.0.2 path.

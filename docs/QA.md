@@ -5,6 +5,19 @@
 - Windows 11: primary target.
 - Windows 10: best effort with WebView2 and SMTC support.
 
+## Windows folder opening
+
+- In Dictation → Models, expand Model storage and use Open folder. Explorer
+  should open the displayed dictation folder. While it opens, switch to
+  another Settings page and expand the island.
+- Repeat for Dictation → Advanced → Open logs and System → Data → Open
+  folder. The dictation recordings command uses the same launcher.
+- For an isolated native check, point `MUSIC_ISLAND_TEST_EXPLORER_DIR` to an
+  existing temporary folder with spaces and non-ASCII letters, then run
+  `cargo test --manifest-path src-tauri/Cargo.toml -p music-island-handy-core --lib shell::tests::opens_explorer_for_smoke_fixture -- --ignored`.
+  Confirm Explorer opens that folder. This test does not start Music Island
+  or touch its Windows startup registration.
+
 ## App shell
 
 - Manual launch shows intro splash; `--startup` / autostart skips intro.
@@ -12,7 +25,31 @@
 - Hover opens the island; auto-collapse after mouse leave; pin keeps expanded.
 - Settings titlebar shows localized **Settings**; minimize/close/tray reopen work.
 - Scope switch Music Island | Better Voice | Dictation; fixed header/navigation and independently scrolling content.
+- The island, taskbar and AI limits previews show sizing only on grip hover,
+  keyboard focus or drag. The value follows the gesture; cancel restores it.
 - Accent color changes UI chrome.
+
+## Local servers widget
+
+- In Island → Appearance, drag **Local servers** from the external widget tray to the space under the preview. Start a disposable HTTP server and expand the island. The server panel should align with the player width and disappear on collapse.
+- Check the width, player scale and widget scale handles. The value appears in a rounded badge on hover or keyboard focus, follows the drag and saves on release. Escape restores the original size. Widget scale (85–115%) changes row contents independently while the widget edges stay aligned with the player.
+- Open the address from its row. Stop the disposable process from the same row after confirming, then check that the last row disappears.
+- Restart the server and move the widget back to the external tray in Appearance, with the pointer or keyboard. The server stays running and the preference stays off after relaunch.
+- Check that the collapsed strip still responds to its opening gesture. Click on the desktop beside the widget and verify that the overlay passes the click through. Repeat on a secondary monitor with a different DPI.
+
+## Latest dictation on the island
+
+- Leave the option off and verify that history stays out of the island. Enable
+  it in Dictation → History with a completed transcript.
+  Expand the island, copy the full text and paste it into an editor. Collapse
+  it and verify the card disappears. With Local servers enabled, check that
+  the two cards stack without overlapping.
+- Hide the card with its close button. It should remain in History and stay
+  hidden after relaunch. Make a new recording, then clear history; the new card
+  should appear and then disappear.
+- On a secondary monitor, click Copy and Hide in the expanded island. Moving
+  from servers to the transcript should keep it open; clicks in the gap and
+  beside the card should pass through to the desktop.
 
 ## Media
 
@@ -101,6 +138,12 @@
 Browser verification covers scoped dark/light tokens, RU/EN, keyboard focus, reduced motion, fixed navigation/right-only scrolling, dialogs, import preview, 0/9/99/100/— quotas, and real preview drag at multiple scales. It does not establish native recording, paste, DPI or SMTC correctness.
 
 Native checks: run the isolated `--dictation-runtime-check` from an EXE-only folder without Handy or adjacent DLLs. Compare identical WAV/model/backend runs with Handy on the same hardware, recording cold load, recognition time and peak/private memory. Test RU/EN short/long recordings, hold/toggle/combined mode, Escape, input device removal/change, playback mute restoration, Better Voice concurrently, and focus-preserving paste into several editors (including closed target and clipboard recovery). Disabled dictation must retain neither an open microphone nor an ASR model. Hidden overlays must not animate.
+
+After a cold app start, begin speaking as soon as recording starts. The shell
+and fox should be visible before the effect is ready, and Escape should still
+cancel. Repeat with Waves and with reduced motion, then start a second session
+and confirm the effect reuses its prepared programs. Verify the beginning of
+the spoken phrase is present in the pasted text.
 
 October 7 Handy fixes need these additional interactive Windows checks:
 

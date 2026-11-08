@@ -10,11 +10,11 @@
   padding: 0;
   place-items: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--fg-on-glass);
   background: var(--control-surface);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
+  transition: background calc(var(--motion-unit) * 7) ease, color calc(var(--motion-unit) * 7) ease, opacity calc(var(--motion-unit) * 7) ease;
 }
 
 .glass-icon-button:hover {
@@ -31,7 +31,7 @@
   display: inline-flex;
   align-items: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--fg-on-glass-secondary);
   background: var(--control-surface);
 }

@@ -69,3 +69,16 @@ pub fn restore() -> Result<(), String> {
     }
     Ok(())
 }
+
+pub fn ensure_foreground() -> Result<(), String> {
+    let t = *target().lock().unwrap_or_else(|e| e.into_inner());
+    unsafe {
+        let window = GetForegroundWindow();
+        let mut process = 0;
+        GetWindowThreadProcessId(window, Some(&mut process));
+        if t.window != 0 && window.0 as isize == t.window && process == t.process {
+            return Ok(());
+        }
+    }
+    Err("The target window lost focus. Copy the dictated text to paste it.".into())
+}

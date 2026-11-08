@@ -24,19 +24,23 @@ npm run storybook
 
 Это организация каталога, а не новая архитектура приложения. Компоненты остаются в своих слоях `shared`, `app` и `features`.
 
+В диктовке можно открыть [сочетание и микрофон](http://127.0.0.1:6006/?path=/story/screens-dictation--general), [историю с записями](http://127.0.0.1:6006/?path=/story/screens-dictation--history-populated), [словарь](http://127.0.0.1:6006/?path=/story/screens-dictation--dictionary), [подключение обработки текста](http://127.0.0.1:6006/?path=/story/screens-dictation--post-processing-provider) и [последнее сообщение под раскрытым островком](http://127.0.0.1:6006/?path=/story/screens-island--latest-dictation-expanded).
+
 ## Визуальная система
 
 Источник значений — [`src/shared/styles/tokens.css`](../src/shared/styles/tokens.css). Раздел Foundations показывает эти CSS-переменные, их назначение и примеры использования:
 
 - [Палитра и семантика](http://127.0.0.1:6006/?path=/story/foundations--palette): четыре уровня поверхностей, три уровня текста, статусы, границы и пользовательский акцент.
-- [Типографика и иерархия](http://127.0.0.1:6006/?path=/story/foundations--typography): роли `caption`, `label`, `body`, `title`, `display`, соответствующие интервалы и насыщенность.
+- [Типографика и иерархия](http://127.0.0.1:6006/?path=/story/foundations--typography): роли от короткой подсказки `small` до заголовка `display`, интервалы и насыщенность.
 - [Отступы и размеры](http://127.0.0.1:6006/?path=/story/foundations--spacing): шкала `--space-1` … `--space-9` — 4, 8, 12, 16, 20, 24, 32, 40 и 48 px; скругления и размеры управления.
 - [Материалы и глубина](http://127.0.0.1:6006/?path=/story/foundations--surfaces): матовые панели для содержания и один слой стекла для плавающей навигации.
 - [Движение и обратная связь](http://127.0.0.1:6006/?path=/story/foundations--motion): отклик 120 мс, переключение 200 мс, появление 320 мс; все длительности обнуляются при `prefers-reduced-motion`.
-- [Контраст и доступность](http://127.0.0.1:6006/?path=/story/foundations--accessibility): расчет контраста заданных пар текста и непрозрачной панели, проверка фокуса и управления с клавиатуры.
+- Контраст и доступность: расчёт по фактическим цветам [тёмной](http://127.0.0.1:6006/?path=/story/foundations--accessibility) и [светлой](http://127.0.0.1:6006/?path=/story/foundations--accessibility-light) панелей, проверка фокуса и управления с клавиатуры.
 - [Референсы и решения](http://127.0.0.1:6006/?path=/story/foundations-references--curated): рекомендации Apple, Viewport и выбранные кейсы Dprofile с пояснением примененных приемов. Основания редизайна описаны в [DESIGN.md](DESIGN.md).
 
 В настройках используйте семантические переменные вместо новых оттенков и случайных размеров. Стандартный внутренний отступ панели — `--space-6`, строки — `--space-5`, расстояние между разделами — `--space-7`. Это шкала Music Island, выбранная для данного интерфейса; она не выдается за обязательные размеры Apple HIG.
+
+Foundations показывает вычисленные браузером значения цветов, размеров и времени. Для ревью отступов и типографики запустите `npm run check:tokens`. Ручки, которые используют эти токены, можно проверить в [редакторе виджета](http://127.0.0.1:6006/?path=/story/organisms-islandlayouteditor--local-servers-resize).
 
 Стекло не нужно для каждой группы настроек: непрозрачный `--surface-panel` обеспечивает стабильный контраст длинного текста. `--fg-muted` предназначен для метаданных на темной основе или панели. Контраст прозрачных поверхностей и произвольного пользовательского акцента проверяйте на фактическом фоне отдельно.
 
@@ -167,9 +171,9 @@ export details: [MOTION_PRODUCTION.md](MOTION_PRODUCTION.md).
 - `Screens/Settings/ShaderRetention` navigates the production settings pages and
   checks that the canvas remains the same DOM node.
 - `Screens/Settings/PreviewReadouts`, `PreviewReadoutsLight` and
-  `PreviewReadoutsNarrow` check the shared width/scale surface across all three
-  editors: transparent background, no text effects, readouts below the shader, 11 px regular typography
-  and contained layout in the narrow window.
+  `PreviewReadoutsNarrow` check the island handle readouts and the permanent
+  readouts in the taskbar and assistant widget editors. The island shows the
+  current value at the edge or corner during hover, focus and resize.
 - `Organisms/StatefulWarpSurface` covers full-color enabled, dimmed disabled and
   re-enabled surfaces in both themes, plus reduced motion. Its interaction checks
   assert opacity 1/.14, speed 1.1625/.225 and persistent canvas identity. The shared
@@ -184,7 +188,7 @@ restarts and hidden-window CPU/GPU usage still require the portable application.
 See [the implementation report](UI_UX_PASS_2026-10-06.md) for recorded checks.
 
 
-Дополнительные состояния UI/UX: `Screens/Dictation/DisabledLight` показывает общий фон Better Voice при выключенной диктовке; `Molecules/ModelCard/SelectedLight` — зелёный тег выбранной модели в светлой теме.
+Дополнительные состояния UI/UX: `Screens/Dictation/DisabledLight` показывает состояние выключенной диктовки; `Screens/Dictation/GeneralLight` — оформление записи в светлой теме; `Molecules/ModelCard/SelectedLight` — зелёный тег выбранной модели в светлой теме.
 
 `Molecules/DictationOverlay/ClassicHold` проверяет равные отступы у микрофона и
 волны. `FoxRestart` скрывает и снова показывает production-overlay, проверяя
