@@ -37,12 +37,16 @@ function IslandPreview({
   update?: boolean
   longTrack?: boolean
   assistantLimits?: boolean
-  localServersMode?: 'expanded' | 'collapsed' | 'empty'
+  localServersMode?: 'expanded' | 'collapsed' | 'empty' | 'stoppable'
   localServersWidgetScale?: number
   latestMessageMode?: 'expanded' | 'collapsed'
 }) {
   const [config, setConfig] = useWorkshopConfig(locale, accent, localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed')
-  const [localServers, setLocalServers] = useState(localServersMode === 'empty' ? [] : demoLocalServers)
+  const [localServers, setLocalServers] = useState(() => {
+    if (localServersMode === 'empty') return []
+    if (localServersMode === 'stoppable') return demoLocalServers.map((server) => ({ ...server, canStop: true }))
+    return demoLocalServers
+  })
   const usage = useUsageController(assistantLimits)
   const connectUsage = usage.connect
   useEffect(() => { if (assistantLimits) void connectUsage('codex') }, [assistantLimits, connectUsage])
@@ -121,6 +125,11 @@ function IslandPreview({
       stopLocalServer(server)
       setLocalServers((current) => current.filter((row) => row.pid !== server.pid))
     },
+    stopAll: async (servers) => {
+      stopAllLocalServers(servers)
+      const pids = new Set(servers.map((server) => server.pid))
+      setLocalServers((current) => current.filter((row) => !pids.has(row.pid)))
+    },
   } : undefined} />
 }
 const demoLocalServers: LocalServer[] = [
@@ -138,6 +147,7 @@ const onCommand = fn().mockName('island.command')
 const openSettings = fn(async () => {}).mockName('island.openSettings')
 const openLocalServer = fn(async (_server: LocalServer) => {}).mockName('localServers.open')
 const stopLocalServer = fn<(server: LocalServer) => void>().mockName('localServers.stop')
+const stopAllLocalServers = fn<(servers: readonly LocalServer[]) => void>().mockName('localServers.stopAll')
 const meta = {
   title: 'Screens/Island',
   component: IslandPreview,
@@ -168,7 +178,7 @@ export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый �
 export const AssistantLimits: StoryObj<typeof meta> = { name: 'Лимиты Codex рядом с островком', args: { assistantLimits: true } }
 export const LocalServersExpanded: StoryObj<typeof meta> = {
   name: 'Локальные серверы под раскрытым островком',
-  args: { localServersMode: 'expanded', width: 100, scale: 90, localServersWidgetScale: 110 },
+  args: { localServersMode: 'stoppable', width: 100, scale: 90, localServersWidgetScale: 110 },
   play: async ({ canvasElement }) => {
     const widget = await within(canvasElement).findByRole('region', { name: /^(Локальные серверы|Local servers)$/ })
     const island = canvasElement.querySelector('.island-card')!
@@ -197,11 +207,13 @@ export const LocalServersCollapsed: StoryObj<typeof meta> = {
 export const LocalServersActions: StoryObj<typeof meta> = {
   ...LocalServersExpanded,
   name: 'Действия с локальными серверами',
+  args: { ...LocalServersExpanded.args, localServersMode: 'expanded' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const widget = within(await canvas.findByRole('region', { name: /^(Локальные серверы|Local servers)$/ }))
     await waitFor(() => expect(widget.getByText('[::1]:8000')).toBeVisible())
     await expect(widget.queryByRole('button', { name: /^(Остановить сервер|Stop server) · \[::1\]:8000$/ })).not.toBeInTheDocument()
+    await expect(widget.getByRole('button', { name: /^(Остановить всё|Stop all)$/ })).toBeDisabled()
     await userEvent.click(widget.getByRole('button', { name: /^(Открыть в браузере|Open in browser) · 127\.0\.0\.1:5173$/ }))
     await expect(openLocalServer).toHaveBeenLastCalledWith(demoLocalServers[0])
 
@@ -216,7 +228,28 @@ export const LocalServersActions: StoryObj<typeof meta> = {
     await expect(stopLocalServer).toHaveBeenLastCalledWith(demoLocalServers[0])
     await waitFor(() => expect(widget.queryByText('127.0.0.1:4173')).not.toBeInTheDocument())
     await expect(widget.getByText('[::1]:8000')).toBeVisible()
-
+    await expect(widget.queryByRole('button', { name: /^(Остановить всё|Stop all)$/ })).not.toBeInTheDocument()
+  },
+}
+export const LocalServersStopAll: StoryObj<typeof meta> = {
+  ...LocalServersExpanded,
+  name: 'Локальные серверы · остановить всё',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const region = await canvas.findByRole('region', { name: /^(Локальные серверы|Local servers)$/ })
+    const widget = within(region)
+    const stopAll = widget.getByRole('button', { name: /^(Остановить всё|Stop all)$/ })
+    await userEvent.click(stopAll)
+    const cancel = widget.getByRole('button', { name: /^(Отмена|Cancel)$/ })
+    await expect(cancel).toHaveFocus()
+    await userEvent.click(cancel)
+    await expect(stopAll).toHaveFocus()
+    await expect(stopAllLocalServers).not.toHaveBeenCalled()
+    await userEvent.click(stopAll)
+    await userEvent.click(widget.getByRole('button', { name: /^(Остановить процессы|Stop processes)$/ }))
+    await expect(stopAllLocalServers).toHaveBeenCalledTimes(1)
+    await expect(stopAllLocalServers.mock.calls[0][0].map((server) => server.id)).toEqual(demoLocalServers.map((server) => server.id))
+    await waitFor(() => expect(region).not.toBeInTheDocument())
   },
 }
 export const LocalServersEmpty: StoryObj<typeof meta> = {
@@ -239,7 +272,7 @@ export const LatestDictationCollapsed: StoryObj<typeof meta> = {
 
 export const LatestDictationExpanded: StoryObj<typeof meta> = {
   name: 'Последнее сообщение · под локальными серверами',
-  args: { latestMessageMode: 'expanded', localServersMode: 'expanded' },
+  args: { latestMessageMode: 'expanded', localServersMode: 'stoppable' },
   parameters: { workshop: { height: 640 } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

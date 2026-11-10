@@ -10,29 +10,35 @@ interface LocalServersPanelProps {
   servers: readonly LocalServer[]
   open?: (server: LocalServer) => Promise<void>
   stop?: (server: LocalServer) => Promise<void>
+  stopAll?: (servers: readonly LocalServer[]) => Promise<void>
   locale: Locale
   contentScale: number
   preview?: boolean
   ref?: Ref<HTMLElement>
 }
 
+type StopRequest = { kind: 'single'; id: string } | { kind: 'all'; servers: readonly LocalServer[] }
+
 function addressOf(server: LocalServer): string {
   return `${server.host}:${server.port}`
 }
 
-export function LocalServersPanel({ servers, open, stop, locale, contentScale, preview = false, ref }: LocalServersPanelProps) {
+export function LocalServersPanel({ servers, open, stop, stopAll, locale, contentScale, preview = false, ref }: LocalServersPanelProps) {
   const t = createTranslator(locale)
-  const [stopId, setStopId] = useState<string | null>(null)
+  const [stopRequest, setStopRequest] = useState<StopRequest | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<MessageKey | null>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
   const stopTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const stopId = stopRequest?.kind === 'single' ? stopRequest.id : null
   const selectedServer = servers.find((server) => server.id === stopId)
-  const selectedId = selectedServer?.id
+  const bulkRequest = stopRequest?.kind === 'all' ? stopRequest : null
+  const confirmationKey = bulkRequest ? 'all' : selectedServer?.id
+  const canStopAll = servers.every((server) => server.canStop)
 
   useEffect(() => {
-    if (selectedId) cancelRef.current?.focus({ preventScroll: true })
-  }, [selectedId])
+    if (confirmationKey) cancelRef.current?.focus({ preventScroll: true })
+  }, [confirmationKey])
 
   const act = async (action: () => Promise<void>, errorKey: MessageKey) => {
     setBusy(true)
@@ -43,6 +49,31 @@ export function LocalServersPanel({ servers, open, stop, locale, contentScale, p
       setError(errorKey)
     } finally {
       setBusy(false)
+    }
+  }
+
+  const requestStop = (request: StopRequest, trigger: HTMLButtonElement) => {
+    stopTriggerRef.current = trigger
+    setStopRequest(request)
+    setError(null)
+  }
+
+  const confirmStop = () => {
+    if (bulkRequest && stopAll) {
+      const activeIds = new Set(servers.map((server) => server.id))
+      const targets = bulkRequest.servers.filter((server) => activeIds.has(server.id))
+      void act(async () => {
+        try {
+          await stopAll(targets)
+        } finally {
+          setStopRequest(null)
+        }
+      }, 'localServers.stopAllError')
+    } else if (selectedServer && stop) {
+      void act(async () => {
+        await stop(selectedServer)
+        setStopRequest(null)
+      }, 'localServers.stopError')
     }
   }
 
@@ -65,31 +96,36 @@ export function LocalServersPanel({ servers, open, stop, locale, contentScale, p
                 <ArrowUpRight size={16} aria-hidden="true" />
               </SettingsIconButton>
               {server.canStop ? <SettingsIconButton variant="ghost" size="compact" label={`${t('localServers.stop')} · ${address}`} disabled={busy}
-                aria-expanded={stopId === server.id} onClick={stop ? (event) => {
-                  stopTriggerRef.current = event.currentTarget
-                  setStopId(server.id)
-                  setError(null)
-                } : undefined}>
+                aria-expanded={stopId === server.id}
+                onClick={stop ? (event) => requestStop({ kind: 'single', id: server.id }, event.currentTarget) : undefined}>
                 <Stop size={16} weight="fill" aria-hidden="true" />
               </SettingsIconButton> : null}
             </li>
           )
         })}
       </ul>
-      {selectedServer && stop ? (
+      {servers.length > 1 && (stopAll || preview) ? (
+        <div className="island-local-servers__bulk">
+          <Button variant="ghost" size="compact" disabled={busy || !canStopAll} aria-expanded={Boolean(bulkRequest)}
+            title={canStopAll ? undefined : t('localServers.stopAllUnavailable')}
+            onClick={stopAll ? (event) => requestStop({ kind: 'all', servers }, event.currentTarget) : undefined}>
+            {t('localServers.stopAll')}
+          </Button>
+        </div>
+      ) : null}
+      {(bulkRequest && stopAll) || (selectedServer && stop) ? (
         <div className="island-local-servers__confirmation">
-          <strong>{selectedServer.processName} · {addressOf(selectedServer)}</strong>
-          <p>{t('localServers.stopHint')}</p>
+          <strong>{bulkRequest ? t('localServers.stopAllConfirm') : selectedServer && `${selectedServer.processName} · ${addressOf(selectedServer)}`}</strong>
+          <p>{t(bulkRequest ? 'localServers.stopAllHint' : 'localServers.stopHint')}</p>
           <div className="island-local-servers__confirmation-actions">
             <Button ref={cancelRef} variant="ghost" size="compact" disabled={busy} onClick={() => {
-              setStopId(null)
+              setStopRequest(null)
               setError(null)
               stopTriggerRef.current?.focus({ preventScroll: true })
             }}>{t('consent.cancel')}</Button>
-            <Button variant="danger" size="compact" disabled={busy} onClick={() => void act(async () => {
-              await stop(selectedServer)
-              setStopId(null)
-            }, 'localServers.stopError')}>{t('localServers.confirm')}</Button>
+            <Button variant="danger" size="compact" disabled={busy} onClick={confirmStop}>
+              {t(bulkRequest ? 'localServers.confirmAll' : 'localServers.confirm')}
+            </Button>
           </div>
         </div>
       ) : null}

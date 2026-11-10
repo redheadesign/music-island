@@ -61,6 +61,11 @@
   white-space: nowrap;
 }
 
+.island-local-servers__bulk {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .island-local-servers__confirmation {
   display: grid;
   gap: var(--space-1);

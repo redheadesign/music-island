@@ -12,6 +12,15 @@
 
 .island-root:not(.island-root--open) .island-bottom-rail { visibility: hidden; }
 
+@media (any-hover: hover) {
+  .island-bottom-rail > * {
+    opacity: 0.5;
+    transition: opacity var(--motion-fast) var(--ease-standard);
+  }
+
+  .island-bottom-rail > :is(:hover, :has(:focus-visible)) { opacity: 1; }
+}
+
 .island-latest-dictation {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

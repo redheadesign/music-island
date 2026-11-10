@@ -21,6 +21,7 @@ export interface LocalServersController {
   servers: LocalServer[]
   open: (server: LocalServer) => Promise<void>
   stop: (server: LocalServer) => Promise<void>
+  stopAll: (servers: readonly LocalServer[]) => Promise<void>
 }
 
 export function useLocalServersController(enabled: boolean): LocalServersController {
@@ -60,5 +61,16 @@ export function useLocalServersController(enabled: boolean): LocalServersControl
     setServers((current) => current.filter((row) => row.pid !== server.pid))
   }, [])
 
-  return { servers: enabled ? servers : NO_SERVERS, open, stop }
+  const stopAll = useCallback(async (servers: readonly LocalServer[]) => {
+    const processes = new Map<number, LocalServer>()
+    for (const server of servers) {
+      if (!processes.has(server.pid)) processes.set(server.pid, server)
+    }
+    const results = await Promise.allSettled(Array.from(processes.values(), stop))
+    if (results.some((result) => result.status === 'rejected')) {
+      throw new Error('Some local servers could not be stopped')
+    }
+  }, [stop])
+
+  return { servers: enabled ? servers : NO_SERVERS, open, stop, stopAll }
 }

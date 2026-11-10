@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.1.1
+
+- Widgets below the expanded island fade to 50% opacity when idle. Hover over a widget or focus one of its controls with the keyboard to bring it back to full opacity.
+- The Local Servers widget shows a **Stop all** button when two or more servers are listed. Use it to stop them together when every server can be stopped from the island.
+
 ## 3.1.0
 
 - Keep the Windows interface responsive while opening model storage, recordings, logs or app data in File Explorer.

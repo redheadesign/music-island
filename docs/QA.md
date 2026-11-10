@@ -34,6 +34,7 @@
 - In Island → Appearance, drag **Local servers** from the external widget tray to the space under the preview. Start a disposable HTTP server and expand the island. The server panel should align with the player width and disappear on collapse.
 - Check the width, player scale and widget scale handles. The value appears in a rounded badge on hover or keyboard focus, follows the drag and saves on release. Escape restores the original size. Widget scale (85–115%) changes row contents independently while the widget edges stay aligned with the player.
 - Open the address from its row. Stop the disposable process from the same row after confirming, then check that the last row disappears.
+- Start two disposable servers. Check that **Stop all** appears, cancel once, then confirm and check that both rows disappear. With one server, the bulk action is hidden.
 - Restart the server and move the widget back to the external tray in Appearance, with the pointer or keyboard. The server stays running and the preference stays off after relaunch.
 - Check that the collapsed strip still responds to its opening gesture. Click on the desktop beside the widget and verify that the overlay passes the click through. Repeat on a secondary monitor with a different DPI.
 
@@ -44,6 +45,8 @@
   Expand the island, copy the full text and paste it into an editor. Collapse
   it and verify the card disappears. With Local servers enabled, check that
   the two cards stack without overlapping.
+- With a mouse, both cards use 50% opacity at rest. Hover each card in turn
+  or tab to a button and verify that only its card returns to full opacity.
 - Hide the card with its close button. It should remain in History and stay
   hidden after relaunch. Make a new recording, then clear history; the new card
   should appear and then disappear.

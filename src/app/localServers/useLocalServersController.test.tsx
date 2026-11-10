@@ -51,4 +51,23 @@ describe('local servers polling', () => {
     expect(current.servers).toEqual([])
     expect(invoke).toHaveBeenCalledTimes(1)
   })
+
+  it('stops each process once and keeps rows for processes that failed to stop', async () => {
+    const secondPort = { ...server, id: 'vite-4173', port: 4173 }
+    const otherProcess = { ...server, id: 'vite-8000', pid: 9000, port: 8000 }
+    const rows = [server, secondPort, otherProcess]
+    vi.mocked(invoke).mockResolvedValueOnce(rows)
+    await act(() => root.render(<Harness enabled />))
+
+    vi.mocked(invoke).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('Access denied'))
+    await act(async () => {
+      await expect(current.stopAll(rows)).rejects.toThrow()
+    })
+
+    expect(vi.mocked(invoke).mock.calls.slice(1)).toEqual([
+      ['stop_local_server', { id: server.id }],
+      ['stop_local_server', { id: otherProcess.id }],
+    ])
+    expect(current.servers).toEqual([otherProcess])
+  })
 })
