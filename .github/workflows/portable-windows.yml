@@ -1,0 +1,131 @@
+name: Build Music Island for Windows
+
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    name: Build portable Windows x64 EXE
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      RUSTUP_TOOLCHAIN: 1.96.1-x86_64-pc-windows-msvc
+      CARGO_INCREMENTAL: '0'
+      VULKAN_SDK_VERSION: 1.4.309.0
+      ONNX_RUNTIME_VERSION: 1.24.2
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.15.0'
+          package-manager-cache: false
+
+      - name: Record starting disk space
+        run: |
+          $drive = Get-PSDrive -Name (Get-Location).Drive.Name
+          'Free before installing build dependencies: {0:N2} GiB' -f ($drive.Free / 1GB)
+
+      - name: Set up Rust and Visual Studio C++
+        run: |
+          rustup toolchain install $env:RUSTUP_TOOLCHAIN --profile minimal
+          if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain installation failed' }
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -version '[17.0,18.0)' `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vs) { throw 'Visual Studio 2022 C++ tools are required' }
+          $cmake = Join-Path $vs 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'
+          if (!(Test-Path -LiteralPath $cmake -PathType Leaf)) { throw 'Visual Studio CMake is required' }
+          Add-Content $env:GITHUB_ENV "VSINSTALLDIR=$vs"
+          Add-Content $env:GITHUB_ENV "CMAKE=$cmake"
+
+      - name: Install the Vulkan SDK and ONNX Runtime for dictation
+        run: |
+          function Get-VerifiedDownload($url, $destination, $sha256) {
+            curl.exe --fail --silent --show-error --location --retry 3 --output $destination $url
+            if ($LASTEXITCODE -ne 0) { throw "Download failed: $url" }
+            if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -ne $sha256) {
+              throw "SHA256 mismatch: $url"
+            }
+          }
+
+          $vulkanVersion = $env:VULKAN_SDK_VERSION
+          $vulkanFile = "VulkanSDK-$vulkanVersion-Installer.exe"
+          $installer = Join-Path $env:RUNNER_TEMP $vulkanFile
+          $vulkan = Join-Path $env:RUNNER_TEMP 'vulkan-sdk'
+          Get-VerifiedDownload "https://sdk.lunarg.com/sdk/download/$vulkanVersion/windows/$vulkanFile" `
+            $installer '48b132169b64fe65cdb0f20970195335a65354e73f1ea5373032c2a8bbad4297'
+          $install = Start-Process -FilePath $installer -WindowStyle Hidden -Wait -PassThru `
+            -ArgumentList @('--root', ('"{0}"' -f $vulkan), '--accept-licenses', '--default-answer', '--confirm-command', 'install', 'copy_only=1')
+          if ($install.ExitCode -ne 0) { throw "Vulkan SDK installation failed: $($install.ExitCode)" }
+          Remove-Item -LiteralPath $installer
+          foreach ($required in @('Bin/glslc.exe', 'Lib/cmake/SPIRV-HeadersConfig.cmake')) {
+            if (!(Test-Path -LiteralPath (Join-Path $vulkan $required))) { throw "Missing Vulkan SDK file: $required" }
+          }
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=$vulkan"
+
+          $ortVersion = $env:ONNX_RUNTIME_VERSION
+          $ortPackage = "onnxruntime-win-x64-$ortVersion"
+          $archive = Join-Path $env:RUNNER_TEMP "$ortPackage.zip"
+          Get-VerifiedDownload "https://github.com/microsoft/onnxruntime/releases/download/v$ortVersion/$ortPackage.zip" `
+            $archive '8e3e9c826375352e29cb2614fe44f3d7a4b0ff7b8028ad7a456af9d949a7e8b0'
+          Expand-Archive -LiteralPath $archive -DestinationPath $env:RUNNER_TEMP
+          Remove-Item -LiteralPath $archive
+          Add-Content $env:GITHUB_ENV "ORT_LIB_LOCATION=$(Join-Path $env:RUNNER_TEMP "$ortPackage/lib")"
+
+      - name: Build the portable application
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
+          npm run tauri:build
+          if ($LASTEXITCODE -ne 0) { throw 'Portable build failed' }
+          git diff --exit-code -- package-lock.json src-tauri/Cargo.lock src-tauri/crates/dictation-runtime/Cargo.lock
+
+      - name: Verify the portable EXE and smoke test the bundled dictation engine
+        timeout-minutes: 3
+        run: |
+          $exe = Get-Item -LiteralPath 'release/music-island.exe'
+          $sha256 = (Get-FileHash -LiteralPath $exe.FullName).Hash.ToLowerInvariant()
+          if ((Get-Content -LiteralPath 'release/SHA256.txt' -Raw).Trim() -cne "$sha256  music-island.exe") {
+            throw 'Portable EXE SHA256 does not match SHA256.txt'
+          }
+          $version = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
+          if ($exe.VersionInfo.ProductVersion -ne $version) { throw 'EXE version does not match package.json' }
+
+          $env:APPDATA = Join-Path $env:RUNNER_TEMP 'dictation-probe/roaming'
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'dictation-probe/local'
+          New-Item -ItemType Directory -Path $env:APPDATA, $env:LOCALAPPDATA -Force | Out-Null
+          $probe = Start-Process -FilePath $exe.FullName -ArgumentList '--dictation-runtime-check' `
+            -WindowStyle Hidden -Wait -PassThru
+          $report = Get-Content -LiteralPath (Join-Path $env:APPDATA 'Music Island/dictation/runtime-check.json') -Raw
+          Write-Output $report
+          if ($probe.ExitCode -ne 0 -or ($report | ConvertFrom-Json).vad -ne 'passed') {
+            throw 'Bundled dictation engine did not pass the VAD probe'
+          }
+          Add-Content $env:GITHUB_STEP_SUMMARY "Music Island $version (Windows x64) — $($exe.Length) bytes"
+          Add-Content $env:GITHUB_STEP_SUMMARY "`nSHA256: $sha256"
+
+      - name: Upload portable build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: music-island-windows-x64-${{ github.run_number }}
+          path: |
+            release/music-island.exe
+            release/SHA256.txt
+            THIRD_PARTY_NOTICES.md
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Record ending disk space
+        if: always()
+        run: |
+          $drive = Get-PSDrive -Name (Get-Location).Drive.Name
+          'Free after build: {0:N2} GiB' -f ($drive.Free / 1GB)
