@@ -31,7 +31,7 @@
 - Run `npm test`, `npm run build`, and `npm run lint` for frontend changes.
 - Add characterization tests before changing timing, seek, session, or overlay-mode behavior.
 - For native changes, run `cargo check --manifest-path src-tauri/Cargo.toml` and relevant Rust tests; use `docs/QA.md` for affected Windows behavior and report any checks that could not run.
-- `npm run tauri:build` creates the portable build and copies it to `release/music-island.exe`.
+- Use the [Build Music Island for Windows](https://github.com/redheadesign/music-island/actions/workflows/portable-windows.yml) workflow for every portable test and release build. Dispatch it on the intended branch, then download the artifact and verify its SHA-256. Publish the exact artifact approved on Windows and tag the commit that produced it.
 - Do not commit generated release artifacts.
 
 ## Component workshop

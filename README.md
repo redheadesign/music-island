@@ -85,14 +85,15 @@ flowchart LR
 Windows 10/11, WebView2, Node.js, Rust and MSVC Build Tools. Dictation additionally
 needs the native dependencies and runtime bundle described in [Dictation build](docs/DICTATION.md#build).
 Build that bundle and set `MUSIC_ISLAND_DICTATION_BUNDLE` before native development.
-The portable build script prepares and embeds the bundle automatically.
 
 ```powershell
 npm ci
 npm run tauri:dev
 npm run storybook       # http://127.0.0.1:6006
-npm run tauri:build     # release/music-island.exe
 ```
+
+For a portable Windows executable, select **Run workflow** and choose the branch
+to build. Download the resulting artifact from the run. [Build Music Island for Windows](https://github.com/redheadesign/music-island/actions/workflows/portable-windows.yml)
 
 Browser previews do not test native input, media sessions or the audio engine. Run the checks in [QA](docs/QA.md) and [Releases](docs/RELEASES.md) before distributing a build.
 

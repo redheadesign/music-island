@@ -62,10 +62,9 @@ Reuse the approved executable without rebuilding unless compiled inputs change.
 
 ## Manual release checklist
 
-1. Install prerequisites: Node.js, Rust, Microsoft C++ Build Tools and WebView2 runtime.
-2. Bump versions in `package.json` / `package-lock.json`, `src-tauri/Cargo.toml` / `Cargo.lock`, `src-tauri/tauri.conf.json`, `APP_VERSION` in `src/features/settings/SettingsPanel.tsx`, and the updater `USER_AGENT` in `src-tauri/src/updater/mod.rs`.
-3. Refresh `CHANGELOG.md` and the public `README.md` status line.
-4. Run the frontend and native checks:
+1. Bump versions in `package.json` / `package-lock.json`, `src-tauri/Cargo.toml` / `Cargo.lock`, `src-tauri/tauri.conf.json`, `APP_VERSION` in `src/features/settings/SettingsPanel.tsx`, and the updater `USER_AGENT` in `src-tauri/src/updater/mod.rs`.
+2. Refresh `CHANGELOG.md` and the public `README.md` status line.
+3. Run the frontend and native checks:
 
 ```powershell
 npm test
@@ -77,34 +76,21 @@ cargo check --manifest-path src-tauri/Cargo.toml
 cargo test --manifest-path src-tauri/Cargo.toml --lib
 ```
 
-5. Build:
-
-```powershell
-npm install
-npm run tauri:build -- --no-bundle
-```
-
-6. Use the root `release/` folder. The `posttauri:build` script copies the portable executable there after a successful build and creates `SHA256.txt` with exactly one checksum entry for it.
-7. Verify that the generated checksum matches the portable executable:
+4. Push the candidate branch. Open [Build Music Island for Windows](https://github.com/redheadesign/music-island/actions/workflows/portable-windows.yml), select **Run workflow**, and choose that branch. Use this workflow for all portable test and release builds.
+5. Download the artifact from the successful run. Record the run URL and its source commit. From the extracted artifact directory, verify the executable against the included checksum:
 
 ```powershell
 $hash = (Get-FileHash -Algorithm SHA256 release/music-island.exe).Hash.ToLowerInvariant()
 if ((Get-Content release/SHA256.txt -Raw).Trim() -ne "$hash  music-island.exe") { throw "SHA256 mismatch" }
 ```
 
-8. Verify the portable file on Windows before upload: embedded frontend assets and version, startup/restart, overlay and Settings windows, real taskbar visibility/input/autohide, configured media-provider authority, and reconnect of each explicitly enabled usage provider without another consent toggle.
-9. Upload `release/music-island.exe`, `release/SHA256.txt` and the repository's `THIRD_PARTY_NOTICES.md` to the same GitHub Release (tag like `v3.0.0`). The updater requires the first two exact, case-sensitive asset names and ignores the documentation asset.
-10. Put the changelog body on the GitHub Release (the in-app update banner renders that markdown).
+6. Verify the artifact on Windows before upload: embedded frontend assets and version, startup/restart, overlay and Settings windows, real taskbar visibility/input/autohide, configured media-provider authority, and reconnect of each explicitly enabled usage provider without another consent toggle.
+7. Draft a GitHub Release with a version tag pointing to the commit from the approved run. Upload that artifact's `music-island.exe`, `SHA256.txt` and `THIRD_PARTY_NOTICES.md`. The updater requires the first two exact, case-sensitive asset names.
+8. Use the versioned release notes as the draft body and verify the uploaded files against the artifact. Publish the verified draft after release approval.
 
 Write public release notes and changelog entries in English for the repository's
 English-speaking audience. Keep the versioned release-notes file and the published
 GitHub Release body in sync when correcting the copy.
-
-If you already built the app and only need to refresh `release/`, run:
-
-```powershell
-npm run release:copy
-```
 
 ## Portable auto-update (shipped)
 
@@ -126,17 +112,13 @@ The Tauri plugin updater with signed `latest.json` bundles is **not** required f
 
 ## Dictation bundle prerequisite
 
-The portable build now also builds and embeds the native dictation runtime. Install/configure CMake, Vulkan SDK, baseline ONNX Runtime 1.24.2 and VC143 redistributable files as described in [DICTATION.md](DICTATION.md). `npm run tauri:build -- --no-bundle` remains the entrypoint. Do not ship only the inference DLL or require Handy to be installed. Keep the exact Cargo locks, Handy MIT attribution, native dependency notices and bundle hash manifest. Never commit generated runtime bundles or EXEs. Model weights are optional separate downloads with their own licenses.
+The Windows workflow sets up CMake, Vulkan SDK, baseline ONNX Runtime 1.24.2 and VC143 redistributable files as described in [DICTATION.md](DICTATION.md). It runs `npm run tauri:build` to embed the native dictation runtime and package the portable EXE. Keep the exact Cargo locks, Handy MIT attribution, native dependency notices and bundle hash manifest. Keep generated runtime bundles and EXEs out of Git.
 
 The `tauri:build` script now supplies `--no-bundle` by default, so the plain command
 also creates the portable EXE without downloading NSIS or producing an installer.
 
-Keep Cargo target directories and `.local/embedded-assets-zlib-v1` between
-builds. The latter reuses compressed dictation runtime assets only after
-checking their decoded bytes against the staged source. The Vite build
-preserves timestamps of unchanged files in `dist`, so an identical frontend
-does not invalidate the native build. The optional recognition weights stay
-outside the EXE; the small Silero VAD and GigaAM vocabulary are bundled.
+The optional recognition weights are separate downloads with their own
+licenses. The EXE bundles the small Silero VAD and GigaAM vocabulary.
 
 ## 3.0 preparation
 
