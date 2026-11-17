@@ -86,15 +86,20 @@ This is a synthetic noise condition over real speech.
 Both planners ran on the identical Q8 weights, warmed transcribe.cpp 0.2.4
 and Ryzen 7 4700U Radeon Vulkan0. The original planner sent the whole input.
 The updated planner preserved consecutive spans of 17.00, 37.36, 16.86 and
-11.96 s. Measured inference in alternating A/B/B/A order:
+11.96 s. The five paired runs used A/B, B/A, B/A, A/B and B/A order:
 
-| Planner | Two runs | Median | Word error rate |
+| Planner | Five runs, seconds | Median | Word error rate |
 | --- | --- | --- | --- |
-| Whole-input fallback | 54.895 s, 48.150 s | 51.523 s | 14.77% (13 deletions, 9 substitutions) |
-| Retained quiet boundaries | 8.862 s, 8.981 s | 8.922 s | 6.04% (7 substitutions, 2 insertions) |
+| Whole-input fallback | 54.895, 48.150, 53.607, 53.525, 48.908 | 53.525 s | 14.77% (13 deletions, 9 substitutions) |
+| Retained quiet boundaries | 8.862, 8.981, 8.957, 8.830, 8.990 | 8.957 s | 6.04% (7 substitutions, 2 insertions) |
 
-Whole-host CPU utilization over the four runs was 60.0%, 43.7%, 44.5%,
-45.8%. These timings cover recognition of loaded audio and exclude microphone
+Whole-host CPU utilization ranged from 43.3% to 60.2%. Every repeat within
+each variant returned identical normalized words. Each of the final six runs
+started a fresh process with the same warm-up. Median peak process working set
+was 443.2 MiB with the old plan and 361.1 MiB with the new plan. Median peak
+private memory sampled every 100 ms was 604.3 MiB and 540.7 MiB respectively.
+These counters cover the benchmark process and omit graphics driver memory
+outside that process. These timings cover recognition of loaded audio and exclude microphone
 capture, model load, WAV persistence and paste. The two original 408.57 s and
 304.28 s fixtures produced exactly their prior sets of 24 and 18 ranges.
 
@@ -115,6 +120,18 @@ short-clip p95 regression at most 100 ms, WER regression at most 0.3 percentage
 points, no new cut-boundary omissions/duplications and no additional capture
 losses. Record peak memory, check cancel and new sessions, and verify that a
 focus change still offers Copy instead of pasting into another window.
+
+For a real paste measurement, use a disposable interactive Windows VM with
+host clipboard, microphone and network redirection disabled. Map the fixture
+and weights read-only. Feed the WAV to a guest-local virtual microphone.
+A future test-only PCM input at the recorder ingress could exercise VAD and
+the native coordinator without a virtual audio driver. An editor process should
+timestamp its first matching text change, verify the captured target PID/HWND
+and compare its final text with the reference. Test target loss by closing
+only that helper window. Creating a second desktop in the host user's session
+still shares the clipboard. [Windows window stations](https://learn.microsoft.com/en-us/windows/win32/winstation/window-stations)
+and [Windows Sandbox configuration](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-configure-using-wsb-file)
+describe these isolation boundaries.
 
 The optional microphone can be placed in the island layout editor. It is absent
 from the default composition. The bottom overlay does not take keyboard focus.
