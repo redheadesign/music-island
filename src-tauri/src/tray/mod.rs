@@ -1,13 +1,35 @@
-use crate::window;
+use crate::{config::{ConfigState, Locale}, window};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App,
+    App, AppHandle, Manager, Wry,
 };
 
+struct TrayItems {
+    settings: MenuItem<Wry>,
+    quit: MenuItem<Wry>,
+}
+
+fn labels(locale: Locale) -> (&'static str, &'static str) {
+    match locale {
+        Locale::Ru => ("Настройки", "Выйти"),
+        Locale::En => ("Settings", "Quit"),
+    }
+}
+
+pub fn set_locale(app: &AppHandle, locale: Locale) {
+    if let Some(items) = app.try_state::<TrayItems>() {
+        let (settings, quit) = labels(locale);
+        let _ = items.settings.set_text(settings);
+        let _ = items.quit.set_text(quit);
+    }
+}
+
 pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
-    let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let locale = app.state::<ConfigState>().load().map(|config| config.appearance.locale).unwrap_or_default();
+    let (settings_label, quit_label) = labels(locale);
+    let settings = MenuItem::with_id(app, "settings", settings_label, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&settings, &quit])?;
 
     let mut builder = TrayIconBuilder::new().menu(&menu).tooltip("Music Island");
@@ -38,5 +60,6 @@ pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
         })
         .build(app)?;
 
+    app.manage(TrayItems { settings, quit });
     Ok(())
 }

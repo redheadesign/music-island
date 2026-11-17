@@ -12,14 +12,14 @@ export type { UsageController } from './usage/useUsageController'
 export { usePlaybackBass } from './media/usePlaybackBass'
 export { getUsagePreferences, withUsageProviderEnabled, enabledUsageProviders } from './usage/usagePreferences'
 
-export function useIslandApp({ mediaEnabled = true, timelineEnabled = true, windowEventsEnabled = true }: UseIslandAppOptions = {}): IslandAppState {
+export function useIslandApp({ mediaEnabled = true, timelineEnabled = true, windowEventsEnabled = true, includeConfigPreviews = true }: UseIslandAppOptions = {}): IslandAppState {
   const [mode, setMode] = useState<OverlayMode>('idle')
   const noSessionTimerRef = useRef<number | null>(null)
   const initialMediaModeSetRef = useRef(false)
-  const configController = useAppConfig(mediaEnabled)
+  const configController = useAppConfig(mediaEnabled, includeConfigPreviews)
   useOverlayReady(mediaEnabled && windowEventsEnabled && configController.configLoaded)
   const mediaController = useMediaController({
-    enabled: mediaEnabled,
+    enabled: mediaEnabled && configController.configLoaded && !configController.configLoadFailed,
     timelineEnabled,
     configLoaded: configController.configLoaded,
     protocol: configController.config.media.protocol,
@@ -75,6 +75,9 @@ export function useIslandApp({ mediaEnabled = true, timelineEnabled = true, wind
 
   return {
     config: configController.config,
+    configLoaded: configController.configLoaded,
+    configLoadFailed: configController.configLoadFailed,
+    retryConfigLoad: configController.retryConfigLoad,
     media: mediaController.media,
     mode,
     autostartError: configController.autostartError,

@@ -883,77 +883,29 @@
 }
 
 .notice-window-root {
-  --text-primary: rgba(255, 255, 255, 0.96);
-  --text-secondary: rgba(238, 243, 255, 0.68);
-  --text-muted: rgba(238, 243, 255, 0.46);
   display: grid;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
-  place-items: center;
-  padding: var(--space-4-5);
-  color: var(--text-primary);
-  background: rgba(9, 11, 16, 1);
+  overflow: auto;
+  align-items: safe center;
+  padding: var(--space-3);
+  color: var(--fg-primary);
+  background: var(--surface-canvas);
 }
 
 .notice-window-root .notice-card {
   display: grid;
-  gap: var(--space-2-5);
-  width: 100%;
-  padding: calc(var(--space-unit) * 5.5) calc(var(--space-unit) * 5.5) var(--space-4-5);
-  border-radius: calc(var(--radius-unit) * 3.5);
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: none;
-}
-
-.notice-window-root h1 {
-  margin: 0;
-  font-size: calc(var(--type-unit) * 18);
-  font-weight: var(--weight-semibold);
-  letter-spacing: calc(var(--tracking-unit) * -0.02);
-}
-
-.notice-window-root p {
-  margin: 0;
-  font-size: var(--text-label);
-  line-height: var(--leading-control);
-  color: var(--text-secondary);
-}
-
-.notice-window-root .notice-hint {
-  color: var(--text-muted);
-}
-
-.notice-window-root .notice-actions {
-  display: flex;
-  flex-wrap: wrap;
   gap: var(--space-2);
-  justify-content: flex-end;
-  margin-top: var(--space-1-5);
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--surface-panel);
+  border-radius: var(--radius-lg);
 }
 
-.notice-window-root .notice-secondary {
-  padding: var(--space-2) var(--space-4);
-  border: 0;
-  border-radius: calc(var(--radius-unit) * 2.5);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.88);
-  cursor: pointer;
-}
-
-.notice-window-root .notice-ok {
-  justify-self: end;
-  margin-top: var(--space-1-5);
-  padding: var(--space-2) var(--space-4);
-  border: 0;
-  border-radius: calc(var(--radius-unit) * 2.5);
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.12);
-  cursor: pointer;
-}
-
-.notice-window-root .notice-ok:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
+.notice-window-root h1 { margin: 0; font-size: var(--text-title); font-weight: var(--weight-semibold); }
+.notice-window-root p { margin: 0; font-size: var(--text-label); color: var(--fg-secondary); }
+.notice-window-root .notice-hint { overflow-wrap: anywhere; }
+.notice-window-root .notice-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 
 .voice-experimental-banner {
   display: flex;

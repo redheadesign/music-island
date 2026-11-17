@@ -205,12 +205,12 @@ export async function getConfig(): Promise<AppConfig> {
   return invoke<AppConfig>('get_config')
 }
 
-export async function saveConfig(config: AppConfig): Promise<AppConfig> {
+export async function saveConfig(config: AppConfig, base?: AppConfig): Promise<AppConfig> {
   if (!isTauriRuntime()) {
     return config
   }
 
-  return invoke<AppConfig>('save_config', { config })
+  return invoke<AppConfig>('save_config', { config, base })
 }
 
 export async function previewConfig(config: AppConfig): Promise<void> {
@@ -419,12 +419,19 @@ export async function onDirectYandexStatus(
   return listen<DirectYandexStatus>('direct:status', (event) => callback(event.payload))
 }
 
-export async function onConfigChanged(callback: (config: AppConfig) => void): Promise<() => void> {
+export async function onConfigChanged(callback: (config: AppConfig, preview?: boolean) => void, includePreview = true): Promise<() => void> {
   if (!isTauriRuntime()) {
     return () => undefined
   }
   const unlistenChanged = await listen<AppConfig>('config:changed', (event) => callback(event.payload))
-  const unlistenPreview = await listen<AppConfig>('config:preview', (event) => callback(event.payload))
+  if (!includePreview) return unlistenChanged
+  let unlistenPreview
+  try {
+    unlistenPreview = await listen<AppConfig>('config:preview', (event) => callback(event.payload, true))
+  } catch (error) {
+    unlistenChanged()
+    throw error
+  }
   return () => {
     unlistenChanged()
     unlistenPreview()

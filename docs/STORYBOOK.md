@@ -218,3 +218,7 @@ Dictation General uses the same default appearance and theme order as production
 Fox, Waves, Classic. Classic recording stories explicitly choose Classic. Wave
 thumbnails use the real cloud renderer with a fixed speech sample, rather than
 alternate artwork. ClassicHold checks both 9px label gaps and 14px outer insets.
+
+## Повторная проверка экранов в Edge
+
+Соберите мастерскую через `npm run build-storybook` и запустите `npm run test:workshop`. Проверка открывает локальную сборку в установленном Edge, выполняет сценарии Storybook и сохраняет снимки и результаты в `.local/workshop-audit`. Для точечного повтора передайте ID после `--`. Канал установленного браузера можно выбрать через `WORKSHOP_BROWSER_CHANNEL`. Жест у кромки экрана, приложение внутри Explorer и звук проверяются отдельно в Windows.

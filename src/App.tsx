@@ -12,6 +12,7 @@ import { SettingsPanel } from './features/settings/SettingsPanel'
 import { TaskbarPlayer } from './features/taskbar/TaskbarPlayer'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
 import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme } from './shared/lib/uiPrefs'
+import { Button, Notice } from './shared/ui/SettingsControls'
 import { SettingsWindow } from './features/settings/SettingsWindow'
 import { useGlassPointerLight } from './shared/ui/useGlassPointerLight'
 import './App.css'
@@ -31,7 +32,7 @@ function App() {
 
 function IslandWindows({ windowLabel }: { windowLabel: string }) {
   const mediaEnabled = windowLabel === 'main' || windowLabel === 'taskbar'
-  const app = useIslandApp({ mediaEnabled, timelineEnabled: windowLabel !== 'taskbar', windowEventsEnabled: windowLabel === 'main' })
+  const app = useIslandApp({ mediaEnabled, includeConfigPreviews: windowLabel !== 'settings', timelineEnabled: windowLabel !== 'taskbar', windowEventsEnabled: windowLabel === 'main' })
   const usage = useUsageController(windowLabel === 'main' || windowLabel === 'settings')
   const locale = normalizeLocale(app.config?.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
@@ -52,7 +53,7 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
   }, [windowLabel])
 
   if (windowLabel === 'already-running') {
-    return <AlreadyRunningNotice locale={locale} />
+    return <AlreadyRunningNotice config={app.config} />
   }
 
   if (windowLabel === 'taskbar') {
@@ -65,10 +66,6 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
   }
 
   if (windowLabel === 'settings') {
-    if (!app.config) {
-      return <main className="settings-window-root" data-color-scheme={getSettingsColorScheme(app.config)} data-interface-theme={interfaceTheme} data-interface-scene={interfaceScene} data-reduced-transparency={reducedTransparency || undefined}>{t('settings.loading')}</main>
-    }
-
     const colorScheme = getSettingsColorScheme(app.config)
     return (
       <SettingsWindow
@@ -83,7 +80,11 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
         onMinimize={() => void runWindowAction('minimize')}
         onClose={() => void runWindowAction('hide')}
       >
-          <SettingsPanel
+        {!app.configLoaded ? <p role="status">{t('settings.loading')}</p> : app.configLoadFailed ? (
+          <Notice tone="danger" action={<Button onClick={app.retryConfigLoad}>{t('settings.retryRead')}</Button>}>
+            {t('settings.readFailed')}
+          </Notice>
+        ) : <SettingsPanel
             usage={usage}
             config={app.config}
             smtcHealth={app.smtcHealth}
@@ -93,7 +94,7 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
             onRefreshSources={app.refreshMediaSessions}
             autostartError={app.autostartError ?? null}
             autostartStatus={app.autostartStatus ?? null}
-          />
+          />}
       </SettingsWindow>
     )
   }

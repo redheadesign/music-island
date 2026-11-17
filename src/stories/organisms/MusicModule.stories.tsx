@@ -222,7 +222,7 @@ export const DirectionalProgress: Story = {
   play: async ({ canvasElement, args }) => {
     const player = within(canvasElement).getByRole('region', { name: 'Now playing' })
     const canvas = within(player)
-    const seek = canvas.getByRole('button', { name: 'Seek track' })
+    const seek = canvas.getByRole('slider', { name: /Позиция трека|Seek track/ })
     const motionEnabled = !args.reducedMotion && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const trace: Array<{
       phase: string | null
@@ -248,7 +248,7 @@ export const DirectionalProgress: Story = {
     observer.observe(seek, { childList: true, subtree: true, attributes: true })
     const initialRatio = seek.querySelector<HTMLElement>('.progress-visual')!.style.getPropertyValue('--progress')
     try {
-      await userEvent.click(canvas.getByRole('button', { name: 'Next' }))
+      await userEvent.click(canvas.getByRole('button', { name: /^(?:Next|Следующий трек)$/ }))
       await expect(args.onCommand).toHaveBeenLastCalledWith('next')
       await waitFor(() => {
         const visual = seek.querySelector<HTMLElement>('.progress-visual')!
@@ -263,7 +263,7 @@ export const DirectionalProgress: Story = {
         && entry.visualTransform === 'none')).toBe(true)
       await expect(seek.querySelector<HTMLElement>('.progress-visual')!.style.getPropertyValue('--progress')).toBe('0')
       trace.length = 0
-      await userEvent.click(canvas.getByRole('button', { name: 'Previous' }))
+      await userEvent.click(canvas.getByRole('button', { name: /^(?:Previous|Предыдущий трек)$/ }))
       await expect(args.onCommand).toHaveBeenLastCalledWith('previous')
       await waitFor(() => {
         const visual = seek.querySelector<HTMLElement>('.progress-visual')!
@@ -274,7 +274,7 @@ export const DirectionalProgress: Story = {
         && entry.direction === 'previous'
         && entry.fillAnimation === 'music-progress-previous-fill-out'
         && entry.visualTransform === 'none')).toBe(true)
-      await expect(canvas.getByRole('button', { name: 'Seek track' })).toBe(seek)
+      await expect(canvas.getByRole('slider', { name: /Позиция трека|Seek track/ })).toBe(seek)
     } finally { observer.disconnect() }
   },
 }
@@ -285,8 +285,8 @@ export const ReducedMotionProgress: Story = {
   render: trackTransitionRender,
   play: async ({ canvasElement }) => {
     const canvas = within(within(canvasElement).getByRole('region', { name: 'Now playing' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Next' }))
-    const visual = canvas.getByRole('button', { name: 'Seek track' }).querySelector<HTMLElement>('.progress-visual')!
+    await userEvent.click(canvas.getByRole('button', { name: /^(?:Next|Следующий трек)$/ }))
+    const visual = canvas.getByRole('slider', { name: /Позиция трека|Seek track/ }).querySelector<HTMLElement>('.progress-visual')!
     const fill = visual.querySelector<HTMLElement>('.progress-fill')!
     await expect(visual).toHaveAttribute('data-progress-phase', 'stable')
     await expect(visual.textContent).toContain('Вдоль ночных улиц')
@@ -299,7 +299,7 @@ export const SeekGesture: Story = {
   render: trackTransitionRender,
   play: async ({ canvasElement, args }) => {
     const player = within(canvasElement).getByRole('region', { name: 'Now playing' })
-    const seek = within(player).getByRole('button', { name: 'Seek track' })
+    const seek = within(player).getByRole('slider', { name: /Позиция трека|Seek track/ })
     const captured = new Set<number>()
     // Synthetic PointerEvents have no native capture stream. Only that browser
     // boundary is substituted; the production pointer/seek handlers run intact.

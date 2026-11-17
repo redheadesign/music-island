@@ -26,8 +26,19 @@ use tauri::{Emitter, Manager, State};
 static AUTOSTART_SYNC_FAILED: AtomicBool = AtomicBool::new(false);
 
 #[tauri::command]
-async fn get_config(state: State<'_, ConfigState>) -> Result<AppConfig, String> {
-    state.load().map_err(|error| error.to_string())
+async fn get_config(app: tauri::AppHandle, state: State<'_, ConfigState>) -> Result<AppConfig, String> {
+    let (config, recovered) = state.read_or_retry().map_err(|error| error.to_string())?;
+    if recovered {
+        media::set_preferred_source(config.media.preferred_source_app_id.clone());
+        media::switch_active_provider(&app, match config.media.protocol {
+            config::MediaProtocol::Smtc => media::MediaProvider::Smtc,
+            config::MediaProtocol::YandexDirect => media::MediaProvider::YandexDirect,
+        });
+        tray::set_locale(&app, config.appearance.locale);
+        usage::sync_config(&app, app.state::<usage::UsageState>().inner(), &config);
+        let _ = app.emit("config:changed", config.clone());
+    }
+    Ok(config)
 }
 
 #[tauri::command]
@@ -39,13 +50,18 @@ fn get_taskbar_status() -> window::taskbar::TaskbarStatus {
 async fn save_config(
     app: tauri::AppHandle,
     mut config: AppConfig,
+    base: Option<AppConfig>,
     state: State<'_, ConfigState>,
 ) -> Result<AppConfig, String> {
     let media_before_wait = state.load().map_err(|error| error.to_string())?.media;
     let _operation = yandex::lifecycle_lock().lock().await;
     let previous = state.load().map_err(|error| error.to_string())?;
     // An appearance save queued during connection must not undo the newly selected provider.
-    if config.media == media_before_wait { config.media = previous.media.clone(); }
+    if let Some(base) = base {
+        config = config::merge_edits(&base, &config, &previous).map_err(|error| error.to_string())?;
+    } else if config.media == media_before_wait {
+        config.media = previous.media.clone();
+    }
     if matches!(config.media.protocol, config::MediaProtocol::YandexDirect) && !config.media.direct_yandex_consent {
         return Err("Confirm the Direct connection before selecting it".into());
     }
@@ -56,7 +72,7 @@ async fn save_config(
     if !direct && matches!(previous.media.protocol, config::MediaProtocol::YandexDirect) {
         yandex::disable(true).await.map_err(|error| error.to_string())?;
     }
-    let saved = state.save(config).map_err(|error| error.to_string())?;
+    let saved = state.save_edits(&previous, config).map_err(|error| error.to_string())?;
     if previous.behavior.launch_at_startup != saved.behavior.launch_at_startup
         || AUTOSTART_SYNC_FAILED.load(Ordering::Relaxed)
     {
@@ -65,6 +81,9 @@ async fn save_config(
     if previous.behavior.monitor_id != saved.behavior.monitor_id {
         window::monitors::invalidate();
         window::reset_overlay_position(&app).map_err(|e| e.to_string())?;
+    }
+    if previous.appearance.locale != saved.appearance.locale {
+        tray::set_locale(&app, saved.appearance.locale);
     }
     media::set_preferred_source(saved.media.preferred_source_app_id.clone());
     media::switch_active_provider(
@@ -340,6 +359,7 @@ pub fn run() {
             probe_args.get(2).map(std::path::Path::new),
             probe_args.get(3).map(std::path::Path::new),
             probe_args.get(4).map(String::as_str),
+            probe_args.get(5).map(String::as_str),
         );
         let failed = result.is_err();
         let report =

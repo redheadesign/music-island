@@ -287,11 +287,46 @@ impl Default for AppConfig {
 pub struct ConfigState {
     config: Arc<RwLock<AppConfig>>,
     persist_glass_migration: bool,
+    read_failed: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl ConfigState {
     pub fn new() -> Self {
-        Self::from_config(load_from_disk().unwrap_or_default())
+        Self::from_read(config_path().and_then(|path| read_config_at(&path)))
+    }
+
+    fn from_read(result: anyhow::Result<AppConfig>) -> Self {
+        match result {
+            Ok(config) => Self::from_config(config),
+            Err(error) => {
+                log::warn!("Could not read Music Island settings: {error:#}");
+                let state = Self::from_config(AppConfig::default());
+                state.read_failed.store(true, std::sync::atomic::Ordering::Release);
+                state
+            }
+        }
+    }
+
+    fn require_loaded(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(!self.read_failed.load(std::sync::atomic::Ordering::Acquire), "Could not read the existing settings file");
+        Ok(())
+    }
+
+    pub fn read_or_retry(&self) -> anyhow::Result<(AppConfig, bool)> {
+        if self.require_loaded().is_ok() { return Ok((self.load()?, false)); }
+        self.retry_at(&config_path()?)
+    }
+
+    fn retry_at(&self, path: &Path) -> anyhow::Result<(AppConfig, bool)> {
+        let mut current = self.config.write().map_err(|_| anyhow::anyhow!("config lock poisoned"))?;
+        let needs_recovery = self.require_loaded().is_err();
+        if needs_recovery {
+            let mut recovered = read_config_at(path)?;
+            recovered.plugins.apply_glass_default_once();
+            *current = recovered;
+            self.read_failed.store(false, std::sync::atomic::Ordering::Release);
+        }
+        Ok((current.clone(), needs_recovery))
     }
 
     fn from_config(mut config: AppConfig) -> Self {
@@ -299,6 +334,7 @@ impl ConfigState {
         Self {
             config: Arc::new(RwLock::new(config)),
             persist_glass_migration,
+            read_failed: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 
@@ -308,6 +344,7 @@ impl ConfigState {
     }
 
     fn persist_startup_migration_to(&self, path: &Path) -> anyhow::Result<()> {
+        self.require_loaded()?;
         if self.persist_glass_migration {
             let current = self.config.read().map_err(|_| anyhow::anyhow!("config lock poisoned"))?;
             handy_core::embedded_assets::atomic_write(path, &serde_json::to_vec_pretty(&*current)?)?;
@@ -316,7 +353,8 @@ impl ConfigState {
     }
 
     pub fn load(&self) -> anyhow::Result<AppConfig> {
-        let config = self.config.read().expect("config lock poisoned").clone();
+        self.require_loaded()?;
+        let config = self.config.read().map_err(|_| anyhow::anyhow!("config lock poisoned"))?.clone();
         Ok(config)
     }
 
@@ -347,12 +385,17 @@ impl ConfigState {
         self.save_to(config, &config_path()?)
     }
 
+    pub fn save_edits(&self, base: &AppConfig, edited: AppConfig) -> anyhow::Result<AppConfig> {
+        self.write_to(edited, Some(base), &config_path()?)
+    }
+
     pub fn update_media(&self, update: impl FnOnce(&mut MediaConfig)) -> anyhow::Result<AppConfig> {
         self.update_media_to(update, &config_path()?)
     }
 
     fn update_media_to(&self, update: impl FnOnce(&mut MediaConfig), path: &Path) -> anyhow::Result<AppConfig> {
         let mut current = self.config.write().map_err(|_| anyhow::anyhow!("config lock poisoned"))?;
+        self.require_loaded()?;
         let mut next = current.clone();
         update(&mut next.media);
         handy_core::embedded_assets::atomic_write(path, &serde_json::to_vec_pretty(&next)?)?;
@@ -361,8 +404,16 @@ impl ConfigState {
     }
 
     fn save_to(&self, config: AppConfig, path: &Path) -> anyhow::Result<AppConfig> {
+        self.write_to(config, None, path)
+    }
+
+    fn write_to(&self, config: AppConfig, base: Option<&AppConfig>, path: &Path) -> anyhow::Result<AppConfig> {
         let mut current = self.config.write().map_err(|_| anyhow::anyhow!("config lock poisoned"))?;
-        let mut normalized = config;
+        self.require_loaded()?;
+        let mut normalized = match base {
+            Some(base) => merge_edits(base, &config, &current)?,
+            None => config,
+        };
         normalized.schema_version = 2;
         normalized.layout.width = normalized.layout.width.clamp(80, 125);
         normalized.layout.scale = normalized.layout.scale.clamp(70, 120);
@@ -378,6 +429,34 @@ impl ConfigState {
     }
 }
 
+/// Apply just the edited fields of a webview snapshot to the current config.
+pub fn merge_edits(base: &AppConfig, edited: &AppConfig, current: &AppConfig) -> anyhow::Result<AppConfig> {
+    fn merge(base: &Value, edited: &Value, current: &mut Value) {
+        if base == edited { return; }
+        if let (Some(before), Some(after), Some(target)) = (base.as_object(), edited.as_object(), current.as_object_mut()) {
+            for key in before.keys().filter(|key| !after.contains_key(*key)) {
+                target.remove(key);
+            }
+            for (key, value) in after {
+                match before.get(key) {
+                    Some(old) if old == value => {}
+                    Some(old) => merge(old, value, target.entry(key.clone()).or_insert(Value::Null)),
+                    None => { target.insert(key.clone(), value.clone()); }
+                }
+            }
+        } else {
+            *current = edited.clone();
+        }
+    }
+
+    let mut value = serde_json::to_value(current)?;
+    merge(&serde_json::to_value(base)?, &serde_json::to_value(edited)?, &mut value);
+    let mut next: AppConfig = serde_json::from_value(value)?;
+    // Provider, consent and port describe one connection.
+    next.media = if base.media == edited.media { current.media.clone() } else { edited.media.clone() };
+    Ok(next)
+}
+
 pub fn config_path() -> anyhow::Result<PathBuf> {
     let base = std::env::var_os("APPDATA")
         .map(PathBuf::from)
@@ -385,9 +464,12 @@ pub fn config_path() -> anyhow::Result<PathBuf> {
     Ok(base.join("Music Island").join(CONFIG_FILE_NAME))
 }
 
-fn load_from_disk() -> anyhow::Result<AppConfig> {
-    let path = config_path()?;
-    let contents = fs::read_to_string(path)?;
+fn read_config_at(path: &Path) -> anyhow::Result<AppConfig> {
+    let contents = match fs::read_to_string(path) {
+        Ok(contents) => contents,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(AppConfig::default()),
+        Err(error) => return Err(error.into()),
+    };
     let mut config: AppConfig = serde_json::from_str(&contents)?;
     config.schema_version = 2;
     if config.behavior.hover_delay_ms <= 70 {
@@ -400,6 +482,42 @@ fn load_from_disk() -> anyhow::Result<AppConfig> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn settings_edits_preserve_concurrent_provider_and_plugin_changes() {
+        let base = AppConfig::default();
+        let mut edited = base.clone();
+        edited.appearance.locale = Locale::En;
+        edited.plugins.ui_preferences_mut().insert("playbackVisual".into(), "rays".into());
+        let mut current = base.clone();
+        current.media.protocol = MediaProtocol::YandexDirect;
+        current.media.direct_yandex_consent = true;
+        current.plugins.ui_preferences_mut().insert("usageWidgetCompact".into(), true.into());
+        let merged = merge_edits(&base, &edited, &current).unwrap();
+        assert_eq!(merged.appearance.locale, Locale::En);
+        assert_eq!(merged.media, current.media);
+        assert_eq!(merged.plugins.settings[UI_PREFS_KEY]["usageWidgetCompact"], true);
+        assert_eq!(merged.plugins.settings[UI_PREFS_KEY]["playbackVisual"], "rays");
+    }
+
+    #[test]
+    fn unreadable_profile_is_protected_until_a_successful_reread() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(CONFIG_FILE_NAME);
+        fs::write(&path, "{broken").unwrap();
+        let state = ConfigState::from_read(read_config_at(&path));
+        assert!(state.load().is_err());
+        assert!(state.persist_startup_migration_to(&path).is_err());
+        assert!(state.save_to(AppConfig::default(), &path).is_err());
+        assert!(state.update_media_to(|_| {}, &path).is_err());
+        assert!(state.retry_at(&path).is_err());
+        assert_eq!(fs::read_to_string(&path).unwrap(), "{broken");
+        let mut repaired = AppConfig::default();
+        repaired.behavior.hover_delay_ms = 678;
+        fs::write(&path, serde_json::to_vec(&repaired).unwrap()).unwrap();
+        assert_eq!(state.retry_at(&path).unwrap().0.behavior.hover_delay_ms, 678);
+        assert_eq!(state.load().unwrap().behavior.hover_delay_ms, 678);
+    }
 
     #[test]
     fn glass_is_the_default_for_a_fresh_profile() {

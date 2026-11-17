@@ -102,6 +102,7 @@ function IslandPreview({
     mediaSessions: [],
     waveContext: null,
     autostartError: null,
+    configLoaded: true, configLoadFailed: false, retryConfigLoad: () => {},
     autostartStatus: null,
     updateConfig: async (next) => {
       setConfig(next)
@@ -208,13 +209,13 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
   globals: { ...Glass.globals, locale: 'en', accent: '#f76100' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const previous = await canvas.findByRole('button', { name: 'Previous' })
-    const pause = canvas.getByRole('button', { name: 'Pause' })
-    const next = canvas.getByRole('button', { name: 'Next' })
+    const previous = await canvas.findByRole('button', { name: /^(?:Previous|Предыдущий трек)$/ })
+    const pause = canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ })
+    const next = canvas.getByRole('button', { name: /^(?:Next|Следующий трек)$/ })
     const like = canvas.getByRole('button', { name: 'Like' })
     const dislike = canvas.getByRole('button', { name: 'Dislike' })
     const settings = canvas.getByRole('button', { name: 'Open settings' })
-    const seek = canvas.getByRole('button', { name: 'Seek track' })
+    const seek = canvas.getByRole('slider', { name: /Позиция трека|Seek track/ })
     const documentView = canvasElement.ownerDocument.defaultView!
     const forcedColors = documentView.matchMedia('(forced-colors: active)').matches
     const restingLikeRim = documentView.getComputedStyle(like).boxShadow
@@ -239,7 +240,7 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
     await userEvent.tab()
     await expect(pause).toHaveFocus()
     await userEvent.keyboard('{Enter}')
-    await expect(canvas.getByRole('button', { name: 'Play' })).toHaveFocus()
+    await expect(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ })).toHaveFocus()
     await userEvent.click(next)
     await expect(onCommand).toHaveBeenLastCalledWith('next')
     await userEvent.click(dislike)
@@ -267,7 +268,7 @@ export const GlassControlLensesReducedTransparency: StoryObj<typeof meta> = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const settings = await canvas.findByRole('button', { name: 'Open settings' })
-    const seek = canvas.getByRole('button', { name: 'Seek track' })
+    const seek = canvas.getByRole('slider', { name: /Позиция трека|Seek track/ })
     await expect(settings.closest('.island-root')).toHaveAttribute('data-reduced-transparency', 'true')
     await expect(canvasElement.ownerDocument.defaultView!.getComputedStyle(settings).backdropFilter).toBe('none')
     await expect(canvasElement.ownerDocument.defaultView!.getComputedStyle(seek).backdropFilter).toBe('none')
@@ -352,10 +353,10 @@ export const GlassBassBurst: StoryObj<typeof meta> = {
     emitPreviewPlaybackBass(.93)
     await expect(particles().length).toBeGreaterThan(first.length)
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Pause' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ }))
     await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeUndefined())
     await expect(particles()).toHaveLength(0)
-    await userEvent.click(canvas.getByRole('button', { name: 'Play' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ }))
     await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeDefined())
     emitPreviewPlaybackBass(.93, initialRequest)
     await expect(particles()).toHaveLength(0)
@@ -400,7 +401,7 @@ export const GlassEdgeGesture: StoryObj<typeof meta> = {
     fireEvent.pointerMove(trigger, contact)
     await waitFor(() => expect(cue).toBeVisible())
     await waitFor(() => expect(island).toHaveClass('island-root--open'), { timeout: 2000 })
-    await expect(within(canvasElement).getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+    await expect(within(canvasElement).getByRole('button', { name: /^(?:Pause|Пауза)$/ })).toBeInTheDocument()
   },
 }
 export const GlassEdgeReducedMotion: StoryObj<typeof meta> = {
@@ -425,7 +426,7 @@ export const GlassPlayback: StoryObj<typeof meta> = {
   name: 'Стекло · воспроизведение и пауза на обложке',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const button = await canvas.findByRole('button', { name: 'Pause' })
+    const button = await canvas.findByRole('button', { name: /^(?:Pause|Пауза)$/ })
     await waitFor(() => expect(button).toBeVisible())
     const artwork = canvasElement.querySelector('.artwork-shell')!
     const buttonRect = button.getBoundingClientRect()
@@ -437,19 +438,20 @@ export const GlassPlayback: StoryObj<typeof meta> = {
     await expect(button.contains(canvasElement.ownerDocument.elementFromPoint(center.x, center.y))).toBe(true)
     const ambient = canvasElement.querySelector<HTMLElement>('.island-card .island-feedback__ambient')!
     const quiet = matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches
+    const playingOpacity = matchMedia('(prefers-contrast: more)').matches ? '0.42' : '1'
     const animations = () => ambient.getAnimations({ subtree: true }).filter((animation) => animation instanceof CSSAnimation)
     if (!quiet) {
-      await waitFor(() => expect(getComputedStyle(ambient).opacity).toBe('1'))
+      await waitFor(() => expect(getComputedStyle(ambient).opacity).toBe(playingOpacity))
       await expect(animations().length).toBeGreaterThan(2)
     }
     await userEvent.click(button)
-    await waitFor(() => expect(canvas.getByRole('button', { name: 'Play' })).toBeVisible())
+    await waitFor(() => expect(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ })).toBeVisible())
     if (!quiet && CSS.supports('transition-behavior: allow-discrete')) {
       await waitFor(() => {
         const { display, opacity } = getComputedStyle(ambient)
         expect(display).not.toBe('none')
         expect(Number(opacity)).toBeGreaterThan(0)
-        expect(Number(opacity)).toBeLessThan(1)
+        expect(Number(opacity)).toBeLessThan(Number(playingOpacity))
         expect(animations().length).toBeGreaterThan(2)
       }, { interval: 16 })
     }
@@ -457,9 +459,9 @@ export const GlassPlayback: StoryObj<typeof meta> = {
     await expect(getComputedStyle(ambient).display).toBe('none')
     await expect(animations()).toHaveLength(0)
     await userEvent.keyboard(' ')
-    await waitFor(() => expect(canvas.getByRole('button', { name: 'Pause' })).toBeVisible())
+    await waitFor(() => expect(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ })).toBeVisible())
     if (!quiet) {
-      await waitFor(() => expect(getComputedStyle(ambient).opacity).toBe('1'))
+      await waitFor(() => expect(getComputedStyle(ambient).opacity).toBe(playingOpacity))
       await expect(animations().length).toBeGreaterThan(2)
     }
   },

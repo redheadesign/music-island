@@ -1,4 +1,4 @@
-import { SettingsIconButton, Switch } from '../../shared/ui/SettingsControls'
+import { Button, Notice, SettingsIconButton, Switch } from '../../shared/ui/SettingsControls'
 import { PreviewScale } from '../../shared/ui/PreviewScale'
 import { RotateCcw } from '../../shared/ui/SettingsIcons'
 import { useRef, useState } from 'react'
@@ -26,6 +26,7 @@ export function TaskbarLayoutEditor({ config, onChange, active = true }: { confi
   const [dragging, setDragging] = useState<TaskbarElement | null>(null)
   const [over, setOver] = useState<Destination | null>(null)
   const [ghost, setGhost] = useState<LayoutDragFrame | null>(null)
+  const [undo, setUndo] = useState<{ layout: ReturnType<typeof normalizeTaskbarLayout>; scale: number } | null>(null)
   const [announcement, setAnnouncement] = useState('')
   const available = TASKBAR_ELEMENTS.filter((element) => !layout.elements.includes(element))
   const finish = () => { pointer.current = null; picked.current = null; setDragging(null); setOver(null); setGhost(null) }
@@ -33,6 +34,7 @@ export function TaskbarLayoutEditor({ config, onChange, active = true }: { confi
     if (element === 'transport' && destination.zone === 'catalog') return
     const elements = layout.elements.filter((value) => value !== element)
     if (destination.zone === 'controls') elements.splice(destination.index ?? elements.length, 0, element)
+    setUndo(null)
     onChange(withTaskbarLayout(config, normalizeTaskbarLayout({ elements })))
     setAnnouncement(ru ? 'Расположение обновлено' : 'Layout updated')
   }
@@ -83,7 +85,14 @@ export function TaskbarLayoutEditor({ config, onChange, active = true }: { confi
   const sample = (element: TaskbarElement) => <div className="taskbar-player taskbar-control-sample"><TaskbarControl element={element} snapshot={media} locale={locale} onCommand={() => undefined} /></div>
   const view = (element: TaskbarElement, node: ReactNode, catalog = false) => <div key={element} className={`taskbar-editor-element${catalog ? ' taskbar-editor-element--catalog' : ''}`} data-taskbar-element={element} data-picked={dragging === element || undefined} data-insert={over?.zone === 'controls' && layout.elements.filter((value) => value !== dragging)[over.index ?? -1] === element || undefined} role="button" tabIndex={0} aria-label={TASKBAR_ELEMENT_LABELS[locale][element]} aria-pressed={dragging === element} title={TASKBAR_ELEMENT_LABELS[locale][element]} draggable={false} {...pointerHandlers(element)} onKeyDown={(event) => keyboard(event, element)}><div className="taskbar-editor-element__visual" inert aria-hidden="true">{node}</div></div>
   return <section ref={root} style={{ '--drag-indicator': config.appearance.accentColor } as import('react').CSSProperties} className="taskbar-layout-editor" aria-label={ru ? 'Редактор мини-плеера' : 'Mini-player editor'} data-dragging={Boolean(dragging) || undefined}>
-      <PreviewScale previewClassName="taskbar-preview taskbar-preview--editable" previewLabel={ru ? 'Превью мини-плеера в панели задач' : 'Taskbar mini-player preview'} backdrop={<StatefulWarpSurface className="taskbar-preview__material" running={config.taskbar?.enabled === true} reducedMotion={config.appearance.reducedMotion} active={active} />} header={<div className="settings-preview__header taskbar-preview__header"><Switch label={ru ? 'Мини-плеер' : 'Taskbar mini-player'} checked={Boolean(config.taskbar?.enabled)} onChange={enabled => onChange({ ...config, taskbar: { ...config.taskbar, enabled } })} /><SettingsIconButton variant="ghost" size="compact" label={ru ? 'Сбросить настройки мини-плеера' : 'Reset mini-player settings'} onClick={() => onChange(withTaskbarLayout({ ...config, taskbar: { ...config.taskbar, enabled: Boolean(config.taskbar?.enabled), scale: 1 } }, normalizeTaskbarLayout({ elements: DEFAULT_TASKBAR_ELEMENTS })))}><RotateCcw size={15} aria-hidden="true" /></SettingsIconButton></div>} value={Math.round((config.taskbar?.scale ?? 1) * 100)} min={75} max={125} step={5} locale={locale} readoutLabel={ru ? 'Масштаб' : 'Scale'} label={ru ? 'Масштаб мини-плеера' : 'Mini-player scale'} onCommit={value => onChange({ ...config, taskbar: { ...config.taskbar, enabled: Boolean(config.taskbar?.enabled), scale: value / 100 } })}>{value => <div className="taskbar-preview__bar">
+      {undo && <Notice compact action={<Button onClick={() => {
+        onChange(withTaskbarLayout({ ...config, taskbar: { ...config.taskbar, enabled: Boolean(config.taskbar?.enabled), scale: undo.scale } }, undo.layout))
+        setUndo(null)
+      }}>{ru ? 'Отменить сброс' : 'Undo reset'}</Button>}>{ru ? 'Расположение и размер мини-плеера сброшены.' : 'Mini-player layout and size were reset.'}</Notice>}
+      <PreviewScale previewClassName="taskbar-preview taskbar-preview--editable" previewLabel={ru ? 'Превью мини-плеера в панели задач' : 'Taskbar mini-player preview'} backdrop={<StatefulWarpSurface className="taskbar-preview__material" running={config.taskbar?.enabled === true} reducedMotion={config.appearance.reducedMotion} active={active} />} header={<div className="settings-preview__header taskbar-preview__header"><Switch label={ru ? 'Мини-плеер' : 'Taskbar mini-player'} checked={Boolean(config.taskbar?.enabled)} onChange={enabled => onChange({ ...config, taskbar: { ...config.taskbar, enabled } })} /><SettingsIconButton variant="ghost" size="compact" label={ru ? 'Сбросить настройки мини-плеера' : 'Reset mini-player settings'} onClick={() => {
+        setUndo({ layout, scale: config.taskbar?.scale ?? 1 })
+        onChange(withTaskbarLayout({ ...config, taskbar: { ...config.taskbar, enabled: Boolean(config.taskbar?.enabled), scale: 1 } }, normalizeTaskbarLayout({ elements: DEFAULT_TASKBAR_ELEMENTS })))
+      }}><RotateCcw size={15} aria-hidden="true" /></SettingsIconButton></div>} value={Math.round((config.taskbar?.scale ?? 1) * 100)} min={75} max={125} step={5} locale={locale} readoutLabel={ru ? 'Масштаб' : 'Scale'} label={ru ? 'Масштаб мини-плеера' : 'Mini-player scale'} onCommit={value => { setUndo(null); onChange({ ...config, taskbar: { ...config.taskbar, enabled: Boolean(config.taskbar?.enabled), scale: value / 100 } }) }}>{value => <div className="taskbar-preview__bar">
         <div className="taskbar-editor-controls" data-taskbar-target="controls" data-over={over?.zone === 'controls' || undefined} data-ready={Boolean(dragging) || undefined}>
           <TaskbarPlayer snapshot={media} locale={locale} layout={layout} scale={value / 100} onCommand={() => undefined} renderElement={view} reducedMotion />
         </div>

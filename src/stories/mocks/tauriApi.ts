@@ -4,6 +4,12 @@ import { checkForUpdates as checkBrowserUpdates } from '../../app/tauriApi'
 // The Storybook resolver lets this re-export reach the real browser adapter.
 export * from '../../app/tauriApi'
 
+let installHandoff: { path: string; version: string } | null = null
+let handoffFailure = false
+export function setInstallPreview(handoff: typeof installHandoff, fail = false) { installHandoff = handoff; handoffFailure = fail }
+export async function getInstallHandoff() { return installHandoff }
+export async function openNewerInstall() { if (handoffFailure) throw new Error('File unavailable') }
+
 const disabled: DirectYandexStatus = { state: 'disabled', message: '', port: null, executablePath: null }
 let direct = { ...disabled }
 let taskbar: TaskbarStatus = { state: 'off' }
@@ -25,6 +31,7 @@ const playbackBassListeners = new Set<(sample: { request: number; bass: number }
 let playbackBassRequest: number | undefined
 
 export function resetNativePreview(options: { direct?: DirectYandexStatus; taskbar?: TaskbarStatus; monitors?: MonitorSnapshot; monitorLoadError?: boolean; updateCheckError?: string } = {}) {
+  setInstallPreview(null)
   monitors = options.monitors ?? defaultMonitors
   monitorLoadError = options.monitorLoadError ?? false
   updateCheckError = options.updateCheckError

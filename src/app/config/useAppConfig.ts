@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppConfig, AutostartSyncEvent } from '../../shared/lib/types'
 import { normalizeLocale } from '../../shared/i18n/messages'
 import {
@@ -31,15 +31,23 @@ interface AppConfigController {
   config: AppConfig
   configLoaded: boolean
   configLoadFailed: boolean
+  retryConfigLoad: () => void
   autostartError: string | null
   autostartStatus: AutostartSyncEvent | null
-  updateConfig: (config: AppConfig) => Promise<void>
+  updateConfig: (config: AppConfig, base?: AppConfig) => Promise<void>
 }
 
-export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
+export function useAppConfig(_mediaEnabled: boolean, includePreview = true): AppConfigController {
   const [config, setConfig] = useState<AppConfig>(() => getDefaultConfig())
   const [configLoaded, setConfigLoaded] = useState(false)
   const [configLoadFailed, setConfigLoadFailed] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const confirmed = useRef<AppConfig | null>(null)
+  const retryConfigLoad = useCallback(() => {
+    setConfigLoaded(false)
+    setConfigLoadFailed(false)
+    setLoadAttempt(attempt => attempt + 1)
+  }, [])
   const [autostartError, setAutostartError] = useState<string | null>(null)
   const [autostartStatus, setAutostartStatus] = useState<AutostartSyncEvent | null>(null)
 
@@ -47,23 +55,34 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
     let mounted = true
     let changed = false
     let cleanup: () => void = () => undefined
-    void onConfigChanged((next) => {
+    void onConfigChanged((next, preview) => {
       if (!mounted) return
+      if (preview && !confirmed.current) return
       changed = true
-      setConfig(withNormalizedConfig(next))
-    }).then((unlisten) => {
+      const normalized = withNormalizedConfig(next)
+      if (!preview) {
+        confirmed.current = normalized
+        setConfigLoaded(true)
+        setConfigLoadFailed(false)
+      }
+      setConfig(normalized)
+    }, includePreview).then((unlisten) => {
       if (mounted) cleanup = unlisten
       else unlisten()
     }).catch(() => undefined).then(() => mounted ? getConfig() : null)
       .then((nextConfig) => {
         if (!mounted || !nextConfig) return
-        if (!changed) setConfig(withNormalizedConfig(nextConfig))
+        if (!changed) {
+          confirmed.current = withNormalizedConfig(nextConfig)
+          setConfig(confirmed.current)
+        }
+        setConfigLoadFailed(false)
         setConfigLoaded(true)
       })
       .catch(() => {
         if (!mounted) return
         if (!changed) {
-          setConfig(getDefaultConfig())
+          confirmed.current = null
           setConfigLoadFailed(true)
         }
         setConfigLoaded(true)
@@ -73,7 +92,7 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
       mounted = false
       cleanup()
     }
-  }, [])
+  }, [loadAttempt, includePreview])
 
   useEffect(() => {
     let active = true
@@ -96,15 +115,18 @@ export function useAppConfig(_mediaEnabled: boolean): AppConfigController {
     }
   }, [])
 
-  const updateConfig = useCallback(async (nextConfig: AppConfig) => {
-    const saved = await saveConfig(withNormalizedConfig(nextConfig))
-    setConfig(withNormalizedConfig(saved))
+  const updateConfig = useCallback(async (nextConfig: AppConfig, base?: AppConfig) => {
+    if (!confirmed.current) throw new Error('Settings have not been loaded')
+    const saved = withNormalizedConfig(await saveConfig(withNormalizedConfig(nextConfig), base ?? confirmed.current))
+    confirmed.current = saved
+    setConfig(saved)
   }, [])
 
   return {
     config,
     configLoaded,
     configLoadFailed,
+    retryConfigLoad,
     autostartError,
     autostartStatus,
     updateConfig,

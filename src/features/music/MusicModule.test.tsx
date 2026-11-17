@@ -79,24 +79,24 @@ describe('MusicModule progress characterization', () => {
 
   it('keeps the progress button governed by canSeek', () => {
     const html = renderPlayer({ media: { ...snapshot, canSeek: false } })
-    expect(html).toMatch(/<button[^>]*aria-label="Seek track"[^>]*disabled=""/)
+    expect(html).toMatch(/<button[^>]*aria-label="Позиция трека"[^>]*disabled=""/)
     expect(html).toContain('--progress:0.625')
   })
 
   it('does not render seek controls for an absent or unavailable session', () => {
-    expect(renderPlayer({ media: null })).not.toContain('aria-label="Seek track"')
-    expect(renderPlayer({ media: { ...snapshot, smtcHealth: 'unavailable' } })).not.toContain('aria-label="Seek track"')
+    expect(renderPlayer({ media: null })).not.toContain('aria-label="Позиция трека"')
+    expect(renderPlayer({ media: { ...snapshot, smtcHealth: 'unavailable' } })).not.toContain('aria-label="Позиция трека"')
   })
 
   it('hides SMTC progress when the layout disables it', () => {
-    expect(renderPlayer({ showProgress: false })).not.toContain('aria-label="Seek track"')
+    expect(renderPlayer({ showProgress: false })).not.toContain('aria-label="Позиция трека"')
   })
 
   it('hides Direct progress when the layout disables it', () => {
     expect(renderPlayer({
       media: { ...snapshot, provider: 'yandex-direct' },
       showProgress: false,
-    })).not.toContain('aria-label="Seek track"')
+    })).not.toContain('aria-label="Позиция трека"')
   })
 })
 
@@ -106,18 +106,18 @@ describe('MusicModule V2 layout behavior', () => {
       layout: v2Layout(['previous', 'transport', 'progress']),
       showArtwork: false,
     })
-    expect(previousOnly).toContain('aria-label="Previous"')
-    expect(previousOnly).not.toContain('aria-label="Next"')
-    expect(previousOnly).toContain('aria-label="Pause"')
+    expect(previousOnly).toContain('aria-label="Предыдущий трек"')
+    expect(previousOnly).not.toContain('aria-label="Следующий трек"')
+    expect(previousOnly).toContain('aria-label="Пауза"')
     expect(previousOnly).not.toContain('artwork-shell')
 
     const nextOnly = renderPlayer({
       layout: v2Layout(['transport', 'next', 'progress']),
       showArtwork: false,
     })
-    expect(nextOnly).not.toContain('aria-label="Previous"')
-    expect(nextOnly).toContain('aria-label="Next"')
-    expect(nextOnly).toContain('aria-label="Pause"')
+    expect(nextOnly).not.toContain('aria-label="Предыдущий трек"')
+    expect(nextOnly).toContain('aria-label="Следующий трек"')
+    expect(nextOnly).toContain('aria-label="Пауза"')
   })
 
   it('renders like and dislike together on one side and leaves a removed side empty', () => {
@@ -156,7 +156,7 @@ describe('MusicModule V2 layout behavior', () => {
       onCommand,
     })
     try {
-      for (const label of ['Previous', 'Pause', 'Next', 'Добавить в любимое', 'Не нравится']) {
+      for (const label of ['Предыдущий трек', 'Пауза', 'Следующий трек', 'Добавить в любимое', 'Не нравится']) {
         const button = mounted.container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)
         expect(button, label).not.toBeNull()
         await act(async () => button!.click())
@@ -192,11 +192,29 @@ describe('MusicModule V2 layout behavior', () => {
     }
   })
 
+  it('describes time and seeks by keyboard in the selected language', async () => {
+    const onCommand = vi.fn()
+    const mounted = await mountPlayer({ locale: 'en', onCommand })
+    try {
+      const slider = mounted.container.querySelector<HTMLElement>('[role="slider"]')!
+      expect(slider.getAttribute('aria-label')).toBe('Seek track')
+      expect(slider.getAttribute('aria-valuetext')).toBe('1:15 of 2:00')
+      for (const key of ['ArrowRight', 'Home', 'End', 'Tab']) {
+        await act(async () => { slider.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })) })
+      }
+      expect(onCommand.mock.calls.map(([command]) => command)).toEqual([
+        { seek: { positionMs: 80_000 } }, { seek: { positionMs: 0 } }, { seek: { positionMs: 120_000 } },
+      ])
+    } finally {
+      await mounted.unmount()
+    }
+  })
+
   it('still emits one authoritative seek command for one pointer gesture', async () => {
     const onCommand = vi.fn()
     const mounted = await mountPlayer({ onCommand })
     try {
-      const seek = mounted.container.querySelector<HTMLButtonElement>('button[aria-label="Seek track"]')!
+      const seek = mounted.container.querySelector<HTMLButtonElement>('button[aria-label="Позиция трека"]')!
       const captured = new Set<number>()
       Object.defineProperties(seek, {
         getBoundingClientRect: {

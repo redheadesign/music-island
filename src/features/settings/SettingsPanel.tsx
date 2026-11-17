@@ -7,7 +7,6 @@ import {
   enableDirectYandex,
   getDirectYandexStatus,
   onDirectYandexStatus,
-  previewConfig,
   getDefaultConfig,
   getTaskbarStatus,
   onTaskbarStatus,
@@ -23,7 +22,7 @@ import { useDictationController } from '../../app/useIslandApp'
 import { VoiceSettingsView } from '../plugins/voice/VoiceSettingsView'
 import { TaskbarLayoutEditor } from './TaskbarLayoutEditor'
 import { IslandLayoutEditor } from './IslandLayoutEditor'
-import { getLegacyIslandLayout, withIslandLayout } from '../../shared/lib/islandLayout'
+import { getIslandLayout, getLegacyIslandLayout, withIslandLayout } from '../../shared/lib/islandLayout'
 import { getDictationAppearance } from '../../shared/lib/dictationAppearance'
 import { BrandLogo } from '../../shared/ui/BrandLogo'
 import { WarpSurface, WarpSurfaceProvider } from '../../shared/ui/WarpSurface'
@@ -34,10 +33,11 @@ import { getUsagePreferences, withUsageProviderEnabled, type UsageController } f
 import type { UsageProvider } from '../../shared/lib/usageTypes'
 import { AccentColorPicker } from './AccentColorPicker'
 import { MonitorSetting } from './MonitorSetting'
-import { InterfaceAppearanceSettings } from './InterfaceAppearanceSettings'
+import { InterfaceAppearanceSettings, InterfaceThemePicker } from './InterfaceAppearanceSettings'
 import { InterfacePalettePicker } from './InterfacePalettePicker'
 import { DirectConnectionDialog } from './DirectConnectionDialog'
 import { useAppUpdater } from './useAppUpdater'
+import { useSettingsDraft } from './useSettingsDraft'
 import { useWindowVisible } from './useWindowVisible'
 import { useResetSettingsScrollOnChange } from './useResetSettingsScroll'
 import type {
@@ -82,7 +82,7 @@ interface SettingsPanelProps {
   config: AppConfig
   smtcHealth: SmtcHealthSnapshot
   mediaSessions: MediaSessionInfo[]
-  onChange: (config: AppConfig) => void
+  onChange: (config: AppConfig, base?: AppConfig) => void | Promise<void>
   onCopyDiagnostics: () => void
   onRefreshSources: () => void
   autostartError?: string | null
@@ -100,7 +100,12 @@ export function SettingsPanel({
   autostartError = null,
   autostartStatus = null,
 }: SettingsPanelProps) {
-  const [draft, setDraft] = useState(config)
+  const { draft, previewAndSave: scheduleSave, saveNow, saveFailed, retry } = useSettingsDraft(config, onChange)
+  const [resetUndo, setResetUndo] = useState<AppConfig | null>(null)
+  const previewAndSave = (next: AppConfig) => {
+    setResetUndo(null)
+    scheduleSave(next)
+  }
   const selectionId = useId()
   const prefersReducedMotion = useReducedMotion()
   const reducedMotion = Boolean(draft.appearance.reducedMotion || prefersReducedMotion)
@@ -125,7 +130,6 @@ export function SettingsPanel({
   const [directBusy, setDirectBusy] = useState(false)
   const [sourceError, setSourceError] = useState<string | null>(null)
   const panelRef = useRef<HTMLElement>(null)
-  const saveTimer = useRef<number | null>(null)
   const connectAttempt = useRef(0)
   const lastSourceRefreshAt = useRef(0)
   const consentRef = useRef<HTMLElement>(null)
@@ -177,7 +181,7 @@ export function SettingsPanel({
     })
   const voiceActive = settingsVisible && settingsScope === 'voice'
 
-  useEffect(() => setDraft(config), [config])
+
 
   useEffect(() => {
     if (!settingsVisible || settingsScope !== 'island' || settingsPage !== 'source' || !spotifySelected) return
@@ -242,23 +246,14 @@ export function SettingsPanel({
     onRefreshSources()
   }
 
-  const previewAndSave = (next: AppConfig) => {
-    setDraft(next)
-    void previewConfig(next)
-    if (saveTimer.current) window.clearTimeout(saveTimer.current)
-    saveTimer.current = window.setTimeout(() => onChange(next), 280)
-  }
-
   const changeUsageConnection = async (provider: UsageProvider, enabled: boolean) => {
     if (!usage) return
     setUsageError(false)
     // Persist explicit consent before connecting. Native configuration owns the
     // shared polling lifecycle, so another window cannot revert this preference.
     const next = withUsageProviderEnabled(draft, provider, enabled)
-    setDraft(next)
-    if (saveTimer.current) window.clearTimeout(saveTimer.current)
     try {
-      await onChange(next)
+      await saveNow(next)
       if (enabled) await usage.connect(provider)
       else await usage.disconnect(provider)
     } catch {
@@ -288,7 +283,7 @@ export function SettingsPanel({
 
   const resetIslandSettings = () => {
     const defaults = getDefaultConfig()
-    previewAndSave(withIslandLayout(withUiPrefs({
+    const after = withIslandLayout(withUiPrefs({
       ...draft,
       layout: {
         ...draft.layout,
@@ -301,7 +296,9 @@ export function SettingsPanel({
         hoverDelayMs: defaults.behavior.hoverDelayMs,
       },
       appearance: { ...draft.appearance, accentColor: defaults.appearance.accentColor },
-    }, { localServersWidgetScale: 100 }), getLegacyIslandLayout({ ...defaults, plugins: draft.plugins })))
+    }, { localServersWidgetScale: 100 }), getLegacyIslandLayout({ ...defaults, plugins: draft.plugins }))
+    previewAndSave(after)
+    setResetUndo(draft)
   }
 
   const connectDirect = async () => {
@@ -435,6 +432,7 @@ export function SettingsPanel({
       data-reduced-motion={reducedMotion || undefined}
       style={paletteStyle as CSSProperties}
     >
+      {saveFailed && <Notice tone="danger" action={<Button onClick={retry}>{t('settings.saveAgain')}</Button>}>{t('settings.saveFailed')}</Notice>}
       <header className="settings-hero">
         <div className="settings-scope-switch" role="group" aria-label={t('settings.scope')}>
           <button
@@ -604,12 +602,7 @@ export function SettingsPanel({
         showTitle={false}
         className="settings-appearance"
       >
-        <IslandLayoutEditor config={draft} onChange={previewAndSave} onReset={resetIslandSettings} usage={usage?.snapshot ?? null} showHeading={false} active={settingsVisible && settingsPage === 'appearance'} />
-
-        <div className="settings-control-group">
-
-        <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} />
-
+        <InterfaceThemePicker config={draft} locale={locale} onChange={previewAndSave} />
         <InterfacePalettePicker
           value={interfacePalette}
           customAccent={draft.appearance.accentColor}
@@ -617,15 +610,32 @@ export function SettingsPanel({
           onChange={value => {
             if (value !== interfacePalette) previewAndSave(withUiPrefs(draft, { interfacePalette: value }))
           }}
-        />
-        {interfacePalette === 'custom' ? (
+        >
           <AccentColorPicker
             value={draft.appearance.accentColor}
             label={t('settings.accentColor')}
             customLabel={t('settings.accentCustom')}
             onChange={hex => patchAppearance({ accentColor: normalizeHexColor(hex) })}
           />
-        ) : null}
+        </InterfacePalettePicker>
+
+        {resetUndo && <Notice tone="info" action={<Button onClick={() => {
+          const before = resetUndo
+          previewAndSave(withIslandLayout(withUiPrefs({
+            ...draft,
+            layout: { ...draft.layout, width: before.layout.width, scale: before.layout.scale, size: before.layout.size },
+            behavior: { ...draft.behavior, hoverDelayMs: before.behavior.hoverDelayMs },
+            appearance: { ...draft.appearance, accentColor: before.appearance.accentColor },
+          }, { localServersWidgetScale: getUiPrefs(before).localServersWidgetScale }), getIslandLayout(before)))
+        }}>{t('settings.undo')}</Button>}>{t('settings.resetSummary')}</Notice>}
+        <IslandLayoutEditor config={draft} onChange={previewAndSave} onReset={resetIslandSettings} usage={usage?.snapshot ?? null} showHeading={false} active={settingsVisible && settingsPage === 'appearance'} />
+
+        <div className="settings-control-group">
+
+        <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} onOpenSource={() => {
+          setSettingsPage('source')
+          requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('.settings-navigation [aria-current="page"]')?.focus())
+        }} />
 
         <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
 

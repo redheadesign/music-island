@@ -14,6 +14,9 @@ export type OverlayMode = 'idle' | 'peek' | 'compact' | 'expanded' | 'pinned' | 
 
 export interface IslandAppState {
   config: AppConfig
+  configLoaded: boolean
+  configLoadFailed: boolean
+  retryConfigLoad: () => void
   media: MediaSnapshot | null
   mode: OverlayMode
   autostartError: string | null
@@ -24,7 +27,7 @@ export interface IslandAppState {
   mediaSessions: MediaSessionInfo[]
   waveContext: WaveContext | null
   setMode: (mode: OverlayMode) => void
-  updateConfig: (config: AppConfig) => Promise<void>
+  updateConfig: (config: AppConfig, base?: AppConfig) => Promise<void>
   refreshMediaSessions: () => Promise<void>
   sendCommand: (command: MediaCommand) => Promise<void>
   refreshWaveContext: () => Promise<void>
@@ -38,6 +41,7 @@ export interface IslandAppState {
 }
 
 export interface UseIslandAppOptions {
+  includeConfigPreviews?: boolean
   mediaEnabled?: boolean
   /** Media-only surfaces can skip timeline events and the progress clock. */
   timelineEnabled?: boolean

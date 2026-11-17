@@ -1,10 +1,11 @@
 import { Music2, RotateCw, Unplug } from 'lucide-react'
 import { Fragment, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, PointerEvent, ReactNode } from 'react'
+import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import type { IslandLayoutV1, IslandLayoutElement, IslandLayoutZone, IslandReactionElement } from '../../shared/lib/islandLayout'
 import { MediaArtwork, NavigationButton, PlaybackButton, ReactionButton, PlaybackModeButton } from './MusicControls'
 import type { Locale, MediaCommand, MediaSnapshot } from '../../shared/lib/types'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
+import { formatTime } from '../../shared/lib/format'
 import { ProgressStrip } from './ProgressStrip'
 import { progressTrackKey, type ProgressNavigation } from './progressTransition'
 import { Button } from '../../shared/ui/SettingsControls'
@@ -69,6 +70,7 @@ export function MusicModule({
   const scrubbingRef = useRef(false)
   const seekGestureIdRef = useRef<number | null>(null)
   const seekSentRef = useRef(false)
+  const seekTrackRef = useRef<string | null>(null)
   const t = useMemo(() => createTranslator(normalizeLocale(locale)), [locale])
 
   if (media?.provider === 'smtc' && media.smtcHealth === 'unavailable') {
@@ -153,7 +155,7 @@ export function MusicModule({
       return
     }
 
-    if (commit && !seekSentRef.current && media.durationMs && media.canSeek) {
+    if (commit && seekTrackRef.current === trackKey && !seekSentRef.current && media.durationMs && media.canSeek) {
       seekSentRef.current = true
       const ratio = ratioFromPointer(event)
       onCommand({ seek: { positionMs: Math.round(media.durationMs * ratio) } })
@@ -177,6 +179,7 @@ export function MusicModule({
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
     scrubbingRef.current = true
+    seekTrackRef.current = trackKey
     seekSentRef.current = false
     seekGestureIdRef.current = event.pointerId
     setScrubRatio(ratioFromPointer(event))
@@ -200,14 +203,33 @@ export function MusicModule({
     finishSeekGesture(event, false)
   }
 
+  const handleSeekKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const duration = media.durationMs
+    if (!media.canSeek || !duration || event.altKey || event.ctrlKey || event.metaKey) return
+    const position = activeProgressMs ?? Math.round(activeRatio * duration)
+    let target: number
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowDown': target = position - 5000; break
+      case 'ArrowRight':
+      case 'ArrowUp': target = position + 5000; break
+      case 'Home': target = 0; break
+      case 'End': target = duration; break
+      default: return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    onCommand({ seek: { positionMs: Math.min(duration, Math.max(0, target)) } })
+  }
+
   const controlOrder = layout?.zones.player ?? ['previous', 'artwork', 'transport', 'next', 'progress']
   const hasArtwork = showArtwork && !isButtonsOnly && controlOrder.includes('artwork')
   const control = (element: IslandLayoutElement) => {
     if (element === 'previous' || element === 'next') {
-      return showPreviousNext ? <NavigationButton direction={element} onClick={() => navigate(element)} disabled={element === 'previous' ? !media.canGoPrevious : !media.canGoNext} /> : null
+      return showPreviousNext ? <NavigationButton locale={locale} direction={element} onClick={() => navigate(element)} disabled={element === 'previous' ? !media.canGoPrevious : !media.canGoNext} /> : null
     }
-    if (element === 'artwork') return hasArtwork ? <MediaArtwork reducedMotion={reducedMotion} src={media.thumbnailDataUrl} title={title} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} /> : null
-    if (element === 'transport') return hasArtwork ? null : <PlaybackButton reducedMotion={reducedMotion} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} />
+    if (element === 'artwork') return hasArtwork ? <MediaArtwork locale={locale} reducedMotion={reducedMotion} src={media.thumbnailDataUrl} title={title} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} /> : null
+    if (element === 'transport') return hasArtwork ? null : <PlaybackButton locale={locale} reducedMotion={reducedMotion} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} />
     return null
   }
   const reactions = (side: 'reactionLeft' | 'reactionRight') => {
@@ -220,9 +242,9 @@ export function MusicModule({
   }
 
   return (
-    <section className={`music-module music-module--${density}`} aria-label="Now playing">
+    <section className={`music-module music-module--${density}`} aria-label={t('music.nowPlaying')}>
       {recoveryBanner}
-      {renderZone('player', <div className="media-controls media-controls--island" aria-label="Playback controls">
+      {renderZone('player', <div className="media-controls media-controls--island" aria-label={t('music.controls')}>
         {controlOrder.map((element) => { const node = control(element); return node ? <Fragment key={element}>{renderElement(element, node)}</Fragment> : null })}
       </div>)}
       {!isButtonsOnly ? <div className="progress-row">
@@ -230,13 +252,19 @@ export function MusicModule({
         {showProgress && (canShowSeek || media.provider === 'yandex-direct') ? renderElement('progress', <button
           type="button"
           className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
-          aria-label="Seek track"
+          role="slider"
+          aria-label={t('music.seek')}
+          aria-valuemin={0}
+          aria-valuemax={(media.durationMs ?? 0) / 1000}
+          aria-valuenow={Math.max(0, Math.min(activeProgressMs ?? 0, media.durationMs ?? 0)) / 1000}
+          aria-valuetext={t('music.seekTime').replace('{position}', formatTime(activeProgressMs)).replace('{duration}', formatTime(media.durationMs))}
+          onKeyDown={handleSeekKey}
           onPointerDown={handleSeekPointerDown}
           onPointerMove={handleSeekPointerMove}
           onPointerUp={handleSeekPointerUp}
           onPointerCancel={handleSeekPointerCancel}
           onClick={(event) => event.preventDefault()}
-          disabled={!media.canSeek}
+          disabled={!media.canSeek || !media.durationMs}
           style={{ '--progress': activeRatio } as CSSProperties}
         >
           <ProgressStrip frame={{ trackKey, ratio: activeRatio, positionMs: activeProgressMs, durationMs: media.durationMs, label: trackLabel }} navigation={navigation} reducedMotion={reducedMotion} scrubbing={scrubRatio != null} />
