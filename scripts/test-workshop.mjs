@@ -4,6 +4,7 @@ import { chromium } from 'playwright-core'
 import { preview } from 'vite'
 
 const criticalStories = [
+  'foundations-interfacetheme--third-theme', 'screens-settings--retry-failed-save',
   'screens-settings--material-at-minimum-size', 'screens-settings--bass-source-shortcut',
   'screens-settings--theme-switch', 'screens-settings--classic-light',
   'screens-settings--taskbar', 'screens-settings--autostart-error',

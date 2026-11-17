@@ -55,11 +55,11 @@ function SettingsPreview({
         {...args}
         usage={usage}
         config={reducedMotion ? { ...configuredPreview, appearance: { ...configuredPreview.appearance, reducedMotion: true } } : configuredPreview}
-        onChange={(next) => {
+        onChange={async (next) => {
+          await args.onChange(next)
           setSelectedColorScheme(getSettingsColorScheme(next))
           setConfig(next)
           onPreviewChange(next)
-          args.onChange(next)
         }}
       />
   return <div style={{ height: scrollViewportHeight ?? 754 }}>
@@ -847,3 +847,23 @@ export const DictationInput: Story = { name: 'Диктовка · сочетан
   await userEvent.click(transcribe.getByRole('button', { name: 'Сбросить сочетание' }))
   await expect(await canvas.findByRole('button', { name: 'Ctrl+Space' })).toBeVisible()
 } }
+
+export const RetryFailedSave: Story = {
+  name: 'Ошибка сохранения · повтор с сохранённым выбором',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  args: { onChange: fn(async () => {}) },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    const popup = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Тема интерфейса' }))
+    const save = args.onChange as ReturnType<typeof fn>
+    save.mockRejectedValueOnce(new Error('Disk full'))
+    await userEvent.click(popup.getByRole('option', { name: 'Классическая' }))
+    const retry = await canvas.findByRole('button', { name: 'Сохранить снова' })
+    await expect(canvasElement.querySelector('.settings-panel')).toHaveAttribute('data-interface-theme', 'classic')
+    await expect(canvasElement.querySelector('.settings-window-root')).toHaveAttribute('data-interface-theme', 'glass')
+    await userEvent.click(retry)
+    await waitFor(() => expect(canvasElement.querySelector('.settings-window-root')).toHaveAttribute('data-interface-theme', 'classic'))
+    await expect(canvas.queryByRole('button', { name: 'Сохранить снова' })).toBeNull()
+  },
+}
