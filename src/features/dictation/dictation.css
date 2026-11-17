@@ -200,6 +200,17 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
   position: relative; display: grid; place-items: center; flex-shrink: 0; width: 84px; height: 44px; border-radius: calc(var(--radius-unit) * 6);
   margin-right: 0; transition: margin-right calc(var(--motion-unit) * 26) cubic-bezier(.2,.78,.22,1), transform calc(var(--motion-unit) * 9) ease;
 }
+.dictation-overlay--cloud[data-audio-progress='true'][data-phase='transcribing'] { width: min(100%, 184px); }
+.dictation-overlay--cloud[data-audio-progress='true'] .dictation-cloud__bar { gap: var(--space-1); }
+.dictation-cloud__duration {
+  font: var(--text-small) var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: var(--surface-canvas);
+  color: var(--fg-primary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+}
 .dictation-cloud__interaction { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
 .dictation-overlay--cloud[data-recording-control='true']:is([data-phase='recording'],[data-phase='streaming']) { width: 132px; }
 .dictation-overlay--cloud[data-recording-control='true']:is([data-phase='recording'],[data-phase='streaming']) .dictation-cloud__core { margin-right: var(--space-8); }

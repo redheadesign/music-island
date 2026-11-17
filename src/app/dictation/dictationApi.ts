@@ -5,6 +5,7 @@ import type { AppSettings, AudioDevice, AvailableAccelerators, BindingResponse, 
 
 export const dictationApi = {
   suspend: () => invoke<void>('plugin:dictation|suspend'),
+  pickCustomModel: () => invoke<string | null>('plugin:dictation|pick_custom_model'),
   importCustomModel: (path: string) => invoke<void>('plugin:dictation|import_custom_model', { path }),
   updateCustomFillerWords: (words: string[]) => invoke<void>('plugin:dictation|update_custom_filler_words', { words }),
   previewHandyImport: () => invoke<import('../../shared/lib/dataTypes').HandyImportPreview>('plugin:dictation|preview_handy_import'),

@@ -459,6 +459,44 @@ pub async fn remove_all_models(app: AppHandle) -> Result<(), String> {
     result
 }
 
+/// Select a local model. The file is only copied by the separate import command.
+#[tauri::command]
+pub async fn pick_custom_model(window: tauri::WebviewWindow) -> Result<Option<String>, String> {
+    #[cfg(windows)]
+    {
+        use windows::core::{PCWSTR, PWSTR};
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::Controls::Dialogs::{
+            CommDlgExtendedError, GetOpenFileNameW, OPENFILENAMEW, OFN_FILEMUSTEXIST,
+            OFN_NOCHANGEDIR, OFN_PATHMUSTEXIST,
+        };
+        let owner = window.hwnd().map_err(|error| error.to_string())?.0 as usize;
+        return tauri::async_runtime::spawn_blocking(move || {
+            let mut file = vec![0_u16; 32768];
+            let filter: Vec<u16> = "GGUF / BIN\0*.gguf;*.bin\0\0".encode_utf16().collect();
+            let mut dialog = OPENFILENAMEW {
+                lStructSize: std::mem::size_of::<OPENFILENAMEW>() as u32,
+                hwndOwner: HWND(owner as *mut _),
+                lpstrFilter: PCWSTR(filter.as_ptr()),
+                nFilterIndex: 1,
+                lpstrFile: PWSTR(file.as_mut_ptr()),
+                nMaxFile: file.len() as u32,
+                Flags: OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR,
+                ..Default::default()
+            };
+            if unsafe { GetOpenFileNameW(&mut dialog) }.as_bool() {
+                let length = file.iter().position(|value| *value == 0).unwrap_or(file.len());
+                String::from_utf16(&file[..length]).map(Some).map_err(|error| error.to_string())
+            } else {
+                let code = unsafe { CommDlgExtendedError() }.0;
+                if code == 0 { Ok(None) } else { Err(format!("File picker error {code}")) }
+            }
+        }).await.map_err(|error| error.to_string())?;
+    }
+    #[cfg(not(windows))]
+    { let _ = window; Ok(None) }
+}
+
 #[tauri::command]
 pub async fn import_custom_model(app: AppHandle, path: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<()> {

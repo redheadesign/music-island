@@ -18,6 +18,7 @@ const preview = {
     settings = { ...settings, transcribe_gpu_device: device }
     return null
   },
+  pickCustomModel: async () => 'C:\\Models\\Russian.gguf',
   previewHandyImport: async () => ({items: [{id: 'models/whisper-small.bin', name: 'Whisper Small', source: 'Handy/models/whisper-small.bin', bytes: 257_000_000, exists: false}], settings: ['bindings','custom_words'], settingsPath: 'Handy/settings_store.json'}),
   fetchPostProcessModels: async () => ['preview-model'],
   changeRemoveTrailingPeriodSetting: async (enabled: boolean) => { settings = { ...settings, remove_trailing_period: enabled }; return null },

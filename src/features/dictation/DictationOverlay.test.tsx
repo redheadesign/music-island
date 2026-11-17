@@ -63,6 +63,27 @@ it('shows slow model loading after two seconds without flashing fast loads or ch
   } finally { await act(async () => root.unmount()); vi.useRealTimers() }
 })
 
+it('shows measured audio time only while transcribing and offers cancellation in every recorder', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  const container = document.createElement('div'), root = createRoot(container)
+  const cancel = vi.fn(async () => {})
+  const render = (theme: 'wave' | 'pixels' | 'classic', phase: string) => (
+    <DictationOverlayView visible active reducedMotion levels={[]} text={{ committed: '', tentative: '' }}
+      appearance={{ ...defaultDictationAppearance, theme }} cancel={cancel} copy={async () => {}}
+      status={{ phase, revision: 4, operationId: 5, text: '', ready: true, error: null, progress: { completedAudioMs: 67000, totalAudioMs: 191000 } }} />
+  )
+  try {
+    for (const theme of ['wave', 'pixels', 'classic'] as const) {
+      await act(async () => root.render(render(theme, 'transcribing')))
+      expect(container.querySelector('[role="status"]')?.textContent).toContain('1:07 / 3:11')
+      await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Отменить обработку"]')!.click())
+      await act(async () => root.render(render(theme, 'completed')))
+      expect(container.textContent).not.toContain('1:07')
+    }
+    expect(cancel).toHaveBeenCalledTimes(3)
+  } finally { await act(async () => root.unmount()) }
+})
+
 it('reports copy failure on the current Fox error and clears it for a new recording', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   const container = document.createElement('div'), root = createRoot(container)

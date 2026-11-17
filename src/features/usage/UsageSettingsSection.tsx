@@ -86,6 +86,14 @@ function ProviderCard({
   const text = copy[locale]
   const state = data?.state ?? 'disabled'
   const failed = state === 'needs-auth' || state === 'unavailable' || state === 'error'
+  const providerName = provider === 'codex' ? 'Codex' : 'Claude Code'
+  const recovery = {
+    'needs-auth': locale === 'ru' ? `Войдите в ${providerName} и обновите лимиты.` : `Sign in to ${providerName}, then refresh.`,
+    'rate-limited': locale === 'ru' ? 'Сервис временно ограничил запросы. Обновление повторится автоматически.' : 'The service is limiting requests. Updates will resume automatically.',
+    offline: locale === 'ru' ? 'Проверьте подключение к интернету.' : 'Check your internet connection.',
+    'not-installed': locale === 'ru' ? `Для подключения нужен установленный ${providerName}.` : `Install ${providerName} to connect.`,
+  } as const
+  const detail = data?.messageCode && Object.hasOwn(recovery, data.messageCode) ? recovery[data.messageCode as keyof typeof recovery] : null
   return (
     <article className="usage-settings__provider">
       <div className="usage-settings__heading">
@@ -98,6 +106,8 @@ function ProviderCard({
           ? <StatusChip tone="danger" appearance="flat" role="status">{text.states[state]}</StatusChip>
           : <span className={`usage-settings__state usage-settings__state--${state}`}>{text.states[state]}</span> : null}
       </div>
+      {enabled && (failed || state === 'stale') && detail ? <small className="usage-settings__limit-reset">{detail}</small> : null}
+      {enabled && state === 'stale' && data?.fetchedAt != null ? <small className="usage-settings__limit-reset">{locale === 'ru' ? 'Последние данные' : 'Last updated'} · <time dateTime={new Date(data.fetchedAt * 1000).toISOString()}>{formatReset(data.fetchedAt, locale)}</time></small> : null}
       {enabled && data?.windows.length ? (
         <div className="usage-settings__limits">
           {data.windows.map((window) => (

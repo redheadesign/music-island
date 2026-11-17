@@ -7,6 +7,7 @@ import { Check } from '../../shared/ui/SettingsIcons'
 import { Modal } from '../../shared/ui/Modal'
 import { CommitInput, DictationField } from './DictationFields'
 import { DictationShortcut } from './DictationShortcut'
+import { DictationDeleteDialog } from './DictationDeleteDialog'
 import './DictationProcessing.css'
 
 type Choice = { id: string; label: string }
@@ -67,6 +68,7 @@ export function DictationProcessing({ controller: c, locale }: { controller: Dic
         </Button>
       </div>
     </section> : null}
+    {!dialog && c.error ? <Notice tone="danger">{c.error}</Notice> : null}
     {enabled && dialog === 'connection' ? <Modal label={connectionLabel} onClose={close}>
       <h3>{connectionLabel}</h3>
       <Choices label={t('Сервис', 'Service')} options={providers} value={provider?.id} disabled={busy}
@@ -75,7 +77,7 @@ export function DictationProcessing({ controller: c, locale }: { controller: Dic
       {c.error ? <Notice tone="danger">{c.error}</Notice> : null}
       <div className="dictation-dialog__actions"><Button onClick={close}>{t('Готово', 'Done')}</Button></div>
     </Modal> : null}
-    {enabled && dialog === 'prompt' && prompt ? <PromptEditor key={prompt.id} prompt={prompt} controller={c} t={t} onClose={close} /> : null}
+    {enabled && dialog === 'prompt' && prompt ? <PromptEditor key={prompt.id} locale={locale} prompt={prompt} controller={c} t={t} onClose={close} /> : null}
   </>
 }
 
@@ -130,15 +132,16 @@ function ProviderSetup({ provider, controller: c, t }: { provider: PostProcessPr
   </div>
 }
 
-function PromptEditor({ prompt, controller: c, t, onClose }: {
-  prompt: LLMPrompt; controller: DictationController; t: Translate; onClose: () => void
+function PromptEditor({ prompt, controller: c, t, onClose, locale }: {
+  prompt: LLMPrompt; controller: DictationController; t: Translate; onClose: () => void; locale: Locale
 }) {
   const title = t('Редактировать шаблон', 'Edit prompt')
   const [name, setName] = useState(prompt.name)
   const [body, setBody] = useState(prompt.prompt)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const busy = Boolean(c.busy)
   const finish = (id: string, action: () => Promise<unknown>) => { void c.run(id, action).then(onClose).catch(() => undefined) }
-  return <Modal label={title} onClose={onClose}>
+  return <><Modal label={title} onClose={onClose}>
     <h3>{title}</h3>
     <form onSubmit={event => {
       event.preventDefault()
@@ -153,12 +156,16 @@ function PromptEditor({ prompt, controller: c, t, onClose }: {
       </DictationField>
       {c.error ? <Notice tone="danger">{c.error}</Notice> : null}
       <div className="dictation-dialog__actions dictation-processing-editor-actions">
-        <Button variant="danger" disabled={busy} onClick={() => finish('delete-prompt', () => c.api.deletePostProcessPrompt(prompt.id))}>
+        <Button variant="danger" disabled={busy} onClick={() => setConfirmDelete(true)}>
           {t('Удалить шаблон', 'Delete prompt')}
         </Button>
         <Button onClick={onClose}>{t('Отмена', 'Cancel')}</Button>
         <Button type="submit" variant="primary" disabled={busy || !name.trim() || !body.trim()}>{t('Сохранить', 'Save')}</Button>
       </div>
     </form>
-  </Modal>
+  </Modal>{confirmDelete ? <DictationDeleteDialog title={t('Удалить шаблон?', 'Delete prompt?')} detail={prompt.name} locale={locale}
+    onClose={() => setConfirmDelete(false)} onDelete={async () => {
+      await c.run('delete-prompt', () => c.api.deletePostProcessPrompt(prompt.id), 'settings', false)
+      onClose()
+    }} /> : null}</>
 }

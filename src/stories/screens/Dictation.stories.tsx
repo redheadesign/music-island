@@ -11,13 +11,15 @@ function DictationWorkshop({ args, light, interfaceTheme }: { args: ComponentPro
   const [appearance, setAppearance] = useState(args.appearance ?? defaultDictationAppearance)
   const [showLatestMessage, setShowLatestMessage] = useState(args.showLatestMessage ?? false)
   const [words, setWords] = useState(args.controller.data?.settings.custom_words ?? [])
+  const [threshold, setThreshold] = useState(args.controller.data?.settings.word_correction_threshold ?? .8)
   const [processing, setProcessing] = useState(Boolean(args.controller.data?.settings.post_process_enabled))
   const c = args.controller
   const editable = c.data && (args.page === 'dictionary' || args.page === 'processing') ? {
     ...c,
-    data: { ...c.data, settings: { ...c.data.settings, custom_words: words, post_process_enabled: processing } },
+    data: { ...c.data, settings: { ...c.data.settings, custom_words: words, word_correction_threshold: threshold, post_process_enabled: processing } },
     api: {
       ...c.api,
+      changeWordCorrectionThresholdSetting: async (value: number) => { setThreshold(value); return null },
       updateCustomWords: async (value: string[]) => { setWords(value); return null },
       changePostProcessEnabledSetting: async (value: boolean) => { setProcessing(value); return null },
     },
@@ -30,7 +32,7 @@ const controller: DictationController = { enabled: true, api: dictationApi, busy
 const meta = {
   title: 'Screens/Dictation', component: DictationSettings,
   args: { controller, page: 'models', locale: 'ru', onEnable: fn(async () => {}), onPage: fn() },
-  parameters: { workshop: { width: 720, note: 'Каталог Handy 0.9.7. Здесь загрузки и запись заменены локальными примерами.' } },
+  parameters: { settingsPreviewScene: true, workshop: { width: 720, note: 'Каталог Handy 0.9.7. Здесь загрузки и запись заменены локальными примерами.' } },
   render: (args, context) => <DictationWorkshop key={context.id} args={args} light={Boolean(context.parameters.light)} interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)} />,
 } satisfies Meta<typeof DictationSettings>
 export default meta
@@ -60,7 +62,7 @@ export const GlassModelSearch: Story = {
 export const ModelsNarrow: Story = { name: 'Модели · узкое окно', parameters: { workshop: { width: 420 } } }
 export const LanguageFilter: Story = { name: 'Модели · фильтр по языкам', play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
-  const trigger = canvas.getByRole('button', { name: 'Фильтр по языкам' })
+  const trigger = canvas.getByRole('button', { name: 'Фильтр по языкам каталога' })
   await expect(canvas.queryByRole('switch', { name: 'Показать все языки' })).not.toBeInTheDocument()
   await userEvent.click(trigger)
   const body = within(document.body)
@@ -138,6 +140,19 @@ export const HistoryActions: Story = {
     await expect(first).toHaveTextContent(historyExamples[0].transcription_text)
     await userEvent.click(within(first).getByRole('button', { name: 'Распознать снова' }))
     await expect(retryPreview).toHaveBeenCalledWith(historyExamples[0].id)
+  },
+}
+export const HistoryDeleteConfirmation: Story = {
+  ...HistoryPopulated, name: 'История · подтверждение удаления записи',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const trigger = canvas.getAllByRole('button', { name: 'Удалить запись' })[0]
+    await userEvent.click(trigger)
+    const dialog = await canvas.findByRole('dialog', { name: 'Удалить запись?' })
+    await expect(within(dialog).getByRole('button', { name: 'Отмена' })).toHaveFocus()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }))
+    await expect(trigger).toHaveFocus()
+    await expect(canvas.getAllByRole('article')).toHaveLength(historyExamples.length)
   },
 }
 export const HistoryLatestMessage: Story = {
@@ -295,6 +310,18 @@ export const DownloadConsent: Story = { name: 'Перед загрузкой · 
   await expect(trigger).toHaveFocus()
   await userEvent.click(trigger)
 } }
+export const CustomModelFile: Story = {
+  name: 'Локальная модель · выбор файла',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Добавить модель' }))
+    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Добавить файл модели' }))
+    const dialog = within(await canvas.findByRole('dialog'))
+    await userEvent.click(dialog.getByRole('button', { name: 'Выбрать файл…' }))
+    await expect(dialog.getByRole('textbox', { name: 'Путь к модели' })).toHaveValue('C:\\Models\\Russian.gguf')
+    await expect(dialog.getByRole('button', { name: 'Скопировать' })).toBeEnabled()
+  },
+}
 export const ImportPreview: Story = { name: 'Импорт · выбор файлов', play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
   await userEvent.click(canvas.getByRole('button', { name: 'Добавить модель' }))

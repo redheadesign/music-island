@@ -78,6 +78,7 @@ commands.allow = [
   "get_transcription_model_status",
   "get_windows_microphone_permission_status",
   "import_custom_model",
+  "pick_custom_model",
   "import_handy",
   "initialize",
   "initialize_enigo",

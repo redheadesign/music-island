@@ -17,11 +17,12 @@ export interface OnboardingProps {
   config: AppConfig
   onFinish: (enableAutostart?: boolean) => Promise<void> | void
   exePath?: string | null
+  dictationShortcut?: [string, string] | null
   /** Also lets the workshop review each real step directly. */
   initialStep?: number
 }
 
-export function Onboarding({ config, onFinish, exePath, initialStep = 0 }: OnboardingProps) {
+export function Onboarding({ config, onFinish, exePath, dictationShortcut, initialStep = 0 }: OnboardingProps) {
   const [step, setStep] = useState(initialStep)
   const [demoConfig, setDemoConfig] = useState(config)
   const [playing, setPlaying] = useState(false)
@@ -34,24 +35,25 @@ export function Onboarding({ config, onFinish, exePath, initialStep = 0 }: Onboa
   const colorScheme = getSettingsColorScheme(config)
   const interfaceTheme = getInterfaceTheme(config)
   const scene = getInterfaceScene(config)
-  const glass = interfaceTheme === 'glass'
+  const playbackVisual = getPlaybackVisual(demoConfig)
   const material = {
     'data-interface-theme': interfaceTheme,
     'data-interface-scene': scene,
     'data-interface-palette': getInterfacePalette(config),
     'data-reduced-transparency': getReducedTransparency(config) || undefined,
   }
-  const islandStyle = glass ? getInterfacePaletteStyle(config, 'dark') : undefined
+  const islandStyle = playbackVisual ? getInterfacePaletteStyle(config, 'dark') : undefined
   const autostart = config.behavior.launchAtStartup
   const titles = ru ? ['Музыка', 'Настройка островка', 'Диктовка', 'Запуск вместе с Windows'] : ['Music', 'Customize the island', 'Dictation', 'Launch with Windows']
+  const [binding, activation] = dictationShortcut ?? ['Ctrl+Space', 'hold_or_toggle']
   const descriptions = ru ? [
     'Наведите курсор на верхний край, чтобы открыть плеер.',
     'Перетащите кнопки в островок.',
-    'Нажмите сочетание и говорите. Текст появится в активном приложении.',
+    !binding ? 'Задайте сочетание в настройках диктовки.' : activation === 'push_to_talk' ? 'Удерживайте сочетание, пока говорите. Отпустите, чтобы вставить текст.' : 'Нажмите сочетание, говорите и нажмите его ещё раз, чтобы вставить текст.',
   ] : [
     'Move to the top edge to open the player.',
     'Drag controls into the island.',
-    'Press the shortcut and speak. Text appears in the active app.',
+    !binding ? 'Set a shortcut in Dictation settings.' : activation === 'push_to_talk' ? 'Hold the shortcut while speaking. Release to insert the text.' : 'Press the shortcut, speak, and press it again to insert the text.',
   ]
   const finish = async (enableAutostart?: boolean) => {
     if (busy) return
@@ -64,22 +66,22 @@ export function Onboarding({ config, onFinish, exePath, initialStep = 0 }: Onboa
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={step} className="onboarding__page" initial={{ opacity: 0, y: reduced ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .18 }}>
           <div className={`onboarding__visual onboarding__visual--${step}`}>
-            {!glass || step < 2 ? <WarpMaterial variant="onboarding" scene={scene} colorScheme={colorScheme} reducedMotion={reduced} /> : null}
+            {!scene || step < 2 ? <WarpMaterial variant="onboarding" scene={scene} colorScheme={colorScheme} reducedMotion={reduced} /> : null}
             {step === 0 ? <>
               <div
                 className="onboarding__music island-root"
                 {...material}
-                data-cover-art={glass || undefined}
-                style={glass ? { ...islandStyle, ...APPEARANCE_PREVIEW_ARTWORK_THEME } as CSSProperties : undefined}
+                data-cover-art={Boolean(playbackVisual) || undefined}
+                style={playbackVisual ? { ...islandStyle, ...APPEARANCE_PREVIEW_ARTWORK_THEME } as CSSProperties : undefined}
               >
-                <IslandFeedback className="island-card island-surface" particles={glass} playbackMotion={glass ? playing : undefined} playbackVisual={getPlaybackVisual(demoConfig)}>
+                <IslandFeedback className="island-card island-surface" particles={Boolean(playbackVisual)} playbackMotion={playbackVisual ? playing : undefined} playbackVisual={playbackVisual}>
                   <MusicModule media={{ ...APPEARANCE_PREVIEW_MEDIA, playbackStatus: playing ? 'playing' : 'paused' }} progressMs={APPEARANCE_PREVIEW_MEDIA.positionMs} progressPercent={34} density="balanced" showArtwork showTitle showArtist showProgress showSource={false} showPreviousNext locale={locale} reducedMotion={reduced} onCommand={command => setPlaying(command === 'play-pause' ? !playing : true)} />
                 </IslandFeedback>
               </div>
               <Mouse className="onboarding__mouse" size={27} aria-hidden="true" />
             </> : null}
             {step === 1 ? <div className="onboarding__layout settings-panel" {...material} style={islandStyle as CSSProperties | undefined}><IslandLayoutEditor config={demoConfig} onChange={setDemoConfig} active={false} showHeading={false} /></div> : null}
-            {step === 2 ? <div className="onboarding__dictation"><div className="onboarding__note"><span>{ru ? 'Новая заметка' : 'New note'}</span><p>{ru ? 'Хорошие идеи начинаются с пары слов' : 'Good ideas begin with a few words'}</p></div><DictationOverlayView status={{ revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null }} visible levels={[.2,.6,.4,.8,.9,.5,.35,.65]} text={{ committed: '', tentative: '' }} locale={locale} reducedMotion={reduced} cancel={async () => {}} copy={async () => {}} /><kbd>Ctrl + Space</kbd></div> : null}
+            {step === 2 ? <div className="onboarding__dictation"><div className="onboarding__note"><span>{ru ? 'Новая заметка' : 'New note'}</span><p>{ru ? 'Встреча в четверг в десять.' : 'Meeting on Thursday at ten.'}</p></div><div inert aria-hidden="true"><DictationOverlayView status={{ revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null }} visible levels={[.2,.6,.4,.8,.9,.5,.35,.65]} text={{ committed: '', tentative: '' }} locale={locale} reducedMotion={reduced} cancel={async () => {}} copy={async () => {}} /></div>{binding ? <kbd>{binding.split('+').join(' + ')}</kbd> : null}</div> : null}
             {step === 3 ? <div className="onboarding__startup"><AppLogo size={112} alt="Music Island" /></div> : null}
           </div>
           <h1>{titles[step]}</h1>{descriptions[step] ? <p>{descriptions[step]}</p> : null}

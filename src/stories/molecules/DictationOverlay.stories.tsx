@@ -12,6 +12,17 @@ type Story = StoryObj<typeof meta>
 export const Recording: Story = {name: 'Запись'}
 export const Preparing: Story = {name: 'Подготовка', args: {status: {...meta.args.status, phase: 'preparing', ready: false}}}
 export const Transcribing: Story = {name: 'Распознавание', args: {status: {...meta.args.status, phase: 'transcribing'}}}
+export const LongTranscription: Story = {
+  name: 'Длинная запись · обработанная длительность',
+  args: { ...meta.args, appearance: { ...defaultDictationAppearance, theme: 'wave' }, reducedMotion: true,
+    status: { ...meta.args.status, phase: 'transcribing', progress: { completedAudioMs: 80000, totalAudioMs: 360000 } } },
+  parameters: { workshop: { width: 256, height: 50 } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('status')).toHaveTextContent('1:20 / 6:00')
+    await expect(canvas.getByRole('button', { name: 'Отменить обработку' })).toBeEnabled()
+  },
+}
 export const Processing: Story = {name: 'Обработка текста', args: {status: {...meta.args.status, phase: 'processing'}}}
 export const Completed: Story = {name: 'Готово', args: {status: {...meta.args.status, phase: 'completed', text: 'Тестовая запись.'}}}
 export const Cancelled: Story = {name: 'Отменено', args: {status: {...meta.args.status, phase: 'cancelled'}}}

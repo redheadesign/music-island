@@ -66,6 +66,15 @@ export const English: Story = {
     await expect(canvas.queryByText(/reset time unknown/i)).not.toBeInTheDocument()
   },
 }
+export const StaleLimit: Story = {
+  name: 'Устаревшие лимиты · ограничение запросов',
+  args: { snapshot: { ...snapshot, codex: { ...snapshot.codex, state: 'stale', messageCode: 'rate-limited' } } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(/Сервис временно ограничил запросы/)).toBeVisible()
+    await expect(canvas.getByText(/Последние данные/)).toBeVisible()
+    await expect(canvas.getAllByRole('progressbar')).toHaveLength(2)
+  },
+}
 export const BothConnected: Story = {
   name: 'Codex и Claude',
   args: { preferences: { codexEnabled: true, claudeEnabled: true }, snapshot: bothSnapshot },

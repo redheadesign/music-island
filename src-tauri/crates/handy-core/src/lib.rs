@@ -56,6 +56,24 @@ pub fn is_enabled() -> bool {
         && ENABLED.load(std::sync::atomic::Ordering::Acquire)
 }
 
+/// Read only the shortcut and its gesture for the introductory demonstration.
+pub fn onboarding_shortcut(app: &AppHandle) -> (String, String) {
+    use tauri_plugin_store::StoreExt;
+    let path = portable::store_path(settings::SETTINGS_STORE_PATH);
+    let stored = if path.is_file() { app.store(path).ok().and_then(|store| store.get("settings")) } else { None };
+    let defaults = settings::get_default_settings();
+    let binding = stored.as_ref().and_then(|value| value.pointer("/bindings/transcribe/current_binding")).and_then(|value| value.as_str())
+        .map(str::to_owned).unwrap_or_else(|| defaults.bindings["transcribe"].current_binding.clone());
+    let mode = stored.as_ref().and_then(|value| value.get("shortcut_activation")).and_then(|value| value.as_str()).map(str::to_owned)
+        .unwrap_or_else(|| {
+            if let Some(hold) = stored.as_ref().and_then(|value| value.get("push_to_talk")).and_then(|value| value.as_bool()) {
+                return if hold { "push_to_talk" } else { "toggle" }.to_owned();
+            }
+            serde_json::to_value(defaults.shortcut_activation).ok().and_then(|value| value.as_str().map(str::to_owned)).unwrap_or_default()
+        });
+    (binding, mode)
+}
+
 /// Settings can inspect disk metadata without extracting the engine, opening a mic,
 /// or registering shortcuts. Reuse these managers if dictation is enabled later.
 pub async fn prepare_preferences(app: AppHandle) -> Result<(), String> {
@@ -239,6 +257,7 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             copy_result,
             update_custom_filler_words,
             storage::import_custom_model,
+            storage::pick_custom_model,
             storage::preview_handy_import,
             storage::import_handy,
             storage::cancel_import,

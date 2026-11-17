@@ -1,5 +1,5 @@
 // Adapted from Handy v0.9.7 (MIT, CJ Pais). See src-tauri/crates/handy-core/LICENSE.
-export interface DictationStatus { revision: number; operationId: number; phase: string; ready: boolean; text: string; error: string | null; shortcutActivation?: ShortcutActivation; modelLoading?: boolean }
+export interface DictationStatus { revision: number; operationId: number; phase: string; ready: boolean; text: string; error: string | null; shortcutActivation?: ShortcutActivation; modelLoading?: boolean; progress?: { completedAudioMs: number; totalAudioMs: number } | null }
 export type AppSettings = { 
 /**
  * Internal settings schema marker for one-time migrations. Fresh installs

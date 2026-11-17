@@ -40,6 +40,8 @@ pub struct LaunchState {
     generation: u64,
     onboarding: bool,
     config: crate::config::AppConfig,
+    #[serde(rename = "dictationShortcut")]
+    dictation_shortcut: Option<(String, String)>,
     #[serde(rename = "exePath")]
     exe_path: Option<String>,
 }
@@ -49,6 +51,7 @@ pub fn get_launch_state(app: AppHandle) -> Result<LaunchState, String> {
     Ok(LaunchState {
         generation: INTRO_GENERATION.load(Ordering::Acquire),
         onboarding: is_onboarding(),
+        dictation_shortcut: is_onboarding().then(|| handy_core::onboarding_shortcut(&app)),
         exe_path: std::env::current_exe().ok().map(|path| path.display().to_string()),
         config: app
             .state::<crate::config::ConfigState>()
