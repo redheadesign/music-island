@@ -1555,7 +1555,7 @@ fn post_process_transcription_text(
     output_language: &OutputLanguageEvidence,
     supported_languages: &[String],
 ) -> String {
-    fail_open_text_transform(raw, |raw| {
+    let normalized = fail_open_text_transform(raw, |raw| {
         let corrected = if !settings.custom_words.is_empty() && !custom_words_already_prompted {
             apply_custom_words(
                 &raw,
@@ -1593,7 +1593,8 @@ fn post_process_transcription_text(
         );
 
         normalize_transcription_output(&without_fillers)
-    })
+    });
+    crate::text_output::discard_punctuation_only(normalized)
 }
 
 /// Optional text cleanup must never discard a successful model result. The

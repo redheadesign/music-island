@@ -198,7 +198,7 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
   ...Glass,
   name: 'Стекло · кнопки плеера рядом с виджетом Codex',
   args: { artwork: 'cool', assistantLimits: true },
-  globals: { ...Glass.globals, locale: 'en' },
+  globals: { ...Glass.globals, locale: 'en', accent: '#f76100' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const previous = await canvas.findByRole('button', { name: 'Previous' })
@@ -207,14 +207,19 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
     const like = canvas.getByRole('button', { name: 'Like' })
     const dislike = canvas.getByRole('button', { name: 'Dislike' })
     const settings = canvas.getByRole('button', { name: 'Open settings' })
+    const seek = canvas.getByRole('button', { name: 'Seek track' })
     const documentView = canvasElement.ownerDocument.defaultView!
-    if (documentView.matchMedia('(forced-colors: none) and (prefers-reduced-transparency: no-preference)').matches) {
-      for (const button of [previous, pause, next, like, dislike, settings]) {
+    const forcedColors = documentView.matchMedia('(forced-colors: active)').matches
+    const restingLikeRim = documentView.getComputedStyle(like).boxShadow
+    if (!forcedColors && !documentView.matchMedia('(prefers-reduced-transparency: reduce)').matches) {
+      for (const button of [previous, pause, next, like, dislike, settings, seek]) {
         await expect(documentView.getComputedStyle(button).backdropFilter).toContain('blur(')
       }
-      const seek = canvas.getByRole('button', { name: 'Seek track' })
-      await expect(documentView.getComputedStyle(seek).backdropFilter).toBe('none')
+      await expect(documentView.getComputedStyle(previous).backdropFilter).not.toContain('brightness(')
+      await expect(documentView.getComputedStyle(next).backgroundColor).toBe(documentView.getComputedStyle(seek).backgroundColor)
     }
+    await expect(documentView.getComputedStyle(settings, '::before').content).toBe('none')
+    await expect(documentView.getComputedStyle(settings).boxShadow).toBe('none')
     await userEvent.click(previous)
     await expect(onCommand).toHaveBeenLastCalledWith('previous')
     await userEvent.tab()
@@ -228,6 +233,13 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
     await userEvent.click(dislike)
     await userEvent.click(like)
     await expect(like).toHaveAttribute('aria-pressed', 'true')
+    await expect(like.querySelector('svg')).toHaveAttribute('fill', 'currentColor')
+    if (!forcedColors) {
+      await expect(documentView.getComputedStyle(like).boxShadow).toBe(restingLikeRim)
+    }
+    await userEvent.tab()
+    await expect(settings).toHaveFocus()
+    await expect(documentView.getComputedStyle(settings).outlineStyle).not.toBe('none')
     await userEvent.click(settings)
     await expect(openSettings).toHaveBeenCalled()
   },
@@ -239,8 +251,10 @@ export const GlassControlLensesReducedTransparency: StoryObj<typeof meta> = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const settings = await canvas.findByRole('button', { name: 'Open settings' })
+    const seek = canvas.getByRole('button', { name: 'Seek track' })
     await expect(settings.closest('.island-root')).toHaveAttribute('data-reduced-transparency', 'true')
     await expect(canvasElement.ownerDocument.defaultView!.getComputedStyle(settings).backdropFilter).toBe('none')
+    await expect(canvasElement.ownerDocument.defaultView!.getComputedStyle(seek).backdropFilter).toBe('none')
   },
 }
 export const GlassCoolCover: StoryObj<typeof meta> = {
@@ -299,18 +313,20 @@ export const GlassBassBurst: StoryObj<typeof meta> = {
     const effect = createIslandBassEffect(layer)
     const particles = () => [...layer.querySelectorAll('.island-bass-particle')]
     try {
-      effect.update(.1)
+      effect.update(.018)
+      effect.update(.04)
       await expect(particles()).toHaveLength(0)
-      effect.update(.93)
+      // The native meter reports about .13 for an 80 Hz hit at 8% of full scale.
+      effect.update(.13)
       const first = particles()
-      await expect(first.length).toBeGreaterThan(5)
+      await expect(first.length).toBeGreaterThanOrEqual(5)
       await expect(first[0].getAnimations()[0]?.effect?.getTiming().duration).toBeLessThan(1000)
-      effect.update(.94)
+      effect.update(.14)
       await expect(particles()).toEqual(first)
       await waitFor(() => expect(particles()).toHaveLength(0), { timeout: 1200 })
-      effect.update(.1)
+      effect.update(.02)
       effect.update(.93)
-      await expect(particles().length).toBeGreaterThan(5)
+      await expect(particles().length).toBeGreaterThan(first.length)
     } finally {
       effect.dispose()
     }
@@ -405,6 +421,11 @@ export const LocalServersExpanded: StoryObj<typeof meta> = {
     const rows = within(widget).getAllByRole('listitem')
     await expect(getComputedStyle(rows[0]).borderTopWidth).toBe('0px')
     await expect(getComputedStyle(rows[1]).borderTopWidth).not.toBe('0px')
+    const address = rows[0].querySelector('code')!.getBoundingClientRect()
+    const process = rows[0].querySelector('.island-local-servers__address span')!.getBoundingClientRect()
+    await expect(process.left).toBeGreaterThan(address.right)
+    await expect(process.top).toBeLessThan(address.bottom)
+    await expect(rows[0].getBoundingClientRect().height).toBeLessThan(45)
     const stop = within(rows[0]).getByRole('button', { name: /^(Остановить сервер|Stop server) ·/ })
     const glyph = stop.querySelector('svg')!
     const { width, height } = glyph.viewBox.baseVal

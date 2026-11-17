@@ -456,7 +456,10 @@ pub(crate) async fn process_transcription_output(
     }
 
     if post_process && settings.post_process_enabled {
-        if let Some(processed_text) = post_process_transcription(&settings, &final_text).await {
+        if let Some(processed_text) = post_process_transcription(&settings, &final_text)
+            .await
+            .and_then(crate::text_output::non_blank_rewrite)
+        {
             post_processed_text = Some(processed_text.clone());
             final_text = processed_text;
 

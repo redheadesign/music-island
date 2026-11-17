@@ -42,6 +42,7 @@ interface SelectProps {
   value: string
   options: Option[]
   onChange: (value: string) => void
+  onFocus?: () => void
   disabled?: boolean
   ariaLabel?: string
   placeholder?: string
@@ -58,6 +59,7 @@ function Menu({
   value,
   options,
   onChange,
+  onFocus,
   disabled,
   ariaLabel,
   placeholder = '—',
@@ -216,6 +218,7 @@ function Menu({
         aria-label={ariaLabel}
         aria-describedby={ariaLabel && !actions ? `${id}-value` : undefined}
         disabled={disabled}
+        onFocus={onFocus}
         onClick={(event) => open ? closeMenu() : openMenu(undefined, event.detail > 0)}
         onKeyDown={(event) => {
           if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {

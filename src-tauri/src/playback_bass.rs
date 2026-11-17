@@ -43,8 +43,9 @@ pub async fn set_playback_bass(
 #[cfg(windows)]
 mod native {
     use super::{capture, AppHandle, PlaybackBassState};
-    use crate::{config::ConfigState, media, window, yandex};
+    use crate::{config::ConfigState, logging, media, window, yandex};
     use serde::Serialize;
+    use std::time::Duration;
     use tauri::{Emitter, Manager};
 
     #[derive(Clone, Serialize)]
@@ -109,9 +110,21 @@ mod native {
                             && eligible(&config)
                             && yandex::playback_port_is_connected(port)
                     };
-                    let _ = capture::monitor(target, active, |bass| {
+                    if let Err(error) = capture::monitor(target, active, |bass| {
                         let _ = app.emit_to("main", "playback:bass", BassSample { request, bass });
-                    });
+                    }) {
+                        logging::append_event_rate_limited(
+                            "playback-bass-capture",
+                            &format!("playback bass unavailable: {error:#}"),
+                            Duration::from_secs(60),
+                        );
+                    }
+                } else {
+                    logging::append_event_rate_limited(
+                        "playback-bass-process",
+                        "playback bass unavailable: no verified Direct player process",
+                        Duration::from_secs(60),
+                    );
                 }
             }
             let mut demand = state.demand.lock();

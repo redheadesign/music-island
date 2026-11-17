@@ -1044,6 +1044,29 @@
   --surface-panel: color-mix(in srgb, var(--glass-panel) var(--glass-menu-opacity), transparent);
 }
 .settings-panel[data-interface-theme='glass'] .settings-page-heading { letter-spacing: 0; }
+:where(.settings-window-root[data-interface-theme='glass'], .settings-panel[data-interface-theme='glass'])
+  :where(button, a[href], summary, [role='button']):not(:where(.island-root *, [inert] *)) {
+  position: relative;
+}
+:where(.settings-window-root[data-interface-theme='glass'], .settings-panel[data-interface-theme='glass'])
+  :where(a[href], summary, [role='button']):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.settings-panel[data-interface-theme='glass'] :is(
+  .settings-theme-choice__button--active, .voice-segment-switch > button[aria-pressed='true'],
+  .voice-chip--active, .voice-effect-toggle, .voice-control-card__primary, .voice-control-card__monitor,
+  .secondary-button, .voice-setup-guide__action, .voice-setup-guide__return, .accent-picker__done, .about-social
+) {
+  background-image: var(--glass-sheen);
+  box-shadow: var(--glass-control-rim);
+}
+.settings-panel[data-interface-theme='glass'] .fox-dev-preview__select {
+  border-radius: var(--glass-control-radius);
+  background-color: var(--control-surface);
+  background-image: var(--glass-sheen);
+  box-shadow: var(--glass-control-rim);
+}
 .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch, .locale-switch) {
   border-radius: var(--glass-control-radius);
   background: color-mix(in srgb, var(--glass-field) var(--glass-menu-track-opacity), transparent);

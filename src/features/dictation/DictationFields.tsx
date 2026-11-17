@@ -19,5 +19,9 @@ export function CommitInput({ value, onSave, multiline, type = 'text', ...props 
     setDraft(next)
     if (next !== value) onSave(next)
   }
-  return multiline ? <Textarea aria-label={props['aria-label']} aria-labelledby={props['aria-labelledby']} aria-describedby={props['aria-describedby']} value={draft} rows={6} onChange={(event) => setDraft(event.target.value)} onBlur={save} /> : <Input {...props} type={type} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={save} onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); setDraft(value) } if (event.key === 'Enter') event.currentTarget.blur() }} />
+  return multiline ? <Textarea aria-label={props['aria-label']} aria-labelledby={props['aria-labelledby']} aria-describedby={props['aria-describedby']} value={draft} rows={6} onChange={(event) => setDraft(event.target.value)} onBlur={save} /> : <Input {...props} type={type} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={save} onKeyDown={(event) => {
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
+    if (event.key === 'Escape') { event.preventDefault(); setDraft(value) }
+    if (event.key === 'Enter') event.currentTarget.blur()
+  }} />
 }

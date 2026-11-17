@@ -188,6 +188,7 @@ fn activate(
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
+    anyhow::ensure!(!active(), "process loopback activation did not complete");
     Ok(None)
 }
 

@@ -1035,7 +1035,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
               {islandLayout.zones.actions.map((action) => action === 'settings' ? <button
                 key={action}
                 type="button"
-                className="icon-button"
+                className="icon-button island-settings-button"
                 aria-label="Open settings"
                 onClick={() => void openSettingsWindow()}
               >

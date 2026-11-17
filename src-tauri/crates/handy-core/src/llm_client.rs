@@ -1,5 +1,6 @@
 use crate::settings::PostProcessProvider;
 use log::{debug, error, info};
+use once_cell::sync::OnceCell;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, REFERER, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -172,13 +173,14 @@ fn build_headers(provider: &PostProcessProvider, api_key: &str) -> Result<Header
     Ok(headers)
 }
 
-/// Create an HTTP client with provider-specific headers
-fn create_client(provider: &PostProcessProvider, api_key: &str) -> Result<reqwest::Client, String> {
-    let headers = build_headers(provider, api_key)?;
-    reqwest::Client::builder()
-        .default_headers(headers)
-        .build()
-        .map_err(|e| report_reqwest_error("Failed to build HTTP client", &e))
+/// Pool connections across calls. Provider credentials belong to each request.
+fn http_client() -> Result<&'static reqwest::Client, String> {
+    static CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
+    CLIENT.get_or_try_init(|| {
+        reqwest::Client::builder()
+            .build()
+            .map_err(|e| report_reqwest_error("Failed to build HTTP client", &e))
+    })
 }
 
 /// Format a bounded error source chain.
@@ -343,7 +345,8 @@ pub async fn send_chat_completion_with_schema(
         sanitized_url_for_log(&url)
     );
 
-    let client = create_client(provider, &api_key)?;
+    let client = http_client()?;
+    let headers = build_headers(provider, &api_key)?;
 
     // Build messages vector
     let mut messages = Vec::new();
@@ -389,6 +392,7 @@ pub async fn send_chat_completion_with_schema(
 
     let mut response = client
         .post(&url)
+        .headers(headers.clone())
         .json(&request_body)
         .send()
         .await
@@ -418,6 +422,7 @@ pub async fn send_chat_completion_with_schema(
         request_body.reasoning = ReasoningParams::default();
         response = client
             .post(&url)
+            .headers(headers)
             .json(&request_body)
             .send()
             .await
@@ -472,10 +477,9 @@ pub async fn fetch_models(
 
     debug!("Fetching models from: {}", sanitized_url_for_log(&url));
 
-    let client = create_client(provider, &api_key)?;
-
-    let response = client
+    let response = http_client()?
         .get(&url)
+        .headers(build_headers(provider, &api_key)?)
         .send()
         .await
         .map_err(|e| report_reqwest_error("Failed to fetch models", &e))?;
@@ -531,7 +535,7 @@ pub async fn fetch_models(
 mod tests {
     use super::*;
     use std::fmt;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
     #[derive(Debug)]
     struct TestError {
@@ -594,6 +598,47 @@ mod tests {
         });
 
         format!("http://{address}")
+    }
+
+    #[tokio::test]
+    async fn reused_connection_sends_only_each_requests_credentials() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let request_target = provider("custom", &format!("http://{address}"));
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut stream = BufReader::new(stream);
+
+            for token in ["first-key", "second-key"] {
+                let mut received = String::new();
+                loop {
+                    let mut line = String::new();
+                    assert_ne!(stream.read_line(&mut line).await.unwrap(), 0);
+                    if line == "\r\n" {
+                        break;
+                    }
+                    received.push_str(&line);
+                }
+                let headers = received.to_ascii_lowercase();
+                assert!(headers.contains(&format!("\r\nauthorization: bearer {token}\r\n")));
+                assert_eq!(headers.matches("\r\nauthorization:").count(), 1);
+                let body = r#"{"data":[{"id":"test-model"}]}"#;
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: keep-alive\r\n\r\n{body}",
+                    body.len()
+                );
+                stream.get_mut().write_all(response.as_bytes()).await.unwrap();
+            }
+        });
+
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            for token in ["first-key", "second-key"] {
+                assert_eq!(fetch_models(&request_target, token.to_owned()).await.unwrap(), ["test-model"]);
+            }
+            server.await.unwrap();
+        })
+        .await
+        .expect("both requests should reuse one loopback connection");
     }
 
     #[test]

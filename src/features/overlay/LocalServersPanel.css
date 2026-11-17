@@ -16,7 +16,9 @@
 .island-local-servers__row {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
+  min-height: calc(var(--control-height-compact) + var(--space-1));
+  padding: var(--space-half) var(--space-1) var(--space-half) var(--space-2);
 }
 
 .island-local-servers__list {
@@ -28,21 +30,23 @@
   list-style: none;
 }
 
-.island-local-servers__row {
-  min-height: var(--control-height);
-  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
-}
-
 .island-local-servers__row + .island-local-servers__row {
   border-top: 1px solid var(--control-surface);
 }
 
-.island-local-servers__row > button {
-  flex-shrink: 0;
+.island-local-servers__actions {
+  display: grid;
+  grid-template-columns: repeat(2, var(--control-height-compact));
+  gap: var(--space-half);
 }
+
+.island-local-servers__actions .ui-button:focus-visible { outline-offset: -2px; }
 
 .island-local-servers__address {
   display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2);
   flex: 1;
   min-width: 0;
   font-size: var(--text-caption);
@@ -51,20 +55,27 @@
 
 .island-local-servers__address code {
   font-family: var(--font-mono);
-  overflow-wrap: anywhere;
+  font-weight: var(--weight-medium);
+}
+
+.island-local-servers__address :is(code, span) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .island-local-servers__address span {
-  overflow: hidden;
   color: var(--fg-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--text-small);
 }
 
 .island-local-servers__bulk {
   display: flex;
   justify-content: flex-end;
+  padding-inline-end: var(--space-1);
 }
+
+.island-local-servers__bulk .ui-button { font-size: var(--text-small); }
 
 .island-local-servers__confirmation {
   display: grid;

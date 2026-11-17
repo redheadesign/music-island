@@ -43,9 +43,11 @@
   --island-glass-hover: rgb(85 85 83 / .89);
   --island-glass-pressed: rgb(45 45 44 / .94);
   --island-lens-fill: color-mix(in srgb, var(--glass-island-fill) 74%, transparent);
-  --island-lens-hover: color-mix(in srgb, var(--island-lens-fill) 82%, rgb(62 62 61 / .61));
-  --island-lens-pressed: color-mix(in srgb, var(--island-lens-fill) 70%, rgb(12 12 12 / .7));
-  --island-lens-filter: blur(min(9px, var(--glass-blur))) saturate(var(--glass-saturation)) brightness(.79);
+  --island-clear-lens-fill: color-mix(in srgb, var(--glass-island-fill) 39%, transparent);
+  --island-lens-hover-tint: rgb(62 62 61 / .61);
+  --island-lens-pressed-tint: rgb(12 12 12 / .7);
+  --island-clear-lens-filter: blur(min(9px, var(--glass-blur))) saturate(var(--glass-saturation));
+  --island-lens-filter: var(--island-clear-lens-filter) brightness(.79);
   --island-lens-hover-sheen: var(--glass-sheen), linear-gradient(rgb(255 255 255 / .05), transparent);
   --island-cover-primary: #a6a6a2;
   --island-cover-secondary: #777774;
@@ -158,16 +160,21 @@
   16%, 66% { opacity: .65; }
   100% { opacity: 0; transform: translateY(var(--particle-fall)); }
 }
-.island-root[data-interface-theme='glass'] :is(.progress-track, .island-plugin-button) {
+.island-root[data-interface-theme='glass'] .island-plugin-button {
   color: var(--island-glass-ink);
   background: var(--glass-sheen) var(--island-glass-control);
   box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .island-actions .icon-button) {
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button) {
   color: var(--island-glass-ink);
   background: var(--island-lens-sheen, var(--glass-sheen)) var(--island-lens-state, var(--island-lens-fill));
-  box-shadow: var(--island-lens-rim, var(--glass-control-rim)), var(--shadow-control-depth);
+  box-shadow: var(--island-lens-shadow, var(--island-lens-rim, var(--glass-control-rim)), var(--shadow-control-depth));
   backdrop-filter: var(--island-lens-filter);
+}
+.island-root[data-interface-theme='glass'] :is(.media-button, .progress-track) {
+  --island-lens-fill: var(--island-clear-lens-fill);
+  --island-lens-filter: var(--island-clear-lens-filter);
+  --island-lens-shadow: var(--glass-control-rim);
 }
 .island-root[data-interface-theme='glass'] .artwork-play-button {
   position: absolute;
@@ -176,28 +183,31 @@
 }
 .island-root[data-interface-theme='glass'] .island-actions .icon-button { mix-blend-mode: normal; }
 .island-root[data-interface-theme='glass'] .island-actions .icon-button svg { filter: none; }
-.island-root[data-interface-theme='glass'] .reaction-button--active {
+.island-root[data-interface-theme='glass'] .reaction-button--active:not(.reaction-button--like) {
   --island-lens-rim: inset 0 0 0 1px var(--palette-primary, #d4d4d1);
+}
+.island-root[data-interface-theme='glass'] .reaction-button--like.reaction-button--active {
+  color: var(--accent);
 }
 
 @media (hover: hover) {
-  .island-root[data-interface-theme='glass'] :is(.progress-track, .island-plugin-button):enabled:hover {
+  .island-root[data-interface-theme='glass'] .island-plugin-button:enabled:hover {
     background-color: var(--island-glass-hover);
     background-image: var(--glass-selection-sheen);
   }
-  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .island-actions .icon-button):enabled:hover {
-    --island-lens-state: var(--island-lens-hover);
+  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button):enabled:hover {
+    --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 82%, var(--island-lens-hover-tint));
     --island-lens-sheen: var(--island-lens-hover-sheen);
   }
   .island-root[data-interface-theme='glass'] .reaction-button:hover { transform: none; }
 }
-.island-root[data-interface-theme='glass'] :is(.progress-track, .island-plugin-button):enabled:active {
+.island-root[data-interface-theme='glass'] .island-plugin-button:enabled:active {
   color: var(--island-glass-ink);
   background-color: var(--island-glass-pressed);
   box-shadow: inset 0 1px 4px rgb(0 0 0 / .35);
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .island-actions .icon-button):enabled:active {
-  --island-lens-state: var(--island-lens-pressed);
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button):enabled:active {
+  --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 70%, var(--island-lens-pressed-tint));
   --island-lens-sheen: var(--glass-sheen);
   --island-lens-rim: inset 0 1px 4px rgb(0 0 0 / .35);
 }
@@ -230,7 +240,13 @@
     opacity: 1;
     box-shadow: inset 0 0 0 1px GrayText;
   }
+  .island-root[data-interface-theme='glass'] .progress-track {
+    --island-lens-filter: none;
+    --island-lens-shadow: none;
+  }
 }
+.island-root[data-interface-theme='glass'] .island-actions .island-settings-button { box-shadow: none; }
+.island-root[data-interface-theme='glass'] .island-actions .island-settings-button::before { content: none; }
 .island-root[data-interface-theme='glass'] .progress-track::before { background: none; }
 .island-root[data-interface-theme='glass'] .progress-fill {
   background: linear-gradient(90deg, var(--island-progress-start), var(--island-progress-end));
@@ -288,8 +304,10 @@
   --island-glass-hover: #555553;
   --island-glass-pressed: #2d2d2c;
   --island-lens-fill: var(--island-glass-control);
-  --island-lens-hover: var(--island-glass-hover);
-  --island-lens-pressed: var(--island-glass-pressed);
+  --island-clear-lens-fill: var(--island-glass-control);
+  --island-lens-hover-tint: var(--island-glass-hover);
+  --island-lens-pressed-tint: var(--island-glass-pressed);
+  --island-clear-lens-filter: none;
   --island-lens-filter: none;
   --island-lens-hover-sheen: none;
 }
@@ -299,8 +317,10 @@
     --island-glass-hover: #555553;
     --island-glass-pressed: #2d2d2c;
     --island-lens-fill: var(--island-glass-control);
-    --island-lens-hover: var(--island-glass-hover);
-    --island-lens-pressed: var(--island-glass-pressed);
+    --island-clear-lens-fill: var(--island-glass-control);
+    --island-lens-hover-tint: var(--island-glass-hover);
+    --island-lens-pressed-tint: var(--island-glass-pressed);
+    --island-clear-lens-filter: none;
     --island-lens-filter: none;
     --island-lens-hover-sheen: none;
   }

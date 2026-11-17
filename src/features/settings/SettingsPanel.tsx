@@ -67,6 +67,7 @@ import {
 } from '../../shared/lib/uiPrefs'
 import { GitHubBrandIcon, TelegramBrandIcon } from '../../shared/ui/BrandIcons'
 import { RangeSlider } from '../../shared/ui/RangeSlider'
+import { Select } from '../../shared/ui/Select'
 import { StatusChip } from '../../shared/ui/StatusChip'
 import { UpdateBanner } from '../../shared/ui/UpdateBanner'
 import { Notice, Button, Switch, SettingsSection, SettingsNavigation } from '../../shared/ui/SettingsControls'
@@ -736,14 +737,21 @@ export function SettingsPanel({
             </div>
           </article>
         </div>
-        {windowsSelected ? <label className="settings-control-row settings-source-picker">
+        {windowsSelected ? <div className="settings-control-row settings-source-picker">
           <span><strong>{t('settings.preferredSource')}</strong></span>
-          <select value={draft.media.preferredSourceAppId ?? ''} onFocus={refreshSources} onChange={(event) => { setSourceError(null); patchMedia({ preferredSourceAppId: event.currentTarget.value || null }) }}>
-            <option value="">{t('settings.sourceAuto')}</option>
-            {draft.media.preferredSourceAppId && !mediaSessions.some((session) => session.sourceAppId === draft.media.preferredSourceAppId) ? <option value={draft.media.preferredSourceAppId}>{draft.media.preferredSourceAppId}</option> : null}
-            {mediaSessions.map((session) => <option key={session.sourceAppId} value={session.sourceAppId}>{isSpotifySource(session.sourceAppId) ? 'Spotify' : session.sourceAppId}</option>)}
-          </select>
-        </label> : null}
+          <Select
+            ariaLabel={t('settings.preferredSource')}
+            value={draft.media.preferredSourceAppId ?? ''}
+            onFocus={refreshSources}
+            onChange={(value) => { setSourceError(null); patchMedia({ preferredSourceAppId: value || null }) }}
+            options={[
+              { value: '', label: t('settings.sourceAuto') },
+              ...(draft.media.preferredSourceAppId && !mediaSessions.some((session) => session.sourceAppId === draft.media.preferredSourceAppId)
+                ? [{ value: draft.media.preferredSourceAppId, label: draft.media.preferredSourceAppId }] : []),
+              ...mediaSessions.map(({ sourceAppId }) => ({ value: sourceAppId, label: isSpotifySource(sourceAppId) ? 'Spotify' : sourceAppId })),
+            ]}
+          />
+        </div> : null}
         {sourceError ? <Notice tone="danger">{sourceError}</Notice> : null}
       </SettingsSection>
 

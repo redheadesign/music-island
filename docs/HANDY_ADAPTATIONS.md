@@ -43,6 +43,29 @@ re-run native unit tests, ABI probe, recording/paste QA, download interruption a
 same-hardware performance comparison. Do not copy upstream global app/update controls
 back into the host.
 
+## Selected Handy 0.10 fixes · 17 November 2026
+
+Latest stable reviewed: [Handy 0.10.1](https://github.com/cjpais/Handy/releases/tag/v0.10.1)
+after [Handy 0.10.0](https://github.com/cjpais/Handy/releases/tag/v0.10.0).
+The vendor baseline is still 0.9.7. This pass adapts four fixes at the existing
+Music Island boundaries.
+
+- A blank or whitespace-only result from optional AI processing leaves the
+  recognized text available for insertion and history. [Handy #2290](https://github.com/cjpais/Handy/pull/2290)
+- Punctuation-only text is discarded after recognition cleanup, before AI
+  processing or paste. Text with letters or digits keeps its punctuation.
+  [Handy #2434](https://github.com/cjpais/Handy/pull/2434)
+- AI processing and model-list requests share a connection pool. The chosen
+  provider and its current credentials are assigned per request.
+  [Handy #2344](https://github.com/cjpais/Handy/pull/2344)
+- Enter during IME composition confirms the composed characters without
+  submitting the single-line dictation field.
+  [Handy #2248](https://github.com/cjpais/Handy/pull/2248)
+
+The new upstream worker, recorder and model catalog change the integration
+contracts. A full upgrade needs a migration for existing ONNX installations
+and a new build and verification of the bundled inference ABI.
+
 ## Consistency and lifecycle pass · 23 September 2026
 
 - Separate metadata preparation from engine activation so disabled settings can

@@ -72,6 +72,11 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-models__filters { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); }
 .dictation-models__filters .ui-search { flex: 1 1 220px; min-width: 0; }
 .dictation-models__filters > .dark-select { flex: 0 0 var(--control-height); }
+[data-interface-theme='glass'] :is(.dictation-dictionary .ui-textarea, .dictation-models__filters .ui-search) {
+  background-color: var(--surface-sunken);
+  background-image: none;
+}
+[data-interface-theme='glass'] .dictation-models__filters .ui-search:focus-within::before { content: none; }
 .dictation-model { display: flex; flex-direction: column; gap: var(--space-4); min-height: 132px; box-sizing: border-box; }
 .dictation-models > h3 { margin-bottom: var(--space-half); }
 .dictation-model__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }

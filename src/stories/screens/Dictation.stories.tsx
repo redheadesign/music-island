@@ -36,6 +36,24 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Models: Story = { name: 'Модели · русский язык' }
+export const GlassModelSearch: Story = {
+  ...Models,
+  name: 'Стекло · однотонный поиск моделей',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByRole('searchbox', { name: 'Найти модель' })
+    const field = input.closest('.ui-search')!
+    await expect(getComputedStyle(field).backgroundImage).toBe('none')
+    await userEvent.type(input, 'Whisper')
+    await expect(input).toHaveValue('Whisper')
+    await expect(getComputedStyle(field).outlineStyle).toBe('solid')
+    await expect(getComputedStyle(field, '::before').content).toBe('none')
+    await userEvent.click(canvas.getByRole('button', { name: 'Очистить поиск' }))
+    await expect(input).toHaveValue('')
+    await expect(input).toHaveFocus()
+  },
+}
 export const ModelsNarrow: Story = { name: 'Модели · узкое окно', parameters: { workshop: { width: 420 } } }
 export const LanguageFilter: Story = { name: 'Модели · фильтр по языкам', play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
@@ -144,8 +162,11 @@ export const GlassDictionary: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const field = canvas.getByRole('textbox', { name: /^Свои слова$/ })
+    const fillers = canvas.getByRole('textbox', { name: 'Свои слова-паразиты' })
     const threshold = canvas.getByRole<HTMLInputElement>('slider', { name: 'Порог коррекции' })
     await expect(getComputedStyle(field).borderTopLeftRadius).toBe('18px')
+    await expect(getComputedStyle(field).backgroundImage).toBe('none')
+    await expect(getComputedStyle(fillers).backgroundImage).toBe('none')
     await expect(threshold).toHaveClass('range-slider')
     await expect(getComputedStyle(threshold).backgroundColor).toBe('rgba(0, 0, 0, 0)')
     threshold.focus()

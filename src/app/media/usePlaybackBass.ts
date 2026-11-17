@@ -3,6 +3,8 @@ import { onPlaybackBass, setPlaybackBass } from '../tauriApi'
 
 const SIGNAL_TIMEOUT_MS = 240
 const START_RETRY_MS = 500
+// The worker can be accepted before process discovery and WASAPI activation complete.
+const FIRST_SAMPLE_TIMEOUT_MS = 4500
 
 let lastRequest = 0
 // Keep a late start from racing the stop queued by a visibility change or Strict Mode remount.
@@ -19,41 +21,45 @@ export function usePlaybackBass(enabled: boolean, applyLevel: (bass?: number) =>
     if (!enabled) return
 
     let request: number | undefined
-    let retryTimer: number | undefined
+    let startTimer: number | undefined
     let staleTimer: number | undefined
     let unlisten: (() => void) | undefined
     let disposed = false
+    let hasSample = false
 
     const stop = () => {
-      window.clearTimeout(retryTimer)
+      window.clearTimeout(startTimer)
       window.clearTimeout(staleTimer)
       if (request !== undefined) void queueCapture(request, false)
       request = undefined
       applyLevel()
     }
 
-    const syncVisibility = () => {
-      if (document.hidden) {
-        stop()
-        return
-      }
-      if (!unlisten || request !== undefined) return
-
+    const start = (mayRetry: boolean) => {
       lastRequest = (lastRequest + 1) >>> 0
       const activeRequest = lastRequest
       request = activeRequest
+      hasSample = false
       void queueCapture(activeRequest, true).then((started) => {
-        if (started || request !== activeRequest) return
-        // Settings preview updates before its debounced native save; retry the persisted preference once.
-        retryTimer = window.setTimeout(() => {
-          if (request === activeRequest) void queueCapture(activeRequest, true)
-        }, START_RETRY_MS)
+        if (!mayRetry || hasSample || request !== activeRequest) return
+        startTimer = window.setTimeout(() => {
+          if (hasSample || request !== activeRequest || document.hidden) return
+          stop()
+          start(false)
+        }, started ? FIRST_SAMPLE_TIMEOUT_MS : START_RETRY_MS)
       })
+    }
+
+    const syncVisibility = () => {
+      if (document.hidden) stop()
+      else if (unlisten && request === undefined) start(true)
     }
 
     document.addEventListener('visibilitychange', syncVisibility)
     void onPlaybackBass(({ request: sampleRequest, bass }) => {
       if (sampleRequest !== request || document.hidden || !Number.isFinite(bass)) return
+      hasSample = true
+      window.clearTimeout(startTimer)
       applyLevel(Math.max(0, Math.min(1, bass)))
       window.clearTimeout(staleTimer)
       staleTimer = window.setTimeout(() => applyLevel(), SIGNAL_TIMEOUT_MS)

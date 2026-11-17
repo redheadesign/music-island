@@ -3,7 +3,8 @@ import { useEffect } from 'react'
 const controlSelector = [
   '.ui-button', '.dark-select', '.dark-select-option', '.ui-toggle', '.ui-navigation__item',
   '.settings-theme-toggle', '.settings-scope-switch__btn', '.locale-switch__btn', '.settings-nav-item',
-  '.media-button', '.play-button', '.reaction-button', '.island-actions .icon-button', '.island-plugin-button',
+  ':is(.settings-window-root, .settings-panel) :is(button, a[href], summary, [role="button"]):not(.island-root *, [inert] *)',
+  '.media-button', '.play-button', '.reaction-button', '.island-actions .icon-button:not(.island-settings-button)', '.island-plugin-button',
 ].join(', ')
 const quietSelector = '[data-reduced-motion="true"], [data-reduced-transparency="true"], .reduced-motion'
 

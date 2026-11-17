@@ -163,6 +163,29 @@ export const GlassOptics: Story = {
     await waitFor(() => expect(trigger).not.toHaveAttribute('data-glass-light'))
   },
 }
+export const GlassLegacyActions: Story = {
+  ...Glass,
+  name: 'Стекло · кнопки окна и выбор плеера',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const minimize = canvas.getByRole('button', { name: 'Свернуть' })
+    if (!matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
+      const { left, top, width } = minimize.getBoundingClientRect()
+      fireEvent.pointerMove(minimize, { pointerType: 'mouse', clientX: left + width / 2, clientY: top + 4 })
+      await waitFor(() => expect(minimize).toHaveAttribute('data-glass-light'))
+    }
+    await userEvent.click(canvas.getByRole('button', { name: 'Источник музыки' }))
+    const player = canvas.getByRole('button', { name: 'Плеер' })
+    player.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    const menu = await within(document.body).findByRole('listbox')
+    await expect(menu).toHaveAttribute('data-interface-theme', 'glass')
+    await expect(within(menu).getByRole('option', { name: 'Автоматически' })).toHaveAttribute('aria-selected', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect(player).toHaveFocus()
+  },
+}
 export const GlassScopes: Story = {
   ...Glass,
   name: 'Стекло · состояния верхнего меню',

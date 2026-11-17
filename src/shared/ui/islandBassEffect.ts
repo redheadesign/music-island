@@ -1,7 +1,6 @@
-const STRONG_LEVEL = .43
-const MIN_RISING_LEVEL = .27
-const REARM_LEVEL = .28
-const MIN_RISE = .12
+const MIN_SIGNAL = .075
+const MIN_RISE = .03
+const BASELINE_STEP = .14
 const BURST_COOLDOWN_MS = 240
 const MAX_PARTICLES = 18
 
@@ -10,7 +9,7 @@ export function createIslandBassEffect(layer: HTMLElement) {
   const media = window.matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)')
   const active = new Map<Animation, HTMLElement>()
   let previous = 0
-  let armed = true
+  let baseline = 0
   let lastBurstAt = -Infinity
   let sequence = 0
 
@@ -22,7 +21,7 @@ export function createIslandBassEffect(layer: HTMLElement) {
     }
     active.clear()
     previous = 0
-    armed = true
+    baseline = 0
     lastBurstAt = -Infinity
   }
 
@@ -31,8 +30,7 @@ export function createIslandBassEffect(layer: HTMLElement) {
   }
   media.addEventListener('change', onMediaChange)
 
-  function burst(level: number) {
-    const strength = (level - MIN_RISING_LEVEL) / (1 - MIN_RISING_LEVEL)
+  function burst(strength: number) {
     const count = Math.min(5 + Math.round(strength * 4), MAX_PARTICLES - active.size)
     if (!count || !layer.animate) return
     sequence += 1
@@ -41,17 +39,17 @@ export function createIslandBassEffect(layer: HTMLElement) {
       const particle = layer.ownerDocument.createElement('i')
       particle.className = 'island-bass-particle'
       particle.style.setProperty('--bass-particle-x', `${5 + (index + .2 + variation * .6) / count * 90}%`)
-      particle.style.setProperty('--bass-particle-size', `${1.35 + strength * .9 + variation * .55}px`)
+      particle.style.setProperty('--bass-particle-size', `${2.0 + strength * .9 + variation * .55}px`)
       const drift = (variation - .5) * 18
-      const fall = 58 + strength * 42 + variation * 24
+      const fall = 72 + strength * 50 + variation * 24
       layer.append(particle)
       const animation = particle.animate([
         { opacity: 0, transform: 'translate(0, 0)' },
-        { opacity: .86, offset: .16 },
-        { opacity: .58, offset: .62 },
+        { opacity: .95, offset: .16 },
+        { opacity: .68, offset: .62 },
         { opacity: 0, transform: `translate(${drift}px, ${fall}px)` },
       ], {
-        duration: 710 - strength * 110 + variation * 190,
+        duration: 680 - strength * 130 + variation * 150,
         delay: index * 5 + variation * 24,
         easing: 'cubic-bezier(.38, .16, .74, .9)',
       })
@@ -69,20 +67,20 @@ export function createIslandBassEffect(layer: HTMLElement) {
       clear()
       return
     }
-    if (level > 0) layer.style.setProperty('--island-bass', String(level))
-    else layer.style.removeProperty('--island-bass')
-
     const rise = level - previous
+    if (rise !== 0) {
+      if (level > 0) layer.style.setProperty('--island-bass', String(Math.min(1, level * 2)))
+      else layer.style.removeProperty('--island-bass')
+    }
     previous = level
-    if (level <= REARM_LEVEL) armed = true
-    const strong = armed && level >= STRONG_LEVEL
-    const rising = level >= MIN_RISING_LEVEL && rise >= MIN_RISE
-    if (!strong && !rising) return
-    armed = false
+    const excess = level - baseline
+    const threshold = Math.max(MIN_RISE, baseline * .24)
+    baseline += excess * BASELINE_STEP
+    if (level < MIN_SIGNAL || rise < MIN_RISE || excess < threshold) return
     const now = performance.now()
     if (now - lastBurstAt < BURST_COOLDOWN_MS) return
     lastBurstAt = now
-    burst(level)
+    burst(Math.min(1, excess / .42))
   }
 
   return {

@@ -29,3 +29,34 @@ it('labels fields and actions separately; blank numbers never save zero', async 
     await change('123.8'); expect(save).toHaveBeenLastCalledWith('124')
   } finally { await act(async () => root.unmount()); container.remove() }
 })
+
+it('keeps Enter with the input method while it composes text', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  const container = document.createElement('div')
+  document.body.append(container)
+  const root = createRoot(container)
+  const save = vi.fn()
+  try {
+    await act(async () => root.render(<CommitInput value="" onSave={save} />))
+    const input = container.querySelector('input')!
+    await act(async () => {
+      input.focus()
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '日本語')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }))
+      const legacy = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+      Object.defineProperty(legacy, 'keyCode', { value: 229 })
+      input.dispatchEvent(legacy)
+    })
+    expect(document.activeElement).toBe(input)
+    expect(save).not.toHaveBeenCalled()
+    await act(async () => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
+    expect(save).toHaveBeenCalledOnce()
+    expect(save).toHaveBeenCalledWith('日本語')
+  } finally {
+    await act(async () => root.unmount())
+    container.remove()
+  }
+})

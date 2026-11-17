@@ -88,18 +88,20 @@ export function LocalServersPanel({ servers, open, stop, stopAll, locale, conten
           return (
             <li key={server.id} className="island-local-servers__row">
               <div className="island-local-servers__address">
-                <code>{address}</code>
+                <code title={address}>{address}</code>
                 <span title={server.processName}>{server.processName}</span>
               </div>
-              <SettingsIconButton variant="ghost" size="compact" label={`${t('localServers.open')} · ${address}`} disabled={busy}
-                onClick={open ? () => void act(() => open(server), 'localServers.openError') : undefined}>
-                <ArrowUpRight size={16} aria-hidden="true" />
-              </SettingsIconButton>
-              {server.canStop ? <SettingsIconButton variant="ghost" size="compact" label={`${t('localServers.stop')} · ${address}`} disabled={busy}
-                aria-expanded={stopId === server.id}
-                onClick={stop ? (event) => requestStop({ kind: 'single', id: server.id }, event.currentTarget) : undefined}>
-                <Stop size={16} weight="fill" aria-hidden="true" />
-              </SettingsIconButton> : null}
+              <div className="island-local-servers__actions">
+                <SettingsIconButton variant="ghost" size="compact" label={`${t('localServers.open')} · ${address}`} disabled={busy}
+                  onClick={open ? () => void act(() => open(server), 'localServers.openError') : undefined}>
+                  <ArrowUpRight size={16} aria-hidden="true" />
+                </SettingsIconButton>
+                {server.canStop ? <SettingsIconButton variant="ghost" size="compact" label={`${t('localServers.stop')} · ${address}`} disabled={busy}
+                  aria-expanded={stopId === server.id}
+                  onClick={stop ? (event) => requestStop({ kind: 'single', id: server.id }, event.currentTarget) : undefined}>
+                  <Stop size={16} weight="fill" aria-hidden="true" />
+                </SettingsIconButton> : null}
+              </div>
             </li>
           )
         })}
