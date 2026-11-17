@@ -73,6 +73,41 @@ All transcripts per input were byte-identical across both rounds. The
 retest found no speed gain. The bundled engine stays at 0.2.4 with the
 existing ONNX path.
 
+### Mixed-pause regression on Windows
+
+The first 83.18 s of the same public reading forms a reproducible mixed input.
+In the middle passage (25.00–54.00 s), add a 125 Hz sine with peak amplitude
+900 signed PCM16 units at 16 kHz, rounding to the nearest integer and clamping
+to PCM16. The little-endian PCM SHA-256 is
+`8eff1837a96f5b12a5f989ec0bf4ef0f1c206aba2ae598613dbd45400d7266fb`.
+The published reference contains 149 normalized words through «спросила она».
+This is a synthetic noise condition over real speech.
+
+Both planners ran on the identical Q8 weights, warmed transcribe.cpp 0.2.4
+and Ryzen 7 4700U Radeon Vulkan0. The original planner sent the whole input.
+The updated planner preserved consecutive spans of 17.00, 37.36, 16.86 and
+11.96 s. Measured inference in alternating A/B/B/A order:
+
+| Planner | Two runs | Median | Word error rate |
+| --- | --- | --- | --- |
+| Whole-input fallback | 54.895 s, 48.150 s | 51.523 s | 14.77% (13 deletions, 9 substitutions) |
+| Retained quiet boundaries | 8.862 s, 8.981 s | 8.922 s | 6.04% (7 substitutions, 2 insertions) |
+
+Whole-host CPU utilization over the four runs was 60.0%, 43.7%, 44.5%,
+45.8%. These timings cover recognition of loaded audio and exclude microphone
+capture, model load, WAV persistence and paste. The two original 408.57 s and
+304.28 s fixtures produced exactly their prior sets of 24 and 18 ranges.
+
+An isolated real-time replay also delivered the clean 83.18 s excerpt to a
+single warm engine, releasing only the first safe fragment after observing
+27 s of its input. Across the replay all fragment boundaries and text matched
+the offline pass. Stop to final output was 1.953 s in the replay and 9.000 s
+when the entire input was processed after Stop. This one experiment used WAV
+playback and excludes live VAD, capture-ring contention and paste. Production
+GigaAM continues to recognize after Stop. Acceptance for a live change requires
+timed microphone replay on CPU and Vulkan, capture-loss and cancellation checks,
+and accuracy across speakers, including continuous and noisy dictation.
+
 The optional microphone can be placed in the island layout editor. It is absent
 from the default composition. The bottom overlay does not take keyboard focus.
 The target window is captured at recording start and checked again before paste.
