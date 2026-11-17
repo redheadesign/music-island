@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Pin, PinOff } from 'lucide-react'
-import { useLatestDictationMessage, useLocalServersController, type IslandAppState, type LatestDictationMessageController, type LocalServersController, type UsageController } from '../../app/useIslandApp'
+import { useLatestDictationMessage, useLocalServersController, usePlaybackBass, type IslandAppState, type LatestDictationMessageController, type LocalServersController, type UsageController } from '../../app/useIslandApp'
 import { getIslandLayout } from '../../shared/lib/islandLayout'
 import {
   getCollapsedGestureState,
@@ -156,6 +156,26 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const transitionRef = useRef(transition)
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
+  const overlay = useRef<HTMLElement>(null)
+  const waveLayer = useRef<HTMLElement | null>(null)
+  const applyBassLevel = useCallback((bass?: number) => {
+    if (!bass) {
+      waveLayer.current?.style.removeProperty('--island-bass')
+      waveLayer.current = null
+      return
+    }
+    if (!waveLayer.current?.isConnected) {
+      waveLayer.current = overlay.current?.querySelector<HTMLElement>('.island-card .island-feedback__layer') ?? null
+    }
+    waveLayer.current?.style.setProperty('--island-bass', String(bass))
+  }, [])
+  usePlaybackBass(
+    expandedVisible && getInterfaceTheme(config) === 'glass' && uiPrefs.playbackReactiveWave === true
+      && !reducedMotion && !getReducedTransparency(config) && Boolean(media?.hasSession)
+      && config.media.protocol === 'yandex-direct' && media?.provider === 'yandex-direct'
+      && media.playbackStatus === 'playing',
+    applyBassLevel,
+  )
   const localServersEnabled = islandLayout.zones.bottom.includes('localServers')
   const discoveredServers = useLocalServersController(localServersEnabled && expandedVisible && !localServers)
   const localServersController = localServers ?? discoveredServers
@@ -899,6 +919,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
 
   return (
     <main
+      ref={overlay}
       className={[
         'island-root',
         `island-root--${mode}`,
@@ -932,6 +953,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
               'edge-trigger',
               windowPhase === 'collapsed' && peekProgress > 0.001 ? 'edge-trigger--peeking' : '',
             ].join(' ')}
+            data-pointer-fallback={!isTauriRuntime() || undefined}
             style={
               {
                 '--peek-progress': windowPhase === 'opening' ? chromePeek.progress : peekProgress,

@@ -8,11 +8,15 @@ pub(super) struct SnapshotCache {
 
 impl SnapshotCache {
     pub(super) fn get(&self, generation: u64, provider: MediaProvider) -> Option<MediaSnapshot> {
+        self.view(generation, provider).cloned()
+    }
+
+    pub(super) fn view(&self, generation: u64, provider: MediaProvider) -> Option<&MediaSnapshot> {
         self.latest
             .as_ref()
             .and_then(|(saved_generation, snapshot)| {
                 (*saved_generation == generation && snapshot.provider == provider)
-                    .then(|| snapshot.clone())
+                    .then_some(snapshot)
             })
     }
 

@@ -7,6 +7,7 @@ mod local_servers;
 mod logging;
 mod media;
 mod onboarding;
+mod playback_bass;
 mod plugins;
 mod process;
 mod shutdown;
@@ -377,12 +378,14 @@ pub fn run() {
         .manage(usage::UsageState::default())
         .manage(voice::VoiceEngineState::new())
         .manage(install::InstallState::default())
+        .manage(playback_bass::PlaybackBassState::default())
         .invoke_handler(tauri::generate_handler![
             get_config,
             get_taskbar_status,
             save_config,
             preview_config,
             get_media_snapshot,
+            playback_bass::set_playback_bass,
             get_smtc_health,
             list_media_sessions,
             media_control,

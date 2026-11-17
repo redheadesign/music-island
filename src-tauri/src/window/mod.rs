@@ -111,6 +111,11 @@ fn hit_layout() -> &'static Mutex<OverlayHitLayout> {
     LAYOUT.get_or_init(|| Mutex::new(OverlayHitLayout::default()))
 }
 
+#[cfg(windows)]
+pub(crate) fn overlay_is_expanded() -> bool {
+    hit_layout().lock().is_ok_and(|layout| layout.expanded)
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowMetrics {

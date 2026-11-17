@@ -28,6 +28,8 @@ export interface UiPrefs {
   settingsColorScheme?: SettingsColorScheme
   interfaceTheme?: InterfaceThemeId
   interfacePalette?: InterfacePaletteId
+  /** Use only the selected Direct player's local audio for the Glass wave. */
+  playbackReactiveWave?: boolean
   interfaceScenes?: Partial<Record<InterfaceThemeId, InterfaceScene>>
   reducedTransparency?: boolean
   /** Settings update banner dismissed for this latest version */

@@ -22,6 +22,7 @@ function SettingsPreview({
   reducedMotion = false,
   colorScheme,
   preferredSourceAppId,
+  directPreview,
   scrollViewportHeight,
   interfaceTheme,
   reducedTransparency,
@@ -33,6 +34,7 @@ function SettingsPreview({
   reducedMotion?: boolean
   colorScheme?: SettingsColorScheme
   preferredSourceAppId?: string
+  directPreview?: boolean
   scrollViewportHeight?: number
   interfaceTheme: InterfaceThemeId
   reducedTransparency?: boolean
@@ -46,7 +48,9 @@ function SettingsPreview({
   }), [config, selectedColorScheme, reducedTransparency])
   const configuredPreview = preferredSourceAppId
     ? { ...previewConfig, media: { ...previewConfig.media, protocol: 'smtc' as const, preferredSourceAppId } }
-    : previewConfig
+    : directPreview
+      ? { ...previewConfig, media: { ...previewConfig.media, protocol: 'yandex-direct' as const } }
+      : previewConfig
   const panel = <SettingsPanel
         {...args}
         usage={usage}
@@ -109,6 +113,7 @@ const meta = {
         interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)}
         colorScheme={context.parameters.settingsColorScheme as SettingsColorScheme | undefined}
         preferredSourceAppId={context.parameters.preferredSourceAppId as string | undefined}
+        directPreview={context.parameters.directPreview === true}
         scrollViewportHeight={context.parameters.scrollViewportHeight as number | undefined}
         onPreviewChange={(next) => {
           if (
@@ -129,6 +134,18 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = { name: 'Настройки приложения' }
 export const Glass: Story = { name: 'Стекло · тёмное оформление', globals: { interfaceTheme: 'glass' } }
+export const GlassReactiveWave: Story = {
+  ...Glass,
+  name: 'Стекло · реакция фона на бас',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  parameters: { directPreview: true },
+  play: async ({ canvasElement }) => {
+    const setting = within(canvasElement).getByRole('switch', { name: 'Реакция фона на бас' })
+    await expect(setting).not.toBeChecked()
+    await userEvent.click(setting)
+    await expect(setting).toBeChecked()
+  },
+}
 export const GlassOptics: Story = {
   ...Glass,
   name: 'Стекло · блик на кромке',

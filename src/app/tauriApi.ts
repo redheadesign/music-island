@@ -20,6 +20,21 @@ import type {
   WaveSelectionResult,
 } from '../shared/lib/types'
 
+interface PlaybackBassSample {
+  request: number
+  bass: number
+}
+
+export async function setPlaybackBass(request: number, enabled: boolean): Promise<boolean> {
+  if (!isTauriRuntime()) return false
+  return invoke<boolean>('set_playback_bass', { request, enabled })
+}
+
+export async function onPlaybackBass(callback: (sample: PlaybackBassSample) => void): Promise<() => void> {
+  if (!isTauriRuntime()) return () => {}
+  return listen<PlaybackBassSample>('playback:bass', ({ payload }) => callback(payload))
+}
+
 export async function getMonitorSnapshot(): Promise<MonitorSnapshot> {
   if (!isTauriRuntime()) return { revision: 0, monitors: [], activeId: null, preferredId: null }
   return invoke<MonitorSnapshot>('get_monitor_snapshot')

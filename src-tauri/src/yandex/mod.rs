@@ -871,6 +871,44 @@ fn same_installed_client(executable: &std::path::Path, installed: &std::path::Pa
     launch::same_path(executable, installed)
 }
 
+/// Return only an unambiguous main process for the already validated Direct
+/// endpoint. Renderer children and matching application names are insufficient.
+#[cfg(windows)]
+pub(crate) fn playback_process() -> Option<(crate::playback_bass::TargetProcess, u16)> {
+    use sysinfo::{ProcessRefreshKind, RefreshKind, UpdateKind};
+    let current = status();
+    let port = current.port?;
+    let executable = std::path::Path::new(current.executable_path.as_deref()?);
+    let installed = find_executable()?;
+    if current.state != DirectYandexState::Connected || !same_installed_client(executable, &installed) {
+        return None;
+    }
+    let refresh = ProcessRefreshKind::nothing()
+        .with_exe(UpdateKind::OnlyIfNotSet)
+        .with_cmd(UpdateKind::OnlyIfNotSet);
+    let system = System::new_with_specifics(RefreshKind::nothing().with_processes(refresh));
+    let expected_port = format!("--remote-debugging-port={port}");
+    let mut matches = system.processes().values().filter(|process| {
+        process.exe().is_some_and(|exe| same_installed_client(exe, &installed))
+            && process.cmd().iter().any(|argument| argument == std::ffi::OsStr::new(&expected_port))
+            && !process.cmd().iter().any(|argument| argument.to_string_lossy().starts_with("--type="))
+    });
+    let pid = matches.next()?.pid().as_u32();
+    if matches.next().is_some() || !playback_port_is_connected(port) {
+        return None;
+    }
+    crate::playback_bass::TargetProcess::open(pid, |image| same_installed_client(image, &installed))
+        .ok()
+        .map(|target| (target, port))
+}
+
+#[cfg(windows)]
+pub(crate) fn playback_port_is_connected(port: u16) -> bool {
+    status_lock().read().is_ok_and(|current| {
+        current.state == DirectYandexState::Connected && current.port == Some(port)
+    })
+}
+
 #[cfg(windows)]
 fn stop_client() -> anyhow::Result<()> {
     let Some(installed) = find_executable() else { return Ok(()); };

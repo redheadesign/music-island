@@ -45,6 +45,15 @@ export function InterfaceAppearanceSettings({ config, locale, onChange }: {
         />
       </SettingRow>
     ) : null}
+    {theme === 'glass' ? (
+      <Switch
+        label={t('settings.playbackReactiveWave')}
+        hint={t('settings.playbackReactiveWaveHint')}
+        checked={getUiPrefs(config).playbackReactiveWave === true}
+        disabled={config.media.protocol !== 'yandex-direct'}
+        onChange={playbackReactiveWave => onChange(withUiPrefs(config, { playbackReactiveWave }))}
+      />
+    ) : null}
     {definition.translucent ? (
       <Switch
         label={t('settings.reducedTransparency')}

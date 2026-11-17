@@ -328,6 +328,21 @@ impl ConfigState {
             .enabled
     }
 
+    #[cfg(windows)]
+    pub(crate) fn playback_bass_enabled(&self) -> bool {
+        let Ok(config) = self.config.read() else {
+            return false;
+        };
+        let ui = config.plugins.settings.get(UI_PREFS_KEY);
+        let preference = |key: &str| ui.and_then(|ui| ui.get(key));
+        matches!(config.media.protocol, MediaProtocol::YandexDirect)
+            && config.media.direct_yandex_consent
+            && !config.appearance.reduced_motion
+            && preference("reducedTransparency").and_then(Value::as_bool) != Some(true)
+            && preference(INTERFACE_THEME_KEY).and_then(Value::as_str).unwrap_or(DEFAULT_INTERFACE_THEME) == "glass"
+            && preference("playbackReactiveWave").and_then(Value::as_bool) == Some(true)
+    }
+
     pub fn save(&self, config: AppConfig) -> anyhow::Result<AppConfig> {
         self.save_to(config, &config_path()?)
     }

@@ -147,6 +147,17 @@ pub(crate) fn cached_snapshot() -> Option<MediaSnapshot> {
         .get(PROVIDER_GENERATION.load(Ordering::Acquire), *provider)
 }
 
+#[cfg(windows)]
+pub(crate) fn direct_is_playing() -> bool {
+    let provider = active_provider_lock().read().expect("active provider lock poisoned");
+    let _preferred = preferred_source_lock().read().expect("preferred source lock poisoned");
+    *provider == MediaProvider::YandexDirect && snapshot_cache_lock()
+        .read()
+        .expect("snapshot cache lock poisoned")
+        .view(PROVIDER_GENERATION.load(Ordering::Acquire), *provider)
+        .is_some_and(|snapshot| snapshot.has_session && matches!(snapshot.playback_status, PlaybackStatus::Playing))
+}
+
 fn with_current_snapshot(
     generation: u64,
     snapshot: &MediaSnapshot,

@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useEffect, useState } from 'react'
-import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
 import { OverlayShell } from '../../features/overlay/OverlayShell'
-import { IslandTopIndicator } from '../../features/overlay/IslandTopIndicator'
 import type { IslandAppState, OverlayMode } from '../../app/useIslandApp'
 import type { MediaSnapshot } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
@@ -30,6 +29,7 @@ function IslandPreview({
   interfaceTheme,
   artwork = 'warm',
   reducedMotion = false,
+  startCollapsed = false,
 }: {
   locale: 'ru' | 'en'
   accent: string
@@ -48,8 +48,9 @@ function IslandPreview({
   interfaceTheme?: InterfaceThemeId
   artwork?: 'warm' | 'cool' | 'missing'
   reducedMotion?: boolean
+  startCollapsed?: boolean
 }) {
-  const [config, setConfig] = useWorkshopConfig(locale, accent, localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed', interfaceTheme)
+  const [config, setConfig] = useWorkshopConfig(locale, accent, !startCollapsed && localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed', interfaceTheme)
   const [localServers, setLocalServers] = useState(() => {
     if (localServersMode === 'empty') return []
     if (localServersMode === 'stoppable') return demoLocalServers.map((server) => ({ ...server, canStop: true }))
@@ -58,7 +59,7 @@ function IslandPreview({
   const usage = useUsageController(assistantLimits)
   const connectUsage = usage.connect
   useEffect(() => { if (assistantLimits) void connectUsage('codex') }, [assistantLimits, connectUsage])
-  const [mode, setMode] = useState<OverlayMode>('expanded')
+  const [mode, setMode] = useState<OverlayMode>(startCollapsed ? 'compact' : 'expanded')
   const [track, setTrack] = useState<MediaSnapshot>({
     ...media,
     hasSession: !empty,
@@ -205,14 +206,21 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
         await expect(style.backgroundImage).toContain('linear-gradient')
       }
     })
-    const title = canvasElement.querySelector('.progress-content--track .marquee')!
     const fill = canvasElement.querySelector('.progress-fill')!
     const frame = canvasElement.querySelector('.progress-visual')!
     const backdrop = canvasElement.querySelector('.island-card .island-feedback__layer')!
-    await expect(title.getBoundingClientRect().bottom).toBeLessThan(fill.getBoundingClientRect().top)
+    await expect(fill.getBoundingClientRect().height).toBeCloseTo(frame.getBoundingClientRect().height)
+    await expect(getComputedStyle(frame, '::before').content).toBe('none')
     await expect(getComputedStyle(frame, '::after').content).toBe('none')
-    if (!matchMedia('(prefers-reduced-transparency: reduce)').matches) {
-      await expect(getComputedStyle(backdrop, '::before').backgroundImage).toContain('repeating-radial-gradient')
+    if (!forcedColors && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
+      await expect(getComputedStyle(backdrop, '::before').backgroundImage).toContain('radial-gradient')
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const front = getComputedStyle(backdrop, '::before')
+        const following = getComputedStyle(backdrop, '::after')
+        await expect(front.animationDirection).toBe('normal')
+        await expect(following.transformOrigin).toBe(front.transformOrigin)
+        await expect(Number.parseFloat(following.animationDelay)).toBeLessThan(0)
+      }
     }
     if (!forcedColors && !matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
       const particles = [...canvasElement.querySelectorAll('.island-particles > i')]
@@ -226,16 +234,45 @@ export const GlassWithoutCover: StoryObj<typeof meta> = { ...Glass, name: 'Ст�
 export const GlassEdge: StoryObj<typeof meta> = {
   ...Glass,
   name: 'Стекло · верхняя кромка при наведении',
-  parameters: { workshop: { width: 460, height: 184, note: 'Момент наведения перед раскрытием островка.' } },
-  render: ({ reducedMotion }) => (
-    <div className={`island-root${reducedMotion ? ' reduced-motion' : ''}`} data-interface-theme="glass">
-      <div className="island-top-chrome">
-        <div className="edge-trigger edge-trigger--peeking" aria-hidden="true">
-          <IslandTopIndicator progressPercent={38} hidden />
-        </div>
-      </div>
-    </div>
-  ),
+  args: { startCollapsed: true },
+  parameters: { workshop: { width: 850, height: 400, note: 'Подведите указатель к полосе, затем к её верхней границе, чтобы раскрыть плеер.' } },
+}
+export const GlassEdgeGesture: StoryObj<typeof meta> = {
+  ...GlassEdge, name: 'Стекло · отклик и раскрытие от верхней кромки',
+  play: async ({ args, canvasElement }) => {
+    const trigger = canvasElement.querySelector<HTMLElement>('.edge-trigger')!
+    const cue = trigger.querySelector('.edge-peek')!
+    const island = canvasElement.querySelector('.island-root')!
+    const rect = trigger.getBoundingClientRect()
+    const center = rect.left + rect.width / 2
+    const approach = { clientX: center, clientY: rect.top + 9, pointerType: 'mouse' }
+    const contact = { ...approach, clientY: rect.top + 1 }
+
+    await expect(document.elementFromPoint(approach.clientX, approach.clientY)).toBe(trigger)
+    await expect(island).toHaveClass('island-root--collapsed')
+    await expect(cue).not.toBeVisible()
+    fireEvent.pointerOver(trigger, approach)
+    fireEvent.pointerMove(trigger, approach)
+    await waitFor(() => expect(cue).toBeVisible())
+    await expect(island).toHaveClass('island-root--collapsed')
+    if (args.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      await expect(getComputedStyle(cue).transitionDuration).toBe('0s')
+    }
+
+    fireEvent.pointerOut(trigger, { ...approach, clientY: rect.bottom + 20, relatedTarget: canvasElement })
+    await waitFor(() => expect(trigger).not.toHaveClass('edge-trigger--peeking'))
+    await waitFor(() => expect(cue).not.toBeVisible())
+    await expect(island).toHaveClass('island-root--collapsed')
+
+    fireEvent.pointerOver(trigger, contact)
+    fireEvent.pointerMove(trigger, contact)
+    await waitFor(() => expect(cue).toBeVisible())
+    await waitFor(() => expect(island).toHaveClass('island-root--open'), { timeout: 2000 })
+    await expect(within(canvasElement).getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+  },
+}
+export const GlassEdgeReducedMotion: StoryObj<typeof meta> = {
+  ...GlassEdgeGesture, name: 'Стекло · верхняя кромка без движения', args: { startCollapsed: true, reducedMotion: true },
 }
 export const GlassReducedMotion: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · фон без движения', args: { reducedMotion: true },
@@ -244,6 +281,7 @@ export const GlassReducedMotion: StoryObj<typeof meta> = {
     if (particles) await expect(particles).not.toBeVisible()
     const backdrop = canvasElement.querySelector('.island-card .island-feedback__layer')!
     await expect(getComputedStyle(backdrop, '::before').animationName).toBe('none')
+    await expect(getComputedStyle(backdrop, '::after').content).toBe('none')
   },
 }
 export const GlassPlayback: StoryObj<typeof meta> = {

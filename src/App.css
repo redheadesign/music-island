@@ -115,6 +115,10 @@
   cursor: default;
 }
 
+.edge-trigger[data-pointer-fallback] {
+  pointer-events: auto;
+}
+
 .edge-peek {
   position: absolute;
   top: 0;
