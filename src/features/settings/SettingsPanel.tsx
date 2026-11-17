@@ -642,7 +642,7 @@ export function SettingsPanel({
 
         <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} onOpenSource={() => {
           setSettingsPage('source')
-          requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('.settings-navigation [aria-current="page"]')?.focus())
+          requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('.settings-layout:not([hidden]) > .settings-navigation [aria-current="page"]')?.focus())
         }} />
 
         <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />

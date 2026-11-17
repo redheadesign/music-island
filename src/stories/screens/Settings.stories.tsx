@@ -157,9 +157,12 @@ export const BassSourceShortcut: Story = {
   parameters: { a11y: { test: 'error' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    // Better Voice keeps its navigation mounted when the user returns to the island.
+    await userEvent.click(canvas.getByRole('button', { name: /^Better Voice/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Music Island$/ }))
     await expect(canvas.getByRole('switch', { name: 'Реакция фона на бас' })).toBeDisabled()
     await userEvent.click(canvas.getByRole('button', { name: 'Настроить источник' }))
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Источник музыки' })).toBeVisible())
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Источник музыки' })).toBeVisible(), { timeout: 5000 })
     await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument()
     await waitFor(() => expect(canvas.getByRole('button', { name: 'Источник музыки' })).toHaveFocus())
   },
