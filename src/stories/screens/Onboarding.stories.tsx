@@ -29,7 +29,11 @@ export const Classic: Story = { name: 'Классическое оформлен
 export const Layout: Story = { name: '02 · Настройка островка', args: { initialStep: 1 } }
 export const Voice: Story = { name: '03 · Диктовка', args: { initialStep: 2 } }
 export const CustomShortcut: Story = { ...Voice, name: 'Диктовка · своё сочетание', args: { ...Voice.args, dictationShortcut: ['Alt+F9', 'push_to_talk'] },
-  play: async ({ canvas }) => { await expect(canvas.getByText('Alt + F9')).toBeVisible(); await expect(canvas.getByText(/Удерживайте сочетание/)).toBeVisible() } }
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.getByText('Alt + F9')).toBeVisible()
+    await expect(canvas.getByText(/Удерживайте сочетание/)).toBeVisible()
+    await expect(canvasElement.querySelector('.onboarding__dictation button')).toBeNull()
+  } }
 export const Autostart: Story = { name: '04 · Автозагрузка', args: { initialStep: 3 } }
 export const Skip: Story = { name: 'Пропустить · автозагрузка по согласию', play: async ({ canvasElement, args }) => {
   const canvas = within(canvasElement)
