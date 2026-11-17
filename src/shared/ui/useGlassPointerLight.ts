@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { getInterfaceThemeDefinition, isInterfaceThemeId } from '../lib/interfaceTheme'
 
 const controlSelector = [
   '.ui-button', '.dark-select', '.dark-select-option', '.ui-toggle', '.ui-navigation__item',
@@ -50,7 +51,8 @@ export function useGlassPointerLight(enabled: boolean) {
     const move = (event: PointerEvent) => {
       if (event.pointerType === 'touch' || systemQuiet.matches || document.hidden) return reset()
       const control = event.target instanceof Element ? event.target.closest<HTMLElement>(controlSelector) : null
-      if (control?.closest('[data-interface-theme]')?.getAttribute('data-interface-theme') !== 'glass'
+      const theme = control?.closest('[data-interface-theme]')?.getAttribute('data-interface-theme')
+      if (!control || !isInterfaceThemeId(theme) || !getInterfaceThemeDefinition(theme).translucent
         || control.matches(':disabled, [aria-disabled="true"]') || control.closest(quietSelector)) return reset()
 
       pending = { control, x: event.clientX, y: event.clientY }

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { getDefaultConfig } from '../app/tauriApi'
 import type { Locale } from '../shared/lib/types'
-import type { InterfaceThemeId } from '../shared/lib/interfaceTheme'
+import { DEFAULT_INTERFACE_THEME, type InterfaceThemeId } from '../shared/lib/interfaceTheme'
 import { withUiPrefs } from '../shared/lib/uiPrefs'
 
 export function useWorkshopConfig(
   locale: Locale,
   accent: string,
   pinned = false,
-  interfaceTheme: InterfaceThemeId = 'classic',
+  interfaceTheme: InterfaceThemeId = DEFAULT_INTERFACE_THEME,
 ) {
   const [config, setConfig] = useState(() => {
     const base = structuredClone(getDefaultConfig())

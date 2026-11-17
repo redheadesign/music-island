@@ -19,6 +19,10 @@
   box-shadow: var(--glass-depth);
 }
 
+[data-interface-theme='glass'] .island-bottom-rail > .island-surface {
+  background: var(--satellite-reading-fill);
+}
+
 [data-interface-theme='glass'] .island-card {
   background-image:
     var(--glass-sheen),
@@ -106,6 +110,11 @@
 [data-reduced-transparency='true'] .island-feedback__ambient {
   display: none;
   transition: none;
+}
+
+/* Keep high-contrast controls readable across every cover and visual. */
+@media (prefers-contrast: more) {
+  .island-feedback__ambient[data-playback-motion='playing'] { opacity: .42; }
 }
 
 /* Two wave fronts leave the same center in sequence and fade before resetting. */

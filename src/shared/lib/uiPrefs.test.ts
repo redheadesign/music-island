@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { AppConfig } from './types'
 import {
   getInterfacePalette,
+  getPlaybackVisual,
   getInterfacePaletteStyle,
   getInterfaceScene,
   getInterfaceTheme,
@@ -28,6 +29,15 @@ describe('interface theme preferences', () => {
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass' }))).toBe('fox')
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'unknown' } }))).toBe('fox')
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'manta' } }))).toBe('manta')
+  })
+
+  it('restores the saved playback visual after switching materials', () => {
+    const base = configWithUi({ interfaceTheme: 'glass', playbackVisual: 'mercury' })
+    expect(getPlaybackVisual(base)).toBe('mercury')
+    const classic = withUiPrefs(base, { interfaceTheme: 'classic' })
+    expect(getPlaybackVisual(classic)).toBeUndefined()
+    expect(getPlaybackVisual(withUiPrefs(classic, { interfaceTheme: 'glass' }))).toBe('mercury')
+    expect(getPlaybackVisual(configWithUi({ playbackVisual: 'removed' }))).toBe('wave')
   })
 
   it('remembers the selected Glass scene when switching back from Classic', () => {

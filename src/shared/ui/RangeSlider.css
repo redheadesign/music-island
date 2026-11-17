@@ -3,7 +3,7 @@ input.range-slider.range-slider[type='range'] {
   --range-track-size: var(--space-1);
   --range-thumb-size: var(--space-4);
   --range-track-color: var(--control-track);
-  --range-fill-color: var(--accent, #f76100);
+  --range-fill-color: var(--control-value);
   -webkit-appearance: none;
   appearance: none;
   width: 100%;

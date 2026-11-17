@@ -12,6 +12,7 @@ const length = /(?<![\w.])(?:\d*\.)?\d+(?:px|rem|em|pt)(?![\w-])/i
 const duration = /(?<![\w.])(?:\d*\.)?\d+(?:ms|s)(?![\w-])/i
 const relative = /^(?:\d*\.)?\d+$/
 const shared = /var\((--(?:space|radius|font|text|type|leading|weight|tracking|motion|ease)-[\w-]+)\s*(?=[,)])/g
+const materialRole = /var\((--(?:surface|fg|status|glass|control|shadow|focus|satellite|stage|hit-target)-[\w-]+)\s*\)/g
 const definitions = new Set()
 const references = []
 const issues = []
@@ -22,6 +23,7 @@ for (const file of files) {
     const location = `${from}:${source.start.line}`
     if (prop.startsWith('--')) definitions.add(prop)
     for (const [, token] of value.matchAll(shared)) references.push({ location, token })
+    for (const [, token] of value.matchAll(materialRole)) references.push({ location, token, area: 'material' })
     if (file === tokenFile) return
     const raw = value.replace(/var\(--[\w-]+\)/g, '')
     let area
@@ -34,11 +36,11 @@ for (const file of files) {
     if (area) issues.push({ area, location, message: `${prop}: ${value}` })
   })
 }
-for (const { location, token } of references) {
-  if (!definitions.has(token)) issues.push({ area: 'reference', location, message: `Undefined token ${token}` })
+for (const { location, token, area = 'reference' } of references) {
+  if (!definitions.has(token)) issues.push({ area, location, message: `Undefined token ${token}` })
 }
 for (const { location, message } of issues.slice(0, 40)) console.error(`${location} ${message}`)
-const counts = Object.fromEntries(['spacing', 'type', 'radius', 'motion', 'reference'].map(area => [
+const counts = Object.fromEntries(['spacing', 'type', 'radius', 'motion', 'reference', 'material'].map(area => [
   area, issues.filter(issue => issue.area === area).length,
 ]))
 console.log(`Design tokens · ${files.length} application stylesheets · ${Object.entries(counts).map(([key, count]) => `${key} ${count}`).join(', ')}`)

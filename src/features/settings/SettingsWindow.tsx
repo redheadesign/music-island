@@ -1,13 +1,13 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { InterfacePaletteId } from '../../shared/lib/interfacePalette'
-import type { InterfaceScene, InterfaceThemeId } from '../../shared/lib/interfaceTheme'
+import { DEFAULT_INTERFACE_THEME, type InterfaceScene, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import type { SettingsColorScheme } from '../../shared/lib/uiPrefs'
 import { Minus, X } from '../../shared/ui/SettingsIcons'
 import { IconButton } from '../../shared/ui/IconButton'
 import './settings.css'
 
 /** The native window and Storybook use exactly the same viewport/scroll tree. */
-export function SettingsWindow({ children, locale = 'ru', colorScheme = 'dark', interfaceTheme = 'classic', interfaceScene, interfacePalette, paletteStyle, reducedTransparency, reducedMotion, onMinimize, onClose }: {
+export function SettingsWindow({ children, locale = 'ru', colorScheme = 'dark', interfaceTheme = DEFAULT_INTERFACE_THEME, interfaceScene, interfacePalette, paletteStyle, reducedTransparency, reducedMotion, onMinimize, onClose }: {
   children: ReactNode
   locale?: 'ru' | 'en'
   colorScheme?: SettingsColorScheme

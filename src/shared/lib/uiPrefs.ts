@@ -1,7 +1,7 @@
 import type { AppConfig } from './types'
 import type { TaskbarLayoutV1 } from './taskbarLayout'
 import type { DictationAppearance } from './dictationAppearance'
-import { getInterfaceThemeDefinition, normalizeInterfaceTheme, PLAYBACK_VISUALS, type InterfaceScene, type InterfaceThemeId, type PlaybackVisual } from './interfaceTheme'
+import { getInterfaceThemeDefinition, normalizeInterfaceTheme, type InterfaceScene, type InterfaceThemeId, type PlaybackVisual } from './interfaceTheme'
 import { DEFAULT_ACCENT } from './accentTheme'
 import { buildInterfacePaletteStyle, normalizeInterfacePalette, type InterfacePaletteId } from './interfacePalette'
 
@@ -87,9 +87,10 @@ export function getReducedTransparency(config: AppConfig | null | undefined): bo
   return getUiPrefs(config).reducedTransparency === true
 }
 
-export function getPlaybackVisual(config: AppConfig | null | undefined): PlaybackVisual {
+export function getPlaybackVisual(config: AppConfig | null | undefined): PlaybackVisual | undefined {
+  const capability = getInterfaceThemeDefinition(getInterfaceTheme(config)).playback
   const saved = getUiPrefs(config).playbackVisual
-  return PLAYBACK_VISUALS.find(value => value === saved) ?? 'wave'
+  return capability?.options.find(value => value === saved) ?? capability?.fallback
 }
 
 export function normalizeUsageWidgetScale(value: unknown): number {

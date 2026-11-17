@@ -78,6 +78,7 @@ export function AccentColorPicker({
   const [hexDraft, setHexDraft] = useState(current.toUpperCase())
   const hsvRef = useRef(hsv)
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const svRef = useRef<HTMLDivElement>(null)
   const hueRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
@@ -107,7 +108,9 @@ export function AccentColorPicker({
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key !== 'Escape') return
+      setOpen(false)
+      if (rootRef.current?.contains(event.target as Node)) triggerRef.current?.focus()
     }
     window.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('keydown', onKey)
@@ -170,10 +173,11 @@ export function AccentColorPicker({
         })}
         <button
           type="button"
+          ref={triggerRef}
           aria-pressed={!isPreset}
           aria-label={customLabel}
           aria-expanded={open}
-          aria-controls={panelId}
+          aria-controls={open ? panelId : undefined}
           className={[
             'accent-picker__swatch',
             'accent-picker__custom',
@@ -247,7 +251,7 @@ export function AccentColorPicker({
                 }}
               />
             </label>
-            <button type="button" className="accent-picker__done" onClick={() => setOpen(false)}>
+            <button type="button" className="accent-picker__done" onClick={() => { setOpen(false); triggerRef.current?.focus() }}>
               OK
             </button>
           </div>

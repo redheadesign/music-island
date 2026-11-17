@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useMemo, useState, type ComponentProps } from 'react'
+import { useMemo, useState, type ComponentProps, type CSSProperties } from 'react'
 import { useGlobals } from 'storybook/preview-api'
 import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
 import { SettingsWindow } from '../../features/settings/SettingsWindow'
 import { SettingsPanel } from '../../features/settings/SettingsPanel'
 import { getDefaultConfig } from '../../app/tauriApi'
 import type { AppConfig, Locale } from '../../shared/lib/types'
-import { getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme, withUiPrefs, type SettingsColorScheme } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme, withUiPrefs, type SettingsColorScheme } from '../../shared/lib/uiPrefs'
 import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { health } from '../fixtures'
 import { useWorkshopConfig } from '../useWorkshopConfig'
@@ -65,6 +65,7 @@ function SettingsPreview({
   return <div style={{ height: scrollViewportHeight ?? 754 }}>
     <SettingsWindow locale={locale} colorScheme={getSettingsColorScheme(configuredPreview)}
       interfaceTheme={getInterfaceTheme(configuredPreview)} interfaceScene={getInterfaceScene(configuredPreview)}
+      interfacePalette={getInterfacePalette(configuredPreview)} paletteStyle={getInterfacePaletteStyle(configuredPreview, getSettingsColorScheme(configuredPreview)) as CSSProperties}
       reducedTransparency={getReducedTransparency(configuredPreview)} reducedMotion={reducedMotion || configuredPreview.appearance.reducedMotion}>
       {panel}
     </SettingsWindow>
@@ -133,7 +134,36 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = { name: 'Настройки приложения' }
+export const Classic: Story = { name: 'Классическая · тёмное оформление', globals: { interfaceTheme: 'classic' } }
+export const ClassicLight: Story = { ...Classic, name: 'Классическая · светлое оформление', parameters: { settingsColorScheme: 'light' } }
 export const Glass: Story = { name: 'Стекло · тёмное оформление', globals: { interfaceTheme: 'glass' } }
+export const MaterialAtMinimumSize: Story = {
+  name: 'Выбор темы · минимальное окно Windows',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  parameters: { scrollViewportHeight: 480, workshop: { width: 620 }, a11y: { test: 'error' } },
+  play: async ({ canvasElement }) => {
+    const theme = within(canvasElement).getByRole('button', { name: 'Тема интерфейса' })
+    const palette = within(canvasElement).getByRole('button', { name: 'Цветовая палитра' })
+    const viewport = theme.closest('[data-settings-scroll]')!
+    await waitFor(() => {
+      expect(theme.getBoundingClientRect().top).toBeGreaterThanOrEqual(viewport.getBoundingClientRect().top)
+      expect(palette.getBoundingClientRect().bottom).toBeLessThanOrEqual(viewport.getBoundingClientRect().bottom)
+    })
+  },
+}
+export const BassSourceShortcut: Story = {
+  ...Glass, name: 'Реакция на бас · переход к источнику',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  parameters: { a11y: { test: 'error' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('switch', { name: 'Реакция фона на бас' })).toBeDisabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Настроить источник' }))
+    await expect(await canvas.findByRole('heading', { name: 'Источник музыки' })).toBeVisible()
+    await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Источник музыки' })).toHaveFocus())
+  },
+}
 export const GlassReactiveWave: Story = {
   ...Glass,
   name: 'Стекло · реакция фона на бас',

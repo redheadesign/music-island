@@ -1,3 +1,4 @@
+import { DEFAULT_INTERFACE_THEME, INTERFACE_THEME_IDS, INTERFACE_THEMES } from '../src/shared/lib/interfaceTheme'
 import type { Preview } from '@storybook/react-vite'
 import { themes } from 'storybook/theming'
 import { WorkshopFrame } from '../src/stories/WorkshopFrame'
@@ -15,7 +16,7 @@ const preview: Preview = {
       description: 'Тема интерфейса',
       toolbar: {
         icon: 'contrast',
-        items: [{ value: 'classic', title: 'Классическая' }, { value: 'glass', title: 'Стекло' }],
+        items: INTERFACE_THEME_IDS.map(value => ({ value, title: INTERFACE_THEMES[value].label.ru })),
         dynamicTitle: true,
       },
     },
@@ -56,7 +57,7 @@ const preview: Preview = {
       },
     },
   },
-  initialGlobals: { locale: 'ru', accent: '#f76100', surface: 'studio', interfaceTheme: 'classic' },
+  initialGlobals: { locale: 'ru', accent: '#f76100', surface: 'studio', interfaceTheme: DEFAULT_INTERFACE_THEME },
   parameters: {
     layout: 'fullscreen',
     controls: {

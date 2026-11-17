@@ -152,6 +152,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
       'data-resize-active': (dimensions !== null && gesture.current?.dimension === dimension && gesture.current.direction === direction) || undefined,
     }
   }
+  const playbackVisual = getPlaybackVisual(config)
   const paletteStyle = getInterfacePaletteStyle(config, 'dark')
   const style: CSSProperties & Record<`--${string}`, string | number | undefined> = {
     ...paletteStyle,
@@ -162,7 +163,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     '--island-width': sizing.width / 100,
     '--island-scale': 1,
     '--actions-scale': 1,
-    ...(getInterfaceTheme(config) === 'glass' ? APPEARANCE_PREVIEW_ARTWORK_THEME : {
+    ...(playbackVisual ? APPEARANCE_PREVIEW_ARTWORK_THEME : {
       '--artwork-primary': '168, 98, 55', '--artwork-secondary': '87, 63, 49',
     }),
     '--preview-left': `${sideWidth('left')}px`, '--preview-right': `${sideWidth('right')}px`,
@@ -175,7 +176,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={getReducedTransparency(config) || undefined} style={style}>
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
-        <IslandFeedback className="island-card island-surface" particles={active && getInterfaceTheme(config) === 'glass'} playbackVisual={getPlaybackVisual(config)}>
+        <IslandFeedback className="island-card island-surface" particles={active && Boolean(playbackVisual)} playbackVisual={playbackVisual}>
           <MusicModule media={media} layout={layout} progressMs={media.positionMs} progressPercent={34} density={config.layout.density} showArtwork={config.layout.showArtwork} showTitle={config.layout.showTitle} showArtist={config.layout.showArtist} showProgress={config.layout.showProgress} showSource={config.layout.showSource} showPreviousNext={config.layout.showPreviousNext} locale={config.appearance.locale} reducedMotion onCommand={() => undefined} renderElement={renderElement} renderZone={renderZone} />
         </IslandFeedback>
         <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => <Fragment key={element}>{renderElement(element, <button type="button" className="icon-button" aria-label={element === 'settings' ? 'Open settings' : 'Pin island'}>{element === 'settings' ? <SettingsFilled weight="fill" size={16} /> : element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>)}</Fragment>))}</header>

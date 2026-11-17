@@ -28,6 +28,7 @@
   --glass-panel-rim: inset 0 1px rgb(255 255 255 / .09);
   --glass-control-rim: inset 1px 1px rgb(255 255 255 / .24), inset -1px -1px rgb(255 255 255 / .065);
   --glass-selection-fill: color-mix(in srgb, var(--palette-primary, #d3d1cb) 25%, var(--glass-raised));
+  --surface-current: color-mix(in srgb, var(--glass-selection-fill) 43%, var(--surface-panel));
   --glass-selection-sheen: linear-gradient(156deg, rgb(255 255 255 / .22), transparent 58%, rgb(255 255 255 / .10));
   --glass-dust: rgb(255 255 255 / .75);
   --glass-dust-display: block;
@@ -143,6 +144,7 @@
   --glass-dust: transparent;
   --glass-dust-display: none;
   --glass-island-fill: var(--glass-island-opaque);
+  --satellite-reading-fill: var(--glass-island-opaque);
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -164,6 +166,7 @@
     --glass-dust: transparent;
     --glass-dust-display: none;
     --glass-island-fill: var(--glass-island-opaque);
+    --satellite-reading-fill: var(--glass-island-opaque);
   }
 }
 
@@ -171,6 +174,16 @@
   [data-interface-theme='glass'][data-interface-theme] {
     --glass-opacity: 100%;
     --glass-menu-opacity: 100%;
+  }
+}
+
+@media (prefers-contrast: more) {
+  [data-interface-theme='glass'] {
+    --glass-menu-opacity: 100%;
+    --glass-panel-opacity: 100%;
+    --glass-menu-track-opacity: 85%;
+    --satellite-reading-fill: var(--glass-island-opaque);
+    --surface-current: var(--glass-selection-fill);
   }
 }
 

@@ -6,6 +6,8 @@ import {
   type ReactNode,
 } from 'react'
 import type { StoryContext } from '@storybook/react-vite'
+import { WarpSurfaceProvider } from '../shared/ui/WarpSurface'
+import { DEFAULT_INTERFACE_THEME, getInterfaceThemeDefinition, normalizeInterfaceTheme } from '../shared/lib/interfaceTheme'
 import { applyAccentTheme } from '../shared/lib/accentTheme'
 import { GlassRefraction } from '../shared/ui/GlassRefraction'
 import { useGlassPointerLight } from '../shared/ui/useGlassPointerLight'
@@ -24,7 +26,7 @@ export function WorkshopFrame({
     locale = 'ru',
     accent = '#f76100',
     surface = 'studio',
-    interfaceTheme = 'classic',
+    interfaceTheme = DEFAULT_INTERFACE_THEME,
   } = context.globals
   useLayoutEffect(() => {
     applyAccentTheme(String(accent))
@@ -61,6 +63,8 @@ export function WorkshopFrame({
   const refraction = context.viewMode === 'story' ? <GlassRefraction /> : null
   if (context.parameters.workshop?.bare) return <>{children}{refraction}</>
   const note = context.parameters.workshop?.note
+  const scene = getInterfaceThemeDefinition(normalizeInterfaceTheme(interfaceTheme)).scene?.fallback
+  const colorScheme = context.parameters.settingsColorScheme === 'light' || context.parameters.light ? 'light' : 'dark'
 
   return (
     <div
@@ -95,7 +99,9 @@ export function WorkshopFrame({
           data-interface-theme={context.parameters.handlesInterfaceTheme ? undefined : interfaceTheme}
           style={{ width: context.parameters.workshop?.width ?? 480 }}
         >
-          {children}
+          {context.parameters.settingsPreviewScene
+            ? <WarpSurfaceProvider scene={scene} colorScheme={colorScheme}>{children}</WarpSurfaceProvider>
+            : children}
         </div>
       </div>
       {context.viewMode === 'story' && note && (

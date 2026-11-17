@@ -18,6 +18,7 @@ const meta = {
   argTypes: { locale: { table: { disable: true } } },
   parameters: {
     settingsColorScheme: 'dark',
+    settingsPreviewScene: true,
     workshop: {
       width: 760,
       note: 'Демонстрация без доступа к микрофону. Запуск, модели и эффекты работают с отдельным адаптером Storybook.',
@@ -75,6 +76,11 @@ export const Running: Story = {
     await expect(Number(meters[0].getAttribute('aria-valuenow'))).toBeGreaterThan(0)
     await expect(Number(meters[1].getAttribute('aria-valuenow'))).toBeGreaterThan(0)
   },
+}
+export const ClassicRunning: Story = {
+  ...Running, name: 'Классическая · текст поверх активного фона',
+  globals: { interfaceTheme: 'classic' },
+  parameters: { ...Running.parameters, a11y: { test: 'error' } },
 }
 export const ReducedMotion: Story = {
   name: 'Обработка · без движения',

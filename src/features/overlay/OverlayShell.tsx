@@ -149,8 +149,9 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const transitionRef = useRef(transition)
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
-  const hasGlassPlayback = getInterfaceTheme(config) === 'glass' && Boolean(media?.hasSession)
-  const playbackMotion = hasGlassPlayback && media?.playbackStatus === 'playing'
+  const playbackVisual = getPlaybackVisual(config)
+  const hasPlaybackVisual = Boolean(playbackVisual && media?.hasSession)
+  const playbackMotion = hasPlaybackVisual && media?.playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -563,7 +564,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       return undefined
     }
 
-    const artworkColors = artworkCssColors(artworkPalette, getInterfaceTheme(config) === 'glass')
+    const artworkColors = artworkCssColors(artworkPalette, Boolean(playbackVisual))
     return {
       '--island-opacity': config.appearance.opacity,
       '--island-radius': `${config.appearance.cornerRadius}px`,
@@ -577,7 +578,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--artwork-primary': artworkColors.primary,
       '--artwork-secondary': artworkColors.secondary,
     } as CSSProperties
-  }, [artworkPalette, config])
+  }, [artworkPalette, config, playbackVisual])
 
   const clearCloseTimer = () => {
     if (closeTimerRef.current) {
@@ -963,9 +964,9 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
             <div className="island-scale-layer">
             <IslandFeedback
               className="island-card island-surface"
-              particles={hasGlassPlayback}
-              playbackMotion={hasGlassPlayback ? playbackMotion : undefined}
-              playbackVisual={getPlaybackVisual(config)}
+              particles={hasPlaybackVisual}
+              playbackMotion={hasPlaybackVisual ? playbackMotion : undefined}
+              playbackVisual={playbackVisual}
             >
               <MusicModule
                 layout={islandLayout}

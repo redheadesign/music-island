@@ -7,6 +7,7 @@ export type PlaybackVisual = typeof PLAYBACK_VISUALS[number]
 type ThemeDefinition = {
   label: { ru: string; en: string }
   translucent?: boolean
+  playback?: { fallback: PlaybackVisual; options: readonly PlaybackVisual[] }
   scene?: { fallback: InterfaceScene; options: readonly InterfaceScene[] }
 }
 
@@ -15,6 +16,7 @@ export const INTERFACE_THEMES = {
   glass: {
     label: { ru: 'Стекло', en: 'Glass' },
     translucent: true,
+    playback: { fallback: 'wave', options: PLAYBACK_VISUALS },
     scene: { fallback: 'fox', options: INTERFACE_SCENES },
   },
 } satisfies Record<string, ThemeDefinition>
@@ -24,9 +26,13 @@ export const DEFAULT_INTERFACE_THEME: InterfaceThemeId = 'glass'
 
 export const INTERFACE_THEME_IDS = Object.keys(INTERFACE_THEMES) as InterfaceThemeId[]
 
-export function normalizeInterfaceTheme(value: unknown): InterfaceThemeId {
+export function isInterfaceThemeId(value: unknown): value is InterfaceThemeId {
   return typeof value === 'string' && Object.hasOwn(INTERFACE_THEMES, value)
-    ? value as InterfaceThemeId
+}
+
+export function normalizeInterfaceTheme(value: unknown): InterfaceThemeId {
+  return isInterfaceThemeId(value)
+    ? value
     : DEFAULT_INTERFACE_THEME
 }
 

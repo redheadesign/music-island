@@ -4,6 +4,7 @@ import { TaskbarLayoutEditor } from '../../features/settings/TaskbarLayoutEditor
 import { getDefaultConfig } from '../../app/tauriApi'
 import type { AppConfig, Locale } from '../../shared/lib/types'
 import { withTaskbarLayout, type TaskbarElement } from '../../shared/lib/taskbarLayout'
+import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { useWorkshopConfig } from '../useWorkshopConfig'
 
 function target(root: HTMLElement, name: 'controls' | 'catalog'): HTMLElement {
@@ -47,12 +48,12 @@ async function pointerDrag(source: HTMLElement, destination: HTMLElement | null,
   } finally { restore() }
 }
 
-function EditorPreview({ locale, accent, light = false, elements, scale }: { locale: Locale; accent: string; light?: boolean; elements?: TaskbarElement[]; scale?: number }) {
-  const [config, setConfig] = useWorkshopConfig(locale, accent)
+function EditorPreview({ locale, accent, interfaceTheme, light = false, elements, scale }: { locale: Locale; accent: string; interfaceTheme: InterfaceThemeId; light?: boolean; elements?: TaskbarElement[]; scale?: number }) {
+  const [config, setConfig] = useWorkshopConfig(locale, accent, false, interfaceTheme)
   const commit = (next: AppConfig) => setConfig(next)
   const sized = scale == null ? config : { ...config, taskbar: { ...config.taskbar, scale } }
   const previewConfig = elements ? withTaskbarLayout(sized, { version: 1, elements }) : sized
-  return <div className="settings-window-root" data-color-scheme={light ? 'light' : 'dark'} style={{ containerType: 'inline-size' }}>
+  return <div className="settings-window-root" data-interface-theme={interfaceTheme} data-color-scheme={light ? 'light' : 'dark'} style={{ containerType: 'inline-size' }}>
     <TaskbarLayoutEditor config={previewConfig} onChange={commit} />
   </div>
 }
@@ -62,10 +63,11 @@ const meta = {
   component: TaskbarLayoutEditor,
   args: { config: getDefaultConfig(), onChange: () => undefined },
   parameters: {
+    settingsPreviewScene: true,
     workshop: { width: 720, height: 560, note: 'Production mini-player editor with in-memory configuration.' },
     controls: { disable: true },
   },
-  render: (_args, context) => <EditorPreview locale={context.globals.locale} accent={context.globals.accent} light={context.parameters.settingsColorScheme === 'light'}
+  render: (_args, context) => <EditorPreview locale={context.globals.locale} accent={context.globals.accent} interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)} light={context.parameters.settingsColorScheme === 'light'}
     elements={context.parameters.taskbarElements as TaskbarElement[] | undefined} scale={context.parameters.taskbarScale as number | undefined} />,
 } satisfies Meta<typeof TaskbarLayoutEditor>
 export default meta

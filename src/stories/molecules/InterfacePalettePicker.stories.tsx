@@ -39,6 +39,8 @@ export const Presets: Story = {
   args,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    const trigger = canvas.getByRole('button', { name: /^(Цветовая палитра|Color palette)$/ })
+    await userEvent.click(trigger)
     const ocean = canvas.getByRole('button', { name: /^(Океан|Ocean)$/ })
     const custom = canvas.getByRole('button', { name: /^(Свой акцент|Custom accent)$/ })
     await expect(custom).toHaveAttribute('aria-pressed', 'true')
@@ -46,6 +48,10 @@ export const Presets: Story = {
     await expect(ocean).toHaveAttribute('aria-pressed', 'true')
     await expect(custom).toHaveAttribute('aria-pressed', 'false')
     await expect(canvasElement.querySelector('.settings-panel')).toHaveAttribute('data-interface-palette', 'ocean')
+    await userEvent.keyboard('{Escape}')
+    await expect(trigger).toHaveFocus()
+    await expect(trigger).toHaveAccessibleDescription(/^(Океан|Ocean)$/)
+    await userEvent.click(trigger)
   },
 }
 

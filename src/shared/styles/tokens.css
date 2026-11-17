@@ -73,6 +73,9 @@
   --control-height-compact: 32px;
   --focus-ring: 2px solid var(--fg-primary);
   --focus-offset: 3px;
+  --hit-target-min: 24px;
+  --stage-reading-scrim: rgb(15 15 17 / .76);
+  --satellite-reading-fill: rgb(24 24 24 / .82);
   --glass-blur: 24px;
   --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.3);
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.22);
@@ -192,6 +195,13 @@
   --motion-fast: 0ms;
   --motion-normal: 0ms;
   --motion-slow: 0ms;
+}
+
+/* Resolve these roles again at the palette scope, including select portals. */
+:where(:root, [data-interface-theme], [data-interface-palette]) {
+  --control-value: var(--accent, #f76100);
+  --control-value-ink: var(--accent-ink, #101113);
+  --surface-current: var(--surface-selected);
 }
 
 /* Real preview components always keep the island material, including light Settings. */

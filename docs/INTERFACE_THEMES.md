@@ -24,4 +24,8 @@ Color presets use T3 Code's side-by-side light and dark previews. Each preset ha
 
 The implementation agent owns preference integration and component reuse, the motion agent owns the shared renderer, and an independent reviewer verifies each stage. The design lead owns visual direction, Storybook coverage and integration.
 
+The material picker precedes the layout editor even at the minimum 620 × 480 window size. The source shortcut beside bass response opens the existing source page. The current source and consent stay under the user's control.
+
+Both workshop and application use the same default theme. The standalone editor, Better Voice and dictation stories mount the same scene provider as the settings window. The theme registry declares each supported playback visual and its fallback. Switching to Classic suspends these effects, and switching back restores the saved choice. Buttons and sliders share a palette value role. The lower island widgets keep their text at full opacity over a separate reading surface. Increased contrast makes that surface opaque and attenuates the decorative playback layer.
+
 To add a theme, register its stable ID and translations, provide its semantic role overrides, and add a workshop state with the real components. Extend the renderer registry only if the theme has different artwork. Keep the same application structure and native window sizes; density roles are for component styling. Review the default and the new theme together before producing a build.

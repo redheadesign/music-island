@@ -34,6 +34,14 @@
   --focus-ring: 2px solid var(--fg-primary);
 }
 .voice-control-card > :not(.voice-atmosphere) { position: relative; z-index: 1; }
+/* The stage gets progressively darker beneath the controls. In the stacked
+   layout the focus of the graphic stays above the reading area. */
+[data-interface-theme='classic'] .voice-atmosphere[data-running='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--stage-reading-direction, to right), transparent 12%, var(--stage-reading-scrim) 47%);
+}
 .voice-control-card__fox { align-self: center; justify-self: center; }
 .voice-control-card__controls { display: grid; gap: var(--space-3); min-width: 0; }
 .voice-control-card__heading { display: flex; align-items: center; gap: var(--space-3); min-width: 0; margin-bottom: var(--space-1); }
@@ -91,6 +99,7 @@
   .voice-control-card__heading { gap: var(--space-2); }
 }
 @container (max-width: 480px) {
+  .voice-atmosphere { --stage-reading-direction: to bottom; }
   .voice-control-card__fox, .voice-control-card__controls { grid-column: 1 / -1; }
   .voice-control-card__controls { width: min(100%, 280px); justify-self: center; }
 }

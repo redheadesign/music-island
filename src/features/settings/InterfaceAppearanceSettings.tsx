@@ -1,36 +1,44 @@
 import { createTranslator } from '../../shared/i18n/messages'
-import { getInterfaceThemeDefinition, INTERFACE_THEME_IDS, INTERFACE_THEMES, PLAYBACK_VISUALS } from '../../shared/lib/interfaceTheme'
+import { getInterfaceThemeDefinition, INTERFACE_THEME_IDS, INTERFACE_THEMES } from '../../shared/lib/interfaceTheme'
 import type { AppConfig, Locale } from '../../shared/lib/types'
 import { getInterfaceScene, getInterfaceTheme, getPlaybackVisual, getReducedTransparency, getUiPrefs, withUiPrefs } from '../../shared/lib/uiPrefs'
 import { Select } from '../../shared/ui/Select'
-import { SettingRow, Switch } from '../../shared/ui/SettingsControls'
+import { Button, SettingRow, Switch, Toggle } from '../../shared/ui/SettingsControls'
 
-export function InterfaceAppearanceSettings({ config, locale, onChange }: {
+type AppearanceProps = {
   config: AppConfig
   locale: Locale
   onChange: (config: AppConfig) => void
-}) {
+}
+
+export function InterfaceThemePicker({ config, locale, onChange }: AppearanceProps) {
+  const t = createTranslator(locale)
+  const theme = getInterfaceTheme(config)
+  const themeLabel = t('settings.interfaceTheme')
+  return <SettingRow className="settings-material-picker" label={themeLabel}>
+    <Select
+      ariaLabel={themeLabel}
+      value={theme}
+      options={INTERFACE_THEME_IDS.map(value => ({ value, label: INTERFACE_THEMES[value].label[locale] }))}
+      onChange={value => {
+        const interfaceTheme = INTERFACE_THEME_IDS.find(id => id === value)
+        if (interfaceTheme && interfaceTheme !== theme) onChange(withUiPrefs(config, { interfaceTheme }))
+      }}
+    />
+  </SettingRow>
+}
+
+export function InterfaceAppearanceSettings({ config, locale, onChange, onOpenSource }: AppearanceProps & { onOpenSource: () => void }) {
   const t = createTranslator(locale)
   const theme = getInterfaceTheme(config)
   const definition = getInterfaceThemeDefinition(theme)
   const scene = getInterfaceScene(config)
   const sceneOptions = definition.scene?.options
-  const themeLabel = t('settings.interfaceTheme')
+  const playback = definition.playback
   const sceneLabel = t('settings.interfaceScene')
   const visualLabel = t('settings.playbackVisual')
 
   return <>
-    <SettingRow label={themeLabel}>
-      <Select
-        ariaLabel={themeLabel}
-        value={theme}
-        options={INTERFACE_THEME_IDS.map(value => ({ value, label: INTERFACE_THEMES[value].label[locale] }))}
-        onChange={value => {
-          const interfaceTheme = INTERFACE_THEME_IDS.find(id => id === value)
-          if (interfaceTheme && interfaceTheme !== theme) onChange(withUiPrefs(config, { interfaceTheme }))
-        }}
-      />
-    </SettingRow>
     {scene && sceneOptions ? (
       <SettingRow label={sceneLabel}>
         <Select
@@ -46,25 +54,28 @@ export function InterfaceAppearanceSettings({ config, locale, onChange }: {
         />
       </SettingRow>
     ) : null}
-    {theme === 'glass' ? <>
+    {playback ? <>
       <SettingRow label={visualLabel}>
         <Select
           ariaLabel={visualLabel}
-          value={getPlaybackVisual(config)}
-          options={PLAYBACK_VISUALS.map(value => ({ value, label: t(`settings.playbackVisual.${value}`) }))}
+          value={getPlaybackVisual(config) ?? playback.fallback}
+          options={playback.options.map(value => ({ value, label: t(`settings.playbackVisual.${value}`) }))}
           onChange={value => {
-            const playbackVisual = PLAYBACK_VISUALS.find(visual => visual === value)
+            const playbackVisual = playback.options.find(visual => visual === value)
             if (playbackVisual) onChange(withUiPrefs(config, { playbackVisual }))
           }}
         />
       </SettingRow>
-      <Switch
-        label={t('settings.playbackReactiveWave')}
-        hint={t('settings.playbackReactiveWaveHint')}
-        checked={getUiPrefs(config).playbackReactiveWave === true}
-        disabled={config.media.protocol !== 'yandex-direct'}
-        onChange={playbackReactiveWave => onChange(withUiPrefs(config, { playbackReactiveWave }))}
-      />
+      <SettingRow label={t('settings.playbackReactiveWave')} hint={t('settings.playbackReactiveWaveHint')}>
+        {config.media.protocol !== 'yandex-direct' ? (
+          <Button size="compact" onClick={onOpenSource}>{t('settings.configureMusicSource')}</Button>
+        ) : null}
+        <Toggle
+          checked={getUiPrefs(config).playbackReactiveWave === true}
+          disabled={config.media.protocol !== 'yandex-direct'}
+          onChange={playbackReactiveWave => onChange(withUiPrefs(config, { playbackReactiveWave }))}
+        />
+      </SettingRow>
     </> : null}
     {definition.translucent ? (
       <Switch

@@ -5,6 +5,7 @@ import { IslandLayoutEditor } from '../../features/settings/IslandLayoutEditor'
 import { getDefaultConfig } from '../../app/tauriApi'
 import type { AppConfig, Locale } from '../../shared/lib/types'
 import { getLocalServersWidgetScale } from '../../shared/lib/uiPrefs'
+import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { useWorkshopConfig } from '../useWorkshopConfig'
 
 function zone(root: HTMLElement, name: string): HTMLElement {
@@ -51,15 +52,15 @@ async function pointerDrag(source: HTMLElement, target: HTMLElement, pointerId: 
   }
 }
 
-function EditorPreview({ locale, accent, light = false }: { locale: Locale; accent: string; light?: boolean }) {
-  const [config, setConfig] = useWorkshopConfig(locale, accent)
+function EditorPreview({ locale, accent, interfaceTheme, light = false }: { locale: Locale; accent: string; interfaceTheme: InterfaceThemeId; light?: boolean }) {
+  const [config, setConfig] = useWorkshopConfig(locale, accent, false, interfaceTheme)
   const [changeCount, setChangeCount] = useState(0)
   const editorConfig: AppConfig = {
     ...config,
     plugins: { ...config.plugins, settings: { ...config.plugins.settings, usage: { codexEnabled: true, claudeEnabled: false } } },
   }
   const commit = (next: AppConfig) => { setChangeCount((value) => value + 1); setConfig(next) }
-  return <div className="settings-window-root" data-color-scheme={light ? 'light' : 'dark'} data-config-width={config.layout.width} data-config-scale={config.layout.scale} data-widget-scale={getLocalServersWidgetScale(config)} data-change-count={changeCount} style={{ containerType: 'inline-size' }}>
+  return <div className="settings-window-root" data-interface-theme={interfaceTheme} data-color-scheme={light ? 'light' : 'dark'} data-config-width={config.layout.width} data-config-scale={config.layout.scale} data-widget-scale={getLocalServersWidgetScale(config)} data-change-count={changeCount} style={{ containerType: 'inline-size' }}>
     <IslandLayoutEditor config={editorConfig} onChange={commit} />
   </div>
 }
@@ -69,10 +70,11 @@ const meta = {
   component: IslandLayoutEditor,
   args: { config: getDefaultConfig(), onChange: () => undefined },
   parameters: {
+    settingsPreviewScene: true,
     workshop: { width: 720, height: 820, note: 'Production editor with an in-memory config. Dragging never connects providers.' },
     controls: { disable: true },
   },
-  render: (_args, context) => <EditorPreview locale={context.globals.locale} accent={context.globals.accent} light={context.parameters.settingsColorScheme === 'light'} />,
+  render: (_args, context) => <EditorPreview locale={context.globals.locale} accent={context.globals.accent} interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)} light={context.parameters.settingsColorScheme === 'light'} />,
 } satisfies Meta<typeof IslandLayoutEditor>
 export default meta
 type Story = StoryObj<typeof meta>

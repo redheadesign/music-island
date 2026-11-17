@@ -14,7 +14,7 @@
   position: relative;
 }
 
-[data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, .dark-select:not(.dark-select--actions), .ui-navigation__item[aria-current='page'], .settings-scope-switch__btn--active, .locale-switch__btn--active, .settings-nav-item--active, .media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button, [data-glass-light])::before {
+[data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, .dark-select:not(.dark-select--actions), .settings-scope-switch__btn--active, .locale-switch__btn--active, .settings-nav-item--active, .media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button, [data-glass-light])::before {
   content: '';
   position: absolute;
   inset: 0;

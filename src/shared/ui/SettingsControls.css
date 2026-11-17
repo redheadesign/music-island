@@ -36,7 +36,7 @@
 .ui-setting-row:last-child { padding-bottom: 0; }
 .ui-toggle { position: relative; flex: 0 0 40px; width: 40px; height: 24px; padding: calc(var(--space-unit) * 0.75); border: 0; border-radius: var(--radius-pill); background: var(--control-off); cursor: pointer; transition: background var(--motion-fast); }
 .ui-toggle > span { display: block; width: 18px; height: 18px; border-radius: var(--radius-round); background: var(--control-thumb); transition: transform var(--motion-normal) var(--ease-standard); }
-.ui-toggle[aria-checked='true'] { background: var(--accent); }
+.ui-toggle[aria-checked='true'] { background: var(--control-value); --control-thumb: var(--control-value-ink); }
 .ui-toggle[aria-checked='true'] > span { transform: translateX(16px); }
 .ui-feature-toggle { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-5) var(--space-6); border-radius: var(--radius-lg); background: var(--surface-panel); }
 .ui-feature-toggle .ui-setting-row { flex: 1; padding: 0; }
@@ -92,15 +92,10 @@
 [data-interface-theme='glass'] .ui-search > * { position: relative; z-index: 1; }
 [data-interface-theme='glass'] :is(.ui-section, .ui-feature-toggle) { border-radius: var(--glass-panel-radius); }
 [data-interface-theme='glass'] .ui-navigation__item[aria-current='page'] {
-  background-color: var(--glass-selection-fill);
-  background-image: var(--glass-selection-sheen);
-  box-shadow: var(--glass-control-rim);
+  background-color: var(--surface-current);
+  box-shadow: none;
 }
 [data-interface-theme='glass'] .ui-toggle { box-shadow: var(--glass-control-rim); }
-[data-interface-theme='glass'] .ui-toggle[aria-checked='true'] {
-  background-color: var(--glass-action);
-  --control-thumb: var(--glass-action-ink);
-}
 
 [data-interface-theme='glass'] .ui-button--primary:enabled {
   background-color: var(--glass-action);
