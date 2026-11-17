@@ -36,3 +36,29 @@ it('keeps newer edits across old acknowledgements and retries the last failed wr
     expect(editor.saveFailed).toBe(false)
   } finally { await act(async () => root.unmount()) }
 })
+
+it('applies a delayed plugin change to the most recent draft', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.useFakeTimers()
+  const root = createRoot(document.createElement('div'))
+  const save = vi.fn().mockResolvedValue(undefined)
+  let editor!: ReturnType<typeof useSettingsDraft>
+  const Probe = () => { editor = useSettingsDraft(initial, save); return null }
+  try {
+    await act(async () => root.render(<Probe />))
+    const updateAfterEnable = editor.previewAndSave
+    await act(async () => editor.previewAndSave(withDelay(760)))
+    await act(async () => {
+      updateAfterEnable(current => ({
+        ...current,
+        plugins: { ...current.plugins, enabled: [...new Set([...current.plugins.enabled, 'dictation'])] },
+      }))
+      await vi.advanceTimersByTimeAsync(280)
+    })
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({
+      behavior: expect.objectContaining({ hoverDelayMs: 760 }),
+      plugins: expect.objectContaining({ enabled: expect.arrayContaining(['dictation']) }),
+    }), initial)
+  } finally { await act(async () => root.unmount()) }
+})

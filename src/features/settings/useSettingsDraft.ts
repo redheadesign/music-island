@@ -41,7 +41,8 @@ export function useSettingsDraft(config: AppConfig, onChange: SaveConfig) {
     pending.current = next
     setDraft(next)
   }
-  const previewAndSave = (next: AppConfig) => {
+  const previewAndSave = (update: AppConfig | ((current: AppConfig) => AppConfig)) => {
+    const next = typeof update === 'function' ? update(pending.current ?? base.current) : update
     edit(next)
     void previewConfig(next).catch(() => undefined)
     timer.current = window.setTimeout(() => { void persist(next).catch(() => undefined) }, 280)

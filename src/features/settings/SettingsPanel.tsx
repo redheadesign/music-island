@@ -102,7 +102,7 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   const { draft, previewAndSave: scheduleSave, saveNow, saveFailed, retry } = useSettingsDraft(config, onChange)
   const [resetUndo, setResetUndo] = useState<AppConfig | null>(null)
-  const previewAndSave = (next: AppConfig) => {
+  const previewAndSave: typeof scheduleSave = next => {
     setResetUndo(null)
     scheduleSave(next)
   }
@@ -270,11 +270,11 @@ export function SettingsPanel({
   }, [updater.result?.hasUpdate, updater.result?.latestVersion])
 
   const patchBehavior = (behavior: Partial<AppConfig['behavior']>) =>
-    previewAndSave({ ...draft, behavior: { ...draft.behavior, ...behavior } })
+    previewAndSave(current => ({ ...current, behavior: { ...current.behavior, ...behavior } }))
   const patchMedia = (media: Partial<AppConfig['media']>) =>
-    previewAndSave({ ...draft, media: { ...draft.media, ...media } })
+    previewAndSave(current => ({ ...current, media: { ...current.media, ...media } }))
   const patchAppearance = (appearance: Partial<AppConfig['appearance']>) =>
-    previewAndSave({ ...draft, appearance: { ...draft.appearance, ...appearance } })
+    previewAndSave(current => ({ ...current, appearance: { ...current.appearance, ...appearance } }))
 
   const setLocale = (next: Locale) => {
     if (normalizeLocale(draft.appearance.locale) === next) return
@@ -533,11 +533,19 @@ export function SettingsPanel({
         <div className="settings-content" data-settings-scroll><DictationSettings appearance={getDictationAppearance(draft)} onAppearanceChange={dictationAppearance => previewAndSave(withUiPrefs(draft, { dictationAppearance }))}
           showLatestMessage={uiPrefs.showLatestDictationMessage === true}
           onShowLatestMessage={showLatestDictationMessage => previewAndSave(withUiPrefs(draft, { showLatestDictationMessage }))}
-          active={settingsVisible} reducedMotion={reducedMotion} controller={dictation} page={dictationPage} locale={locale} onPage={setDictationPage} onDisable={async () => { await dictation.disable(); previewAndSave({ ...draft, plugins: { ...draft.plugins, enabled: draft.plugins.enabled.filter((id) => id !== 'dictation') } }) }} onEnable={async () => {
-          await dictation.enable()
-          const enabled = [...new Set([...draft.plugins.enabled, 'dictation'])]
-          previewAndSave({ ...draft, plugins: { ...draft.plugins, enabled } })
-        }} /></div>
+          active={settingsVisible} reducedMotion={reducedMotion} controller={dictation} page={dictationPage} locale={locale} onPage={setDictationPage} onDisable={async () => {
+            await dictation.disable()
+            previewAndSave(current => ({
+              ...current,
+              plugins: { ...current.plugins, enabled: current.plugins.enabled.filter(id => id !== 'dictation') },
+            }))
+          }} onEnable={async () => {
+            await dictation.enable()
+            previewAndSave(current => ({
+              ...current,
+              plugins: { ...current.plugins, enabled: [...new Set([...current.plugins.enabled, 'dictation'])] },
+            }))
+          }} /></div>
       </div> : null}
 
       {settingsScope === 'island' ? (
