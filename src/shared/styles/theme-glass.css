@@ -9,6 +9,8 @@
   --glass-panel-opacity: 95%;
   --glass-menu-opacity: 70%;
   --glass-menu-track-opacity: 45%;
+  --settings-group-fill: transparent;
+  --settings-group-gutter: var(--space-1);
   --glass-blur: 14px;
   --glass-saturation: 1.15;
   --glass-canvas: #232322;

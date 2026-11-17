@@ -1117,15 +1117,11 @@
   box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
 }
 .settings-panel[data-interface-theme='glass'] .settings-nav-item { border-radius: var(--radius-md); }
-.settings-panel[data-interface-theme='glass'] {
-  --settings-group-fill: transparent;
-  --settings-group-gutter: var(--space-1);
-}
-.settings-panel[data-interface-theme='glass'] .settings-content :is(
+:is(.settings-window-root, .settings-panel)[data-interface-theme='glass'] :is(
   .settings-control-group, .settings-taskbar > .settings-control-row, .settings-source-picker,
   .settings-section:not(.settings-appearance, .settings-section--plain, .settings-taskbar),
   .usage-settings__provider, .dictation-card, .dictation-history, .dictation-model,
-  .dictation-welcome, .about-update--elevated, .voice-experimental-banner
+  .dictation-welcome, .about-update--elevated, .voice-experimental-banner, .voice-setup-guide__device
 ) {
   padding-inline: var(--settings-group-gutter);
   background: var(--settings-group-fill);

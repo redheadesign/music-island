@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fireEvent, fn, userEvent, within } from 'storybook/test'
+import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
 import { DictationSettings } from '../../features/dictation/DictationSettings'
 import type { DictationController } from '../../app/useIslandApp'
 import { dictationApi } from '../mocks/dictationApi'
@@ -38,6 +38,21 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Models: Story = { name: 'Модели · русский язык' }
+export const FloatingCatalog: Story = {
+  ...Models,
+  name: 'Стекло · каталог без подложек',
+  globals: { interfaceTheme: 'glass' },
+  play: async ({ canvasElement }) => {
+    const model = await waitFor(() => {
+      const row = canvasElement.querySelector('.dictation-model')
+      expect(row).toBeInTheDocument()
+      return row!
+    })
+    await expect(getComputedStyle(model).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    await expect(within(model as HTMLElement).getAllByRole('button').length).toBeGreaterThan(0)
+  },
+}
+
 export const GlassModelSearch: Story = {
   ...Models,
   name: 'Стекло · однотонный поиск моделей',
