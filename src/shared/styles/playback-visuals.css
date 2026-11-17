@@ -10,15 +10,16 @@
 }
 
 .island-feedback__ambient[data-playback-visual='rays']::before {
+  inset: -32% -8%;
   background:
-    conic-gradient(at 50% 6%,
+    conic-gradient(at 50% 23%,
       transparent 83deg, var(--island-wave-trough) 110deg, transparent 124deg,
       transparent 138deg, var(--island-wave-crest) 156deg, transparent 172deg,
       transparent 187deg, var(--island-wave-trough) 209deg, transparent 224deg,
       var(--island-wave-crest) 244deg, transparent 267deg),
-    radial-gradient(ellipse at 50% 11%, var(--island-wave-crest), transparent 61%);
+    radial-gradient(ellipse at 50% 25%, var(--island-wave-crest), transparent 61%);
   mask-image: radial-gradient(ellipse at 50% 35%, #000 19%, transparent 71%);
-  transform-origin: 50% 10%;
+  transform-origin: 50% 23%;
   scale: calc(1 + var(--island-bass, 0) * .47);
   opacity: calc(.60 + var(--island-bass, 0) * .40);
 }
@@ -50,13 +51,13 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .island-root:not(.reduced-motion, [data-reduced-motion='true']) .island-feedback__ambient[data-playback-visual='rays']::before {
+  .island-feedback__ambient[data-playback-visual='rays']:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before {
     animation: island-rays-drift calc(var(--motion-unit) * 760) ease-in-out infinite alternate;
   }
-  .island-root:not(.reduced-motion, [data-reduced-motion='true']) .island-feedback__ambient[data-playback-visual='mercury']::before {
+  .island-feedback__ambient[data-playback-visual='mercury']:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before {
     animation: island-mercury-flow calc(var(--motion-unit) * 890) ease-in-out infinite alternate;
   }
-  .island-root:not(.reduced-motion, [data-reduced-motion='true']) .island-feedback__ambient[data-playback-visual='mercury']::after {
+  .island-feedback__ambient[data-playback-visual='mercury']:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::after {
     animation: island-mercury-flow calc(var(--motion-unit) * 1020) ease-in-out infinite alternate-reverse;
   }
   .island-card[data-document-hidden] .island-feedback__ambient::before,

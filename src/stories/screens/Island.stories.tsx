@@ -498,6 +498,14 @@ export const GlassMercury: StoryObj<typeof meta> = {
     })
     if (matchMedia('(forced-colors: active), (prefers-reduced-transparency: reduce)').matches) return
     await expect(getComputedStyle(ambient, '::before').backgroundImage).toContain('radial-gradient')
+    const workshop = canvasElement.querySelector('.island-root')!.parentElement!
+    workshop.setAttribute('data-reduced-motion', 'true')
+    try {
+      await expect(getComputedStyle(ambient, '::before').animationName).toBe('none')
+      await expect(getComputedStyle(ambient, '::after').animationName).toBe('none')
+    } finally {
+      workshop.removeAttribute('data-reduced-motion')
+    }
   },
 }
 export const LocalServersExpanded: StoryObj<typeof meta> = {
