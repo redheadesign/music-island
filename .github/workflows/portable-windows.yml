@@ -112,13 +112,21 @@ jobs:
           Add-Content $env:GITHUB_ENV "VULKAN_SDK=$vulkan"
 
           $ortVersion = $env:ONNX_RUNTIME_VERSION
-          $ortPackage = "onnxruntime-win-x64-$ortVersion"
-          $archive = Join-Path $env:RUNNER_TEMP "$ortPackage.zip"
-          Get-VerifiedDownload "https://github.com/microsoft/onnxruntime/releases/download/v$ortVersion/$ortPackage.zip" `
-            $archive '8e3e9c826375352e29cb2614fe44f3d7a4b0ff7b8028ad7a456af9d949a7e8b0'
-          Expand-Archive -LiteralPath $archive -DestinationPath $env:RUNNER_TEMP
+          $ortPackage = "microsoft.ml.onnxruntime"
+          $archive = Join-Path $env:RUNNER_TEMP "$ortPackage.$ortVersion.nupkg"
+          Get-VerifiedDownload "https://api.nuget.org/v3-flatcontainer/$ortPackage/$ortVersion/$ortPackage.$ortVersion.nupkg" `
+            $archive '782564d3d68e87269ea1812cc94710ad06fe014faf093f01a6f89d0bd58719d3'
+          $ort = New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "ort-win-x64-$ortVersion") -Force
+          $package = [IO.Compression.ZipFile]::OpenRead($archive)
+          try {
+            foreach ($file in @('onnxruntime.dll', 'onnxruntime.lib', 'onnxruntime_providers_shared.dll', 'onnxruntime_providers_shared.lib')) {
+              $entry = $package.GetEntry("runtimes/win-x64/native/$file")
+              if (!$entry) { throw "Missing Microsoft ONNX Runtime asset: $file" }
+              [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, (Join-Path $ort.FullName $file), $true)
+            }
+          } finally { $package.Dispose() }
           Remove-Item -LiteralPath $archive
-          Add-Content $env:GITHUB_ENV "ORT_LIB_LOCATION=$(Join-Path $env:RUNNER_TEMP "$ortPackage/lib")"
+          Add-Content $env:GITHUB_ENV "ORT_LIB_LOCATION=$($ort.FullName)"
 
       - name: Build the portable application
         run: |
