@@ -1,6 +1,12 @@
 use serde::Serialize;
 use std::sync::{Mutex, OnceLock};
 use tauri::{AppHandle, Emitter};
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioProgress {
+    completed_audio_ms: u64,
+    total_audio_ms: u64,
+}
 #[derive(Default, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
@@ -12,6 +18,8 @@ pub struct Snapshot {
     pub error: Option<String>,
     pub shortcut_activation: crate::settings::ShortcutActivation,
     pub model_loading: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub progress: Option<AudioProgress>,
     #[serde(skip)]
     streaming: bool,
 }
@@ -26,12 +34,18 @@ fn update(app: &AppHandle, f: impl FnOnce(&mut Snapshot)) {
     let snapshot = {
         let mut s = state().lock().unwrap_or_else(|e| e.into_inner());
         f(&mut s);
+        if s.phase != "transcribing" {
+            s.progress = None;
+        }
         s.revision += 1;
         s.clone()
     };
     crate::diagnostics::event(&format!(
         "operation={} phase={} ready={} error={}",
-        snapshot.operation_id, snapshot.phase, snapshot.ready, snapshot.error.is_some()
+        snapshot.operation_id,
+        snapshot.phase,
+        snapshot.ready,
+        snapshot.error.is_some()
     ));
     let _ = app.emit("dictation:status", snapshot);
 }
@@ -61,6 +75,38 @@ pub fn phase(app: &AppHandle, phase: &str) {
 }
 pub fn model_loading(app: &AppHandle, loading: bool) {
     update(app, |s| s.model_loading = loading);
+}
+
+impl Snapshot {
+    fn set_audio_progress(&mut self, operation: u64, completed: usize, total: usize) -> bool {
+        if self.operation_id != operation || self.phase != "transcribing" || total == 0 || completed > total {
+            return false;
+        }
+        let progress = AudioProgress {
+            completed_audio_ms: (completed / 16) as u64,
+            total_audio_ms: (total / 16) as u64,
+        };
+        if self.progress.is_some_and(|last| {
+            last.total_audio_ms != progress.total_audio_ms
+                || last.completed_audio_ms >= progress.completed_audio_ms
+        }) {
+            return false;
+        }
+        self.progress = Some(progress);
+        true
+    }
+}
+
+pub fn audio_progress(app: &AppHandle, operation: u64, completed: usize, total: usize) {
+    let snapshot = {
+        let mut s = state().lock().unwrap_or_else(|e| e.into_inner());
+        if !s.set_audio_progress(operation, completed, total) {
+            return;
+        }
+        s.revision += 1;
+        s.clone()
+    };
+    let _ = app.emit("dictation:status", snapshot);
 }
 pub fn ready(app: &AppHandle) {
     update(app, |s| {
@@ -103,10 +149,33 @@ pub fn copied(app: &AppHandle, operation_id: u64) -> bool {
             return false;
         }
         s.phase = "completed".into();
+        s.progress = None;
         s.error = None;
         s.revision += 1;
         s.clone()
     };
     let _ = app.emit("dictation:status", next);
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn audio_progress_belongs_to_the_current_transcribing_operation() {
+        let mut status = Snapshot {
+            phase: "transcribing".into(),
+            operation_id: 2,
+            ..Default::default()
+        };
+        assert!(!status.set_audio_progress(1, 0, 32_000));
+        assert!(status.set_audio_progress(2, 0, 32_000));
+        assert!(status.set_audio_progress(2, 16_000, 32_000));
+        assert!(!status.set_audio_progress(2, 0, 32_000));
+        assert_eq!(status.progress.unwrap().completed_audio_ms, 1000);
+        assert_eq!(serde_json::to_value(&status).unwrap()["progress"]["totalAudioMs"], 2000);
+        status.phase = "cancelled".into();
+        assert!(!status.set_audio_progress(2, 32_000, 32_000));
+    }
 }

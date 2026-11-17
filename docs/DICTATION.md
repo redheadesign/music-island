@@ -27,12 +27,13 @@ the next recording. If Vulkan cannot initialize the model, dictation retries on
 CPU and shows the backend that loaded. ONNX models use CPU.
 
 GigaAM GGUF models recognize the recording after you stop. For recordings over
-25 seconds, the app will split at sufficiently quiet pauses when they can keep
-all parts within the [GigaAM utterance window](https://github.com/handy-computer/transcribe.cpp/blob/main/docs/models/gigaam.md).
-It keeps every audio sample, joins the parts in order and applies text cleanup
-once to the result. Cancel stops further parts after the current inference call.
-If continuous speech leaves no suitable pause, the model still gets the whole
-recording. This case can take substantially longer. The saved audio is unaffected.
+25 seconds, the app looks for quiet pauses near 17 seconds, within the
+[GigaAM utterance window](https://github.com/handy-computer/transcribe.cpp/blob/main/docs/models/gigaam.md).
+If a continuous passage exceeds 25 seconds, it stays intact until the next
+safe pause. The model receives every sample in order and text cleanup runs
+once after recognition. The recording overlay receives the real duration of
+completed fragments. Cancel stops further fragments after the current call.
+With no suitable pause anywhere the model receives the entire recording.
 
 In the Windows acceptance probe, GigaAM v3 E2E RNN-T Q8 ran on a Ryzen 7
 4700U's Vulkan backend. A 64.6-second synthetic recording took 25.5–39.1
@@ -228,7 +229,11 @@ runtime, lists devices, runs silence through VAD and writes
 `Music Island/dictation/runtime-check.json`. Optional positional model and WAV
 paths add recognition and unload checks. WAV input must be mono 16 kHz/16-bit.
 After the WAV path, pass `auto`, `cpu` or `vulkan` to compare backends. The
-default is `cpu`. The report includes both the requested and actual backend.
+default is `cpu`. After the accelerator, an optional `planned` applies the
+production GigaAM pause finder; the default `raw` sends one complete input.
+The report includes the actual backend, per-fragment sample offsets, elapsed
+inference time and final text. To compare versions or strategies, use the same
+weights and WAV, alternate run order, and score both against the same reference.
 This command does not open the microphone, show application windows or access
 the real profile when those environment paths are isolated.
 
@@ -320,8 +325,11 @@ delayed-render worker withdrawn in 3.0.4 remains out of the production Windows
 path. See [the adaptation journal](HANDY_ADAPTATIONS.md).
 
 Local `dictation/logs/lifecycle.log` records operation phases, insertion duration
-and insertion failures, without dictated text or clipboard contents. It is capped
-at 1 MiB and resets when full. Native panic reports also capture a backtrace in
+and insertion failures, without dictated text or clipboard contents. Completed
+recordings also report capture drain, recognition, concurrent WAV persistence,
+stop-to-final-text and insertion completion durations. The last duration includes
+the configured clipboard restoration wait. The log resets when it reaches
+1 MiB. Native panic reports also capture a backtrace in
 `logs/app.log`; Windows heap-corruption failures may terminate before that hook.
 
 Classic recording uses content width with 9px on both sides of its listening label

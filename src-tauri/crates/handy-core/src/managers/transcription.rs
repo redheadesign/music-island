@@ -1030,12 +1030,13 @@ impl TranscriptionManager {
     }
 
     pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
-        self.transcribe_until_cancelled(audio, || false)
+        self.transcribe_until_cancelled(&audio, None, || false)
     }
 
     pub(crate) fn transcribe_until_cancelled(
         &self,
-        audio: Vec<f32>,
+        audio: &[f32],
+        operation: Option<u64>,
         is_cancelled: impl Fn() -> bool,
     ) -> Result<String> {
         #[cfg(debug_assertions)]
@@ -1190,11 +1191,19 @@ impl TranscriptionManager {
             let transcribe_result = catch_unwind(AssertUnwindSafe(|| -> Result<String> {
                 anyhow::ensure!(!is_cancelled(), "Transcription cancelled");
                 if engine.kind == "TranscribeCpp" && engine.capabilities.arch == "gigaam" {
-                    if let Some(ranges) = crate::long_form_gigaam::pause_ranges(&audio) {
+                    if let Some(ranges) = crate::long_form_gigaam::pause_ranges(audio) {
                         let mut full = String::new();
+                        if let Some(id) = operation {
+                            crate::status::audio_progress(&self.app_handle, id, 0, audio.len());
+                        }
                         for range in ranges {
                             anyhow::ensure!(!is_cancelled(), "Transcription cancelled");
+                            let completed = range.end;
                             let result = engine.run(&audio[range], options.clone())?;
+                            anyhow::ensure!(!is_cancelled(), "Transcription cancelled");
+                            if let Some(id) = operation {
+                                crate::status::audio_progress(&self.app_handle, id, completed, audio.len());
+                            }
                             if model_detected_language.is_none() {
                                 model_detected_language = result.language;
                             }
@@ -1209,7 +1218,7 @@ impl TranscriptionManager {
                         return Ok(full);
                     }
                 }
-                let result = engine.run(&audio, options)?;
+                let result = engine.run(audio, options)?;
                 model_detected_language = result.language;
                 Ok(result.full)
             }));

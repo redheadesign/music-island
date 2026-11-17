@@ -42,7 +42,7 @@ impl Drop for FinishGuard {
             c.notify_processing_finished();
         }
         // The pipeline just freed its large transient buffers (captured PCM,
-        // WAV copy, engine scratch); hand the cached pages back to the OS so
+        // engine scratch); hand the cached pages back to the OS so
         // they don't sit in malloc arenas until they get swapped out (#1792).
         crate::memory::trim_freed_memory();
     }
@@ -709,6 +709,7 @@ impl ShortcutAction for TranscribeAction {
         let binding_id = binding_id.to_string(); // Clone binding_id for the async task
         let post_process = self.post_process;
         let cancel_generation = rm.cancel_generation();
+        let operation = crate::status::snapshot().operation_id;
 
         tauri::async_runtime::spawn(async move {
             let _guard = FinishGuard(ah.clone(), Arc::clone(&tm));
@@ -718,7 +719,16 @@ impl ShortcutAction for TranscribeAction {
             );
 
             let stop_recording_time = Instant::now();
-            if let Some(samples) = rm.stop_recording(&binding_id, cancel_generation) {
+            let recorder = Arc::clone(&rm);
+            let captured = tauri::async_runtime::spawn_blocking(move || {
+                recorder.stop_recording(&binding_id, cancel_generation)
+            })
+            .await
+            .unwrap_or_else(|error| {
+                error!("Recording stop worker failed: {error}");
+                None
+            });
+            if let Some(samples) = captured {
                 debug!(
                     "Recording stopped and samples retrieved in {:?}, sample count: {}",
                     stop_recording_time.elapsed(),
@@ -742,46 +752,47 @@ impl ShortcutAction for TranscribeAction {
                     set_tray_state(&ah, TrayIconState::Idle);
                 } else {
                     // Save WAV concurrently with transcription
+                    let samples = Arc::new(samples);
                     let sample_count = samples.len();
+                    let capture_ms = stop_recording_time.elapsed().as_millis();
                     let file_name = format!("handy-{}.wav", chrono::Utc::now().timestamp());
                     let wav_path = hm.recordings_dir().join(&file_name);
-                    let wav_path_for_verify = wav_path.clone();
-                    let samples_for_wav = samples.clone();
+                    let samples_for_wav = Arc::clone(&samples);
                     let wav_handle = tauri::async_runtime::spawn_blocking(move || {
-                        crate::audio_toolkit::save_wav_file(&wav_path, &samples_for_wav)
+                        let start = Instant::now();
+                        crate::audio_toolkit::save_wav_file(&wav_path, &samples_for_wav)?;
+                        crate::audio_toolkit::verify_wav_file(&wav_path, sample_count)?;
+                        Ok::<_, anyhow::Error>(start.elapsed())
                     });
 
                     // Transcribe concurrently with WAV save. If a live stream was
                     // running, finalize it and use its text (all audio was already
                     // fed to the stream); otherwise batch-transcribe the samples.
                     let transcription_time = Instant::now();
-                    let transcription_result = match tm.finalize_stream() {
-                        // A finalized stream with usable text wins. An empty result
-                        // (no active stream, produced nothing, or a finalize error
-                        // after the engine was returned) falls back to a full batch
-                        // transcription of the same audio. A finalize timeout is
-                        // surfaced instead — the worker may still hold the engine,
-                        // so a batch fallback would contend with it.
-                        Ok(Some(text)) if !text.trim().is_empty() => Ok(text),
-                        Ok(_) => tm.transcribe_until_cancelled(samples, || {
-                            rm.was_cancelled_since(cancel_generation)
-                        }),
-                        Err(err) => Err(err),
-                    };
+                    let worker = Arc::clone(&tm);
+                    let recorder = Arc::clone(&rm);
+                    let transcription_result = tauri::async_runtime::spawn_blocking(move || {
+                        match worker.finalize_stream() {
+                            Ok(Some(text)) if !text.trim().is_empty() => Ok(text),
+                            Ok(_) => worker.transcribe_until_cancelled(&samples, Some(operation), || {
+                                recorder.was_cancelled_since(cancel_generation)
+                            }),
+                            // A timed-out stream may still own the engine.
+                            Err(err) => Err(err),
+                        }
+                    })
+                    .await
+                    .unwrap_or_else(|err| Err(anyhow::anyhow!("Recognition worker failed: {err}")));
+                    let recognition_ms = transcription_time.elapsed().as_millis();
 
                     // Await WAV save and verify
                     let wav_saved = match wav_handle.await {
-                        Ok(Ok(())) => {
-                            match crate::audio_toolkit::verify_wav_file(
-                                &wav_path_for_verify,
-                                sample_count,
-                            ) {
-                                Ok(()) => true,
-                                Err(e) => {
-                                    error!("WAV verification failed: {}", e);
-                                    false
-                                }
-                            }
+                        Ok(Ok(duration)) => {
+                            crate::diagnostics::event(&format!(
+                                "operation={operation} audio_ms={} capture_drain_ms={capture_ms} recognition_ms={recognition_ms} parallel_wav_ms={}",
+                                sample_count / 16, duration.as_millis()
+                            ));
+                            true
                         }
                         Ok(Err(e)) => {
                             error!("Failed to save WAV file: {}", e);
@@ -826,6 +837,10 @@ impl ShortcutAction for TranscribeAction {
                                 set_tray_state(&ah, TrayIconState::Idle);
                                 return;
                             };
+                            crate::diagnostics::event(&format!(
+                                "operation={operation} stop_to_text_ms={} ai={post_process}",
+                                stop_time.elapsed().as_millis()
+                            ));
 
                             if rm.was_cancelled_since(cancel_generation) {
                                 debug!("Transcription operation cancelled before paste");
@@ -891,7 +906,7 @@ impl ShortcutAction for TranscribeAction {
                                         return;
                                     }
                                     crate::diagnostics::event(&match &paste_result {
-                                        Ok(()) => format!("insertion complete elapsed_ms={}", paste_time.elapsed().as_millis()),
+                                        Ok(()) => format!("operation={operation} insertion complete elapsed_ms={} stop_to_delivery_complete_ms={}", paste_time.elapsed().as_millis(), stop_time.elapsed().as_millis()),
                                         Err(error) => format!("insertion failed: {error}"),
                                     });
                                     crate::status::result(

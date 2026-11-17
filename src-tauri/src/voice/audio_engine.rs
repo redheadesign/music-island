@@ -1,5 +1,6 @@
 use crate::voice::audio_init::init_monitor;
-use crate::voice::audio_utils::{calculate_rms, compute_spectrum_into, write_to_monitor};
+use crate::voice::audio_utils::{calculate_rms, write_to_monitor, DSP_SAMPLE_RATE};
+use crate::voice::meter_spectrum::MeterSpectrum;
 use crate::voice::debug::{debug_log, debug_log_dev, flush_debug_log};
 use crate::voice::denoise::{self, FRAME_SIZE};
 use crate::voice::dsp::DspModule;
@@ -96,6 +97,8 @@ pub struct AudioStats {
     pub spectrum: Vec<f32>,
     pub spectrum_out: Vec<f32>,
     pub frames_dropped: u64,
+    #[serde(skip)]
+    last_meter_read: Option<std::time::Instant>,
 }
 
 pub type MonitorPoint = u32;
@@ -180,8 +183,10 @@ impl AudioEngine {
     pub fn eq_config_dirty(&self) -> &Arc<AtomicBool> {
         &self.eq_config_dirty
     }
-    pub fn stats(&self) -> &Arc<RwLock<AudioStats>> {
-        &self.stats
+    pub fn stats_snapshot(&self) -> AudioStats {
+        let mut stats = self.stats.write();
+        stats.last_meter_read = Some(std::time::Instant::now());
+        stats.clone()
     }
     #[allow(dead_code)]
     pub fn bgm_running(&self) -> &Arc<AtomicBool> {
@@ -691,10 +696,16 @@ fn dsp_thread(
     let mut spectrum_acc_in: Vec<f32> = vec![0.0; FRAME_SIZE * SPECTRUM_ACC_FRAMES];
     let mut spectrum_acc_out: Vec<f32> = vec![0.0; FRAME_SIZE * SPECTRUM_ACC_FRAMES];
     let mut spectrum_acc_idx: usize = 0;
+    const SPECTRUM_BANDS: usize = 64;
+    let mut spectrum = MeterSpectrum::new(DSP_SAMPLE_RATE, spectrum_acc_in.len(), SPECTRUM_BANDS);
+    let mut input_bands = [0.0; SPECTRUM_BANDS];
+    let mut output_bands = [0.0; SPECTRUM_BANDS];
 
     let mut bgm_buf: Vec<f32> = Vec::new();
     let mut bgm_read_pos: usize = 0;
     let mut stats_start = std::time::Instant::now();
+    let mut max_dsp_frame_us = 0u128;
+    let mut over_budget_frames = 0u32;
 
     // DSP 妯″潡
     let mut hpf = crate::voice::dsp::hpf::HighPassFilter::default_48k();
@@ -752,6 +763,7 @@ fn dsp_thread(
             }
         };
 
+        let frame_start = std::time::Instant::now();
         frame_count += 1;
         let current_config = config.read().clone();
 
@@ -1064,43 +1076,42 @@ fn dsp_thread(
             };
 
             // 频谱累积：每 SPECTRUM_ACC_FRAMES 帧计算一次
-            let acc_offset = spectrum_acc_idx * FRAME_SIZE;
-            let acc_len = FRAME_SIZE * SPECTRUM_ACC_FRAMES;
-            spectrum_acc_in[acc_offset..acc_offset + FRAME_SIZE].copy_from_slice(&input_frame);
-            spectrum_acc_out[acc_offset..acc_offset + FRAME_SIZE].copy_from_slice(&frame);
-            spectrum_acc_idx += 1;
-
-            if spectrum_acc_idx >= SPECTRUM_ACC_FRAMES {
-                spectrum_acc_idx = 0;
-                let mut spectrum_buf = vec![0.0f32; 64];
-                compute_spectrum_into(&spectrum_acc_in[..acc_len], &mut spectrum_buf);
-                let mut spectrum_out_buf = vec![0.0f32; 64];
-                compute_spectrum_into(&spectrum_acc_out[..acc_len], &mut spectrum_out_buf);
-
-                let mut s = stats.write();
-                s.input_level = input_level_db;
-                s.output_level = output_level_db;
-                s.input_peak = last_input_peak_db;
-                s.post_gain_peak = last_post_gain_peak_db;
-                s.input_clipping = input_clipping;
-                s.noise_reduction_db = input_level_db - output_level_db;
-                s.latency_ms = 10.0 + 10.0;
-                s.frames_processed = frame_count;
-                s.frames_dropped = frames_dropped;
-                s.spectrum = spectrum_buf.clone();
-                s.spectrum_out = spectrum_out_buf.clone();
+            // VoiceLiveMeters polls every 250 ms while visible. Let the meter
+            // lease expire even if its WebView was closed without cleanup.
+            let meter_visible = stats.read().last_meter_read
+                .is_some_and(|last| last.elapsed() < std::time::Duration::from_secs(1));
+            if meter_visible {
+                let offset = spectrum_acc_idx * FRAME_SIZE;
+                spectrum_acc_in[offset..offset + FRAME_SIZE].copy_from_slice(&input_frame);
+                spectrum_acc_out[offset..offset + FRAME_SIZE].copy_from_slice(&frame);
+                spectrum_acc_idx += 1;
             } else {
-                // Levels still update while spectrum accumulates
-                let mut s = stats.write();
-                s.input_level = input_level_db;
-                s.output_level = output_level_db;
-                s.input_peak = last_input_peak_db;
-                s.post_gain_peak = last_post_gain_peak_db;
-                s.input_clipping = input_clipping;
-                s.noise_reduction_db = input_level_db - output_level_db;
-                s.latency_ms = 10.0 + 10.0;
-                s.frames_processed = frame_count;
-                s.frames_dropped = frames_dropped;
+                spectrum_acc_idx = 0;
+            }
+            let fresh_spectrum = spectrum_acc_idx == SPECTRUM_ACC_FRAMES;
+            if fresh_spectrum {
+                spectrum_acc_idx = 0;
+                spectrum.measure(&spectrum_acc_in, &mut input_bands);
+                spectrum.measure(&spectrum_acc_out, &mut output_bands);
+            }
+            let mut s = stats.write();
+            s.input_level = input_level_db;
+            s.output_level = output_level_db;
+            s.input_peak = last_input_peak_db;
+            s.post_gain_peak = last_post_gain_peak_db;
+            s.input_clipping = input_clipping;
+            s.noise_reduction_db = input_level_db - output_level_db;
+            s.latency_ms = 10.0 + 10.0;
+            s.frames_processed = frame_count;
+            s.frames_dropped = frames_dropped;
+            if fresh_spectrum {
+                s.spectrum.resize(SPECTRUM_BANDS, 0.0);
+                s.spectrum_out.resize(SPECTRUM_BANDS, 0.0);
+                s.spectrum.copy_from_slice(&input_bands);
+                s.spectrum_out.copy_from_slice(&output_bands);
+            } else if !meter_visible {
+                s.spectrum.clear();
+                s.spectrum_out.clear();
             }
         }
 
@@ -1113,13 +1124,20 @@ fn dsp_thread(
         }
 
         // 鈹€鈹€ 10. 鍋ュ悍缁熻 鈹€鈹€
+        let dsp_frame_us = frame_start.elapsed().as_micros();
+        max_dsp_frame_us = max_dsp_frame_us.max(dsp_frame_us);
+        if dsp_frame_us > 10_000 {
+            over_budget_frames += 1;
+        }
         if stats_start.elapsed().as_secs() >= 5 {
             let drop_rate = frames_dropped as f64 / frame_count as f64 * 100.0;
             debug_log(&format!(
-                "HEALTH: frame={} dropped={} ({:.2}%)",
-                frame_count, frames_dropped, drop_rate
+                "HEALTH: frame={} dropped={} ({:.2}%) max_dsp_frame_us={} over_10ms_last_window={}",
+                frame_count, frames_dropped, drop_rate, max_dsp_frame_us, over_budget_frames
             ));
             stats_start = std::time::Instant::now();
+            max_dsp_frame_us = 0;
+            over_budget_frames = 0;
             flush_debug_log();
         }
     }

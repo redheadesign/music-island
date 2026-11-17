@@ -13,8 +13,8 @@ const SEARCH_STEP: usize = SAMPLES_PER_SECOND * 20 / 1000;
 const QUIET_RMS: f32 = 0.008;
 const MIN_DROP_IN_POWER: f32 = 64.0;
 
-/// An all-or-nothing plan. If a recording has sustained speech with no safe
-/// pause inside the model window, preserve the existing whole-input inference.
+/// Prefer the trained utterance window. Keep a longer continuous passage intact
+/// until a real pause, preserving adjacent short utterances and every sample.
 pub(crate) fn pause_ranges(audio: &[f32]) -> Option<Vec<Range<usize>>> {
     if audio.len() <= MAX_CHUNK {
         return None;
@@ -25,13 +25,33 @@ pub(crate) fn pause_ranges(audio: &[f32]) -> Option<Vec<Range<usize>>> {
     while audio.len() - start > MAX_CHUNK {
         let search_end = (start + MAX_CHUNK).min(audio.len() - MIN_TAIL);
         let search_start = start + MIN_CHUNK;
-        let pause = &audio[search_start..search_end];
-        let boundary = search_start + find_pause(pause, TARGET_CHUNK - MIN_CHUNK)?;
+        let boundary = find_pause(&audio[search_start..search_end], TARGET_CHUNK - MIN_CHUNK)
+            .map(|offset| search_start + offset)
+            .or_else(|| next_pause(audio, search_end));
+        let Some(boundary) = boundary else { break };
         ranges.push(start..boundary);
         start = boundary;
     }
+    if ranges.is_empty() {
+        return None;
+    }
     ranges.push(start..audio.len());
     Some(ranges)
+}
+
+fn next_pause(audio: &[f32], previous_end: usize) -> Option<usize> {
+    let limit = audio.len() - MIN_TAIL;
+    let mut end = previous_end;
+    while end < limit {
+        // Overlap by a detector window so a quiet interval straddling two
+        // scans is still recognized. Local peak power rejects soft speech.
+        let start = end - PAUSE_SAMPLES;
+        end = (end + MAX_CHUNK - MIN_CHUNK).min(limit);
+        if let Some(offset) = find_pause(&audio[start..end], 0) {
+            return Some(start + offset);
+        }
+    }
+    None
 }
 
 fn find_pause(samples: &[f32], target: usize) -> Option<usize> {
@@ -100,10 +120,29 @@ mod tests {
     }
 
     #[test]
-    fn stops_planning_if_a_later_chunk_has_no_safe_pause() {
+    fn keeps_a_safe_prefix_when_the_remaining_speech_has_no_pause() {
         let mut audio = vec![0.2; 60 * SECOND];
         pause(&mut audio, 16);
-        assert!(pause_ranges(&audio).is_none());
+        let ranges = pause_ranges(&audio).unwrap();
+        assert_eq!(ranges.len(), 2);
+        assert!(ranges[0].end.abs_diff(16 * SECOND) <= PAUSE_SAMPLES);
+        assert_eq!(ranges[1], ranges[0].end..audio.len());
+    }
+
+    #[test]
+    fn preserves_a_long_unbroken_passage_and_resumes_at_a_real_pause() {
+        let mut audio = vec![0.2; 94 * SECOND];
+        for seconds in [17, 60, 77] {
+            pause(&mut audio, seconds);
+        }
+        let ranges = pause_ranges(&audio).unwrap();
+        assert_eq!(ranges.len(), 4);
+        assert_eq!(ranges[0].start, 0);
+        assert_eq!(ranges.last().unwrap().end, audio.len());
+        for (pair, second) in ranges.windows(2).zip([17, 60, 77]) {
+            assert_eq!(pair[0].end, pair[1].start);
+            assert!(pair[0].end.abs_diff(second * SECOND) <= PAUSE_SAMPLES);
+        }
     }
 
     #[test]

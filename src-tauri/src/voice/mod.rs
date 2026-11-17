@@ -13,6 +13,7 @@ mod device;
 mod dsp;
 mod eq;
 mod explode;
+mod meter_spectrum;
 mod mmcss;
 mod vb_cable;
 mod wasapi_capture;
@@ -220,7 +221,7 @@ pub fn voice_invoke(
             Ok(json!({ "ok": true }))
         }
         "get_audio_stats" => {
-            let stats = state.engine.lock().stats().read().clone();
+            let stats = state.engine.lock().stats_snapshot();
             ok_json(stats)
         }
         "list_input_devices" => list_devices(wasapi::Direction::Capture),

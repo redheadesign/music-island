@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-use rustfft::{num_complex::Complex, FftPlanner};
 use std::sync::atomic::{AtomicU64, Ordering};
 use wasapi::*;
 
@@ -7,7 +6,7 @@ static MONITOR_FAIL_COUNT: AtomicU64 = AtomicU64::new(0);
 static MONITOR_FAIL_FIRST_TIME: AtomicU64 = AtomicU64::new(0);
 static MONITOR_FAIL_LAST_LOG: AtomicU64 = AtomicU64::new(0);
 
-const DSP_SAMPLE_RATE: u32 = 48000;
+pub(super) const DSP_SAMPLE_RATE: u32 = 48000;
 
 pub fn calculate_rms(samples: &[f32]) -> f32 {
     if samples.is_empty() {
@@ -15,72 +14,6 @@ pub fn calculate_rms(samples: &[f32]) -> f32 {
     }
     let sum: f32 = samples.iter().map(|&s| s * s).sum();
     (sum / samples.len() as f32).sqrt()
-}
-
-/// FFT spectrum into preallocated buffer. Input: normalized f32 [-1, 1]. Output: 0–1.
-pub fn compute_spectrum_into(samples: &[f32], output: &mut [f32]) {
-    let n = samples.len();
-    let bands = output.len();
-    if n == 0 || bands == 0 {
-        output.fill(0.0);
-        return;
-    }
-
-    let mut planner = FftPlanner::<f32>::new();
-    let fft = planner.plan_fft_forward(n);
-
-    let mut buffer: Vec<Complex<f32>> = samples
-        .iter()
-        .enumerate()
-        .map(|(i, &s)| {
-            let w = 0.5 * (1.0 - (2.0 * std::f32::consts::PI * i as f32 / n as f32).cos());
-            Complex::new(s * w, 0.0)
-        })
-        .collect();
-
-    fft.process(&mut buffer);
-
-    let half_n = n / 2;
-    let freq_per_bin = 48000.0f32 / n as f32;
-    const FREQ_MIN: f32 = 20.0;
-    const FREQ_MAX: f32 = 24000.0;
-
-    let mut band_edges: Vec<usize> = Vec::with_capacity(bands + 1);
-    for i in 0..=bands {
-        let t = i as f32 / bands as f32;
-        let freq = FREQ_MIN * (FREQ_MAX / FREQ_MIN).powf(t);
-        let bin = ((freq / freq_per_bin) as usize).min(half_n);
-        band_edges.push(bin);
-    }
-
-    const MIN_DB: f32 = -80.0;
-    const MAX_DB: f32 = -10.0;
-
-    for i in 0..bands {
-        let start = band_edges[i];
-        let end = band_edges[i + 1].max(start + 1);
-
-        let mut peak_mag = 0.0f32;
-        for bin in start..end {
-            if bin >= half_n {
-                break;
-            }
-            let mag = (buffer[bin].re * buffer[bin].re + buffer[bin].im * buffer[bin].im).sqrt();
-            let normalized = mag / n as f32;
-            if normalized > peak_mag {
-                peak_mag = normalized;
-            }
-        }
-
-        let db = if peak_mag > 1e-10 {
-            20.0 * peak_mag.log10()
-        } else {
-            MIN_DB
-        };
-
-        let val = ((db - MIN_DB) / (MAX_DB - MIN_DB)).max(0.0).min(1.0);
-        output[i] = val;
-    }
 }
 
 /// Write mono f32 DSP frames to the monitor device.
