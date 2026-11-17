@@ -88,6 +88,9 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-model__download { display: flex; align-items: center; width: 180px; max-width: 100%; gap: var(--space-2); color: var(--fg-secondary); font-size: var(--text-caption); }
 .dictation-model__download progress { flex: 1; min-width: 50px; width: 100px; height: 4px; accent-color: var(--accent); }
 .dictation-model p.dictation-model__error { color: var(--status-danger); margin-bottom: 0; overflow-wrap: anywhere; }
+.dictation-model-file { display: grid; gap: var(--space-3); }
+.dictation-model-file > button { justify-self: start; }
+.dictation-model-file .dictation-dialog__actions { margin-top: var(--space-3); }
 .dictation-dialog__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-6); }
 
 .dictation-models__toolbar > h2 { margin: 0 auto 0 0; }

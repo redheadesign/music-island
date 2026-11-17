@@ -111,7 +111,7 @@
 .usage-settings__limit-label { color: var(--fg-secondary); font-size: var(--text-caption); font-weight: var(--weight-medium); }
 .usage-settings__limit-value { color: var(--fg-primary); font-size: var(--text-body); font-weight: var(--weight-semibold); line-height: var(--leading-label); }
 .usage-settings__limit-value small { margin-left: var(--space-1-5); color: var(--fg-secondary); font-size: var(--text-caption); font-weight: var(--weight-regular); }
-.usage-settings__limit-reset { min-height: 14px; color: var(--fg-secondary); font-size: var(--text-caption); }
+.usage-settings__limit-reset { display: block; min-height: 14px; color: var(--fg-secondary); font-size: var(--text-caption); }
 .usage-settings__meter {
   height: 6px;
   overflow: hidden;
