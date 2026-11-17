@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useEffect, useState } from 'react'
 import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
 import { OverlayShell } from '../../features/overlay/OverlayShell'
+import { createIslandBassEffect } from '../../shared/ui/islandBassEffect'
 import type { IslandAppState, OverlayMode } from '../../app/useIslandApp'
 import type { MediaSnapshot } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
@@ -29,6 +30,7 @@ function IslandPreview({
   interfaceTheme,
   artwork = 'warm',
   reducedMotion = false,
+  reducedTransparency,
   startCollapsed = false,
 }: {
   locale: 'ru' | 'en'
@@ -48,6 +50,7 @@ function IslandPreview({
   interfaceTheme?: InterfaceThemeId
   artwork?: 'warm' | 'cool' | 'missing'
   reducedMotion?: boolean
+  reducedTransparency?: boolean
   startCollapsed?: boolean
 }) {
   const [config, setConfig] = useWorkshopConfig(locale, accent, !startCollapsed && localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed', interfaceTheme)
@@ -77,7 +80,7 @@ function IslandPreview({
         enabled: latestMessageMode ? ['dictation'] : config.plugins.enabled,
         settings: {
           ...config.plugins.settings,
-          ui: { ...ui, localServersEnabled: ui.localServersEnabled ?? Boolean(localServersMode), localServersWidgetScale, showLatestDictationMessage: Boolean(latestMessageMode), forceIslandUpdateBanner: update && !ui.islandUpdateSnoozedUntil },
+          ui: { ...ui, reducedTransparency: reducedTransparency ?? ui.reducedTransparency, localServersEnabled: ui.localServersEnabled ?? Boolean(localServersMode), localServersWidgetScale, showLatestDictationMessage: Boolean(latestMessageMode), forceIslandUpdateBanner: update && !ui.islandUpdateSnoozedUntil },
           usage: { codexEnabled: assistantLimits, claudeEnabled: false },
         },
       },
@@ -109,6 +112,7 @@ function IslandPreview({
               value.playbackStatus === 'playing' ? 'paused' : 'playing',
           }
         if (command === 'like') return { ...value, isLiked: !value.isLiked }
+        if (command === 'dislike') return { ...value, isDisliked: !value.isDisliked }
         if (typeof command === 'object' && 'seek' in command)
           return { ...value, positionMs: command.seek.positionMs }
         return value
@@ -190,11 +194,63 @@ const meta = {
 export default meta
 export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый островок' }
 export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный островок', globals: { interfaceTheme: 'glass' } }
+export const GlassControlLenses: StoryObj<typeof meta> = {
+  ...Glass,
+  name: 'Стекло · кнопки плеера рядом с виджетом Codex',
+  args: { artwork: 'cool', assistantLimits: true },
+  globals: { ...Glass.globals, locale: 'en' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const previous = await canvas.findByRole('button', { name: 'Previous' })
+    const pause = canvas.getByRole('button', { name: 'Pause' })
+    const next = canvas.getByRole('button', { name: 'Next' })
+    const like = canvas.getByRole('button', { name: 'Like' })
+    const dislike = canvas.getByRole('button', { name: 'Dislike' })
+    const settings = canvas.getByRole('button', { name: 'Open settings' })
+    const documentView = canvasElement.ownerDocument.defaultView!
+    if (documentView.matchMedia('(forced-colors: none) and (prefers-reduced-transparency: no-preference)').matches) {
+      for (const button of [previous, pause, next, like, dislike, settings]) {
+        await expect(documentView.getComputedStyle(button).backdropFilter).toContain('blur(')
+      }
+      const seek = canvas.getByRole('button', { name: 'Seek track' })
+      await expect(documentView.getComputedStyle(seek).backdropFilter).toBe('none')
+    }
+    await userEvent.click(previous)
+    await expect(onCommand).toHaveBeenLastCalledWith('previous')
+    await userEvent.tab()
+    await expect(pause).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    await expect(canvas.getByRole('button', { name: 'Play' })).toHaveFocus()
+    await userEvent.click(next)
+    await expect(onCommand).toHaveBeenLastCalledWith('next')
+    await userEvent.click(dislike)
+    await expect(dislike).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(dislike)
+    await userEvent.click(like)
+    await expect(like).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(settings)
+    await expect(openSettings).toHaveBeenCalled()
+  },
+}
+export const GlassControlLensesReducedTransparency: StoryObj<typeof meta> = {
+  ...GlassControlLenses,
+  name: 'Стекло · кнопки с пониженной прозрачностью',
+  args: { ...GlassControlLenses.args, reducedTransparency: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const settings = await canvas.findByRole('button', { name: 'Open settings' })
+    await expect(settings.closest('.island-root')).toHaveAttribute('data-reduced-transparency', 'true')
+    await expect(canvasElement.ownerDocument.defaultView!.getComputedStyle(settings).backdropFilter).toBe('none')
+  },
+}
 export const GlassCoolCover: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · рябь и прогресс в цветах обложки', args: { artwork: 'cool' },
   play: async ({ canvasElement }) => {
     const forcedColors = matchMedia('(forced-colors: active)').matches
-    await waitFor(() => expect(canvasElement.querySelector('.island-root')).toHaveAttribute('data-cover-art', 'true'))
+    const island = canvasElement.querySelector<HTMLElement>('.island-root')!
+    await waitFor(() => expect(island).toHaveAttribute('data-cover-art', 'true'))
+    const blue = Number(island.style.getPropertyValue('--artwork-primary').split(',')[2])
+    await expect(blue).toBeGreaterThan(190)
     await waitFor(async () => {
       const progress = canvasElement.querySelector('.progress-fill')
       await expect(progress).toBeInTheDocument()
@@ -231,6 +287,36 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
   },
 }
 export const GlassWithoutCover: StoryObj<typeof meta> = { ...Glass, name: 'Стекло · нейтральный прогресс без обложки', args: { artwork: 'missing' } }
+export const GlassBassBurst: StoryObj<typeof meta> = {
+  ...Glass, name: 'Стекло · частицы на ударе баса', args: { artwork: 'cool' },
+  play: async ({ canvasElement }) => {
+    const layer = await waitFor(() => {
+      const node = canvasElement.querySelector<HTMLElement>('.island-card .island-feedback__layer')
+      expect(node).toBeInTheDocument()
+      return node!
+    })
+    if (matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches) return
+    const effect = createIslandBassEffect(layer)
+    const particles = () => [...layer.querySelectorAll('.island-bass-particle')]
+    try {
+      effect.update(.1)
+      await expect(particles()).toHaveLength(0)
+      effect.update(.93)
+      const first = particles()
+      await expect(first.length).toBeGreaterThan(5)
+      await expect(first[0].getAnimations()[0]?.effect?.getTiming().duration).toBeLessThan(1000)
+      effect.update(.94)
+      await expect(particles()).toEqual(first)
+      await waitFor(() => expect(particles()).toHaveLength(0), { timeout: 1200 })
+      effect.update(.1)
+      effect.update(.93)
+      await expect(particles().length).toBeGreaterThan(5)
+    } finally {
+      effect.dispose()
+    }
+    await expect(particles()).toHaveLength(0)
+  },
+}
 export const GlassEdge: StoryObj<typeof meta> = {
   ...Glass,
   name: 'Стекло · верхняя кромка при наведении',
@@ -416,7 +502,19 @@ export const LatestDictationExpanded: StoryObj<typeof meta> = {
     await expect(latestBounds.width).toBeCloseTo(servers.getBoundingClientRect().width, 0)
     await expect(latestBounds.top).toBeGreaterThan(servers.getBoundingClientRect().bottom)
     await expect(getComputedStyle(latest).paddingLeft).toBe(getComputedStyle(player).paddingLeft)
+    for (const widget of [servers, latest]) {
+      const style = getComputedStyle(widget)
+      await expect(style.borderWidth).toBe('0px')
+      await expect(style.boxShadow).not.toContain('inset')
+    }
   },
+}
+
+export const GlassWidgetPanels: StoryObj<typeof meta> = {
+  ...LatestDictationExpanded,
+  name: 'Стекло · серверы и последняя запись под островком',
+  globals: { interfaceTheme: 'glass' },
+  parameters: { workshop: { height: 720 } },
 }
 
 export const LatestDictationNarrow: StoryObj<typeof meta> = {

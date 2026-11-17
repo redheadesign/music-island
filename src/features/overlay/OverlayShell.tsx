@@ -1,4 +1,5 @@
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
+import { createIslandBassEffect } from '../../shared/ui/islandBassEffect'
 import { SettingsFilled } from '../../shared/ui/SettingsIcons'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
@@ -30,6 +31,7 @@ import {
 } from './overlayWindow'
 import { transitionOverlay, type OverlayTransition } from './overlayTransition'
 import { IslandTopIndicator } from './IslandTopIndicator'
+import { artworkCssColors, readArtworkPalette, type ArtworkPalette } from './artworkPalette'
 import { HoverCoach } from './HoverCoach'
 import { LocalServersPanel } from './LocalServersPanel'
 import { LatestDictationPanel } from './LatestDictationPanel'
@@ -57,16 +59,6 @@ interface OverlayShellProps {
   usage?: UsageController
   localServers?: LocalServersController
   latestDictation?: LatestDictationMessageController
-}
-
-interface ArtworkTheme {
-  primary: string
-  secondary: string
-}
-
-const FALLBACK_ARTWORK_THEME: ArtworkTheme = {
-  primary: '26, 30, 40',
-  secondary: '10, 12, 18',
 }
 
 const OPEN_PULL_THRESHOLD = 8
@@ -157,17 +149,19 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
   const overlay = useRef<HTMLElement>(null)
-  const waveLayer = useRef<HTMLElement | null>(null)
+  const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
-    if (!bass) {
-      waveLayer.current?.style.removeProperty('--island-bass')
-      waveLayer.current = null
+    if (bass === undefined) {
+      bassEffect.current?.dispose()
+      bassEffect.current = null
       return
     }
-    if (!waveLayer.current?.isConnected) {
-      waveLayer.current = overlay.current?.querySelector<HTMLElement>('.island-card .island-feedback__layer') ?? null
+    if (!bassEffect.current?.layer.isConnected) {
+      bassEffect.current?.dispose()
+      const layer = bass > 0 ? overlay.current?.querySelector<HTMLElement>('.island-card .island-feedback__layer') : null
+      bassEffect.current = layer ? createIslandBassEffect(layer) : null
     }
-    waveLayer.current?.style.setProperty('--island-bass', String(bass))
+    bassEffect.current?.update(bass)
   }, [])
   usePlaybackBass(
     expandedVisible && getInterfaceTheme(config) === 'glass' && uiPrefs.playbackReactiveWave === true
@@ -282,20 +276,12 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       latestMessage: latest ? measureOverlayWidgetRect(latest) : null,
     }).catch(() => undefined)
   }, [])
-  const currentArtworkThemeRef = useRef<ArtworkTheme>(FALLBACK_ARTWORK_THEME)
-  const [artworkTheme, setArtworkTheme] = useState<ArtworkTheme>(FALLBACK_ARTWORK_THEME)
+  const artworkSource = media?.hasSession ? media.thumbnailDataUrl : undefined
+  const [resolvedArtwork, setResolvedArtwork] = useState<{ source: string; palette: ArtworkPalette } | null>(null)
+  const artworkPalette = resolvedArtwork && resolvedArtwork.source === artworkSource ? resolvedArtwork.palette : null
 
   const showCollapsedLayer = windowPhase === 'collapsed'
   const showTopChrome = windowPhase === 'collapsed' || windowPhase === 'opening'
-
-  const animateArtworkTheme = (targetTheme: ArtworkTheme) => {
-    if (
-      currentArtworkThemeRef.current.primary === targetTheme.primary
-      && currentArtworkThemeRef.current.secondary === targetTheme.secondary
-    ) return
-    currentArtworkThemeRef.current = targetTheme
-    setArtworkTheme(targetTheme)
-  }
 
   useEffect(() => {
     return () => {
@@ -313,31 +299,13 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-
-    if (!media?.hasSession) {
-      animateArtworkTheme(FALLBACK_ARTWORK_THEME)
-      return () => {
-        cancelled = true
-      }
-    }
-
-    if (!media.thumbnailDataUrl) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    extractArtworkTheme(media.thumbnailDataUrl).then((theme) => {
-      if (!cancelled) {
-        animateArtworkTheme(theme)
-      }
-    }).catch(() => undefined)
-
-    return () => {
-      cancelled = true
-    }
-  }, [media?.hasSession, media?.thumbnailDataUrl])
+    let current = true
+    if (!artworkSource) return
+    void readArtworkPalette(artworkSource).catch(() => null).then(palette => {
+      if (current) setResolvedArtwork(palette ? { source: artworkSource, palette } : null)
+    })
+    return () => { current = false }
+  }, [artworkSource])
 
   useEffect(() => {
     if (!config || !isPinned) {
@@ -593,6 +561,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       return undefined
     }
 
+    const artworkColors = artworkCssColors(artworkPalette, getInterfaceTheme(config) === 'glass')
     return {
       '--island-opacity': config.appearance.opacity,
       '--island-radius': `${config.appearance.cornerRadius}px`,
@@ -603,10 +572,10 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,
       '--island-hit-width': `${(500 * (config.layout.width / 100) + 112) * (config.layout.scale / 100)}px`,
       ...getInterfacePaletteStyle(config, 'dark'),
-      '--artwork-primary': artworkTheme.primary,
-      '--artwork-secondary': artworkTheme.secondary,
+      '--artwork-primary': artworkColors.primary,
+      '--artwork-secondary': artworkColors.secondary,
     } as CSSProperties
-  }, [artworkTheme.primary, artworkTheme.secondary, config])
+  }, [artworkPalette, config])
 
   const clearCloseTimer = () => {
     if (closeTimerRef.current) {
@@ -933,7 +902,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       data-interface-theme={getInterfaceTheme(config)}
       data-interface-scene={getInterfaceScene(config)}
       data-interface-palette={getInterfacePalette(config)}
-      data-cover-art={Boolean(media?.hasSession && media.thumbnailDataUrl && artworkTheme !== FALLBACK_ARTWORK_THEME) || undefined}
+      data-cover-art={artworkPalette !== null || undefined}
       data-reduced-transparency={getReducedTransparency(config) || undefined}
       style={style}
     >
@@ -1132,69 +1101,4 @@ function nextPaint(): Promise<void> {
   return new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
   })
-}
-
-async function extractArtworkTheme(dataUrl: string): Promise<ArtworkTheme> {
-  const image = new Image()
-  image.crossOrigin = 'anonymous'
-  image.src = dataUrl
-  await image.decode()
-
-  const canvas = document.createElement('canvas')
-  const size = 32
-  canvas.width = size
-  canvas.height = size
-  const context = canvas.getContext('2d', { willReadFrequently: true })
-  if (!context) {
-    return FALLBACK_ARTWORK_THEME
-  }
-
-  context.drawImage(image, 0, 0, size, size)
-  const data = context.getImageData(0, 0, size, size).data
-  const buckets = new Map<string, { r: number; g: number; b: number; score: number; count: number }>()
-
-  for (let index = 0; index < data.length; index += 4) {
-    const alpha = data[index + 3]
-    if (alpha < 180) {
-      continue
-    }
-
-    const r = data[index]
-    const g = data[index + 1]
-    const b = data[index + 2]
-    const max = Math.max(r, g, b)
-    const min = Math.min(r, g, b)
-    const saturation = max - min
-    const brightness = (r + g + b) / 3
-    if (brightness < 18 || brightness > 238 || saturation < 18) {
-      continue
-    }
-
-    const key = `${Math.round(r / 32)},${Math.round(g / 32)},${Math.round(b / 32)}`
-    const current = buckets.get(key) ?? { r: 0, g: 0, b: 0, score: 0, count: 0 }
-    current.r += r
-    current.g += g
-    current.b += b
-    current.count += 1
-    current.score += saturation * 1.4 + (255 - brightness) * 0.35
-    buckets.set(key, current)
-  }
-
-  const best = [...buckets.values()].sort((a, b) => b.score - a.score)[0]
-  if (!best) {
-    return FALLBACK_ARTWORK_THEME
-  }
-
-  const r = Math.round(best.r / best.count)
-  const g = Math.round(best.g / best.count)
-  const b = Math.round(best.b / best.count)
-
-  return {
-    primary: `${darken(r, 0.72)}, ${darken(g, 0.72)}, ${darken(b, 0.72)}`,
-    secondary: `${darken(r, 0.32)}, ${darken(g, 0.32)}, ${darken(b, 0.32)}`,
-  }
-}
-
-function darken(value: number, factor: number): number {
-  return Math.max(0, Math.min(255, Math.round(value * factor)))
 }

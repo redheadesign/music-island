@@ -1,0 +1,96 @@
+const STRONG_LEVEL = .43
+const MIN_RISING_LEVEL = .27
+const REARM_LEVEL = .28
+const MIN_RISE = .12
+const BURST_COOLDOWN_MS = 240
+const MAX_PARTICLES = 18
+
+/** Applies the real playback level and releases a bounded spray on strong attacks. */
+export function createIslandBassEffect(layer: HTMLElement) {
+  const media = window.matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)')
+  const active = new Map<Animation, HTMLElement>()
+  let previous = 0
+  let armed = true
+  let lastBurstAt = -Infinity
+  let sequence = 0
+
+  function clear() {
+    layer.style.removeProperty('--island-bass')
+    for (const [animation, particle] of active) {
+      animation.cancel()
+      particle.remove()
+    }
+    active.clear()
+    previous = 0
+    armed = true
+    lastBurstAt = -Infinity
+  }
+
+  function onMediaChange() {
+    if (media.matches) clear()
+  }
+  media.addEventListener('change', onMediaChange)
+
+  function burst(level: number) {
+    const strength = (level - MIN_RISING_LEVEL) / (1 - MIN_RISING_LEVEL)
+    const count = Math.min(5 + Math.round(strength * 4), MAX_PARTICLES - active.size)
+    if (!count || !layer.animate) return
+    sequence += 1
+    for (let index = 0; index < count; index += 1) {
+      const variation = ((index * 37 + sequence * 23) % 101) / 101
+      const particle = layer.ownerDocument.createElement('i')
+      particle.className = 'island-bass-particle'
+      particle.style.setProperty('--bass-particle-x', `${5 + (index + .2 + variation * .6) / count * 90}%`)
+      particle.style.setProperty('--bass-particle-size', `${1.35 + strength * .9 + variation * .55}px`)
+      const drift = (variation - .5) * 18
+      const fall = 58 + strength * 42 + variation * 24
+      layer.append(particle)
+      const animation = particle.animate([
+        { opacity: 0, transform: 'translate(0, 0)' },
+        { opacity: .86, offset: .16 },
+        { opacity: .58, offset: .62 },
+        { opacity: 0, transform: `translate(${drift}px, ${fall}px)` },
+      ], {
+        duration: 710 - strength * 110 + variation * 190,
+        delay: index * 5 + variation * 24,
+        easing: 'cubic-bezier(.38, .16, .74, .9)',
+      })
+      active.set(animation, particle)
+      const remove = () => {
+        particle.remove()
+        active.delete(animation)
+      }
+      void animation.finished.then(remove, remove)
+    }
+  }
+
+  function update(level: number) {
+    if (document.hidden || media.matches || layer.closest('.reduced-motion, [data-reduced-motion="true"], [data-reduced-transparency="true"]')) {
+      clear()
+      return
+    }
+    if (level > 0) layer.style.setProperty('--island-bass', String(level))
+    else layer.style.removeProperty('--island-bass')
+
+    const rise = level - previous
+    previous = level
+    if (level <= REARM_LEVEL) armed = true
+    const strong = armed && level >= STRONG_LEVEL
+    const rising = level >= MIN_RISING_LEVEL && rise >= MIN_RISE
+    if (!strong && !rising) return
+    armed = false
+    const now = performance.now()
+    if (now - lastBurstAt < BURST_COOLDOWN_MS) return
+    lastBurstAt = now
+    burst(level)
+  }
+
+  return {
+    layer,
+    update,
+    dispose() {
+      media.removeEventListener('change', onMediaChange)
+      clear()
+    },
+  }
+}
