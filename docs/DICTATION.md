@@ -112,8 +112,20 @@ playback. A second replay used the full 408.57 s clean reading and all 24
 fragment boundaries and texts matched. Stop to final output was 2.601 s
 with early fragment recognition and 68.980 s on the offline pass (67.082 s of
 inference). Other workstation load was allowed during this trial. Both replays
-exclude live VAD, capture-ring contention and paste. Production
-GigaAM continues to recognize after Stop. To qualify a live change, measure the
+exclude live VAD, capture-ring contention and paste. By default GigaAM continues
+to recognize after Stop. A per-process opt-in, `MUSIC_ISLAND_GIGAAM_PREDECODE=1`,
+lets GigaAM GGUF recognize completed fragments of post-VAD audio while recording.
+The short-recording path and the original recording buffer are preserved. An
+ordinary cut is sealed only after its full 25 s search window and 2 s tail have
+arrived. A continuous passage waits for a complete extended search window.
+Capture never waits for the decoder. If its bounded queue fills or the pending
+passage grows beyond 90 s, background work ends for that recording. On Stop
+the normal planner checks every cached cut against the final ranges, SHA-256
+of its PCM, loaded model handle and all inference options, then decodes each
+remaining range and applies the normal dictionary and output processing once.
+Cancellation discards the background results. A new recording can use the
+normal batch path while a cancelled engine call finishes. To qualify a change
+of default, measure the
 native coordinator from the physical Stop shortcut through delivery to a real
 Windows editor. Time recognition, first visible insertion and clipboard restore
 separately. Include warm and cold models, CPU fallback and Vulkan, VAD on and
@@ -124,6 +136,15 @@ short-clip p95 regression at most 100 ms, WER regression at most 0.3 percentage
 points, no new cut-boundary omissions/duplications and no additional capture
 losses. Record peak memory, check cancel and new sessions, and verify that a
 focus change still offers Copy instead of pasting into another window.
+
+For an isolated profile using a dedicated virtual cable and an addressed local
+test editor, set `MUSIC_ISLAND_DICTATION_REQUIRED_INPUT` in the application
+process to the exact recording endpoint name. A missing or ambiguous device
+stops recording before any default microphone opens. Both initial open and
+retry enforce the constraint. Before issuing a shortcut, check that
+`plugin:dictation|get_status` reports the expected `captureConstraint.requiredInput`
+and `captureConstraint.predecode`, and verify the intended editor is foreground.
+An older build without these fields is unsuitable for this test.
 
 For a real paste measurement, use a disposable interactive Windows VM with
 host clipboard, microphone and network redirection disabled. Map the fixture

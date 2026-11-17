@@ -712,6 +712,7 @@ impl TranscriptionManager {
             *busy = Some(caps.backend.clone());
             drop(busy);
             let result = catch_unwind(AssertUnwindSafe(|| engine.run(pcm, options.clone())));
+            let rebuild = result.is_err() || !engine.is_healthy();
             let decoded = match result {
                 Ok(Ok(text)) => Some((handle, options, text)),
                 Ok(Err(error)) => {
@@ -719,14 +720,25 @@ impl TranscriptionManager {
                     None
                 }
                 Err(_) => {
-                    *slot = None;
-                    *manager.current_model_id.lock().unwrap() = None;
-                    error!("GigaAM predecode panicked; unloaded engine");
+                    error!("GigaAM predecode panicked");
                     None
                 }
             };
+            if rebuild {
+                *slot = None;
+                *manager.current_model_id.lock().unwrap() = None;
+            }
             drop(slot);
             *manager.predecode_backend.lock().unwrap() = None;
+            let status = crate::status::snapshot();
+            if rebuild && crate::is_enabled() && status.operation_id == operation
+                && matches!(status.phase.as_str(), "recording" | "transcribing")
+                && get_settings(&manager.app_handle).selected_model == model
+            {
+                // A speculative run must not strand the complete captured PCM
+                // without an engine. The final path already waits for this load.
+                manager.initiate_model_load();
+            }
             decoded
         });
     }

@@ -98,39 +98,46 @@ impl Router {
         let stopping = Arc::new(AtomicBool::new(false));
         let worker_stop = Arc::clone(&stopping);
         let guard = WorkerGuard(Arc::clone(&self.running));
-        let worker = thread::spawn(move || {
-            let _guard = guard;
-            let mut cache = Cache::default();
-            let mut planner = SealedPause::default();
-            let mut pending = Vec::new();
-            let mut start = 0;
-            while let Ok(frame) = audio.recv() {
-                if worker_stop.load(Ordering::Acquire) || pending.len() + frame.len() > MAX_PENDING
-                {
-                    break;
-                }
-                pending.extend_from_slice(&frame);
-                while let Some(length) = planner.next(&pending) {
-                    if worker_stop.load(Ordering::Acquire) {
-                        return cache;
+        let worker = thread::Builder::new()
+            .name("gigaam-predecode".into())
+            .spawn(move || {
+                let _guard = guard;
+                let mut cache = Cache::default();
+                let mut planner = SealedPause::default();
+                let mut pending = Vec::new();
+                let mut start = 0;
+                while let Ok(frame) = audio.recv() {
+                    if worker_stop.load(Ordering::Acquire)
+                        || pending.len() + frame.len() > MAX_PENDING
+                    {
+                        break;
                     }
-                    let pcm = &pending[..length];
-                    let Some((handle, options, text)) = decode(pcm) else {
-                        return cache;
-                    };
-                    cache.chunks.push_back(Decoded {
-                        range: start..start + length,
-                        audio_hash: hash_pcm(pcm),
-                        handle,
-                        options,
-                        text,
-                    });
-                    pending.drain(..length);
-                    start += length;
+                    pending.extend_from_slice(&frame);
+                    while let Some(length) = planner.next(&pending) {
+                        if worker_stop.load(Ordering::Acquire) {
+                            return cache;
+                        }
+                        let pcm = &pending[..length];
+                        let Some((handle, options, text)) = decode(pcm) else {
+                            return cache;
+                        };
+                        cache.chunks.push_back(Decoded {
+                            range: start..start + length,
+                            audio_hash: hash_pcm(pcm),
+                            handle,
+                            options,
+                            text,
+                        });
+                        pending.drain(..length);
+                        start += length;
+                    }
                 }
-            }
-            cache
-        });
+                cache
+            });
+        let Ok(worker) = worker else {
+            log::warn!("Could not start optional GigaAM predecode worker");
+            return;
+        };
         *slot = Some(Session {
             operation,
             sender: Some(sender),
