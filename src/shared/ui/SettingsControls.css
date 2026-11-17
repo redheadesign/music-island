@@ -74,20 +74,29 @@
 .settings-preview .ui-toggle { --control-off: #555; }
 
 [data-interface-theme='glass'] :is(.ui-input, .ui-search, .dark-select:not(.dark-select--actions), .ui-button--secondary) {
+  border-radius: var(--glass-control-radius);
   background-image: var(--glass-sheen);
   box-shadow: var(--glass-control-rim);
 }
+[data-interface-theme='glass'] .ui-textarea { border-radius: var(--radius-md); }
+[data-interface-theme='glass'] .ui-button { border-radius: var(--glass-control-radius); }
 [data-interface-theme='glass'] .ui-search {
   position: relative;
   isolation: isolate;
   backdrop-filter: var(--glass-frost-filter);
 }
 [data-interface-theme='glass'] .ui-search > * { position: relative; z-index: 1; }
-[data-interface-theme='glass'] :is(.ui-section, .ui-feature-toggle, .ui-navigation__item[aria-current='page']) {
-  background-image: var(--glass-sheen);
-  box-shadow: var(--glass-panel-rim);
+[data-interface-theme='glass'] :is(.ui-section, .ui-feature-toggle) { border-radius: var(--glass-panel-radius); }
+[data-interface-theme='glass'] .ui-navigation__item[aria-current='page'] {
+  background-color: var(--glass-selection-fill);
+  background-image: var(--glass-selection-sheen);
+  box-shadow: var(--glass-control-rim);
 }
 [data-interface-theme='glass'] .ui-toggle { box-shadow: var(--glass-control-rim); }
+[data-interface-theme='glass'] .ui-toggle[aria-checked='true'] {
+  background-color: var(--glass-action);
+  --control-thumb: var(--glass-action-ink);
+}
 
 [data-interface-theme='glass'] .ui-button--primary:enabled {
   background-color: var(--glass-action);

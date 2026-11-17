@@ -1,5 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, type CSSProperties } from 'react'
 import { checkForUpdates, copyDiagnostics } from './app/tauriApi'
 import { useIslandApp } from './app/useIslandApp'
 import { useUsageController } from './app/usage/useUsageController'
@@ -11,7 +11,7 @@ import { OverlayShell } from './features/overlay/OverlayShell'
 import { SettingsPanel } from './features/settings/SettingsPanel'
 import { TaskbarPlayer } from './features/taskbar/TaskbarPlayer'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
-import { getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme } from './shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme } from './shared/lib/uiPrefs'
 import { SettingsWindow } from './features/settings/SettingsWindow'
 import './App.css'
 
@@ -67,12 +67,15 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
       return <main className="settings-window-root" data-color-scheme={getSettingsColorScheme(app.config)} data-interface-theme={interfaceTheme} data-interface-scene={interfaceScene} data-reduced-transparency={reducedTransparency || undefined}>{t('settings.loading')}</main>
     }
 
+    const colorScheme = getSettingsColorScheme(app.config)
     return (
       <SettingsWindow
         locale={locale}
-        colorScheme={getSettingsColorScheme(app.config)}
+        colorScheme={colorScheme}
         interfaceTheme={interfaceTheme}
         interfaceScene={interfaceScene}
+        interfacePalette={getInterfacePalette(app.config)}
+        paletteStyle={getInterfacePaletteStyle(app.config, colorScheme) as CSSProperties}
         reducedTransparency={reducedTransparency}
         reducedMotion={app.config.appearance.reducedMotion}
         onMinimize={() => void runWindowAction('minimize')}

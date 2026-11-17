@@ -11,13 +11,94 @@
 .preview-warp-material { opacity: 1; }
 
 [data-interface-theme='glass'] .island-surface {
-  background:
-    var(--glass-sheen),
-    radial-gradient(ellipse at 16% 0%, rgba(var(--artwork-primary,22,23,25),.24), transparent 69%),
-    var(--glass-island-fill);
-  box-shadow: var(--glass-panel-rim), var(--glass-depth);
+  background: var(--glass-sheen) var(--glass-island-fill);
+  box-shadow: var(--glass-control-rim), var(--glass-depth);
 }
 
 [data-interface-theme='glass'] .island-card {
+  border-radius: 0 0 var(--glass-island-radius) var(--glass-island-radius);
+  box-shadow: inset 1px 0 rgb(255 255 255 / .16), inset -1px -1px rgb(255 255 255 / .12), var(--glass-depth);
   backdrop-filter: var(--glass-frost-filter);
+}
+
+[data-interface-theme='glass'] .island-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px 0 auto;
+  height: 1px;
+  pointer-events: none;
+  background: rgb(255 255 255 / .15);
+}
+
+/* The glass artwork cap and the island's floating controls share the same
+   beveled material. Neither reads the album's extracted colors. */
+.island-root[data-interface-theme='glass'] {
+  --island-glass-control: rgb(66 66 65 / .78);
+  --island-glass-hover: rgb(85 85 83 / .89);
+  --island-glass-pressed: rgb(45 45 44 / .94);
+  --island-glass-fill: color-mix(in srgb, var(--palette-secondary, #8d8d8b) 45%, #353534);
+  --island-glass-ink: #f4f4f1;
+}
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button) {
+  color: var(--island-glass-ink);
+  background: var(--glass-sheen) var(--island-glass-control);
+  box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
+}
+.island-root[data-interface-theme='glass'] .artwork-play-button {
+  position: absolute;
+  z-index: 1;
+  background-color: rgb(23 23 22 / .82);
+  backdrop-filter: var(--glass-frost-filter);
+  opacity: 1;
+}
+.island-root[data-interface-theme='glass'] .island-actions .icon-button { mix-blend-mode: normal; }
+.island-root[data-interface-theme='glass'] .island-actions .icon-button svg { filter: none; }
+.island-root[data-interface-theme='glass'] :is(.reaction-button--active, .reaction-button--like.reaction-button--active) {
+  color: var(--palette-on-primary, #222);
+  background-color: var(--palette-primary, #d4d4d1);
+}
+
+@media (hover: hover) {
+  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button):enabled:hover {
+    background-color: var(--island-glass-hover);
+    background-image: var(--glass-selection-sheen);
+  }
+  .island-root[data-interface-theme='glass'] .reaction-button--active:enabled:hover {
+    background-color: color-mix(in srgb, var(--palette-primary, #d4d4d1) 90%, #fff);
+  }
+  .island-root[data-interface-theme='glass'] .reaction-button:hover { transform: none; }
+}
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button):enabled:active {
+  color: var(--island-glass-ink);
+  background-color: var(--island-glass-pressed);
+  box-shadow: inset 0 1px 4px rgb(0 0 0 / .35);
+}
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .island-plugin-button):disabled {
+  opacity: .42;
+  color: var(--island-glass-ink);
+  cursor: default;
+}
+.island-root[data-interface-theme='glass'] .progress-track::before { background: none; }
+.island-root[data-interface-theme='glass'] .progress-fill {
+  background: var(--glass-sheen) var(--island-glass-fill);
+  box-shadow: inset -1px 0 rgb(255 255 255 / .18);
+}
+.island-root[data-interface-theme='glass'] .collapsed-progress__fill {
+  background: linear-gradient(90deg, var(--palette-secondary, #a9a9a6), var(--palette-primary, #e5e5e2));
+}
+.island-root[data-interface-theme='glass'][data-reduced-transparency='true'] {
+  --island-glass-control: #424241;
+  --island-glass-hover: #555553;
+  --island-glass-pressed: #2d2d2c;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .island-root[data-interface-theme='glass'] {
+    --island-glass-control: #424241;
+    --island-glass-hover: #555553;
+    --island-glass-pressed: #2d2d2c;
+  }
 }

@@ -589,24 +589,6 @@
 /* Settings presentation. Shared tokens also document the component workshop.
    Scope overrides to the settings window to preserve the media island. */
 .settings-window-root { container: settings-window / inline-size; }
-.settings-window-root[data-interface-theme='glass'] {
-  box-shadow: var(--glass-panel-rim);
-  background-image: var(--glass-sheen);
-}
-.settings-window-root[data-interface-theme='glass'] .settings-titlebar {
-  box-shadow: var(--glass-panel-rim);
-}
-.settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch, .locale-switch) {
-  box-shadow: var(--glass-control-rim);
-  background-image: var(--glass-sheen);
-}
-.settings-panel[data-interface-theme='glass'] :is(.settings-content .settings-section, .settings-usage-page) {
-  box-shadow: var(--glass-panel-rim), var(--glass-depth);
-  background-image: var(--glass-sheen);
-}
-.settings-panel[data-interface-theme='glass'] .settings-page-heading {
-  letter-spacing: 0;
-}
 .settings-window-root .settings-titlebar { background: var(--window-titlebar); }
 .settings-window-root .settings-window-actions button:hover { background: var(--surface-hover); }
 .settings-window-root .settings-window-actions button:last-child:hover {
@@ -1053,3 +1035,48 @@
 .settings-about-actions .ui-setting-row:last-child { padding-bottom: 0; }
 .settings-section--plain .about-identity { padding: 0 0 var(--space-4); }
 .voice-notice-actions { display: flex; align-items: center; gap: var(--space-2); }
+
+/* Glass uses the window as a continuous canvas. Local controls and groups
+   provide depth, so layout wrappers never introduce a separate frame. */
+.settings-window-root[data-interface-theme='glass'] { --settings-radius: var(--radius-md); }
+.settings-window-root[data-interface-theme='glass'] .settings-titlebar { background: transparent; }
+.settings-panel[data-interface-theme='glass'] .settings-page-heading { letter-spacing: 0; }
+.settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch, .locale-switch) {
+  border-radius: var(--glass-control-radius);
+  background: var(--surface-sunken);
+  box-shadow: inset 0 1px rgb(0 0 0 / .13);
+}
+.settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn, .settings-theme-toggle) {
+  border-radius: var(--glass-control-radius);
+}
+.settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn, .settings-nav-item) .settings-selection-marker {
+  background: var(--glass-selection-sheen) var(--glass-selection-fill);
+  box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
+}
+.settings-panel[data-interface-theme='glass'] .settings-nav-item { border-radius: var(--radius-md); }
+.settings-panel[data-interface-theme='glass'] :is(.settings-control-group, .settings-content .settings-section:not(.settings-section--plain, .settings-appearance, .settings-taskbar), .settings-taskbar > .settings-control-row, .protocol-row, .settings-source-picker) {
+  border-radius: var(--glass-panel-radius);
+  box-shadow: none;
+  background-image: none;
+}
+.settings-panel[data-interface-theme='glass'] :is(.settings-appearance, .settings-taskbar, .settings-section--plain, .settings-usage-page) {
+  box-shadow: none;
+  background-image: none;
+}
+.settings-panel[data-interface-theme='glass'] .island-editor-element--catalog { background: var(--surface-raised); }
+.settings-panel[data-interface-theme='glass'] .settings-section--plain .protocol-row--selected {
+  background-color: var(--glass-selection-fill);
+}
+.settings-panel[data-interface-theme='glass'] .settings-section--plain .protocol-row--unavailable {
+  background-color: color-mix(in srgb, var(--status-warning) 7%, var(--surface-panel));
+}
+@media (hover: hover) {
+  .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn):not([aria-pressed='true']):hover { background: var(--surface-hover); }
+}
+@container settings (max-width: 480px) {
+  .settings-panel[data-interface-theme='glass'] .settings-layout { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); }
+  .settings-panel[data-interface-theme='glass'] .settings-navigation { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .settings-panel[data-interface-theme='glass'] .settings-nav-item { flex-direction: column; text-align: center; }
+  .settings-panel[data-interface-theme='glass'] .settings-scope-switch { flex-basis: 100%; width: 100%; justify-content: space-between; }
+  .settings-panel[data-interface-theme='glass'] .settings-scope-switch__btn { min-width: 0; padding-inline: var(--space-2); }
+}

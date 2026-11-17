@@ -1,10 +1,14 @@
 # Interface themes
 
-Glass adapts the frosted rim, low-density particles, button sheen and ASCII scenes from [the T3 Code design work](codex://threads/01a1decb-6424-7e60-b40f-38835bc1774a). It uses the current Music Island layouts and actions. Classic remains the default, including for older or unknown configuration values. The settings color scheme, accent and dictation artwork remain separate choices.
+Glass adapts the frosted rim, low-density particles, button sheen and ASCII scenes from [the T3 Code design work](codex://threads/01a1decb-6424-7e60-b40f-38835bc1774a). It uses the current Music Island layouts and actions. Classic remains the default, including for older or unknown configuration values. Glass opens with foxes unless a preview scene has already been chosen. The settings color scheme, color palette and dictation artwork are separate choices.
 
 The system follows the [Uber Base Web theme model](https://github.com/uber/baseweb/blob/main/documentation-site/pages/guides/theming.mdx): theme inputs resolve to semantic roles that production components consume. Glass follows [Apple’s materials guidance](https://developer.apple.com/design/human-interface-guidelines/materials) in keeping text areas legible and honoring reduced transparency.
 
-Glass uses Segoe UI Variable Text and the system fallback stack for the Windows UI. The source composer uses bundled Inter. The smaller Music Island controls use a shallow 3.5 px blur and one brief edge sweep. The preview background uses the source ASCII shapes with fewer animals, at most 24 frames per second, and a separate pixel budget.
+Glass uses Segoe UI Variable Text and the system fallback stack for the Windows UI. The smaller controls use a shallow 3.5 px blur and one brief edge sweep. Fox and manta previews use the source ASCII shapes with fewer animals and a 24 fps cap. A separate CSS particle layer drifts down inside the expanded island and in the focused search field. Reduced motion and reduced transparency turn off that particle layer.
+
+The neutral dark ramp comes from the Codex screenshot: canvas `#232322`, content `#2d2d2b`, raised controls `#353533`. Keep outer settings wrappers flat and apply the bevel to interactive controls and the selected menu segment. Shared roles define pill controls, 24 px groups and 36 px bottom corners on the island. The island plate uses an achromatic fill. Preset colors go on controls and the fill of the progress strip.
+
+Color presets use T3 Code's side-by-side light and dark previews. Each preset has a primary and a secondary color in both schemes. The existing custom accent remains available under its own option. Material, color palette and preview scene are saved separately.
 
 | Stage | Implementation | Independent review gate |
 | --- | --- | --- |

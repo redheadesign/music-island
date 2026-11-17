@@ -10,7 +10,8 @@ The fox and manta shapes and character renderer are adapted from the
 [T3 Code fork](https://github.com/redheadesign/t3code-codex) (reference revision
 `db54e5ee182d406a0d432205405752c5d6b44a50`). The adapted code is in
 `src/shared/ui/asciiScene`. The glass controls take their material and sheen
-from the same fork.
+from the same fork. The color palettes and circle previews adapt its built-in
+theme definitions and `ThemePreviewCircles` component.
 
 MIT License
 

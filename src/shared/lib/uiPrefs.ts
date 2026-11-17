@@ -2,6 +2,8 @@ import type { AppConfig } from './types'
 import type { TaskbarLayoutV1 } from './taskbarLayout'
 import type { DictationAppearance } from './dictationAppearance'
 import { getInterfaceThemeDefinition, normalizeInterfaceTheme, type InterfaceScene, type InterfaceThemeId } from './interfaceTheme'
+import { DEFAULT_ACCENT } from './accentTheme'
+import { buildInterfacePaletteStyle, normalizeInterfacePalette, type InterfacePaletteId } from './interfacePalette'
 
 export const UI_PREFS_KEY = 'ui'
 
@@ -25,6 +27,7 @@ export interface UiPrefs {
   /** Explicit Settings window color scheme. Missing values keep the established dark theme. */
   settingsColorScheme?: SettingsColorScheme
   interfaceTheme?: InterfaceThemeId
+  interfacePalette?: InterfacePaletteId
   interfaceScenes?: Partial<Record<InterfaceThemeId, InterfaceScene>>
   reducedTransparency?: boolean
   /** Settings update banner dismissed for this latest version */
@@ -60,6 +63,14 @@ export function getSettingsColorScheme(config: AppConfig | null | undefined): Se
 
 export function getInterfaceTheme(config: AppConfig | null | undefined): InterfaceThemeId {
   return normalizeInterfaceTheme(getUiPrefs(config).interfaceTheme)
+}
+
+export function getInterfacePalette(config: AppConfig | null | undefined): InterfacePaletteId {
+  return normalizeInterfacePalette(getUiPrefs(config).interfacePalette)
+}
+
+export function getInterfacePaletteStyle(config: AppConfig | null | undefined, scheme: SettingsColorScheme) {
+  return buildInterfacePaletteStyle(getInterfacePalette(config), scheme, config?.appearance?.accentColor ?? DEFAULT_ACCENT)
 }
 
 export function getInterfaceScene(config: AppConfig | null | undefined): InterfaceScene | undefined {

@@ -129,6 +129,26 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = { name: 'Настройки приложения' }
 export const Glass: Story = { name: 'Стекло · тёмное оформление', globals: { interfaceTheme: 'glass' } }
+export const GlassScopes: Story = {
+  ...Glass,
+  name: 'Стекло · состояния верхнего меню',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const appearance = canvasElement.querySelector('.settings-appearance')!
+    await expect(getComputedStyle(appearance).boxShadow).toBe('none')
+    const voice = canvas.getByRole('button', { name: /Better Voice/ })
+    voice.focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(voice).toHaveFocus()
+    await expect(voice).toHaveAttribute('aria-pressed', 'true')
+    await expect(voice.querySelector('.settings-selection-marker')).toBeInTheDocument()
+    const dictation = canvas.getByRole('button', { name: /^Диктовка$/ })
+    await userEvent.click(dictation)
+    await expect(voice).toHaveAttribute('aria-pressed', 'false')
+    await expect(dictation).toHaveAttribute('aria-pressed', 'true')
+  },
+}
 export const GlassLight: Story = { name: 'Стекло · светлое оформление', globals: { interfaceTheme: 'glass' }, parameters: { settingsColorScheme: 'light' } }
 export const GlassAccessible: Story = {
   name: 'Стекло · узкое окно без прозрачности и анимации',
@@ -147,19 +167,20 @@ export const ThemeSwitch: Story = {
     await userEvent.click(canvasDocument.getByRole('option', { name: 'Стекло' }))
     await expect(canvasElement.querySelector('.settings-panel')).toHaveAttribute('data-interface-theme', 'glass')
     await waitFor(() => expect(window).toHaveAttribute('data-interface-theme', 'glass'))
+    await expect(window).toHaveAttribute('data-interface-scene', 'fox')
     const scene = canvas.getByRole('button', { name: 'Фон превью' })
     await userEvent.click(scene)
     const list = canvasDocument.getByRole('listbox')
     await expect(list).toHaveAttribute('data-interface-theme', 'glass')
-    await userEvent.click(within(list).getByRole('option', { name: 'Лисы' }))
-    await waitFor(() => expect(window).toHaveAttribute('data-interface-scene', 'fox'))
+    await userEvent.click(within(list).getByRole('option', { name: 'Скаты' }))
+    await waitFor(() => expect(window).toHaveAttribute('data-interface-scene', 'manta'))
     await userEvent.click(theme)
     await userEvent.click(canvasDocument.getByRole('option', { name: 'Классическая' }))
     await waitFor(() => expect(window).toHaveAttribute('data-interface-theme', 'classic'))
     await expect(scene).not.toBeInTheDocument()
     await expect(args.onChange).toHaveBeenLastCalledWith(expect.objectContaining({
       plugins: expect.objectContaining({ settings: expect.objectContaining({
-        ui: expect.objectContaining({ interfaceTheme: 'classic', interfaceScenes: { glass: 'fox' } }),
+        ui: expect.objectContaining({ interfaceTheme: 'classic', interfaceScenes: { glass: 'manta' } }),
       }) }),
     }))
   },

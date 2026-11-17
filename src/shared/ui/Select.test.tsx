@@ -30,14 +30,16 @@ it('keeps the Glass palette and accessibility preferences in a detached menu', a
   const root = createRoot(container)
   try {
     await act(async () => root.render(
-      <section data-color-scheme="light" data-interface-theme="glass" data-interface-scene="manta" data-reduced-transparency="true" data-reduced-motion="true">
+      <section data-color-scheme="light" data-interface-theme="glass" data-interface-scene="manta" data-interface-palette="ocean" data-reduced-transparency="true" data-reduced-motion="true">
         <Select value="usb" options={[{ value: 'usb', label: 'USB' }]} onChange={vi.fn()} ariaLabel="Device" />
       </section>,
     ))
     const trigger = container.querySelector('button')!
+    trigger.style.setProperty('--palette-primary', '#2672af')
     await act(async () => trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })))
     const menu = document.querySelector<HTMLElement>('[role="listbox"]')!
-    expect(menu.dataset).toMatchObject({ colorScheme: 'light', interfaceTheme: 'glass', interfaceScene: 'manta', reducedTransparency: 'true' })
+    expect(menu.dataset).toMatchObject({ colorScheme: 'light', interfaceTheme: 'glass', interfaceScene: 'manta', interfacePalette: 'ocean', reducedTransparency: 'true' })
+    expect(menu.style.getPropertyValue('--palette-primary')).toBe('#2672af')
     expect(menu.hasAttribute('data-enter')).toBe(false)
   } finally {
     await act(async () => root.unmount())

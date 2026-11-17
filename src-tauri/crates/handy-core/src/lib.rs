@@ -12,6 +12,7 @@ mod focus_target;
 mod helpers;
 mod input;
 mod llm_client;
+mod long_form_gigaam;
 mod managers;
 mod memory;
 mod overlay;

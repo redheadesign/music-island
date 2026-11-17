@@ -1,5 +1,5 @@
 import { Mic, Database, ClockCounterClockwise, BookOpen, TextAa, PlugsConnected, Activity, CheckCircle2, Copy, HardDrive, Info, Moon, Music2, PanelBottom, Power, RadioTower, SlidersHorizontal, SquareTerminal, Sun, TriangleAlert, Wrench } from '../../shared/ui/SettingsIcons'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
@@ -35,6 +35,7 @@ import type { UsageProvider } from '../../shared/lib/usageTypes'
 import { AccentColorPicker } from './AccentColorPicker'
 import { MonitorSetting } from './MonitorSetting'
 import { InterfaceAppearanceSettings } from './InterfaceAppearanceSettings'
+import { InterfacePalettePicker } from './InterfacePalettePicker'
 import { DirectConnectionDialog } from './DirectConnectionDialog'
 import { useAppUpdater } from './useAppUpdater'
 import { useWindowVisible } from './useWindowVisible'
@@ -53,6 +54,8 @@ import { applyAccentTheme, normalizeHexColor } from '../../shared/lib/accentThem
 import {
   getInterfaceScene,
   getInterfaceTheme,
+  getInterfacePalette,
+  getInterfacePaletteStyle,
   getReducedTransparency,
   getUiPrefs,
   getUsageWidgetCompact,
@@ -104,6 +107,9 @@ export function SettingsPanel({
   const settingsColorScheme = getSettingsColorScheme(draft)
   const interfaceTheme = getInterfaceTheme(draft)
   const interfaceScene = getInterfaceScene(draft)
+  const interfacePalette = getInterfacePalette(draft)
+  const paletteStyle = getInterfacePaletteStyle(draft, settingsColorScheme)
+  const accent = paletteStyle['--accent']
   const reducedTransparency = getReducedTransparency(draft)
   const usageCompact = getUsageWidgetCompact(draft)
   const usageScale = getUsageWidgetScale(draft)
@@ -203,12 +209,12 @@ export function SettingsPanel({
   }, [settingsColorScheme])
 
   useEffect(() => {
-    applyAccentTheme(draft.appearance.accentColor)
+    applyAccentTheme(accent)
     const root = document.querySelector('.settings-window-root')
     if (root instanceof HTMLElement) {
-      applyAccentTheme(draft.appearance.accentColor, root)
+      applyAccentTheme(accent, root)
     }
-  }, [draft.appearance.accentColor])
+  }, [accent])
   useEffect(() => {
     let active = true
     let cleanup: () => void = () => undefined
@@ -423,8 +429,10 @@ export function SettingsPanel({
       data-color-scheme={settingsColorScheme}
       data-interface-theme={interfaceTheme}
       data-interface-scene={interfaceScene}
+      data-interface-palette={interfacePalette}
       data-reduced-transparency={reducedTransparency || undefined}
       data-reduced-motion={reducedMotion || undefined}
+      style={paletteStyle as CSSProperties}
     >
       <header className="settings-hero">
         <div className="settings-scope-switch" role="group" aria-label={t('settings.scope')}>
@@ -601,14 +609,24 @@ export function SettingsPanel({
 
         <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} />
 
-        <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
-
-        <AccentColorPicker
-          value={draft.appearance.accentColor}
-          label={t('settings.accentColor')}
-          customLabel={t('settings.accentCustom')}
-          onChange={(hex) => patchAppearance({ accentColor: normalizeHexColor(hex) })}
+        <InterfacePalettePicker
+          value={interfacePalette}
+          customAccent={draft.appearance.accentColor}
+          locale={locale}
+          onChange={value => {
+            if (value !== interfacePalette) previewAndSave(withUiPrefs(draft, { interfacePalette: value }))
+          }}
         />
+        {interfacePalette === 'custom' ? (
+          <AccentColorPicker
+            value={draft.appearance.accentColor}
+            label={t('settings.accentColor')}
+            customLabel={t('settings.accentCustom')}
+            onChange={hex => patchAppearance({ accentColor: normalizeHexColor(hex) })}
+          />
+        ) : null}
+
+        <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
 
         <label className="settings-control-row">
           <span>
@@ -940,8 +958,10 @@ export function SettingsPanel({
           data-color-scheme={settingsColorScheme}
           data-interface-theme={interfaceTheme}
           data-interface-scene={interfaceScene}
+          data-interface-palette={interfacePalette}
           data-reduced-transparency={reducedTransparency || undefined}
           data-reduced-motion={reducedMotion || undefined}
+          style={paletteStyle as CSSProperties}
         >
           <DirectConnectionDialog
             reducedMotion={reducedMotion}

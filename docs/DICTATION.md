@@ -26,6 +26,21 @@ GPU is detected and can use a specific graphics card. A change takes effect on
 the next recording. If Vulkan cannot initialize the model, dictation retries on
 CPU and shows the backend that loaded. ONNX models use CPU.
 
+GigaAM GGUF models recognize the recording after you stop. For recordings over
+25 seconds, the app will split at sufficiently quiet pauses when they can keep
+all parts within the [GigaAM utterance window](https://github.com/handy-computer/transcribe.cpp/blob/main/docs/models/gigaam.md).
+It keeps every audio sample, joins the parts in order and applies text cleanup
+once to the result. Cancel stops further parts after the current inference call.
+If continuous speech leaves no suitable pause, the model still gets the whole
+recording. This case can take substantially longer. The saved audio is unaffected.
+
+In the Windows acceptance probe, GigaAM v3 E2E RNN-T Q8 ran on a Ryzen 7
+4700U's Vulkan backend. A 64.6-second synthetic recording took 25.5–39.1
+seconds in one call and 18.2 seconds in four parts. A 121.1-second recording
+took 83.5 seconds in one call and 41.1 seconds in seven parts. The split
+results matched all 88 and 165 words respectively from the repeated short
+reference. These timings include model inference and vary with machine load.
+
 The optional microphone can be placed in the island layout editor. It is absent
 from the default composition. The bottom overlay does not take keyboard focus.
 The target window is captured at recording start and checked again before paste.
@@ -222,6 +237,9 @@ The local Russian catalog recommends GigaAM v3 E2E-RNN-T Q8 and labels GigaAM v3
 as an alternative. This is a UI recommendation, not an automatic model switch or a
 claim that one model wins on every microphone. Model cards and capabilities remain
 upstream data. Existing model choices are preserved.
+
+The [Memento ASR investigation](MEMENTO_ASR.md) documents the installed Duo
+checkpoint and what would be needed to offer it as a model download.
 
 With filler removal enabled and the default list selected, Russian language evidence
 enables conservative cleanup of isolated hesitations such as `эээ`, `а-а`, `эм` and

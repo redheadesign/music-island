@@ -7,7 +7,7 @@ import type { AppConfig } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
 import { getIslandLayout, type IslandLayoutElement, type IslandLayoutZone } from '../../shared/lib/islandLayout'
-import { getInterfaceScene, getInterfaceTheme, getLocalServersWidgetScale, getReducedTransparency, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getLocalServersWidgetScale, getReducedTransparency, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
 import { createTranslator } from '../../shared/i18n/messages'
 import { MusicModule } from '../music/MusicModule'
 import { LocalServersPanel } from '../overlay/LocalServersPanel'
@@ -152,8 +152,10 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
       'data-resize-active': (dimensions !== null && gesture.current?.dimension === dimension && gesture.current.direction === direction) || undefined,
     }
   }
+  const paletteStyle = getInterfacePaletteStyle(config, 'dark')
   const style = {
-    '--drag-indicator': config.appearance.accentColor,
+    ...paletteStyle,
+    '--drag-indicator': paletteStyle['--accent'],
     '--preview-render-scale': scale,
     '--drop-zone-ready': 'color-mix(in srgb, var(--drag-indicator) 12%, transparent)',
     '--drop-zone-active': 'color-mix(in srgb, var(--drag-indicator) 24%, transparent)',
@@ -169,7 +171,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   return <div className="island-preview-section"><div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined} data-reduced-motion={config.appearance.reducedMotion || undefined}>
     {active ? <WarpSurface className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
     <div className="island-preview__camera" style={{ width: sceneWidth * scale, height: frameHeight * scale }}>
-    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-reduced-transparency={getReducedTransparency(config) || undefined} style={style}>
+    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-interface-palette={getInterfacePalette(config)} data-reduced-transparency={getReducedTransparency(config) || undefined} style={style}>
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
         <IslandFeedback className="island-card island-surface">

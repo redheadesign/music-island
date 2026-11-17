@@ -181,6 +181,26 @@ const meta = {
 export default meta
 export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый островок' }
 export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный островок', globals: { interfaceTheme: 'glass' } }
+export const GlassPlayback: StoryObj<typeof meta> = {
+  ...Glass,
+  name: 'Стекло · воспроизведение и пауза на обложке',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const button = await canvas.findByRole('button', { name: 'Pause' })
+    const artwork = canvasElement.querySelector('.artwork-shell')!
+    const buttonRect = button.getBoundingClientRect()
+    const artworkRect = artwork.getBoundingClientRect()
+    await expect(getComputedStyle(button).position).toBe('absolute')
+    const center = { x: buttonRect.left + buttonRect.width / 2, y: buttonRect.top + buttonRect.height / 2 }
+    await expect(center.x).toBeCloseTo(artworkRect.left + artworkRect.width / 2, 0)
+    await expect(center.y).toBeCloseTo(artworkRect.top + artworkRect.height / 2, 0)
+    await expect(button.contains(canvasElement.ownerDocument.elementFromPoint(center.x, center.y))).toBe(true)
+    await userEvent.click(button)
+    await expect(canvas.getByRole('button', { name: 'Play' })).toBeVisible()
+    await userEvent.keyboard(' ')
+    await expect(canvas.getByRole('button', { name: 'Pause' })).toBeVisible()
+  },
+}
 export const AssistantLimits: StoryObj<typeof meta> = { name: 'Лимиты Codex рядом с островком', args: { assistantLimits: true } }
 export const LocalServersExpanded: StoryObj<typeof meta> = {
   name: 'Локальные серверы под раскрытым островком',
@@ -346,3 +366,7 @@ export const LongTrack: StoryObj<typeof meta> = {
   name: 'Длинное название · минимальная ширина',
   args: { longTrack: true, width: 80 },
 }
+export const GlassEmpty: StoryObj<typeof meta> = { ...Empty, name: 'Стекло · Яндекс Музыка недоступна', globals: Glass.globals }
+export const GlassRestarting: StoryObj<typeof meta> = { ...Restarting, name: 'Стекло · перезапуск источника', globals: Glass.globals }
+export const GlassUnavailable: StoryObj<typeof meta> = { ...SmtcUnavailable, name: 'Стекло · нет связи с Windows', globals: Glass.globals }
+export const GlassLongTrack: StoryObj<typeof meta> = { ...LongTrack, name: 'Стекло · длинное название в узком островке', globals: Glass.globals }

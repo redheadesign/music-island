@@ -1,0 +1,119 @@
+//! GigaAM's short-utterance encoder is trained on at most 25 seconds.
+//! Find real pauses before sending long input to it, without dropping samples.
+
+use std::ops::Range;
+
+const SAMPLES_PER_SECOND: usize = 16_000;
+const MAX_CHUNK: usize = 25 * SAMPLES_PER_SECOND;
+const TARGET_CHUNK: usize = 17 * SAMPLES_PER_SECOND;
+const MIN_CHUNK: usize = 12 * SAMPLES_PER_SECOND;
+const MIN_TAIL: usize = 2 * SAMPLES_PER_SECOND;
+const PAUSE_SAMPLES: usize = SAMPLES_PER_SECOND * 120 / 1000;
+const SEARCH_STEP: usize = SAMPLES_PER_SECOND * 20 / 1000;
+const QUIET_RMS: f32 = 0.008;
+const MIN_DROP_IN_POWER: f32 = 64.0;
+
+/// An all-or-nothing plan. If a recording has sustained speech with no safe
+/// pause inside the model window, preserve the existing whole-input inference.
+pub(crate) fn pause_ranges(audio: &[f32]) -> Option<Vec<Range<usize>>> {
+    if audio.len() <= MAX_CHUNK {
+        return None;
+    }
+
+    let mut start = 0;
+    let mut ranges = Vec::new();
+    while audio.len() - start > MAX_CHUNK {
+        let search_end = (start + MAX_CHUNK).min(audio.len() - MIN_TAIL);
+        let search_start = start + MIN_CHUNK;
+        let pause = &audio[search_start..search_end];
+        let boundary = search_start + find_pause(pause, TARGET_CHUNK - MIN_CHUNK)?;
+        ranges.push(start..boundary);
+        start = boundary;
+    }
+    ranges.push(start..audio.len());
+    Some(ranges)
+}
+
+fn find_pause(samples: &[f32], target: usize) -> Option<usize> {
+    if samples.len() < PAUSE_SAMPLES {
+        return None;
+    }
+
+    let power = |values: &[f32]| values.iter().map(|&value| value * value).sum::<f32>();
+    let windows: Vec<_> = (0..=samples.len() - PAUSE_SAMPLES)
+        .step_by(SEARCH_STEP)
+        .map(|offset| {
+            (
+                offset + PAUSE_SAMPLES / 2,
+                power(&samples[offset..offset + PAUSE_SAMPLES]),
+            )
+        })
+        .collect();
+    let peak_power = windows.iter().map(|&(_, power)| power).fold(0.0, f32::max);
+    let ceiling =
+        (QUIET_RMS * QUIET_RMS * PAUSE_SAMPLES as f32).min(peak_power / MIN_DROP_IN_POWER);
+    windows
+        .into_iter()
+        .filter(|&(_, power)| power <= ceiling)
+        .min_by_key(|&(center, _)| center.abs_diff(target))
+        .map(|(center, _)| center)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SECOND: usize = SAMPLES_PER_SECOND;
+
+    fn pause(audio: &mut [f32], seconds: usize) {
+        audio[seconds * SECOND - PAUSE_SAMPLES..seconds * SECOND + PAUSE_SAMPLES].fill(0.0);
+    }
+
+    #[test]
+    fn short_and_exact_window_keep_one_model_call() {
+        assert!(pause_ranges(&[0.0; 40]).is_none());
+        assert!(pause_ranges(&vec![0.0; MAX_CHUNK]).is_none());
+    }
+
+    #[test]
+    fn long_recording_cuts_at_pauses_without_losing_any_samples() {
+        let mut audio = vec![0.2; 56 * SECOND];
+        for seconds in [16, 21, 35, 43] {
+            pause(&mut audio, seconds);
+        }
+        let ranges = pause_ranges(&audio).unwrap();
+        assert_eq!(ranges.first().unwrap().start, 0);
+        assert_eq!(ranges.last().unwrap().end, audio.len());
+        assert!(ranges.iter().all(|range| range.len() <= MAX_CHUNK));
+        assert!(ranges.windows(2).all(|pair| pair[0].end == pair[1].start));
+        for range in ranges.iter().take(ranges.len() - 1) {
+            assert_eq!(audio[range.end - PAUSE_SAMPLES / 2], 0.0);
+            assert_eq!(audio[range.end + PAUSE_SAMPLES / 2 - 1], 0.0);
+        }
+        assert!(ranges[0].end.abs_diff(16 * SECOND) <= PAUSE_SAMPLES);
+    }
+
+    #[test]
+    fn continuous_quiet_speech_is_not_treated_as_a_pause() {
+        let audio = vec![0.002; 60 * SECOND];
+        assert!(pause_ranges(&audio).is_none());
+    }
+
+    #[test]
+    fn stops_planning_if_a_later_chunk_has_no_safe_pause() {
+        let mut audio = vec![0.2; 60 * SECOND];
+        pause(&mut audio, 16);
+        assert!(pause_ranges(&audio).is_none());
+    }
+
+    #[test]
+    fn near_limit_leaves_a_useful_tail_and_ignores_brief_dips() {
+        let mut audio = vec![0.2; MAX_CHUNK + 1];
+        audio[17 * SECOND..17 * SECOND + SEARCH_STEP].fill(0.0);
+        pause(&mut audio, 23);
+        let ranges = pause_ranges(&audio).unwrap();
+        assert_eq!(ranges.len(), 2);
+        assert!(ranges[0].end.abs_diff(23 * SECOND) <= PAUSE_SAMPLES);
+        assert!(ranges[1].len() >= MIN_TAIL);
+    }
+}

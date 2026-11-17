@@ -1030,6 +1030,14 @@ impl TranscriptionManager {
     }
 
     pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
+        self.transcribe_until_cancelled(audio, || false)
+    }
+
+    pub(crate) fn transcribe_until_cancelled(
+        &self,
+        audio: Vec<f32>,
+        is_cancelled: impl Fn() -> bool,
+    ) -> Result<String> {
         #[cfg(debug_assertions)]
         if std::env::var("HANDY_FORCE_TRANSCRIPTION_FAILURE").is_ok() {
             return Err(anyhow::anyhow!(
@@ -1180,6 +1188,27 @@ impl TranscriptionManager {
                 _ => {}
             }
             let transcribe_result = catch_unwind(AssertUnwindSafe(|| -> Result<String> {
+                anyhow::ensure!(!is_cancelled(), "Transcription cancelled");
+                if engine.kind == "TranscribeCpp" && engine.capabilities.arch == "gigaam" {
+                    if let Some(ranges) = crate::long_form_gigaam::pause_ranges(&audio) {
+                        let mut full = String::new();
+                        for range in ranges {
+                            anyhow::ensure!(!is_cancelled(), "Transcription cancelled");
+                            let result = engine.run(&audio[range], options.clone())?;
+                            if model_detected_language.is_none() {
+                                model_detected_language = result.language;
+                            }
+                            let text = result.full.trim();
+                            if !text.is_empty() {
+                                if !full.is_empty() {
+                                    full.push(' ');
+                                }
+                                full.push_str(text);
+                            }
+                        }
+                        return Ok(full);
+                    }
+                }
                 let result = engine.run(&audio, options)?;
                 model_detected_language = result.language;
                 Ok(result.full)

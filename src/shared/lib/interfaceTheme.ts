@@ -1,4 +1,4 @@
-export const INTERFACE_SCENES = ['manta', 'fox'] as const
+export const INTERFACE_SCENES = ['fox', 'manta'] as const
 export type InterfaceScene = typeof INTERFACE_SCENES[number]
 
 type ThemeDefinition = {
@@ -12,7 +12,7 @@ export const INTERFACE_THEMES = {
   glass: {
     label: { ru: 'Стекло', en: 'Glass' },
     translucent: true,
-    scene: { fallback: 'manta', options: INTERFACE_SCENES },
+    scene: { fallback: 'fox', options: INTERFACE_SCENES },
   },
 } satisfies Record<string, ThemeDefinition>
 

@@ -33,9 +33,10 @@ import { IslandTopIndicator } from './IslandTopIndicator'
 import { HoverCoach } from './HoverCoach'
 import { LocalServersPanel } from './LocalServersPanel'
 import { LatestDictationPanel } from './LatestDictationPanel'
-import { buildAccentTokens } from '../../shared/lib/accentTheme'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import {
+  getInterfacePalette,
+  getInterfacePaletteStyle,
   getInterfaceScene,
   getInterfaceTheme,
   getLocalServersWidgetScale,
@@ -551,11 +552,6 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     return () => window.clearTimeout(timer)
   }, [transition, reducedMotion, media?.hasSession, setMode, setWindowPhase])
 
-  const accentTokens = useMemo(
-    () => buildAccentTokens(config?.appearance.accentColor ?? '#F76100'),
-    [config?.appearance.accentColor],
-  )
-
   useEffect(() => {
     let active = true
     let cleanup = () => {}
@@ -586,17 +582,11 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--island-width': config.layout.width / 100,
       '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,
       '--island-hit-width': `${(500 * (config.layout.width / 100) + 112) * (config.layout.scale / 100)}px`,
-      '--accent': accentTokens.accent,
-      '--accent-soft': accentTokens.accentSoft,
-      '--accent-strong': accentTokens.accentStrong,
-      '--accent-rgb': accentTokens.accentRgb,
-      '--accent-glow': accentTokens.accentGlow,
-      '--accent-muted': accentTokens.accentMuted,
-      '--accent-ink': accentTokens.accentInk,
+      ...getInterfacePaletteStyle(config, 'dark'),
       '--artwork-primary': artworkTheme.primary,
       '--artwork-secondary': artworkTheme.secondary,
     } as CSSProperties
-  }, [accentTokens, artworkTheme.primary, artworkTheme.secondary, config])
+  }, [artworkTheme.primary, artworkTheme.secondary, config])
 
   const clearCloseTimer = () => {
     if (closeTimerRef.current) {
@@ -921,6 +911,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       ].join(' ')}
       data-interface-theme={getInterfaceTheme(config)}
       data-interface-scene={getInterfaceScene(config)}
+      data-interface-palette={getInterfacePalette(config)}
       data-reduced-transparency={getReducedTransparency(config) || undefined}
       style={style}
     >
