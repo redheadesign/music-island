@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { OverlayShell } from '../../features/overlay/OverlayShell'
 import { IslandTopIndicator } from '../../features/overlay/IslandTopIndicator'
@@ -190,7 +190,7 @@ export default meta
 export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый островок' }
 export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный островок', globals: { interfaceTheme: 'glass' } }
 export const GlassCoolCover: StoryObj<typeof meta> = {
-  ...Glass, name: 'Стекло · частицы и прогресс в цветах обложки', args: { artwork: 'cool' },
+  ...Glass, name: 'Стекло · рябь и прогресс в цветах обложки', args: { artwork: 'cool' },
   play: async ({ canvasElement }) => {
     await waitFor(() => expect(canvasElement.querySelector('.island-root')).toHaveAttribute('data-cover-art', 'true'))
     await waitFor(async () => {
@@ -198,6 +198,15 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
       await expect(progress).toBeInTheDocument()
       await expect(getComputedStyle(progress!).backgroundImage).toContain('linear-gradient')
     })
+    const title = canvasElement.querySelector('.progress-content--track .marquee')!
+    const fill = canvasElement.querySelector('.progress-fill')!
+    const frame = canvasElement.querySelector('.progress-visual')!
+    const backdrop = canvasElement.querySelector('.island-card .island-feedback__layer')!
+    await expect(title.getBoundingClientRect().bottom).toBeLessThan(fill.getBoundingClientRect().top)
+    await expect(getComputedStyle(frame, '::after').content).toBe('none')
+    if (!matchMedia('(prefers-reduced-transparency: reduce)').matches) {
+      await expect(getComputedStyle(backdrop, '::before').backgroundImage).toContain('repeating-radial-gradient')
+    }
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
       const particles = [...canvasElement.querySelectorAll('.island-particles > i')]
       await expect(particles.length).toBeGreaterThan(2)
@@ -209,14 +218,12 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
 export const GlassWithoutCover: StoryObj<typeof meta> = { ...Glass, name: 'Стекло · нейтральный прогресс без обложки', args: { artwork: 'missing' } }
 export const GlassEdge: StoryObj<typeof meta> = {
   ...Glass,
-  name: 'Стекло · отблеск у верхнего края',
+  name: 'Стекло · верхняя кромка при наведении',
   parameters: { workshop: { width: 460, height: 184, note: 'Момент наведения перед раскрытием островка.' } },
   render: ({ reducedMotion }) => (
-    <div className={`island-root${reducedMotion ? ' reduced-motion' : ''}`} data-interface-theme="glass" data-cover-art="true"
-      style={{ '--artwork-primary': '24, 133, 212', '--artwork-secondary': '25, 175, 187' } as CSSProperties}>
+    <div className={`island-root${reducedMotion ? ' reduced-motion' : ''}`} data-interface-theme="glass">
       <div className="island-top-chrome">
-        <div className="edge-trigger edge-trigger--peeking" aria-hidden="true"
-          style={{ '--peek-progress': 0.88, '--peek-x': '144px' } as CSSProperties}>
+        <div className="edge-trigger edge-trigger--peeking" aria-hidden="true">
           <IslandTopIndicator progressPercent={38} hidden />
         </div>
       </div>
@@ -224,10 +231,12 @@ export const GlassEdge: StoryObj<typeof meta> = {
   ),
 }
 export const GlassReducedMotion: StoryObj<typeof meta> = {
-  ...Glass, name: 'Стекло · частицы при уменьшенном движении', args: { reducedMotion: true },
+  ...Glass, name: 'Стекло · фон без движения', args: { reducedMotion: true },
   play: async ({ canvasElement }) => {
     const particles = canvasElement.querySelector('.island-particles')
     if (particles) await expect(particles).not.toBeVisible()
+    const backdrop = canvasElement.querySelector('.island-card .island-feedback__layer')!
+    await expect(getComputedStyle(backdrop, '::before').animationName).toBe('none')
   },
 }
 export const GlassPlayback: StoryObj<typeof meta> = {

@@ -6,16 +6,17 @@ import { WarpSurfaceProvider } from '../../shared/ui/WarpSurface'
 import { Button } from '../../shared/ui/SettingsControls'
 import type { InterfaceScene } from '../../shared/lib/interfaceTheme'
 
-function MaterialState({ light = false, reducedMotion = false, scene }: {
+function MaterialState({ light = false, reducedMotion = false, scene, sceneHeight = 256 }: {
   light?: boolean
   reducedMotion?: boolean
   scene?: InterfaceScene
+  sceneHeight?: number
 }) {
   const [running, setRunning] = useState(true)
   const colorScheme = light ? 'light' : 'dark'
   return <div className="settings-panel" data-color-scheme={colorScheme} data-interface-theme={scene ? 'glass' : 'classic'} data-reduced-motion={reducedMotion || undefined} style={{ padding: 24, background: 'var(--surface-canvas)' }}>
     <Button aria-pressed={running} onClick={() => setRunning(value => !value)}>Включено</Button>
-    <WarpSurfaceProvider scene={scene} colorScheme={colorScheme}><div style={{ position: 'relative', height: 256, marginTop: 16, borderRadius: 24, overflow: 'hidden' }}>
+    <WarpSurfaceProvider scene={scene} colorScheme={colorScheme}><div style={{ position: 'relative', height: sceneHeight, marginTop: 16, borderRadius: 24, overflow: 'hidden' }}>
       <StatefulWarpSurface running={running} reducedMotion={reducedMotion} />
     </div></WarpSurfaceProvider>
   </div>
@@ -55,6 +56,12 @@ export const GlassFox: Story = { name: 'Стекло · лисы без движ
   await waitFor(() => paintedScene(canvasElement, 'fox'))
   await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0')
 } }
+export const GlassFoxCompact: Story = {
+  name: 'Стекло · лисы в компактном превью',
+  args: { scene: 'fox', sceneHeight: 160 },
+  parameters: { workshop: { width: 416 } },
+  play: async ({ canvasElement }) => { await waitFor(() => paintedScene(canvasElement, 'fox')) },
+}
 
 function paintedScene(canvasElement: HTMLElement, scene: InterfaceScene) {
   const canvas = canvasElement.querySelector<HTMLCanvasElement>(`canvas[data-ascii-scene="${scene}"]`)

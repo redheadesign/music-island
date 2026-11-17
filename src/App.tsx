@@ -18,7 +18,7 @@ import './App.css'
 
 function App() {
   const windowLabel = isTauriRuntime() ? getCurrentWindow().label : 'main'
-  useGlassPointerLight(windowLabel === 'settings' || windowLabel === 'intro')
+  useGlassPointerLight(windowLabel === 'settings' || windowLabel === 'intro' || windowLabel === 'main')
 
   // Intro is a separate Tauri window — keep it free of island hooks/state.
   if (windowLabel === 'intro') {

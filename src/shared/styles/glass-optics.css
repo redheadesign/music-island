@@ -10,11 +10,11 @@
   box-shadow: inset 0 1px rgb(255 255 255 / .09), inset 0 -1px rgb(0 0 0 / .21);
 }
 
-[data-interface-theme='glass'] :where(.ui-button, .dark-select, .dark-select-option, .ui-toggle, .ui-navigation__item, .settings-theme-toggle, .settings-scope-switch__btn, .locale-switch__btn, .settings-nav-item) {
+[data-interface-theme='glass'] :where(.ui-button, .dark-select, .dark-select-option, .ui-toggle, .ui-navigation__item, .settings-theme-toggle, .settings-scope-switch__btn, .locale-switch__btn, .settings-nav-item, .media-button, .play-button:not(.artwork-play-button), .reaction-button, .island-actions .icon-button, .island-plugin-button) {
   position: relative;
 }
 
-[data-interface-theme='glass'] :where(.ui-button--secondary, .dark-select:not(.dark-select--actions), .ui-navigation__item[aria-current='page'], .settings-scope-switch__btn--active, .locale-switch__btn--active, .settings-nav-item--active, [data-glass-light])::before {
+[data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, .dark-select:not(.dark-select--actions), .ui-navigation__item[aria-current='page'], .settings-scope-switch__btn--active, .locale-switch__btn--active, .settings-nav-item--active, .media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button, [data-glass-light])::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -31,19 +31,34 @@
     var(--glass-contour);
 }
 
+/* Bend the underlying pixels through the edge. The interior is masked so
+   labels and playback icons always remain rendered as regular DOM content. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) and (prefers-reduced-transparency: no-preference) and (forced-colors: none) {
+  [data-interface-theme='glass'] [data-glass-light]:hover:not(:is([data-reduced-transparency='true'] *, [data-reduced-motion='true'] *, .reduced-motion *))::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: var(--space-half);
+    border-radius: inherit;
+    pointer-events: none;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    backdrop-filter: url('#music-island-glass-rim');
+  }
+}
+
 [data-interface-theme='glass'] :where(.ui-button, .dark-select, .dark-select-option, .ui-toggle):disabled::before { opacity: .35; }
 
 /* Reduced transparency still has a clear resting line. It has no reflections. */
-[data-interface-theme='glass'][data-reduced-transparency='true'] :where(.ui-button--secondary, .dark-select, .ui-navigation__item, .settings-nav-item)::before {
+[data-interface-theme='glass'][data-reduced-transparency='true'] :where(.ui-button, .dark-select, .ui-navigation__item, .settings-nav-item, .media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button)::before {
   background: var(--surface-selected);
 }
 @media (prefers-reduced-transparency: reduce) {
-  [data-interface-theme='glass'] :where(.ui-button--secondary, .dark-select, .ui-navigation__item, .settings-nav-item)::before {
+  [data-interface-theme='glass'] :where(.ui-button, .dark-select, .ui-navigation__item, .settings-nav-item, .media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button)::before {
     background: var(--surface-selected);
   }
 }
 @media (forced-colors: active) {
-  [data-interface-theme='glass'] :where(.ui-button, .dark-select, .dark-select-option, .ui-toggle, .ui-navigation__item, .settings-theme-toggle, .settings-scope-switch__btn, .locale-switch__btn, .settings-nav-item)::before {
+  [data-interface-theme='glass'] :where(.ui-button, .dark-select, .dark-select-option, .ui-toggle, .ui-navigation__item, .settings-theme-toggle, .settings-scope-switch__btn, .locale-switch__btn, .settings-nav-item, .media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button)::before {
     display: none;
   }
 }

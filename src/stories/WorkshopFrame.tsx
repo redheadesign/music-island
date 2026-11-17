@@ -7,6 +7,7 @@ import {
 } from 'react'
 import type { StoryContext } from '@storybook/react-vite'
 import { applyAccentTheme } from '../shared/lib/accentTheme'
+import { GlassRefraction } from '../shared/ui/GlassRefraction'
 import { useGlassPointerLight } from '../shared/ui/useGlassPointerLight'
 
 export function WorkshopFrame({
@@ -56,20 +57,21 @@ export function WorkshopFrame({
     }
   }
 
-  if (context.parameters.workshop?.welcome || context.parameters.workshop?.bare) return <>{children}</>
+  if (context.parameters.workshop?.welcome) return <>{children}</>
+  const refraction = context.viewMode === 'story' ? <GlassRefraction /> : null
+  if (context.parameters.workshop?.bare) return <>{children}{refraction}</>
+  const note = context.parameters.workshop?.note
 
   return (
     <div
       className={`workshop workshop--${surface} ${context.viewMode === 'docs' ? 'workshop--docs' : ''}`}
     >
+      {refraction}
       {context.viewMode === 'story' && (
         <header className="workshop-bar">
-          <div>
-            <span className="workshop-eyebrow">MUSIC ISLAND / UI</span>
-            <strong>
-              {context.title.split('/').at(-1)} <span>· {context.name}</span>
-            </strong>
-          </div>
+          <strong>
+            {context.title.split('/').at(-1)} <span>· {context.name}</span>
+          </strong>
           <button className="workshop-copy" onClick={() => void copyContext()}>
             {copied ? 'Контекст скопирован' : 'Скопировать контекст'}
           </button>
@@ -96,11 +98,8 @@ export function WorkshopFrame({
           {children}
         </div>
       </div>
-      {context.viewMode === 'story' && (
-        <footer className="workshop-footer">
-          {context.parameters.workshop?.note ??
-            'Изменяйте параметры во вкладке Controls. Нажатия отображаются во вкладке Actions.'}
-        </footer>
+      {context.viewMode === 'story' && note && (
+        <footer className="workshop-footer">{note}</footer>
       )}
     </div>
   )

@@ -73,10 +73,14 @@
 .settings-preview__header--end { justify-content: flex-end; }
 .settings-preview .ui-toggle { --control-off: #555; }
 
-[data-interface-theme='glass'] :is(.ui-input, .ui-search, .dark-select:not(.dark-select--actions), .ui-button--secondary) {
+[data-interface-theme='glass'] :is(.ui-input, .ui-search) {
   border-radius: var(--glass-control-radius);
   background-image: var(--glass-control-sheen);
   box-shadow: var(--glass-control-rim);
+}
+[data-interface-theme='glass'] :is(.dark-select:not(.dark-select--actions), .ui-button--secondary) {
+  border-radius: var(--glass-control-radius);
+  box-shadow: var(--glass-panel-rim), var(--shadow-control-depth);
 }
 [data-interface-theme='glass'] .ui-input.ui-textarea { border-radius: var(--radius-md); }
 [data-interface-theme='glass'] .ui-button { border-radius: var(--glass-control-radius); }

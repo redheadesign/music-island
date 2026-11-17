@@ -1,5 +1,8 @@
 /* Workshop-only layout. Production component selectors remain in App.css. */
 :root {
+  --workshop-canvas: #1b1b1c;
+  --workshop-desktop: #303031;
+  --workshop-divider: #343435;
   --text-primary: rgba(255, 255, 255, 0.96);
   --text-secondary: rgba(238, 243, 255, 0.68);
   --text-muted: rgba(238, 243, 255, 0.46);
@@ -17,8 +20,8 @@ body,
   overflow: auto;
 }
 body {
-  color: #ececf1;
-  background: #15161b;
+  color: #eeeeec;
+  background: var(--workshop-canvas);
 }
 button,
 a {
@@ -26,7 +29,7 @@ a {
 }
 .workshop {
   min-height: 100vh;
-  background: #15161b;
+  background: var(--workshop-canvas);
 }
 .workshop--docs {
   min-height: 0;
@@ -35,39 +38,30 @@ a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 18px;
-  padding: 22px 28px;
-  background: #17181d;
-  border-bottom: 1px solid #2a2b32;
-}
-.workshop-eyebrow {
-  display: block;
-  color: #ff9a55;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  font-weight: 650;
-  margin-bottom: 8px;
+  gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--workshop-divider);
 }
 .workshop-bar strong {
   font-size: 14px;
   font-weight: 600;
 }
 .workshop-bar strong span {
-  color: #9fa1ae;
+  color: #afafad;
   font-weight: 400;
 }
 .workshop-copy {
   flex-shrink: 0;
-  padding: 9px 13px;
+  padding: 6px 10px;
   font-size: 12px;
-  color: #dedee5;
-  background: #25262e;
-  border: 1px solid #373841;
-  border-radius: 8px;
+  color: #e4e4e1;
+  background: transparent;
+  border: 1px solid #454546;
+  border-radius: 6px;
   cursor: pointer;
 }
 .workshop-copy:hover {
-  background: #30313a;
+  background: #2c2c2d;
 }
 .workshop-stage {
   display: grid;
@@ -79,18 +73,16 @@ a {
   min-width: 0;
 }
 .workshop--desktop .workshop-stage {
-  background:
-    radial-gradient(ellipse at 18% 30%, #3e3269 0, transparent 52%),
-    radial-gradient(ellipse at 85% 70%, #235251 0, transparent 55%), #171d2a;
+  background-color: var(--workshop-desktop);
 }
 .workshop--checker .workshop-stage {
   background: repeating-conic-gradient(#25262d 0% 25%, #191a20 0% 50%) 50% /
     24px 24px;
 }
 .workshop-footer {
-  color: #a0a3b2;
-  border-top: 1px solid #2a2b32;
-  padding: 18px 28px;
+  color: #afafad;
+  border-top: 1px solid var(--workshop-divider);
+  padding: 11px 24px;
   font-size: 12px;
   line-height: 1.7;
 }
@@ -219,7 +211,7 @@ a {
   max-width: 1200px;
   margin: auto;
   padding: 52px clamp(24px, 5vw, 72px);
-  background: #15161b;
+  background: var(--workshop-canvas);
 }
 .welcome-topline {
   display: flex;
@@ -265,10 +257,8 @@ a {
 .welcome-preview {
   padding: 35px 20px;
   border-radius: 28px;
-  background:
-    radial-gradient(ellipse at 20% 10%, #563948, transparent 75%), #202026;
-  border: 1px solid #3b333c;
-  transform: rotate(-3deg);
+  background: var(--workshop-desktop);
+  border: 1px solid var(--workshop-divider);
 }
 .welcome-preview .sample-music {
   box-shadow: 0 18px 55px #0005;
@@ -365,9 +355,8 @@ a {
 }
 @media (max-width: 720px) {
   .workshop-bar {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 20px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
   }
   .workshop-stage {
     padding: 28px 16px;

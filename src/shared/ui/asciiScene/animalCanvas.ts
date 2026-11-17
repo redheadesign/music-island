@@ -119,11 +119,11 @@ export function paintAnimalScene(context: CanvasRenderingContext2D, frame: Anima
   const pen = createAnimalPen(context, width, height, appearance);
   const artwork = animalArtworks[sceneId];
   const swatch = wakeColors[sceneId];
-  // Settings previews are shallow. Keep enough detail to recognize each silhouette.
-  const count = clamp(Math.round(width / 260), 1, 4);
-  const columns = Math.min(count, width < 940 ? 2 : 3);
+  const foxes = sceneId === "fox";
+  const columns = foxes ? clamp(Math.round(width / 210), 2, 3) : width < 940 ? 2 : 3;
+  const count = foxes ? columns * 2 : clamp(Math.round(width / 260), 1, 4);
   const rows = Math.ceil(count / columns);
-  const baseSpan = clamp(Math.min(width, height) * 0.39 * artwork.scale, 45, 156);
+  const baseSpan = clamp(Math.min(width, height) * (foxes ? 0.31 : 0.39) * artwork.scale, 45, 156);
   const margin = baseSpan * 0.95;
   const flightWidth = width + 2 * margin;
   const flightHeight = height + 2 * margin;
@@ -131,15 +131,17 @@ export function paintAnimalScene(context: CanvasRenderingContext2D, frame: Anima
     const span = baseSpan * (0.72 + 0.37 * animalNoise(id, 78, 12));
     const column = id % columns;
     const row = Math.floor(id / columns);
-    const startX = (width * (column + 0.2 + 0.6 * animalNoise(id, 6, 26))) / columns;
-    const startY = (height * (row + 0.18 + 0.64 * animalNoise(id, 3, 60))) / rows;
-    const course = -0.57 + 0.35 * animalNoise(id, 45, 12);
+    const startX = (width * (column + 0.2 + 0.6 * animalNoise(id, 6, 26))) / Math.min(count, columns);
+    const laneNoise = animalNoise(id, 3, 60);
+    const startY = (height * (row + (foxes ? 0.32 + 0.33 * laneNoise : 0.18 + 0.64 * laneNoise))) / rows;
+    const course = foxes ? -0.19 + 0.26 * animalNoise(id, 45, 12) : -0.57 + 0.35 * animalNoise(id, 45, 12);
     const distance = time * artwork.speed * (0.36 + 0.16 * animalNoise(id, 3, 78));
     const sway = 0.16 * Math.sin(time * 0.7 + id * 2.2);
     const x = wrap(margin + startX + Math.cos(course) * distance, flightWidth) - margin;
-    const y =
-      wrap(margin + startY + Math.sin(course) * distance + sway * span * 0.25, flightHeight) -
-      margin;
+    // In a shallow frame foxes trot along two lanes instead of leaving over the top together.
+    const y = foxes
+      ? startY + Math.min(18, height / 12) * Math.sin(time * 0.8 + id * 2.2)
+      : wrap(margin + startY + Math.sin(course) * distance + sway * span * 0.25, flightHeight) - margin;
     if (x < -span || x > width + span || y < -span || y > height + span) continue;
     const heading = course + sway;
     const pose: AnimalPose = { id, x, y, span, heading, light: 1.06 };

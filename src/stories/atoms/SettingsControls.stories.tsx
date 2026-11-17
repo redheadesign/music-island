@@ -43,9 +43,9 @@ export const Messages: Story = { name: 'Сообщения и кнопки-ик�
   <Notice>Загружаем устройства…</Notice><Notice tone="success">Доступ к микрофону разрешён</Notice><Notice tone="warning" action={<Button size="compact">Проверить микрофон</Button>}>Windows запрещает доступ к микрофону.</Notice><Notice tone="danger" action={<Button size="compact">Повторить</Button>}>Не удалось загрузить список устройств.</Notice>
 </div> }
 
-function EdgeMenu({ light = false }: { light?: boolean }) {
+function EdgeMenu({ light = false, interfaceTheme }: { light?: boolean; interfaceTheme?: InterfaceThemeId }) {
   const [value, setValue] = useState('0')
-  return <div className="auxiliary-ui" data-color-scheme={light ? 'light' : 'dark'} style={{ height: '100vh', background: 'var(--surface-canvas)', color: 'var(--fg-primary)' }}><div style={{ position: 'fixed', right: 16, bottom: 16, width: 220 }}><Select ariaLabel="Микрофон" value={value} options={Array.from({length: 12}, (_, i) => ({ value: String(i), label: `Микрофон ${i + 1} · USB Audio` }))} onChange={setValue}/></div></div>
+  return <div className="auxiliary-ui" data-color-scheme={light ? 'light' : 'dark'} data-interface-theme={interfaceTheme} style={{ height: '100vh', background: 'var(--surface-canvas)', color: 'var(--fg-primary)' }}><div style={{ position: 'fixed', right: 16, bottom: 16, width: 220 }}><Select ariaLabel="Микрофон" value={value} options={Array.from({length: 12}, (_, i) => ({ value: String(i), label: `Микрофон ${i + 1} · USB Audio` }))} onChange={setValue}/></div></div>
 }
 const checkEdgeMenu: Story['play'] = async ({ canvasElement }) => {
   const trigger = within(canvasElement).getByRole('button', { name: 'Микрофон' })
@@ -67,3 +67,21 @@ const checkEdgeMenu: Story['play'] = async ({ canvasElement }) => {
 }
 export const PopoverAtEdge: Story = { name: 'Меню у края · клавиатура', render: () => <EdgeMenu />, parameters: { workshop: { bare: true } }, play: checkEdgeMenu }
 export const PopoverAtEdgeLight: Story = { name: 'Меню у края · светлая тема', render: () => <EdgeMenu light />, parameters: { workshop: { bare: true } }, play: checkEdgeMenu }
+export const GlassPopover: Story = {
+  name: 'Стекло · открытие меню у края',
+  globals: { interfaceTheme: 'glass' },
+  render: () => <EdgeMenu interfaceTheme="glass" />,
+  parameters: { workshop: { bare: true } },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('button', { name: 'Микрофон' })
+    const body = within(document.body)
+    await userEvent.click(trigger)
+    const menu = await body.findByRole('listbox')
+    await expect(menu).toHaveAttribute('data-interface-theme', 'glass')
+    await waitFor(() => expect(menu).toHaveAttribute('data-enter', 'above'))
+    await userEvent.keyboard('{Escape}')
+    await expect(trigger).toHaveFocus()
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(await body.findByRole('listbox')).not.toHaveAttribute('data-enter')
+  },
+}

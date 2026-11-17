@@ -9,12 +9,15 @@
 
   --glass-opacity: 84%;
   --glass-panel-opacity: 95%;
+  --glass-menu-opacity: 70%;
+  --glass-menu-track-opacity: 45%;
   --glass-blur: 14px;
   --glass-saturation: 1.15;
   --glass-canvas: #232322;
   --glass-panel: #2d2d2b;
   --glass-raised: #353533;
   --glass-field: #282827;
+  --glass-menu-face: #222221;
   --glass-ink: 246 246 242;
   --glass-sheen: linear-gradient(165deg, rgb(var(--glass-ink) / .065), transparent 57%);
   --glass-control-sheen: linear-gradient(159deg, rgb(255 255 255 / .21), rgb(255 255 255 / .04) 48%, transparent 57%, rgb(255 255 255 / .09));
@@ -38,7 +41,6 @@
   --glass-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
   --glass-frost-filter: blur(min(3.5px, var(--glass-blur))) saturate(var(--glass-saturation));
   --preview-resting-opacity: .34;
-  --motion-glass-sheen: calc(var(--motion-unit) * 22);
   --motion-glass-drift: calc(var(--motion-unit) * 420);
 
   --surface-canvas: var(--glass-canvas);
@@ -75,6 +77,7 @@
   --glass-panel: #fafaf8;
   --glass-raised: #e5e5e1;
   --glass-field: #f8f8f6;
+  --glass-menu-face: #f8f8f6;
   --glass-ink: 40 40 38;
   --glass-sheen: linear-gradient(165deg, rgb(255 255 255 / .66), transparent 56%);
   --glass-control-sheen: linear-gradient(159deg, rgb(255 255 255 / .94), rgb(255 255 255 / .28) 48%, transparent 61%, rgb(255 255 255 / .44));
@@ -121,6 +124,8 @@
 [data-interface-theme='glass'][data-reduced-transparency='true'] {
   --glass-opacity: 100%;
   --glass-panel-opacity: 100%;
+  --glass-menu-opacity: 100%;
+  --glass-menu-track-opacity: 100%;
   --glass-blur: 0px;
   --glass-saturation: 1;
   --glass-filter: none;
@@ -140,6 +145,8 @@
   [data-interface-theme='glass'][data-interface-theme] {
     --glass-opacity: 100%;
     --glass-panel-opacity: 100%;
+    --glass-menu-opacity: 100%;
+    --glass-menu-track-opacity: 100%;
     --glass-blur: 0px;
     --glass-saturation: 1;
     --glass-filter: none;
@@ -157,7 +164,10 @@
 }
 
 @supports not (backdrop-filter: blur(1px)) {
-  [data-interface-theme='glass'][data-interface-theme] { --glass-opacity: 100%; }
+  [data-interface-theme='glass'][data-interface-theme] {
+    --glass-opacity: 100%;
+    --glass-menu-opacity: 100%;
+  }
 }
 
 /* A small accent inside the search field reacts once when it gains focus. */
@@ -181,14 +191,6 @@
   100% { opacity: 0; transform: translateY(var(--space-6)); }
 }
 
-@keyframes glass-rim-sheen {
-  from { background-position: 100% 0; }
-  30% { opacity: .85; }
-  to { background-position: 0 0; opacity: 0; }
-}
-
-[data-interface-theme='glass'] :is(.ui-button--primary, .play-button:not(.artwork-play-button)) { position: relative; }
-
 [data-interface-theme='glass'] :is(.settings-preview, .island-preview, .taskbar-preview, .usage-widget-preview, .stateful-warp-surface) {
   background-color: var(--glass-preview-base);
 }
@@ -205,23 +207,7 @@
     opacity: 0;
     animation: glass-drift var(--motion-glass-drift) linear;
   }
-  [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):enabled::after {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: calc(var(--space-unit) * .25);
-    pointer-events: none;
-    background: linear-gradient(105deg, transparent 25%, #fff 50%, transparent 75%) 100% 0 / 250% 100%;
-    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-    opacity: 0;
-    animation: glass-rim-sheen var(--motion-glass-sheen) var(--ease-standard);
-  }
-  [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):enabled:focus-visible::after { content: ''; }
-  @media (hover: hover) {
-    [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):enabled:hover::after { content: ''; }
-  }
-  [data-interface-theme='glass'] .ui-search:is(.reduced-motion *, [data-reduced-motion='true'] *)::before,
-  [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):is(.reduced-motion *, [data-reduced-motion='true'], [data-reduced-motion='true'] *)::after {
+  [data-interface-theme='glass'] .ui-search:is(.reduced-motion *, [data-reduced-motion='true'] *)::before {
     display: none;
   }
 }

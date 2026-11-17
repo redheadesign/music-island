@@ -1040,17 +1040,20 @@
    provide depth, so layout wrappers never introduce a separate frame. */
 .settings-window-root[data-interface-theme='glass'] { --settings-radius: var(--radius-md); }
 .settings-window-root[data-interface-theme='glass'] .settings-titlebar { background: transparent; }
+.settings-panel[data-interface-theme='glass'] {
+  --surface-panel: color-mix(in srgb, var(--glass-panel) var(--glass-menu-opacity), transparent);
+}
 .settings-panel[data-interface-theme='glass'] .settings-page-heading { letter-spacing: 0; }
 .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch, .locale-switch) {
   border-radius: var(--glass-control-radius);
-  background: var(--surface-sunken);
+  background: color-mix(in srgb, var(--glass-field) var(--glass-menu-track-opacity), transparent);
   box-shadow: inset 0 1px rgb(0 0 0 / .13);
 }
 .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn, .settings-theme-toggle) {
   border-radius: var(--glass-control-radius);
 }
 .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn, .settings-nav-item) .settings-selection-marker {
-  background: var(--glass-selection-sheen) var(--glass-selection-fill);
+  background: var(--glass-selection-sheen) color-mix(in srgb, var(--glass-selection-fill) var(--glass-menu-opacity), transparent);
   box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
 }
 .settings-panel[data-interface-theme='glass'] .settings-nav-item { border-radius: var(--radius-md); }
