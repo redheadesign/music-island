@@ -104,9 +104,17 @@ single warm engine, releasing only the first safe fragment after observing
 the offline pass. Stop to final output was 1.953 s in the replay and 9.000 s
 when the entire input was processed after Stop. This one experiment used WAV
 playback and excludes live VAD, capture-ring contention and paste. Production
-GigaAM continues to recognize after Stop. Acceptance for a live change requires
-timed microphone replay on CPU and Vulkan, capture-loss and cancellation checks,
-and accuracy across speakers, including continuous and noisy dictation.
+GigaAM continues to recognize after Stop. To qualify a live change, measure the
+native coordinator from the physical Stop shortcut through delivery to a real
+Windows editor. Time recognition, first visible insertion and clipboard restore
+separately. Include warm and cold models, CPU fallback and Vulkan, VAD on and
+off, idle and busy hosts, and multiple Russian speakers with verified references.
+Use short, 3–8 minute, noisy and unbroken speech, including names and numbers.
+Require at least 30% lower median stop-to-insertion latency on long clips,
+short-clip p95 regression at most 100 ms, WER regression at most 0.3 percentage
+points, no new cut-boundary omissions/duplications and no additional capture
+losses. Record peak memory, check cancel and new sessions, and verify that a
+focus change still offers Copy instead of pasting into another window.
 
 The optional microphone can be placed in the island layout editor. It is absent
 from the default composition. The bottom overlay does not take keyboard focus.
