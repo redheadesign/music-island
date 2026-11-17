@@ -6,7 +6,8 @@ import { dictationApi } from '../mocks/dictationApi'
 import { dictationModels, dictationSettings, gigaamRnnt, parakeetEnglish } from '../dictationFixtures'
 import { useState, type ComponentProps } from 'react'
 import { defaultDictationAppearance } from '../../shared/lib/dictationAppearance'
-function DictationWorkshop({ args, light }: { args: ComponentProps<typeof DictationSettings>; light: boolean }) {
+import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
+function DictationWorkshop({ args, light, interfaceTheme }: { args: ComponentProps<typeof DictationSettings>; light: boolean; interfaceTheme: InterfaceThemeId }) {
   const [appearance, setAppearance] = useState(args.appearance ?? defaultDictationAppearance)
   const [showLatestMessage, setShowLatestMessage] = useState(args.showLatestMessage ?? false)
   const [words, setWords] = useState(args.controller.data?.settings.custom_words ?? [])
@@ -21,7 +22,7 @@ function DictationWorkshop({ args, light }: { args: ComponentProps<typeof Dictat
       changePostProcessEnabledSetting: async (value: boolean) => { setProcessing(value); return null },
     },
   } : c
-  return <div className="settings-panel" data-color-scheme={light ? 'light' : 'dark'} data-reduced-motion={args.reducedMotion || undefined} style={{ padding: 'var(--space-6-5)', background: 'var(--surface-canvas)' }}><DictationSettings {...args} controller={editable}
+  return <div className="settings-panel" data-color-scheme={light ? 'light' : 'dark'} data-interface-theme={interfaceTheme} data-reduced-motion={args.reducedMotion || undefined} style={{ padding: 'var(--space-6-5)', background: 'var(--surface-canvas)' }}><DictationSettings {...args} controller={editable}
     appearance={appearance} onAppearanceChange={setAppearance}
     showLatestMessage={showLatestMessage} onShowLatestMessage={args.onShowLatestMessage ? (checked) => { setShowLatestMessage(checked); args.onShowLatestMessage?.(checked) } : undefined} /></div>
 }
@@ -30,7 +31,7 @@ const meta = {
   title: 'Screens/Dictation', component: DictationSettings,
   args: { controller, page: 'models', locale: 'ru', onEnable: fn(async () => {}), onPage: fn() },
   parameters: { workshop: { width: 720, note: 'Каталог Handy 0.9.7. Здесь загрузки и запись заменены локальными примерами.' } },
-  render: (args, context) => <DictationWorkshop key={context.id} args={args} light={Boolean(context.parameters.light)} />,
+  render: (args, context) => <DictationWorkshop key={context.id} args={args} light={Boolean(context.parameters.light)} interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)} />,
 } satisfies Meta<typeof DictationSettings>
 export default meta
 type Story = StoryObj<typeof meta>
@@ -138,6 +139,13 @@ export const DownloadError: Story = { name: 'Загрузка · ошибка с
 export const Light: Story = { name: 'Модели · светлая тема', parameters: { light: true } }
 export const English: Story = { name: 'Models · English', args: { locale: 'en' } }
 export const Dictionary: Story = { name: 'Словарь', args: { page: 'dictionary' } }
+export const GlassDictionary: Story = {
+  ...Dictionary, name: 'Стекло · многострочные поля словаря', globals: { interfaceTheme: 'glass' },
+  play: async ({ canvasElement }) => {
+    const field = within(canvasElement).getByRole('textbox', { name: /^Свои слова$/ })
+    await expect(getComputedStyle(field).borderTopLeftRadius).toBe('18px')
+  },
+}
 export const DictionaryAddWord: Story = {
   name: 'Словарь · редактирование списка',
   args: { page: 'dictionary' },

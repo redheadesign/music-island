@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, type ButtonHTMLAttributes, type HTMLAttributes } from 'react'
+import { IslandParticles } from './IslandParticles'
 import './PressFeedback.css'
 export type RippleDirection = 'outward' | 'inward'
 const Feedback = createContext<(x: number, y: number, direction: RippleDirection) => void>(() => {})
@@ -10,13 +11,17 @@ function rippleFrames(direction: RippleDirection): Keyframe[] {
 }
 
 /** The ripple belongs to the surface, never to a moving button. */
-export function IslandFeedback({ children, className = '', ...props }: HTMLAttributes<HTMLElement>) {
+export function IslandFeedback({ children, className = '', particles = false, ...props }: HTMLAttributes<HTMLElement> & { particles?: boolean }) {
   const surface = useRef<HTMLElement>(null)
   const layer = useRef<HTMLSpanElement>(null)
   const animations = useRef<Animation[]>([])
   const clear = () => { animations.current.forEach((animation) => animation.cancel()); animations.current = [] }
   useEffect(() => {
-    const onVisibility = () => { if (document.hidden) clear() }
+    const onVisibility = () => {
+      surface.current?.toggleAttribute('data-document-hidden', document.hidden)
+      if (document.hidden) clear()
+    }
+    onVisibility()
     document.addEventListener('visibilitychange', onVisibility)
     return () => { clear(); document.removeEventListener('visibilitychange', onVisibility) }
   }, [])
@@ -38,7 +43,7 @@ export function IslandFeedback({ children, className = '', ...props }: HTMLAttri
     const remove = () => { ink.remove(); animations.current = animations.current.filter((item) => item !== animation) }
     void animation.finished.then(remove, remove)
   }
-  return <Feedback.Provider value={ripple}><section {...props} ref={surface} className={`island-feedback ${className}`}><span ref={layer} className="island-feedback__layer" aria-hidden="true" />{children}</section></Feedback.Provider>
+  return <Feedback.Provider value={ripple}><section {...props} ref={surface} className={`island-feedback ${className}`}><span ref={layer} className="island-feedback__layer" aria-hidden="true">{particles ? <IslandParticles /> : null}</span>{children}</section></Feedback.Provider>
 }
 
 /** Controlled icon state and command dispatch remain the caller's responsibility. */

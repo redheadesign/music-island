@@ -17,13 +17,14 @@ export const INTERFACE_THEMES = {
 } satisfies Record<string, ThemeDefinition>
 
 export type InterfaceThemeId = keyof typeof INTERFACE_THEMES
+export const DEFAULT_INTERFACE_THEME: InterfaceThemeId = 'glass'
 
 export const INTERFACE_THEME_IDS = Object.keys(INTERFACE_THEMES) as InterfaceThemeId[]
 
 export function normalizeInterfaceTheme(value: unknown): InterfaceThemeId {
   return typeof value === 'string' && Object.hasOwn(INTERFACE_THEMES, value)
     ? value as InterfaceThemeId
-    : 'classic'
+    : DEFAULT_INTERFACE_THEME
 }
 
 export function getInterfaceThemeDefinition(theme: InterfaceThemeId): ThemeDefinition {

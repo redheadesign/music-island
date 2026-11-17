@@ -27,6 +27,8 @@ function IslandPreview({
   localServersWidgetScale = 100,
   latestMessageMode,
   interfaceTheme,
+  artwork = 'warm',
+  reducedMotion = false,
 }: {
   locale: 'ru' | 'en'
   accent: string
@@ -43,6 +45,8 @@ function IslandPreview({
   localServersWidgetScale?: number
   latestMessageMode?: 'expanded' | 'collapsed'
   interfaceTheme?: InterfaceThemeId
+  artwork?: 'warm' | 'cool' | 'missing'
+  reducedMotion?: boolean
 }) {
   const [config, setConfig] = useWorkshopConfig(locale, accent, localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed', interfaceTheme)
   const [localServers, setLocalServers] = useState(() => {
@@ -57,11 +61,13 @@ function IslandPreview({
   const [track, setTrack] = useState<MediaSnapshot>({
     ...media,
     hasSession: !empty,
+    thumbnailDataUrl: artwork === 'cool' ? coolCover : artwork === 'missing' ? null : media.thumbnailDataUrl,
   })
   const ui = getUiPrefs(config)
   const app: IslandAppState = {
     config: {
       ...config,
+      appearance: { ...config.appearance, reducedMotion },
       layout: { ...config.layout, width, scale },
       media: { ...config.media, protocol: unavailable ? 'smtc' : 'yandex-direct' },
       plugins: {
@@ -141,6 +147,7 @@ const demoLocalServers: LocalServer[] = [
   { id: 'python-8000', pid: 4780, processName: 'python.exe', host: '[::1]', port: 8000, canStop: false },
 ]
 const noop = async () => {}
+const coolCover = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#1885d4"/><circle cx="112" cy="90" r="58" fill="#19afbb"/></svg>')}`
 const demoDictationMessage = {
   id: 42, timestamp: 1784465200,
   text: 'На встрече обсудим макеты, согласуем следующий шаг и разошлём короткие итоги команде.',
@@ -171,7 +178,7 @@ const meta = {
   render: (args, context) => (
     <IslandPreview
       {...args}
-      key={`${context.id}-${args.empty}`}
+      key={`${context.id}-${args.empty}-${args.artwork}`}
       locale={context.globals.locale}
       accent={context.globals.accent}
       interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)}
@@ -181,6 +188,28 @@ const meta = {
 export default meta
 export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый островок' }
 export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный островок', globals: { interfaceTheme: 'glass' } }
+export const GlassCoolCover: StoryObj<typeof meta> = {
+  ...Glass, name: 'Стекло · частицы и прогресс в цветах обложки', args: { artwork: 'cool' },
+  play: async ({ canvasElement }) => {
+    const island = canvasElement.querySelector('.island-root')!
+    const particles = [...canvasElement.querySelectorAll('.island-particles > i')]
+    const progress = canvasElement.querySelector('.progress-fill')!
+    await waitFor(() => expect(island).toHaveAttribute('data-cover-art', 'true'))
+    await expect(particles.length).toBeGreaterThan(2)
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
+      await expect(new Set(particles.map(particle => getComputedStyle(particle).animationDelay)).size).toBe(particles.length)
+      await expect(getComputedStyle(particles[0]).animationName).toBe('island-particle-fall')
+    }
+    await expect(getComputedStyle(progress).backgroundImage).toContain('linear-gradient')
+  },
+}
+export const GlassWithoutCover: StoryObj<typeof meta> = { ...Glass, name: 'Стекло · нейтральный прогресс без обложки', args: { artwork: 'missing' } }
+export const GlassReducedMotion: StoryObj<typeof meta> = {
+  ...Glass, name: 'Стекло · частицы при уменьшенном движении', args: { reducedMotion: true },
+  play: async ({ canvasElement }) => {
+    await expect(getComputedStyle(canvasElement.querySelector('.island-particles')!).display).toBe('none')
+  },
+}
 export const GlassPlayback: StoryObj<typeof meta> = {
   ...Glass,
   name: 'Стекло · воспроизведение и пауза на обложке',

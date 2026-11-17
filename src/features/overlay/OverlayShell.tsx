@@ -912,6 +912,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       data-interface-theme={getInterfaceTheme(config)}
       data-interface-scene={getInterfaceScene(config)}
       data-interface-palette={getInterfacePalette(config)}
+      data-cover-art={Boolean(media?.hasSession && media.thumbnailDataUrl && artworkTheme !== FALLBACK_ARTWORK_THEME) || undefined}
       data-reduced-transparency={getReducedTransparency(config) || undefined}
       style={style}
     >
@@ -967,7 +968,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
               }}
             >
             <div className="island-scale-layer">
-            <IslandFeedback className="island-card island-surface">
+            <IslandFeedback className="island-card island-surface" particles={getInterfaceTheme(config) === 'glass' && Boolean(media?.hasSession)}>
               <MusicModule
                 layout={islandLayout}
                 media={media}

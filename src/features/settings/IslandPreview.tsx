@@ -16,7 +16,7 @@ import { UsageStatusChip } from '../usage/UsageStatusChip'
 import { WarpSurface } from '../../shared/ui/WarpSurface'
 import { projectPreviewScale } from '../../shared/lib/previewSizing'
 import { PreviewResizeHandle } from '../../shared/ui/PreviewResizeHandle'
-import { APPEARANCE_PREVIEW_MEDIA as media } from './previewMedia'
+import { APPEARANCE_PREVIEW_ARTWORK_THEME, APPEARANCE_PREVIEW_MEDIA as media } from './previewMedia'
 import './IslandPreview.css'
 
 type ResizeValues = Pick<AppConfig['layout'], 'width' | 'scale'> & { localServersScale: number }
@@ -162,8 +162,9 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     '--island-width': sizing.width / 100,
     '--island-scale': 1,
     '--actions-scale': 1,
-    '--artwork-primary': '168, 98, 55',
-    '--artwork-secondary': '87, 63, 49',
+    ...(getInterfaceTheme(config) === 'glass' ? APPEARANCE_PREVIEW_ARTWORK_THEME : {
+      '--artwork-primary': '168, 98, 55', '--artwork-secondary': '87, 63, 49',
+    }),
     '--preview-left': `${sideWidth('left')}px`, '--preview-right': `${sideWidth('right')}px`,
     width: sceneWidth, transform: `scale(${scale})`, transformOrigin: 'top left',
   } as CSSProperties
@@ -171,10 +172,10 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   return <div className="island-preview-section"><div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined} data-reduced-motion={config.appearance.reducedMotion || undefined}>
     {active ? <WarpSurface className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
     <div className="island-preview__camera" style={{ width: sceneWidth * scale, height: frameHeight * scale }}>
-    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-interface-palette={getInterfacePalette(config)} data-reduced-transparency={getReducedTransparency(config) || undefined} style={style}>
+    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={getReducedTransparency(config) || undefined} style={style}>
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
-        <IslandFeedback className="island-card island-surface">
+        <IslandFeedback className="island-card island-surface" particles={active && getInterfaceTheme(config) === 'glass'}>
           <MusicModule media={media} layout={layout} progressMs={media.positionMs} progressPercent={34} density={config.layout.density} showArtwork={config.layout.showArtwork} showTitle={config.layout.showTitle} showArtist={config.layout.showArtist} showProgress={config.layout.showProgress} showSource={config.layout.showSource} showPreviousNext={config.layout.showPreviousNext} locale={config.appearance.locale} reducedMotion onCommand={() => undefined} renderElement={renderElement} renderZone={renderZone} />
         </IslandFeedback>
         <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => <Fragment key={element}>{renderElement(element, <button type="button" className="icon-button" aria-label={element === 'settings' ? 'Open settings' : 'Pin island'}>{element === 'settings' ? <SettingsFilled weight="fill" size={16} /> : element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>)}</Fragment>))}</header>

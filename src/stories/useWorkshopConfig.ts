@@ -8,15 +8,14 @@ export function useWorkshopConfig(
   locale: Locale,
   accent: string,
   pinned = false,
-  interfaceTheme?: InterfaceThemeId,
+  interfaceTheme: InterfaceThemeId = 'classic',
 ) {
   const [config, setConfig] = useState(() => {
     const base = structuredClone(getDefaultConfig())
     base.appearance.locale = locale
     base.appearance.accentColor = accent
     base.behavior.pinExpanded = pinned
-    base.plugins.settings.ui = { hoverCoachCompleted: true }
-    return interfaceTheme ? withUiPrefs(base, { interfaceTheme }) : base
+    return withUiPrefs(base, { hoverCoachCompleted: true, interfaceTheme })
   })
   useEffect(() => {
     setConfig((value) => ({
@@ -25,7 +24,7 @@ export function useWorkshopConfig(
     }))
   }, [locale, accent])
   useEffect(() => {
-    if (interfaceTheme) setConfig((value) => withUiPrefs(value, { interfaceTheme }))
+    setConfig((value) => withUiPrefs(value, { interfaceTheme }))
   }, [interfaceTheme])
   return [config, setConfig] as const
 }

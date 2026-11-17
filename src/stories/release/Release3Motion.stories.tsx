@@ -60,9 +60,10 @@ export function MotionScene({ locale, time, concept = 'classic' }: { locale: 'en
   const musicTime = classic ? time : concept === 'continuous' ? elapsed * 1.35 : rhythmOpening ? Math.max(0, time - 3.8) : elapsed + 2
   const nature = concept === 'rhythm' && [0, 2, 4].includes(section)
   const natureFinal = concept === 'rhythm' && index === 6
-  let config = getDefaultConfig()
-  config.appearance.locale = locale
-  config.appearance.reducedMotion = true
+  const defaults = getDefaultConfig()
+  let config = withUiPrefs({
+    ...defaults, appearance: { ...defaults.appearance, locale, reducedMotion: true },
+  }, { interfaceTheme: 'classic' })
   const rearranged = concept === 'continuous' && index === 1 && elapsed >= 1.7
   if (rearranged) {
     const layout = getIslandLayout(config)

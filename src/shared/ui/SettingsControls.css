@@ -78,7 +78,7 @@
   background-image: var(--glass-sheen);
   box-shadow: var(--glass-control-rim);
 }
-[data-interface-theme='glass'] .ui-textarea { border-radius: var(--radius-md); }
+[data-interface-theme='glass'] .ui-input.ui-textarea { border-radius: var(--radius-md); }
 [data-interface-theme='glass'] .ui-button { border-radius: var(--glass-control-radius); }
 [data-interface-theme='glass'] .ui-search {
   position: relative;

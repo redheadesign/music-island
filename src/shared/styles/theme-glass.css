@@ -142,8 +142,8 @@
   [data-interface-theme='glass'][data-interface-theme] { --glass-opacity: 100%; }
 }
 
-/* A single composited field drifts down from the upper edge of the glass. */
-[data-interface-theme='glass'] :is(.island-feedback__layer, .ui-search) {
+/* A small accent inside the search field reacts once when it gains focus. */
+[data-interface-theme='glass'] .ui-search {
   /* ai-design-check-ignore-next-line no-radial-halo -- Each gradient is one subpixel dust particle from the composer reference. */
   --glass-particles:
     radial-gradient(circle at 7% 30%, var(--glass-dust) .8px, transparent 1.4px),
@@ -176,7 +176,7 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  [data-interface-theme='glass'] :is(.island-feedback__layer, .ui-search:focus-within)::before {
+  [data-interface-theme='glass'] .ui-search:focus-within::before {
     content: '';
     position: absolute;
     display: var(--glass-dust-display);
@@ -185,7 +185,7 @@
     border-radius: inherit;
     background: var(--glass-particles);
     opacity: 0;
-    animation: glass-drift var(--motion-glass-drift) linear infinite;
+    animation: glass-drift var(--motion-glass-drift) linear;
   }
   [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):enabled::after {
     position: absolute;
@@ -202,7 +202,7 @@
   @media (hover: hover) {
     [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):enabled:hover::after { content: ''; }
   }
-  [data-interface-theme='glass'] :is(.island-feedback__layer, .ui-search):is(.reduced-motion *, [data-reduced-motion='true'] *)::before,
+  [data-interface-theme='glass'] .ui-search:is(.reduced-motion *, [data-reduced-motion='true'] *)::before,
   [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):is(.reduced-motion *, [data-reduced-motion='true'], [data-reduced-motion='true'] *)::after {
     display: none;
   }

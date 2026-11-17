@@ -1,6 +1,13 @@
 import type { MediaSnapshot } from '../../shared/lib/types'
 import previewRecord from '../../assets/preview-sea-stack.webp'
 
+// Dominant palette sampled from the preview image with the same brightness
+// factors used by the media island's artwork extraction.
+export const APPEARANCE_PREVIEW_ARTWORK_THEME = {
+  '--artwork-primary': '64, 76, 92',
+  '--artwork-secondary': '28, 34, 41',
+} as const
+
 export const APPEARANCE_PREVIEW_MEDIA: MediaSnapshot = {
   hasSession: true,
   sourceAppId: 'YandexMusic.exe',

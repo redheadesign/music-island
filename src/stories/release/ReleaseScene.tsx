@@ -59,7 +59,7 @@ export function ReleaseScene({ feature, format, showExport = true }: { feature: 
     base.appearance.reducedMotion = true
     base.appearance.locale = 'ru'
     base.appearance.accentColor = '#f76100'
-    base.plugins.settings.ui = { hoverCoachCompleted: true, usageWidgetCompact: true }
+    base.plugins.settings.ui = { interfaceTheme: 'classic', hoverCoachCompleted: true, usageWidgetCompact: true }
     // Use the app's default provider placement: Codex belongs on the left.
     base.plugins.settings.usage = { codexEnabled: true, claudeEnabled: false }
     return base

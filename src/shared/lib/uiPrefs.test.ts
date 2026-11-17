@@ -20,11 +20,11 @@ function configWithUi(ui?: unknown): AppConfig {
 }
 
 describe('interface theme preferences', () => {
-  it('opens existing profiles in Classic and falls back from unknown choices', () => {
-    expect(getInterfaceTheme(configWithUi())).toBe('classic')
-    expect(getInterfaceTheme(configWithUi({ interfaceTheme: 'future' }))).toBe('classic')
-    expect(getInterfaceTheme(configWithUi({ interfaceTheme: 'constructor' }))).toBe('classic')
-    expect(getInterfaceScene(configWithUi({ interfaceScenes: { glass: 'fox' } }))).toBeUndefined()
+  it('defaults to Glass and keeps explicit Classic after native migration', () => {
+    expect(getInterfaceTheme(configWithUi())).toBe('glass')
+    expect(getInterfaceTheme(configWithUi({ interfaceTheme: 'future' }))).toBe('glass')
+    expect(getInterfaceTheme(configWithUi({ interfaceTheme: 'constructor' }))).toBe('glass')
+    expect(getInterfaceScene(configWithUi({ interfaceTheme: 'classic', interfaceScenes: { glass: 'fox' } }))).toBeUndefined()
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass' }))).toBe('fox')
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'unknown' } }))).toBe('fox')
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'manta' } }))).toBe('manta')

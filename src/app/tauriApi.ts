@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { DEFAULT_INTERFACE_THEME } from '../shared/lib/interfaceTheme'
 import type {
   AutostartSyncEvent,
   AppConfig,
@@ -561,6 +562,6 @@ const defaultConfig: AppConfig = {
   },
   plugins: {
     enabled: [],
-    settings: {},
+    settings: { ui: { interfaceTheme: DEFAULT_INTERFACE_THEME } },
   },
 }

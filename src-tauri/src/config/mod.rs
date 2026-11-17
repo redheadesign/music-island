@@ -1,13 +1,17 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::{
     collections::HashMap,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
 
 const CONFIG_FILE_NAME: &str = "config.json";
+const UI_PREFS_KEY: &str = "ui";
+const INTERFACE_THEME_KEY: &str = "interfaceTheme";
+const GLASS_DEFAULT_MARKER: &str = "interfaceThemeGlassDefaultApplied";
+const DEFAULT_INTERFACE_THEME: &str = "glass";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -66,6 +70,34 @@ pub struct PluginsConfig {
     pub enabled: Vec<String>,
     #[serde(default)]
     pub settings: HashMap<String, Value>,
+}
+
+impl PluginsConfig {
+    fn ui_preferences_mut(&mut self) -> &mut Map<String, Value> {
+        let ui = self.settings.entry(UI_PREFS_KEY.into()).or_insert(Value::Null);
+        if !ui.is_object() {
+            *ui = Value::Object(Map::new());
+        }
+        ui.as_object_mut().expect("UI preferences object")
+    }
+
+    fn glass_default_applied(&self) -> bool {
+        self.settings
+            .get(UI_PREFS_KEY)
+            .and_then(|ui| ui.get(GLASS_DEFAULT_MARKER))
+            .and_then(Value::as_bool)
+            == Some(true)
+    }
+
+    fn apply_glass_default_once(&mut self) -> bool {
+        if self.glass_default_applied() {
+            return false;
+        }
+        let ui = self.ui_preferences_mut();
+        ui.insert(INTERFACE_THEME_KEY.into(), DEFAULT_INTERFACE_THEME.into());
+        ui.insert(GLASS_DEFAULT_MARKER.into(), true.into());
+        true
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -201,6 +233,8 @@ pub enum LayoutPreset {
 
 impl Default for AppConfig {
     fn default() -> Self {
+        let mut plugins = PluginsConfig::default();
+        plugins.apply_glass_default_once();
         Self {
             schema_version: 2,
             taskbar: TaskbarConfig::default(),
@@ -244,7 +278,7 @@ impl Default for AppConfig {
                 write_detailed_logs: false,
             },
             media: MediaConfig::default(),
-            plugins: PluginsConfig::default(),
+            plugins,
         }
     }
 }
@@ -252,13 +286,33 @@ impl Default for AppConfig {
 #[derive(Clone)]
 pub struct ConfigState {
     config: Arc<RwLock<AppConfig>>,
+    persist_glass_migration: bool,
 }
 
 impl ConfigState {
     pub fn new() -> Self {
+        Self::from_config(load_from_disk().unwrap_or_default())
+    }
+
+    fn from_config(mut config: AppConfig) -> Self {
+        let persist_glass_migration = config.plugins.apply_glass_default_once();
         Self {
-            config: Arc::new(RwLock::new(load_from_disk().unwrap_or_default())),
+            config: Arc::new(RwLock::new(config)),
+            persist_glass_migration,
         }
+    }
+
+    /// Write only after the application has passed the single-instance check.
+    pub fn persist_startup_migration(&self) -> anyhow::Result<()> {
+        self.persist_startup_migration_to(&config_path()?)
+    }
+
+    fn persist_startup_migration_to(&self, path: &Path) -> anyhow::Result<()> {
+        if self.persist_glass_migration {
+            let current = self.config.read().map_err(|_| anyhow::anyhow!("config lock poisoned"))?;
+            handy_core::embedded_assets::atomic_write(path, &serde_json::to_vec_pretty(&*current)?)?;
+        }
+        Ok(())
     }
 
     pub fn load(&self) -> anyhow::Result<AppConfig> {
@@ -282,7 +336,7 @@ impl ConfigState {
         self.update_media_to(update, &config_path()?)
     }
 
-    fn update_media_to(&self, update: impl FnOnce(&mut MediaConfig), path: &std::path::Path) -> anyhow::Result<AppConfig> {
+    fn update_media_to(&self, update: impl FnOnce(&mut MediaConfig), path: &Path) -> anyhow::Result<AppConfig> {
         let mut current = self.config.write().map_err(|_| anyhow::anyhow!("config lock poisoned"))?;
         let mut next = current.clone();
         update(&mut next.media);
@@ -291,13 +345,18 @@ impl ConfigState {
         Ok(next)
     }
 
-    fn save_to(&self, config: AppConfig, path: &std::path::Path) -> anyhow::Result<AppConfig> {
+    fn save_to(&self, config: AppConfig, path: &Path) -> anyhow::Result<AppConfig> {
         let mut current = self.config.write().map_err(|_| anyhow::anyhow!("config lock poisoned"))?;
         let mut normalized = config;
         normalized.schema_version = 2;
         normalized.layout.width = normalized.layout.width.clamp(80, 125);
         normalized.layout.scale = normalized.layout.scale.clamp(70, 120);
         normalized.taskbar.scale = sanitize_taskbar_scale(normalized.taskbar.scale);
+        // The migration marker belongs to native storage. A webview may save a
+        // config that omits it, including when the user switches to Classic.
+        if current.plugins.glass_default_applied() {
+            normalized.plugins.ui_preferences_mut().insert(GLASS_DEFAULT_MARKER.into(), true.into());
+        }
         handy_core::embedded_assets::atomic_write(path, &serde_json::to_vec_pretty(&normalized)?)?;
         *current = normalized.clone();
         Ok(normalized)
@@ -328,10 +387,61 @@ mod tests {
     use super::*;
 
     #[test]
+    fn glass_is_the_default_for_a_fresh_profile() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(CONFIG_FILE_NAME);
+        let state = ConfigState::from_config(AppConfig::default());
+        let config = state.load().unwrap();
+        assert_eq!(config.plugins.settings[UI_PREFS_KEY][INTERFACE_THEME_KEY], "glass");
+        assert!(config.plugins.glass_default_applied());
+        state.persist_startup_migration_to(&path).unwrap();
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn existing_classic_profile_migrates_once_and_keeps_a_later_classic_choice() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(CONFIG_FILE_NAME);
+        let mut legacy = AppConfig::default();
+        legacy.plugins.settings.insert(UI_PREFS_KEY.into(), serde_json::json!({
+            "interfaceTheme": "classic",
+            "interfaceScenes": { "glass": "manta" },
+            "interfacePalette": "ocean",
+            "settingsColorScheme": "light",
+            "reducedTransparency": true,
+        }));
+        legacy.behavior.hover_delay_ms = 620;
+        fs::write(&path, serde_json::to_vec(&legacy).unwrap()).unwrap();
+        let read_disk = || serde_json::from_slice::<AppConfig>(&fs::read(&path).unwrap()).unwrap();
+        let state = ConfigState::from_config(read_disk());
+        assert_eq!(state.load().unwrap().plugins.settings[UI_PREFS_KEY][INTERFACE_THEME_KEY], "glass");
+        assert_eq!(read_disk().plugins.settings[UI_PREFS_KEY][INTERFACE_THEME_KEY], "classic");
+
+        state.persist_startup_migration_to(&path).unwrap();
+        let mut migrated = read_disk();
+        let ui = &migrated.plugins.settings[UI_PREFS_KEY];
+        assert!(migrated.plugins.glass_default_applied());
+        assert_eq!(ui[INTERFACE_THEME_KEY], "glass");
+        assert_eq!(ui["interfaceScenes"]["glass"], "manta");
+        assert_eq!(ui["interfacePalette"], "ocean");
+        assert_eq!(ui["settingsColorScheme"], "light");
+        assert_eq!(ui["reducedTransparency"], true);
+        assert_eq!(migrated.behavior.hover_delay_ms, 620);
+
+        let submitted = migrated.plugins.ui_preferences_mut();
+        submitted.insert(INTERFACE_THEME_KEY.into(), "classic".into());
+        submitted.remove(GLASS_DEFAULT_MARKER);
+        state.save_to(migrated, &path).unwrap();
+        let reopened = ConfigState::from_config(read_disk());
+        assert_eq!(reopened.load().unwrap().plugins.settings[UI_PREFS_KEY][INTERFACE_THEME_KEY], "classic");
+        assert!(!reopened.persist_glass_migration);
+    }
+
+    #[test]
     fn native_media_update_preserves_current_non_media_settings() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("config.json");
-        let state = ConfigState { config: Arc::new(RwLock::new(AppConfig::default())) };
+        let state = ConfigState::from_config(AppConfig::default());
         let mut current = state.load().unwrap();
         current.behavior.hover_delay_ms = 777;
         state.save_to(current, &path).unwrap();
@@ -356,7 +466,7 @@ mod tests {
     fn overlapping_saves_keep_disk_and_memory_in_agreement() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("config.json");
-        let state = ConfigState { config: Arc::new(RwLock::new(AppConfig::default())) };
+        let state = ConfigState::from_config(AppConfig::default());
         std::thread::scope(|scope| {
             for width in 80..100 {
                 let state = &state;
@@ -375,7 +485,7 @@ mod tests {
     #[test]
     fn failed_save_preserves_the_current_snapshot() {
         let dir = tempfile::tempdir().unwrap();
-        let state = ConfigState { config: Arc::new(RwLock::new(AppConfig::default())) };
+        let state = ConfigState::from_config(AppConfig::default());
         let mut next = state.load().unwrap(); next.layout.width = 125;
         assert!(state.save_to(next, dir.path()).is_err());
         assert_eq!(state.load().unwrap().layout.width, AppConfig::default().layout.width);

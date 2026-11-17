@@ -454,6 +454,11 @@ pub fn run() {
                     true
                 }
             };
+            if !defer_newer {
+                if let Err(error) = app.state::<ConfigState>().persist_startup_migration() {
+                    logging::append_event(&format!("could not persist the Glass theme migration: {error:#}"));
+                }
+            }
             match window::setup_overlay_window(&handle) {
                 Ok(()) => logging::append_event("overlay window setup ok"),
                 Err(error) => {

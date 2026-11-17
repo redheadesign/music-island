@@ -5,6 +5,7 @@
 .onboarding button:focus-visible { outline: var(--focus-ring); outline-offset: 4px; }
 .onboarding__page { height: 424px; text-align: center; padding-top: var(--space-5); }
 .onboarding__visual { height: 256px; display: grid; place-items: center; position: relative; isolation: isolate; overflow: hidden; border-radius: var(--radius-xl); background: #302a36; }
+.onboarding[data-interface-theme='glass'] .onboarding__visual { background: var(--glass-preview-base); }
 .onboarding__visual > .warp-material { z-index: -1; }
 .onboarding__page h1 { margin: var(--space-6) 0 var(--space-2-5); font-size: calc(var(--type-unit) * 27); line-height: var(--leading-display); letter-spacing: calc(var(--type-unit) * -0.7); font-weight: var(--weight-semibold); }
 .onboarding__page > p { max-width: 450px; margin: 0 auto; font-size: var(--text-label); line-height: var(--leading-body); color: var(--fg-secondary); }

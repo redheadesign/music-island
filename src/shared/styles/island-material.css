@@ -36,8 +36,46 @@
   --island-glass-control: rgb(66 66 65 / .78);
   --island-glass-hover: rgb(85 85 83 / .89);
   --island-glass-pressed: rgb(45 45 44 / .94);
-  --island-glass-fill: color-mix(in srgb, var(--palette-secondary, #8d8d8b) 45%, #353534);
+  --island-cover-primary: #a6a6a2;
+  --island-cover-secondary: #777774;
+  --island-progress-start: color-mix(in srgb, var(--island-cover-primary) 35%, #252525);
+  --island-progress-end: color-mix(in srgb, var(--island-cover-secondary) 28%, #303030);
+  --island-particle-ink: color-mix(in srgb, var(--island-cover-primary) 65%, #fff);
+  --island-particle-soft-ink: color-mix(in srgb, var(--island-cover-secondary) 52%, #fff);
   --island-glass-ink: #f4f4f1;
+}
+.island-root[data-interface-theme='glass'][data-cover-art='true'] {
+  --island-cover-primary: rgb(var(--artwork-primary));
+  --island-cover-secondary: rgb(var(--artwork-secondary));
+}
+.island-particles { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .island-root[data-interface-theme='glass']:not([data-reduced-transparency='true']) .island-particles {
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .island-particles > i {
+    position: absolute;
+    inset: calc(-1 * var(--space-1)) auto auto var(--particle-x);
+    inline-size: var(--particle-size);
+    block-size: var(--particle-size);
+    border-radius: var(--radius-round);
+    background: var(--island-particle-ink);
+    animation: island-particle-fall var(--particle-time) var(--particle-delay) linear infinite;
+  }
+  .island-particles > i:nth-child(even) { background: var(--island-particle-soft-ink); }
+  [data-document-hidden] .island-particles > i { animation-play-state: paused; }
+  :is(.reduced-motion, [data-reduced-motion='true']) .island-particles { display: none !important; }
+}
+@media (forced-colors: active), (prefers-reduced-transparency: reduce) {
+  .island-root[data-interface-theme='glass'] .island-particles { display: none !important; }
+}
+@keyframes island-particle-fall {
+  0% { opacity: 0; transform: translateY(0); }
+  16%, 66% { opacity: .65; }
+  100% { opacity: 0; transform: translateY(var(--particle-fall)); }
 }
 .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button) {
   color: var(--island-glass-ink);
@@ -84,11 +122,11 @@
 }
 .island-root[data-interface-theme='glass'] .progress-track::before { background: none; }
 .island-root[data-interface-theme='glass'] .progress-fill {
-  background: var(--glass-sheen) var(--island-glass-fill);
+  background: linear-gradient(90deg, var(--island-progress-start), var(--island-progress-end));
   box-shadow: inset -1px 0 rgb(255 255 255 / .18);
 }
 .island-root[data-interface-theme='glass'] .collapsed-progress__fill {
-  background: linear-gradient(90deg, var(--palette-secondary, #a9a9a6), var(--palette-primary, #e5e5e2));
+  background: linear-gradient(90deg, var(--island-particle-soft-ink), var(--island-particle-ink));
 }
 .island-root[data-interface-theme='glass'][data-reduced-transparency='true'] {
   --island-glass-control: #424241;

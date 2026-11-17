@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { Onboarding } from '../../features/intro/Onboarding'
 import { getDefaultConfig } from '../../app/tauriApi'
 import { withUiPrefs } from '../../shared/lib/uiPrefs'
@@ -12,15 +12,20 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const FirstLaunch: Story = { name: 'Первый запуск · четыре шага', play: async ({ canvasElement, args }) => {
   const canvas = within(canvasElement)
+  await expect(canvasElement.querySelector('.onboarding')).toHaveAttribute('data-interface-theme', 'glass')
+  await expect(canvasElement.querySelector('.onboarding__music')).toHaveAttribute('data-cover-art', 'true')
+  await waitFor(() => expect(canvasElement.querySelector('.onboarding__visual canvas[data-ascii-scene]')).toHaveAttribute('data-ascii-scene', 'fox'))
   await userEvent.click(canvas.getByRole('button', { name: 'Далее' }))
   await canvas.findByRole('heading', { name: 'Настройка островка' })
   await userEvent.click(canvas.getByRole('button', { name: 'Далее' }))
   await canvas.findByRole('heading', { name: 'Диктовка' })
+  await expect(canvasElement.querySelector('.onboarding__visual .warp-material')).toBeNull()
   await userEvent.click(canvas.getByRole('button', { name: 'Далее' }))
   await canvas.findByRole('heading', { name: 'Запуск вместе с Windows' })
   await userEvent.click(canvas.getByRole('button', { name: 'Включить и начать' }))
   await expect(args.onFinish).toHaveBeenCalledWith(true)
 } }
+export const Classic: Story = { name: 'Классическое оформление', args: { config: withUiPrefs(getDefaultConfig(), { interfaceTheme: 'classic' }) } }
 export const Layout: Story = { name: '02 · Настройка островка', args: { initialStep: 1 } }
 export const Voice: Story = { name: '03 · Диктовка', args: { initialStep: 2 } }
 export const Autostart: Story = { name: '04 · Автозагрузка', args: { initialStep: 3 } }

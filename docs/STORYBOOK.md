@@ -115,6 +115,10 @@ npm run build
 проверяет выбор разделов верхнего меню с клавиатуры. План ревью и порядок добавления тем описаны в
 [Interface themes](INTERFACE_THEMES.md).
 
+`Screens/Island/GlassCoolCover`, `GlassWithoutCover` и `GlassReducedMotion`
+проверяют оттенок шкалы проигрывания и независимое движение частиц. `Screens/Dictation/GlassDictionary`
+проверяет скругление многострочного поля в стеклянных настройках.
+
 `Screens/Settings` использует production-компонент `SettingsWindow`, включая шапку,
 фиксированную навигацию и единственный правый scroll. Проверяйте размеры именно
 в этом примере: отдельная история `SettingsPanel` не заменяет геометрию окна.
