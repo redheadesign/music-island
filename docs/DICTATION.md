@@ -137,6 +137,28 @@ still shares the clipboard. [Windows window stations](https://learn.microsoft.co
 and [Windows Sandbox configuration](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-configure-using-wsb-file)
 describe these isolation boundaries.
 
+### Repeat the portable comparison
+
+On Windows with Python 3.11 or later, run the repository's
+[benchmark script](../scripts/benchmark_dictation.py) from the project root.
+Supply two local portable EXEs, the same local GigaAM GGUF, a mono 16 kHz
+PCM16 WAV, and its matching UTF-8 reference transcript. For example:
+
+```powershell
+py -3 scripts/benchmark_dictation.py --baseline .\old\music-island.exe --candidate .\new\music-island.exe --model .\fixtures\gigaam.gguf --audio .\fixtures\speech.wav --reference .\fixtures\speech.txt --output .\results\speech.json
+```
+
+The default five pairs alternate build order and request Vulkan. Use
+`--accelerator cpu` for a CPU comparison. The default baseline strategy is
+`raw` (supported by older probes), and the candidate uses `planned`. Set
+`--baseline-strategy planned` to compare planners when both builds expose it.
+Each invocation loads the model in a fresh process with its own build-specific
+temporary application profile. The JSON includes executable/model/input
+hashes, actual backend, per-run inference and process time, segment details
+where available, normalized WER and median inference time. Model load and
+runtime initialization are timed separately. This measures the shipped file
+probe; recording and Windows text insertion need the separate checks above.
+
 The optional microphone can be placed in the island layout editor. It is absent
 from the default composition. The bottom overlay does not take keyboard focus.
 The target window is captured at recording start and checked again before paste.
