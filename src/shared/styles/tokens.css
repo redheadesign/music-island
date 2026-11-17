@@ -202,6 +202,7 @@
 :where(:root, [data-interface-theme], [data-interface-palette]) {
   --control-value: var(--accent, #f76100);
   --control-value-ink: var(--accent-ink, #101113);
+  --fg-link: color-mix(in srgb, var(--fg-primary) 65%, var(--accent, #f76100));
   --surface-current: var(--surface-selected);
 }
 

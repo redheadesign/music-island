@@ -720,6 +720,12 @@ export const About: Story = {
     await userEvent.click(within(canvasElement).getByRole('button', { name: /^(О программе|About)$/ }))
   },
 }
+export const ClassicLightAbout: Story = {
+  ...About,
+  name: 'О программе · читаемость ссылки в светлой теме',
+  globals: { interfaceTheme: 'classic' },
+  parameters: { settingsColorScheme: 'light', a11y: { test: 'error' } },
+}
 export const LanguageSwitch: Story = {
   name: 'Смена языка после перехода',
   play: async ({ canvasElement, args }) => {
@@ -842,8 +848,9 @@ export const VoiceDeveloperMode: Story = {
 }
 
 export const VoiceDeveloperEnglish: Story = {
-  name: 'Better Voice · developer mode',
-  globals: { locale: 'en' },
+  name: 'Better Voice · светлое окно и тёмная сцена',
+  globals: { locale: 'en', interfaceTheme: 'glass' },
+  parameters: { settingsColorScheme: 'light' },
   play: VoiceDeveloperMode.play,
 }
 

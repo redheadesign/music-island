@@ -76,7 +76,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: color-mix(in srgb, var(--accent, #f76100) 78%, #fff 22%);
+  color: var(--fg-link);
   font: inherit;
   font-weight: var(--weight-heading);
   text-decoration: underline;
@@ -85,7 +85,7 @@
 }
 
 .about-inline-link:hover {
-  filter: brightness(1.08);
+  color: var(--fg-primary);
 }
 
 .about-update--elevated {
@@ -1095,7 +1095,8 @@
 }
 .settings-panel[data-interface-theme='glass'] .fox-dev-preview__select {
   border-radius: var(--glass-control-radius);
-  background: var(--glass-field-fill);
+  color: var(--fg-primary);
+  background: color-mix(in srgb, var(--surface-raised) var(--glass-menu-opacity), transparent);
   box-shadow: var(--glass-control-rim);
   backdrop-filter: var(--glass-frost-filter);
 }
