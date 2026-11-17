@@ -1,18 +1,19 @@
 import { Music2, RotateCw, Unplug } from 'lucide-react'
 import { Fragment, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'react'
-import type { IslandLayoutV1, IslandLayoutElement, IslandLayoutZone, IslandReactionElement } from '../../shared/lib/islandLayout'
+import { DEFAULT_ISLAND_PLAYER_ORDER, type IslandLayout, type IslandLayoutElement, type IslandLayoutZone, type IslandReactionElement } from '../../shared/lib/islandLayout'
 import { MediaArtwork, NavigationButton, PlaybackButton, ReactionButton, PlaybackModeButton } from './MusicControls'
 import type { Locale, MediaCommand, MediaSnapshot } from '../../shared/lib/types'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import { formatTime } from '../../shared/lib/format'
+import { SeekStepButton } from './SeekStepButton'
 import { ProgressStrip } from './ProgressStrip'
 import { progressTrackKey, type ProgressNavigation } from './progressTransition'
 import { Button } from '../../shared/ui/SettingsControls'
 import './MusicModule.css'
 
 interface MusicModuleProps {
-  layout?: IslandLayoutV1
+  layout?: IslandLayout
   renderElement?: (element: IslandLayoutElement, node: ReactNode) => ReactNode
   renderZone?: (zone: IslandLayoutZone, node: ReactNode) => ReactNode
   media: MediaSnapshot | null
@@ -222,11 +223,18 @@ export function MusicModule({
     onCommand({ seek: { positionMs: Math.min(duration, Math.max(0, target)) } })
   }
 
-  const controlOrder = layout?.zones.player ?? ['previous', 'artwork', 'transport', 'next', 'progress']
+  const controlOrder = layout?.zones.player ?? DEFAULT_ISLAND_PLAYER_ORDER
   const hasArtwork = showArtwork && !isButtonsOnly && controlOrder.includes('artwork')
   const control = (element: IslandLayoutElement) => {
     if (element === 'previous' || element === 'next') {
       return showPreviousNext ? <NavigationButton locale={locale} direction={element} onClick={() => navigate(element)} disabled={element === 'previous' ? !media.canGoPrevious : !media.canGoNext} /> : null
+    }
+    if (element === 'seekBack' || element === 'seekForward') {
+      const duration = media.durationMs ?? 0
+      const position = progressMs ?? media.positionMs
+      const target = position == null ? null : Math.max(0, Math.min(duration, position + (element === 'seekBack' ? -10_000 : 10_000)))
+      return <SeekStepButton direction={element} locale={locale} disabled={!media.canSeek || !duration || target == null || target === position}
+        onClick={() => { if (target != null) onCommand({ seek: { positionMs: target } }) }} />
     }
     if (element === 'artwork') return hasArtwork ? <MediaArtwork locale={locale} reducedMotion={reducedMotion} src={media.thumbnailDataUrl} title={title} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} /> : null
     if (element === 'transport') return hasArtwork ? null : <PlaybackButton locale={locale} reducedMotion={reducedMotion} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} />
@@ -237,19 +245,13 @@ export function MusicModule({
     return renderZone(side, !isButtonsOnly && elements.length ? <div className="music-reactions">{elements.map((kind) => <Fragment key={kind}>{renderElement(kind,
       kind === 'shuffle' || kind === 'repeat'
         ? <PlaybackModeButton kind={kind} active={media.isShuffleActive} repeatMode={media.repeatMode} disabled={kind === 'shuffle' ? !media.canShuffle : !media.canRepeat} locale={locale} onClick={() => onCommand(kind === 'shuffle' ? 'toggle-shuffle' : 'cycle-repeat')} />
-        : <ReactionButton locale={locale} reducedMotion={reducedMotion} kind={kind} active={kind === 'like' ? media.isLiked : media.isDisliked} disabled={kind === 'like' ? !media.canLike : !media.canDislike} onClick={() => onCommand(kind)} />
+        : <ReactionButton key={trackKey} locale={locale} reducedMotion={reducedMotion} kind={kind} active={kind === 'like' ? media.isLiked : media.isDisliked} disabled={kind === 'like' ? !media.canLike : !media.canDislike} onClick={() => onCommand(kind)} />
     )}</Fragment>)}</div> : null)
   }
 
-  return (
-    <section className={`music-module music-module--${density}`} aria-label={t('music.nowPlaying')}>
-      {recoveryBanner}
-      {renderZone('player', <div className="media-controls media-controls--island" aria-label={t('music.controls')}>
-        {controlOrder.map((element) => { const node = control(element); return node ? <Fragment key={element}>{renderElement(element, node)}</Fragment> : null })}
-      </div>)}
-      {!isButtonsOnly ? <div className="progress-row">
+  const progressRow = !isButtonsOnly ? <div className="progress-row">
         {reactions('reactionLeft')}
-        {showProgress && (canShowSeek || media.provider === 'yandex-direct') ? renderElement('progress', <button
+        {showProgress && controlOrder.includes('progress') && (canShowSeek || media.provider === 'yandex-direct') ? renderElement('progress', <button
           type="button"
           className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
           role="slider"
@@ -270,7 +272,23 @@ export function MusicModule({
           <ProgressStrip frame={{ trackKey, ratio: activeRatio, positionMs: activeProgressMs, durationMs: media.durationMs, label: trackLabel }} navigation={navigation} reducedMotion={reducedMotion} scrubbing={scrubRatio != null} />
         </button>) : renderElement('progress', null)}
         {reactions('reactionRight')}
-      </div> : null}
+      </div> : null
+
+  const inline = layout?.arrangement === 'inline'
+  // Keep reactions available when the progress strip is removed. On inline layouts
+  // the strip and its adjacent reactions move together at the saved position.
+  const ordered = inline && !controlOrder.includes('progress') ? [...controlOrder, 'progress'] as const : controlOrder
+  return (
+    <section className={`music-module music-module--${density}`} data-arrangement={inline ? 'inline' : 'stacked'} aria-label={t('music.nowPlaying')}>
+      {recoveryBanner}
+      {renderZone('player', <div className="media-controls media-controls--island" aria-label={t('music.controls')}>
+        {ordered.map((element) => {
+          if (element === 'progress') return inline ? <Fragment key={element}>{progressRow}</Fragment> : null
+          const node = control(element)
+          return node ? <Fragment key={element}>{renderElement(element, node)}</Fragment> : null
+        })}
+      </div>)}
+      {!inline && progressRow}
     </section>
   )
 }

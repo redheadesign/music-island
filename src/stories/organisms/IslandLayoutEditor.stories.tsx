@@ -8,6 +8,30 @@ import { getLocalServersWidgetScale } from '../../shared/lib/uiPrefs'
 import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { useWorkshopConfig } from '../useWorkshopConfig'
 
+export const InlineLayout: Story = {
+  name: 'Одна строка · перенос шкалы',
+  play: async ({ canvasElement }) => {
+    const card = canvasElement.querySelector<HTMLElement>('.island-preview__body > .island-card')!
+    const stackedHeight = card.getBoundingClientRect().height
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /^(В одну строку|One row)$/ }))
+    const player = zone(canvasElement, 'player')
+    const previous = element(player, 'previous')
+    const progress = element(player, 'progress')
+    const midpoint = (el: HTMLElement) => { const r = el.getBoundingClientRect(); return (r.top + r.bottom) / 2 }
+    await expect(Math.abs(midpoint(previous) - midpoint(progress))).toBeLessThan(2)
+    await expect(card.getBoundingClientRect().height).toBeLessThan(stackedHeight * .65)
+    await expect(progress.getBoundingClientRect().left).toBeGreaterThan(previous.getBoundingClientRect().right)
+    await pointerDrag(progress, player, 80, previous.getBoundingClientRect().left + 1)
+    await expect(element(player, 'progress').getBoundingClientRect().right).toBeLessThan(element(player, 'previous').getBoundingClientRect().left)
+    const seekBack = element(zone(canvasElement, 'catalog'), 'seekBack')
+    seekBack.focus()
+    await userEvent.keyboard(' {ArrowRight}{Enter}')
+    await expect(element(player, 'seekBack')).toBeInTheDocument()
+    await waitFor(() => expect(document.activeElement).toBe(element(player, 'seekBack')))
+    await expect(element(zone(canvasElement, 'actions'), 'settings').getBoundingClientRect().right).toBeLessThan(element(zone(canvasElement, 'actions'), 'pin').getBoundingClientRect().left)
+  },
+}
+
 function zone(root: HTMLElement, name: string): HTMLElement {
   return root.querySelector<HTMLElement>(`[data-layout-target="${name}"]`)!
 }
@@ -350,6 +374,37 @@ export const IndependentNavigationOrder: Story = {
     await expect(element(player, 'next')).toBeInTheDocument()
     await pointerDrag(element(player, 'artwork'), zone(canvasElement, 'catalog'), 63)
     await expect(element(player, 'transport')).toHaveAttribute('data-protected', 'true')
+  },
+}
+
+export const FullInlineLayout: Story = {
+  name: 'Одна строка · все кнопки при минимальной ширине',
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /^(В одну строку|One row)$/ }))
+    for (const selector of ['.island-preview__resize-edge--left', '.island-preview__body > .preview-resize-handle']) {
+      const slider = canvasElement.querySelector<HTMLElement>(selector)
+      if (slider) { slider.focus(); await userEvent.keyboard('{Home}') }
+    }
+    const add = async (id: string) => {
+      element(zone(canvasElement, 'catalog'), id).focus()
+      await userEvent.keyboard(' {ArrowRight}{Enter}')
+    }
+    for (const id of ['shuffle', 'repeat', 'seekBack', 'seekForward', 'microphone']) await add(id)
+    const player = zone(canvasElement, 'player')
+    const card = canvasElement.querySelector<HTMLElement>('.island-preview__body > .island-card')!.getBoundingClientRect()
+    const scale = canvasElement.querySelector<HTMLElement>('.island-preview__frame')!.getBoundingClientRect().width /
+      canvasElement.querySelector<HTMLElement>('.island-preview__frame')!.offsetWidth
+    const bar = element(player, 'progress').getBoundingClientRect()
+    await expect(bar.width / scale).toBeGreaterThan(55)
+    for (const id of ['previous', 'artwork', 'next', 'progress', 'seekBack', 'seekForward', 'shuffle', 'repeat', 'like', 'dislike']) {
+      const bounds = element(player, id).getBoundingClientRect()
+      await expect(bounds.left).toBeGreaterThanOrEqual(card.left)
+      await expect(bounds.right).toBeLessThanOrEqual(card.right)
+      await expect(Math.abs((bounds.top + bounds.bottom - bar.top - bar.bottom) / 2)).toBeLessThan(2)
+    }
+    const settings = element(zone(canvasElement, 'actions'), 'settings').getBoundingClientRect()
+    await expect(settings.left).toBeGreaterThan(card.right)
+    await expect(settings.bottom).toBeLessThanOrEqual(card.bottom)
   },
 }
 

@@ -2,9 +2,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   cssToPhysicalHitPx,
   getOverlayBounds,
+  measureExpandedHitBand,
   measureOverlayWidgetRect,
   shouldDeferOverlayClose,
 } from './overlayWindow'
+
+  it('reserves a short opening band and the whole inline action rail', () => {
+    const bounds = getOverlayBounds(100, 70, false, 'inline', 3)
+    expect(bounds.expandedHeight).toBeCloseTo(67.2)
+    expect(bounds.cardWidth).toBeCloseTo((500 + (32 * 3 + 4 * 2 + 12) * 2) * .7)
+    expect(bounds.collapsedWidth).toBe(154)
+  })
 
 describe('overlayWindow', () => {
   afterEach(() => {
@@ -34,6 +42,18 @@ describe('overlayWindow', () => {
     expect(cssToPhysicalHitPx(612)).toBe(918)
     vi.stubGlobal('window', { devicePixelRatio: 1 })
     expect(cssToPhysicalHitPx(612)).toBe(612)
+  })
+
+  it('measures the visible card and action rail without capturing the space beside lower widgets', () => {
+    vi.stubGlobal('window', { innerWidth: 1000, devicePixelRatio: 1.5 })
+    const rect = (left: number, right: number, bottom: number) => ({
+      getBoundingClientRect: () => ({ left, right, top: 0, bottom }),
+    })
+    const zone = {
+      ...rect(180, 820, 240),
+      querySelectorAll: () => [rect(250, 750, 48), rect(762, 794, 55)],
+    } as unknown as HTMLElement
+    expect(measureExpandedHitBand(zone)).toEqual({ width: (640 + 16) * 1.5, height: (55 + 16) * 1.5 })
   })
 
   it('maps the local servers panel to its own physical hit rectangle', () => {

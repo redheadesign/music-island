@@ -6,7 +6,7 @@
 .island-layout-editor__reset:hover { color: var(--fg-primary); background: var(--surface-hover); }
 .island-editor-element { position: relative; flex: 0 0 auto; border-radius: var(--radius-lg); user-select: none; touch-action: none; cursor: grab; outline: 1.5px solid transparent; outline-offset: 4px; transition: outline-color calc(var(--motion-unit) * 6.5), opacity calc(var(--motion-unit) * 6.5); }
 .island-editor-element:not([data-protected]):hover { outline-color: rgba(255,255,255,.3); }
-.island-editor-element[data-protected] { cursor: default; }
+.island-editor-element[data-protected]:hover { outline-color: var(--fg-muted); }
 .island-editor-element[data-picked] { opacity: .25; }
 .island-editor-element__visual { pointer-events: none; display: flex; align-items: center; justify-content: center; }
 .island-editor-element[data-layout-element='progress'] { flex: 1 1 auto; min-width: 0; }
@@ -24,7 +24,7 @@
 .island-layout-editor__catalogs { display: grid; gap: var(--space-2); }
 .island-layout-catalog { min-width: 0; border-radius: var(--radius-lg); padding: var(--space-3); background: var(--surface-sunken); transition: background calc(var(--motion-unit) * 7.5); }
 .island-layout-catalog__items.island-root { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); min-height: var(--control-height); height: auto; pointer-events: auto; background: transparent; }
-.island-editor-element--catalog { padding: var(--space-1-5); border-radius: calc(var(--radius-unit) * 4.5); background: #343537; }
+.island-editor-element--catalog { padding: var(--space-1-5); border-radius: var(--radius-lg); background: var(--surface-raised); }
 .island-editor-element--catalog[data-layout-element='progress'] { flex: 0 1 auto; }
 .island-layout-catalog__empty { font-size: var(--text-caption); color: var(--fg-muted); }
 .island-layout-editor__announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -35,7 +35,7 @@
 .island-editor-progress-slot[data-over] { border-color: var(--drag-indicator); background: var(--drop-zone-active); }
 .island-layout-editor .island-layout-drag-ghost.island-root { min-height: 0; }
 
-.island-editor-capability { position: absolute; top: -10px; right: -7px; z-index: 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--radius-round); color: #ddd; background: #444; }
+.island-editor-capability { position: absolute; top: -10px; right: -7px; z-index: 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--radius-round); color: var(--fg-secondary); background: var(--surface-panel); }
 
 .island-editor-element--catalog > .island-editor-element__visual { zoom: .8; }
 
@@ -48,3 +48,21 @@
 .island-editor-zone--bottom:empty { min-height: var(--control-height); }
 .island-editor-zone--bottom .island-editor-element__visual { justify-content: stretch; }
 .island-editor-zone--bottom .island-preview__widget { width: 100%; }
+.island-layout-editor__arrangement { justify-self: start; }
+.music-module[data-arrangement='inline'] .island-editor-zone--player { width: 100%; min-width: 0; min-height: 0; }
+.music-module[data-arrangement='inline'] .island-editor-progress-slot { height: 36px; min-width: 24px; }
+.music-module[data-arrangement='inline'] .island-editor-zone[data-ready]:empty { width: 32px; height: 32px; }
+.island-root[data-island-arrangement='inline'] .island-editor-zone--actions { flex-direction: row; gap: var(--space-1); }
+.island-editor-element[data-insert]::after {
+  content: '';
+  position: absolute;
+  inset-block: 12%;
+  inset-inline-start: -3px;
+  width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--drag-indicator);
+  pointer-events: none;
+}
+.island-editor-element[data-insert='after']::after { inset-inline: auto -3px; }
+.island-root:not([data-island-arrangement='inline']) .island-editor-zone--actions [data-insert]::after { inset: -3px 12% auto; width: auto; height: 2px; }
+.island-root:not([data-island-arrangement='inline']) .island-editor-zone--actions [data-insert='after']::after { inset-block: auto -3px; }

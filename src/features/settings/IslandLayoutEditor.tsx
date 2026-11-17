@@ -1,27 +1,27 @@
 import { RadioTower, RotateCcw } from '../../shared/ui/SettingsIcons'
-import { useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import { dragPosition } from './dragGeometry'
 import { LayoutDragGhost } from './LayoutDragGhost'
 import { captureLayoutDrag, type LayoutDragCapture, type LayoutDragFrame } from './dragGeometry'
 import type { AppConfig, Locale } from '../../shared/lib/types'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
-import { ISLAND_LAYOUT_ELEMENTS, canPlaceIslandElement, getIslandLayout, getLegacyIslandLayout, isIslandCatalog, isIslandWidget, moveIslandElement, withIslandLayout, type IslandLayoutDropTarget, type IslandLayoutElement, type IslandLayout, type IslandLayoutZone } from '../../shared/lib/islandLayout'
+import { DEFAULT_ISLAND_PLAYER_ORDER, ISLAND_LAYOUT_ELEMENTS, canPlaceIslandElement, getIslandLayout, getLegacyIslandLayout, isIslandCatalog, isIslandWidget, moveIslandElement, withIslandLayout, type IslandLayoutDropTarget, type IslandLayoutElement, type IslandLayout, type IslandLayoutZone } from '../../shared/lib/islandLayout'
 import { createTranslator } from '../../shared/i18n/messages'
 import { withUiPrefs } from '../../shared/lib/uiPrefs'
 import { IslandElementSample, IslandPreview } from './IslandPreview'
 import './IslandLayoutEditor.css'
 
 const names: Record<Locale, Record<Exclude<IslandLayoutElement, 'localServers'>, string>> = {
-  ru: { codex: 'Codex', claude: 'Claude', artwork: 'Обложка', previous: 'Предыдущий трек', next: 'Следующий трек', transport: 'Пуск и пауза', progress: 'Прогресс', like: 'Нравится', dislike: 'Не нравится', shuffle: 'Перемешать', repeat: 'Повтор', settings: 'Настройки', pin: 'Закрепить', microphone: 'Диктовка' },
-  en: { codex: 'Codex', claude: 'Claude', artwork: 'Artwork', previous: 'Previous track', next: 'Next track', transport: 'Play and pause', progress: 'Progress', like: 'Like', dislike: 'Dislike', shuffle: 'Shuffle', repeat: 'Repeat', settings: 'Settings', pin: 'Pin', microphone: 'Dictation' },
+  ru: { codex: 'Codex', claude: 'Claude', artwork: 'Обложка', previous: 'Предыдущий трек', next: 'Следующий трек', transport: 'Пуск и пауза', progress: 'Прогресс', seekBack: 'Назад на 10 секунд', seekForward: 'Вперёд на 10 секунд', like: 'Нравится', dislike: 'Не нравится', shuffle: 'Перемешать', repeat: 'Повтор', settings: 'Настройки', pin: 'Закрепить', microphone: 'Диктовка' },
+  en: { codex: 'Codex', claude: 'Claude', artwork: 'Artwork', previous: 'Previous track', next: 'Next track', transport: 'Play and pause', progress: 'Progress', seekBack: 'Back 10 seconds', seekForward: 'Forward 10 seconds', like: 'Like', dislike: 'Dislike', shuffle: 'Shuffle', repeat: 'Repeat', settings: 'Settings', pin: 'Pin', microphone: 'Dictation' },
 }
 const zoneNames = {
   ru: { left: 'Слева от островка', right: 'Справа от островка', player: 'Управление музыкой', reactionLeft: 'Слева от прогресса', reactionRight: 'Справа от прогресса', actions: 'Действия', bottom: 'Под островком', catalog: 'Элементы островка', widgetCatalog: 'Внешние виджеты' },
   en: { left: 'Left of island', right: 'Right of island', player: 'Music controls', reactionLeft: 'Left of progress', reactionRight: 'Right of progress', actions: 'Actions', bottom: 'Below the island', catalog: 'Island controls', widgetCatalog: 'External widgets' },
 }
 const allElements = [...ISLAND_LAYOUT_ELEMENTS.player, ...ISLAND_LAYOUT_ELEMENTS.reactions, ...ISLAND_LAYOUT_ELEMENTS.actions, ...ISLAND_LAYOUT_ELEMENTS.providers, ...ISLAND_LAYOUT_ELEMENTS.bottom]
-type Destination = { zone: IslandLayoutDropTarget; index?: number }
+type Destination = { zone: IslandLayoutDropTarget; index?: number; inline?: boolean }
 
 export interface IslandLayoutEditorProps {
   config: AppConfig
@@ -40,28 +40,43 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
   const zones = zoneNames[locale]
   const layout = useMemo(() => getIslandLayout(config), [config])
   const editorRef = useRef<HTMLElement>(null)
+  const pendingFocus = useRef<IslandLayoutElement | null>(null)
   const pointerRef = useRef<LayoutDragCapture & { id: number; x: number; y: number; element: IslandLayoutElement } | null>(null)
   const dragRef = useRef<IslandLayoutElement | null>(null)
   const [dragging, setDragging] = useState<IslandLayoutElement | null>(null)
   const [over, setOver] = useState<Destination | null>(null)
   const [ghost, setGhost] = useState<LayoutDragFrame | null>(null)
   const [announcement, setAnnouncement] = useState('')
+  useLayoutEffect(() => {
+    if (dragging || !pendingFocus.current) return
+    const control = editorRef.current?.querySelector<HTMLElement>(`[data-layout-element="${pendingFocus.current}"]`)
+    if (control) { control.focus({ preventScroll: true }); pendingFocus.current = null }
+  }, [dragging, layout])
+
   const placed = Object.values(layout.zones).flat() as IslandLayoutElement[]
   const available = allElements.filter((element) => !placed.includes(element))
   const endDrag = () => { dragRef.current = null; pointerRef.current = null; setDragging(null); setGhost(null); setOver(null) }
   const commit = (next: IslandLayout, base = config) => { onChange(withIslandLayout(base, next)); setAnnouncement(locale === 'ru' ? 'Расположение обновлено' : 'Layout updated') }
-  const place = (element: IslandLayoutElement, destination: Destination) => commit(moveIslandElement(layout, element, destination.zone, destination.index))
+  const place = (element: IslandLayoutElement, destination: Destination) => {
+    const next = moveIslandElement(layout, element, destination.zone, destination.index)
+    commit(destination.inline ? { ...next, arrangement: 'inline' } : next)
+  }
 
   const destinationAt = (x: number, y: number): Destination | null => {
-    const zoneNode = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-layout-target]')
-    if (!zoneNode || !editorRef.current?.contains(zoneNode) || !dragRef.current) return null
+    if (!dragRef.current) return null
+    let zoneNode = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-layout-target]')
+    while (zoneNode && !canPlaceIslandElement(layout, dragRef.current, zoneNode.dataset.layoutTarget as IslandLayoutDropTarget)) {
+      zoneNode = zoneNode.parentElement?.closest<HTMLElement>('[data-layout-target]')
+    }
+    if (!zoneNode || !editorRef.current?.contains(zoneNode)) return null
     const zone = zoneNode.dataset.layoutTarget as IslandLayoutDropTarget
-    if (!canPlaceIslandElement(layout, dragRef.current, zone)) return null
     if (isIslandCatalog(zone)) return { zone }
-    const nodes = Array.from(zoneNode.querySelectorAll<HTMLElement>('[data-layout-element]')).filter((node) => node.dataset.layoutElement !== dragRef.current)
-    const before = nodes.find((node) => { const rect = node.getBoundingClientRect(); return zone === 'actions' ? y < rect.top + rect.height / 2 : x < rect.left + rect.width / 2 })
     const values = (layout.zones[zone] as IslandLayoutElement[]).filter((item) => item !== dragRef.current)
-    return { zone, index: before ? values.indexOf(before.dataset.layoutElement as IslandLayoutElement) : values.length }
+    const nodes = Array.from(zoneNode.querySelectorAll<HTMLElement>('[data-layout-element]'))
+      .filter((node) => values.includes(node.dataset.layoutElement as IslandLayoutElement))
+    const before = nodes.find((node) => { const rect = node.getBoundingClientRect(); return zone === 'actions' && layout.arrangement !== 'inline' ? y < rect.top + rect.height / 2 : x < rect.left + rect.width / 2 })
+    const inline = zone === 'player' && dragRef.current === 'progress' && zoneNode.classList.contains('island-editor-zone--player')
+    return { zone, index: before ? values.indexOf(before.dataset.layoutElement as IslandLayoutElement) : values.length, inline }
   }
   const pointerHandlers = (element: IslandLayoutElement) => ({
     onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
@@ -87,7 +102,11 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
     if (event.key === 'Escape') { event.preventDefault(); endDrag(); return }
     if (event.key === ' ' || event.key === 'Enter') {
       event.preventDefault()
-      if (dragging === element && over) { place(element, over); endDrag() }
+      if (dragging === element && over) {
+        pendingFocus.current = element
+        place(element, over)
+        endDrag()
+      }
       else { dragRef.current = element; setDragging(element); setOver(null); setAnnouncement(locale === 'ru' ? 'Стрелки — выбрать место, Enter — перенести, Escape — отменить.' : 'Arrows choose a place, Enter drops, Escape cancels.') }
     }
     if (dragging === element && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
@@ -104,7 +123,11 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
       ? <div className="island-editor-progress-slot" role="group" aria-label={locale === 'ru' ? 'Место прогресса' : 'Progress position'} data-layout-target="player" data-over={over?.zone === 'player' || undefined} />
       : null
     const fixed = element === 'settings' || element === 'transport'
-    return <div key={element} className={`island-editor-element${catalog ? ' island-editor-element--catalog' : ''}`} data-layout-element={element} data-protected={fixed || undefined} data-picked={dragging === element || undefined} draggable={false} {...(!fixed ? pointerHandlers(element) : {})} tabIndex={fixed ? undefined : 0} role={fixed ? 'img' : 'button'} aria-label={labels[element]} aria-pressed={fixed ? undefined : dragging === element} title={!fixed && catalog && ['like', 'dislike', 'shuffle', 'repeat'].includes(element) ? `${labels[element]} · ${['like', 'dislike'].includes(element) ? 'Direct Yandex' : locale === 'ru' ? 'зависит от плеера' : 'depends on player'}` : fixed ? `${labels[element]} · ${locale === 'ru' ? 'всегда на островке' : 'always on island'}` : labels[element]} onKeyDown={fixed ? undefined : (event) => keyboardDrag(event, element)}>
+    const targetItems = dragging && over && !isIslandCatalog(over.zone)
+      ? (layout.zones[over.zone] as IslandLayoutElement[]).filter(item => item !== dragging) : []
+    const insertion = over?.index == null ? undefined : targetItems[over.index] === element ? 'before'
+      : over.index === targetItems.length && targetItems.at(-1) === element ? 'after' : undefined
+    return <div key={element} className={`island-editor-element${catalog ? ' island-editor-element--catalog' : ''}`} data-layout-element={element} data-protected={fixed || undefined} data-insert={insertion} data-picked={dragging === element || undefined} draggable={false} {...pointerHandlers(element)} tabIndex={0} role="button" aria-label={labels[element]} aria-pressed={dragging === element} title={!fixed && catalog && ['like', 'dislike', 'shuffle', 'repeat'].includes(element) ? `${labels[element]} · ${['like', 'dislike'].includes(element) ? 'Direct Yandex' : locale === 'ru' ? 'зависит от плеера' : 'depends on player'}` : fixed ? `${labels[element]} · ${locale === 'ru' ? 'всегда на островке' : 'always on island'}` : labels[element]} onKeyDown={(event) => keyboardDrag(event, element)}>
       {catalog && ['like', 'dislike', 'shuffle', 'repeat'].includes(element) ? <span className="island-editor-capability" role="img" aria-label={['like', 'dislike'].includes(element) ? locale === 'ru' ? 'Нужен Direct Yandex' : 'Requires Direct Yandex' : locale === 'ru' ? 'Зависит от выбранного плеера' : 'Depends on the selected player'} title={['like', 'dislike'].includes(element) ? locale === 'ru' ? 'Подключите Direct в разделе «Источник».' : 'Works with Direct Yandex. Connect it in Source settings.' : locale === 'ru' ? 'Зависит от плеера.' : 'The selected player must support this command.'}><RadioTower size={13} /></span> : null}
       <div className="island-editor-element__visual" inert aria-hidden="true">{node}</div>
     </div>
@@ -112,7 +135,7 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
   const zoneView = (zone: IslandLayoutZone, node: ReactNode) => <div className={`island-editor-zone island-editor-zone--${zone}`} role="group" aria-label={zones[zone]} data-layout-target={zone} data-ready={Boolean(dragging && canPlaceIslandElement(layout, dragging, zone)) || undefined} data-over={over?.zone === zone || undefined}>{node}</div>
   const reset = () => {
     const defaults = getLegacyIslandLayout(config)
-    commit({ ...defaults, zones: { ...defaults.zones, player: [...ISLAND_LAYOUT_ELEMENTS.player], actions: ['settings', 'pin'] } }, withUiPrefs(config, { localServersWidgetScale: 100 }))
+    commit({ ...defaults, zones: { ...defaults.zones, player: [...DEFAULT_ISLAND_PLAYER_ORDER], actions: ['settings', 'pin'] } }, withUiPrefs(config, { localServersWidgetScale: 100 }))
   }
   const catalog = (zone: 'catalog' | 'widgetCatalog', empty: string) => {
     const elements = available.filter((element) => isIslandWidget(element) === (zone === 'widgetCatalog'))
@@ -126,6 +149,13 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
   }
   return <section ref={editorRef} style={{ '--drag-indicator': config.appearance.accentColor } as import('react').CSSProperties} className="island-layout-editor" data-dragging={Boolean(dragging) || undefined}>
     <header className="island-layout-editor__header"><div>{showHeading ? <h3>{locale === 'ru' ? 'Ваш островок' : 'Your island'}</h3> : null}<p>{locale === 'ru' ? 'Перетащите кнопки. Край меняет ширину, угол — масштаб.' : 'Drag elements. Resize the width from an edge and the scale from a corner.'}</p></div><button type="button" className="island-layout-editor__reset" aria-label={locale === 'ru' ? 'Сбросить настройки островка' : 'Reset island settings'} title={locale === 'ru' ? 'Сбросить расположение, размер, цвет и задержку' : 'Reset layout, size, color and opening delay'} onClick={onReset ?? reset}><RotateCcw size={15} /></button></header>
+    <div className="settings-theme-choice island-layout-editor__arrangement" role="group" aria-label={locale === 'ru' ? 'Расположение плеера' : 'Player layout'}>
+      {(['stacked', 'inline'] as const).map((arrangement) =>
+        <button key={arrangement} type="button" className={`settings-theme-choice__button${layout.arrangement === arrangement ? ' settings-theme-choice__button--active' : ''}`}
+          aria-pressed={layout.arrangement === arrangement} onClick={() => commit({ ...layout, arrangement })}>
+          {arrangement === 'inline' ? locale === 'ru' ? 'В одну строку' : 'One row' : locale === 'ru' ? 'В две строки' : 'Two rows'}
+        </button>)}
+    </div>
     <IslandPreview active={active} config={config} label={locale === 'ru' ? 'Редактируемый островок' : 'Editable island'} usage={usage} renderElement={elementView} renderZone={zoneView} onResize={(dimensions) => onChange({ ...config, layout: { ...config.layout, ...dimensions, size: 'medium' } })} onLocalServersResize={(localServersWidgetScale) => onChange(withUiPrefs(config, { localServersWidgetScale }))} />
     <div className="island-layout-editor__catalogs">
       {catalog('catalog', locale === 'ru' ? 'Все элементы добавлены' : 'All controls added')}

@@ -6,7 +6,7 @@ import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'reac
 import type { AppConfig } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
-import { getIslandLayout, type IslandLayoutElement, type IslandLayoutZone } from '../../shared/lib/islandLayout'
+import { getIslandLayout, inlineActionsWidth, type IslandLayoutElement, type IslandLayoutZone } from '../../shared/lib/islandLayout'
 import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getLocalServersWidgetScale, getPlaybackVisual, getReducedTransparency, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
 import { createTranslator } from '../../shared/i18n/messages'
 import { MusicModule } from '../music/MusicModule'
@@ -80,7 +80,8 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   const snapshot = usage && 'snapshot' in usage ? usage.snapshot : usage
   const compact = getUsageWidgetCompact(config)
   const usageScale = getUsageWidgetScale(config)
-  const sideWidth = (side: 'left' | 'right') => Math.max(56, measuredSides[side] + 12)
+  const actionWidth = layout.arrangement === 'inline' ? inlineActionsWidth(layout.zones.actions.length) : 0
+  const sideWidth = (side: 'left' | 'right') => Math.max(56, measuredSides[side] + 12 + (side === 'right' && actionWidth ? actionWidth + 12 : 0))
   const width = 500 * sizing.width / 100
   const sceneWidth = sideWidth('left') + width + sideWidth('right')
   // A stable camera leaves room for the entire allowed resize range. Fitting on
@@ -163,6 +164,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     '--island-width': sizing.width / 100,
     '--island-scale': 1,
     '--actions-scale': 1,
+    '--inline-actions-width': `${actionWidth}px`,
     ...(playbackVisual ? APPEARANCE_PREVIEW_ARTWORK_THEME : {
       '--artwork-progress-color': PREVIEW_COVER_PROGRESS,
       '--artwork-primary': '168, 98, 55', '--artwork-secondary': '87, 63, 49',
@@ -174,13 +176,13 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   return <div className="island-preview-section"><div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined} data-reduced-motion={config.appearance.reducedMotion || undefined}>
     {active ? <WarpSurface className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
     <div className="island-preview__camera" style={{ width: sceneWidth * scale, height: frameHeight * scale }}>
-    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={getReducedTransparency(config) || undefined} style={style}>
+    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-island-arrangement={layout.arrangement} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={getReducedTransparency(config) || undefined} style={style}>
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
         <IslandFeedback className="island-card island-surface" particles={active && Boolean(playbackVisual)} playbackVisual={playbackVisual}>
           <MusicModule media={media} layout={layout} progressMs={media.positionMs} progressPercent={34} density={config.layout.density} showArtwork={config.layout.showArtwork} showTitle={config.layout.showTitle} showArtist={config.layout.showArtist} showProgress={config.layout.showProgress} showSource={config.layout.showSource} showPreviousNext={config.layout.showPreviousNext} locale={config.appearance.locale} reducedMotion onCommand={() => undefined} renderElement={renderElement} renderZone={renderZone} />
         </IslandFeedback>
-        <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => <Fragment key={element}>{renderElement(element, <button type="button" className="icon-button" aria-label={element === 'settings' ? 'Open settings' : 'Pin island'}>{element === 'settings' ? <SettingsFilled weight="fill" size={16} /> : element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>)}</Fragment>))}</header>
+        <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => <Fragment key={element}>{renderElement(element, <button type="button" className={`icon-button${element === 'settings' ? ' island-settings-button' : ''}`} aria-label={element === 'settings' ? 'Open settings' : element === 'microphone' ? 'Dictation' : 'Pin island'}>{element === 'settings' ? <SettingsFilled weight="fill" size={16} /> : element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>)}</Fragment>))}</header>
         {onResize ? <>
           <div className="island-preview__resize-edge island-preview__resize-edge--left preview-resize-readout" {...resizeHandles('width', -1)} />
           <div className="island-preview__resize-edge island-preview__resize-edge--right preview-resize-readout" {...resizeHandles('width')} />

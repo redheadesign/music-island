@@ -35,7 +35,7 @@ describe('island layout policy', () => {
       reactionRight: ['like', 'repeat', 'shuffle'],
       actions: ['pin', 'pin'],
     } })).toEqual({
-      version: 2,
+      version: 3, arrangement: 'stacked',
       zones: {
         left: ['codex'],
         player: ['next', 'progress', 'artwork', 'transport'],
@@ -52,7 +52,7 @@ describe('island layout policy', () => {
     const migrated = normalizeIslandLayout({ version: 1, zones: {
       left: [], player: ['artwork', 'navigation', 'transport', 'progress'], right: [], actions: ['settings'],
     } })
-    expect(migrated).toEqual({ version: 2, zones: {
+    expect(migrated).toEqual({ version: 3, arrangement: 'stacked', zones: {
       left: [],
       player: ['previous', 'artwork', 'transport', 'next', 'progress'],
       right: [],
@@ -61,6 +61,20 @@ describe('island layout policy', () => {
       actions: ['settings'],
       bottom: [],
     } })
+  })
+
+  it('keeps the composition of v2 profiles and persists inline reordering', () => {
+    const base = config()
+    base.plugins.settings.ui = { islandLayout: { version: 2, zones: {
+      player: ['next', 'transport', 'progress'], actions: ['pin', 'settings'],
+    } } }
+    const migrated = getIslandLayout(base)
+    expect(migrated.arrangement).toBe('stacked')
+    const edited = moveIslandElement({ ...migrated, arrangement: 'inline' }, 'progress', 'player', 0)
+    expect(getIslandLayout(withIslandLayout(base, edited))).toEqual(edited)
+    expect(edited.zones.player).toEqual(['progress', 'next', 'transport'])
+    expect(moveIslandElement(edited, 'settings', 'actions', 0).zones.actions).toEqual(['settings', 'pin'])
+    expect(moveIslandElement(edited, 'transport', 'player', 0).zones.player).toEqual(['transport', 'progress', 'next'])
   })
 
   it('derives unsaved defaults from legacy flags and strict provider opt-ins', () => {

@@ -6,7 +6,7 @@ import type { CSSProperties, PointerEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Pin, PinOff } from 'lucide-react'
 import { useLatestDictationMessage, useLocalServersController, usePlaybackBass, type IslandAppState, type LatestDictationMessageController, type LocalServersController, type UsageController } from '../../app/useIslandApp'
-import { getIslandLayout } from '../../shared/lib/islandLayout'
+import { getIslandLayout, inlineActionsWidth } from '../../shared/lib/islandLayout'
 import {
   getCollapsedGestureState,
   onCollapsedGestureState,
@@ -327,7 +327,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
 
   useEffect(() => {
     let cancelled = false
-    const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: false, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) })
+    const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: false, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) }, islandLayout.arrangement, islandLayout.zones.actions.length)
     const phase = windowPhase
     const generation = transitionRef.current.generation
     void syncOverlayWindow(phase, bounds).then(async (applied) => {
@@ -355,7 +355,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     return () => {
       cancelled = true
     }
-  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
+  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, islandLayout.arrangement, islandLayout.zones.actions.length, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
 
   useEffect(() => {
     if ((!showLocalServers && !showLatestMessage) || !isTauriRuntime()) return
@@ -396,7 +396,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     publish()
     const observer = new ResizeObserver(() => publish())
     observer.observe(zone)
-    zone.querySelectorAll('.island-usage-rail').forEach((rail) => observer.observe(rail))
+    zone.querySelectorAll('.island-card, .island-actions, .island-usage-rail').forEach((part) => observer.observe(part))
     return () => observer.disconnect()
   }, [
     config,
@@ -573,6 +573,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--island-blur': `${config.appearance.blurStrength}px`,
       '--island-scale': config.layout.scale / 100,
       '--usage-scale': getUsageWidgetScale(config),
+      '--inline-actions-width': `${inlineActionsWidth(islandLayout.zones.actions.length)}px`,
       '--island-width': config.layout.width / 100,
       '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,
       '--island-hit-width': `${(500 * (config.layout.width / 100) + 112) * (config.layout.scale / 100)}px`,
@@ -581,7 +582,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--artwork-primary': artworkColors.primary,
       '--artwork-secondary': artworkColors.secondary,
     } as CSSProperties
-  }, [artworkPalette, config, playbackVisual, progressColor])
+  }, [artworkPalette, config, islandLayout.zones.actions.length, playbackVisual, progressColor])
 
   const clearCloseTimer = () => {
     if (closeTimerRef.current) {
@@ -905,6 +906,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
         expandedVisible ? 'island-root--expanded' : '',
         reducedMotion ? 'reduced-motion' : '',
       ].join(' ')}
+      data-island-arrangement={islandLayout.arrangement}
       data-interface-theme={getInterfaceTheme(config)}
       data-interface-scene={getInterfaceScene(config)}
       data-interface-palette={getInterfacePalette(config)}

@@ -29,3 +29,5 @@
 /* The camera uses viewport-space transforms, never CSS zoom on pointer targets. */
 .island-preview__camera { position: relative; flex: none; }
 .island-preview__camera > .island-preview__frame { position: absolute; top: 0; left: 0; }
+.island-preview__frame[data-island-arrangement='inline'] .island-preview__body > .island-actions { left: calc(100% + 12px); right: auto; }
+.island-preview__frame[data-island-arrangement='inline'] .island-preview__satellite--right { padding-top: var(--space-3); padding-left: calc(var(--inline-actions-width) + var(--space-6)); }

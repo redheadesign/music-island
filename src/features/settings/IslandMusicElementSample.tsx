@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { Mic, Pin } from 'lucide-react'
 import type { IslandLayoutElement } from '../../shared/lib/islandLayout'
 import { MediaArtwork, NavigationButton, PlaybackButton, ReactionButton, PlaybackModeButton } from '../music/MusicControls'
+import { SeekStepButton } from '../music/SeekStepButton'
 import { ProgressStrip } from '../music/ProgressStrip'
 import { APPEARANCE_PREVIEW_MEDIA as media } from './previewMedia'
 
@@ -10,6 +11,7 @@ export function IslandMusicElementSample({ element, locale = 'ru' }: {
   element: Exclude<IslandLayoutElement, 'codex' | 'claude'>; locale?: 'ru' | 'en'
 }) {
   if (element === 'previous' || element === 'next') return <NavigationButton locale={locale} direction={element} />
+  if (element === 'seekBack' || element === 'seekForward') return <SeekStepButton locale={locale} direction={element} />
   if (element === 'artwork') return <MediaArtwork locale={locale} src={media.thumbnailDataUrl} />
   if (element === 'transport') return <PlaybackButton locale={locale} />
   if (element === 'like' || element === 'dislike') return <ReactionButton locale={locale} kind={element} />

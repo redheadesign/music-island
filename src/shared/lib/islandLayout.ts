@@ -1,9 +1,15 @@
 import type { AppConfig } from './types'
 
-export const ISLAND_LAYOUT_VERSION = 2 as const
+/** Compact action buttons are 32 CSS px wide with a 4 px gap. */
+export function inlineActionsWidth(count: number): number {
+  return count * 32 + Math.max(0, count - 1) * 4
+}
+
+export const ISLAND_LAYOUT_VERSION = 3 as const
 
 export type IslandProviderElement = 'codex' | 'claude'
-export type IslandPlayerElement = 'previous' | 'artwork' | 'transport' | 'next' | 'progress'
+export type IslandPlayerElement = 'previous' | 'artwork' | 'transport' | 'next' | 'progress' | 'seekBack' | 'seekForward'
+export type IslandArrangement = 'stacked' | 'inline'
 export type IslandReactionElement = 'like' | 'dislike' | 'shuffle' | 'repeat'
 export type IslandActionElement = 'settings' | 'pin' | 'microphone'
 export type IslandBottomWidget = 'localServers'
@@ -13,6 +19,7 @@ export type IslandLayoutDropTarget = IslandLayoutZone | 'catalog' | 'widgetCatal
 
 export interface IslandLayout {
   version: typeof ISLAND_LAYOUT_VERSION
+  arrangement: IslandArrangement
   zones: {
     left: IslandProviderElement[]
     player: IslandPlayerElement[]
@@ -28,7 +35,8 @@ export interface IslandLayout {
 export type IslandLayoutV1 = IslandLayout
 
 const PROVIDERS: readonly IslandProviderElement[] = ['codex', 'claude']
-const PLAYER_DEFAULT_ORDER: readonly IslandPlayerElement[] = ['previous', 'artwork', 'transport', 'next', 'progress']
+export const DEFAULT_ISLAND_PLAYER_ORDER: readonly IslandPlayerElement[] = ['previous', 'artwork', 'transport', 'next', 'progress']
+const PLAYER_ELEMENTS: readonly IslandPlayerElement[] = [...DEFAULT_ISLAND_PLAYER_ORDER, 'seekBack', 'seekForward']
 const REACTIONS: readonly IslandReactionElement[] = ['shuffle', 'dislike', 'like', 'repeat']
 const ACTIONS: readonly IslandActionElement[] = ['settings', 'pin', 'microphone']
 const BOTTOM_WIDGETS: readonly IslandBottomWidget[] = ['localServers']
@@ -61,7 +69,7 @@ function migrateV1Player(value: unknown): IslandPlayerElement[] {
   if (old.includes('artwork')) requested.add('artwork')
   if (old.includes('progress')) requested.add('progress')
   requested.add('transport')
-  return PLAYER_DEFAULT_ORDER.filter((item) => requested.has(item))
+  return DEFAULT_ISLAND_PLAYER_ORDER.filter((item) => requested.has(item))
 }
 
 export function normalizeIslandLayout(value: unknown): IslandLayout {
@@ -72,7 +80,7 @@ export function normalizeIslandLayout(value: unknown): IslandLayout {
   const providers = new Set(left)
   const right = uniqueAllowed(zones.right, PROVIDERS).filter((item) => !providers.has(item)).slice(0, 2 - left.length)
 
-  const player = isV1 ? migrateV1Player(zones.player) : uniqueAllowed(zones.player, PLAYER_DEFAULT_ORDER)
+  const player = isV1 ? migrateV1Player(zones.player) : uniqueAllowed(zones.player, PLAYER_ELEMENTS)
   if (!player.includes('transport')) player.push('transport')
 
   const leftSource = Array.isArray(zones.reactionLeft) && !isV1 ? zones.reactionLeft : ['dislike']
@@ -85,7 +93,8 @@ export function normalizeIslandLayout(value: unknown): IslandLayout {
   if (!actions.includes('settings')) actions.unshift('settings')
 
   const bottom = uniqueAllowed(zones.bottom, BOTTOM_WIDGETS)
-  return { version: ISLAND_LAYOUT_VERSION, zones: { left, player, right, reactionLeft, reactionRight, actions, bottom } }
+  const arrangement = root.version === ISLAND_LAYOUT_VERSION && root.arrangement === 'inline' ? 'inline' : 'stacked'
+  return { version: ISLAND_LAYOUT_VERSION, arrangement, zones: { left, player, right, reactionLeft, reactionRight, actions, bottom } }
 }
 
 export function getLegacyIslandLayout(config: AppConfig): IslandLayout {
@@ -106,7 +115,7 @@ export function getLegacyIslandLayout(config: AppConfig): IslandLayout {
 export function getIslandLayout(config: AppConfig): IslandLayout {
   const ui = config.plugins?.settings?.ui
   const raw = isRecord(ui) ? ui.islandLayout : undefined
-  const saved = isRecord(raw) && (raw.version === 1 || raw.version === ISLAND_LAYOUT_VERSION) ? raw : undefined
+  const saved = isRecord(raw) && (raw.version === 1 || raw.version === 2 || raw.version === ISLAND_LAYOUT_VERSION) ? raw : undefined
   const layout = saved ? normalizeIslandLayout(saved) : getLegacyIslandLayout(config)
   const hasBottomZone = isRecord(saved?.zones) && Array.isArray(saved.zones.bottom)
   if (!hasBottomZone && isRecord(ui) && ui.localServersEnabled === true) layout.zones.bottom = ['localServers']
@@ -135,7 +144,7 @@ export function withIslandLayout(config: AppConfig, layout: IslandLayout): AppCo
 export function zoneForIslandElement(element: IslandLayoutElement): IslandLayoutZone {
   if (element === 'localServers') return 'bottom'
   if (PROVIDERS.includes(element as IslandProviderElement)) return element === 'codex' ? 'left' : 'right'
-  if (PLAYER_DEFAULT_ORDER.includes(element as IslandPlayerElement)) return 'player'
+  if (PLAYER_ELEMENTS.includes(element as IslandPlayerElement)) return 'player'
   if (REACTIONS.includes(element as IslandReactionElement)) return element === 'dislike' || element === 'shuffle' ? 'reactionLeft' : 'reactionRight'
   return 'actions'
 }
@@ -143,7 +152,7 @@ export function zoneForIslandElement(element: IslandLayoutElement): IslandLayout
 function accepts(zone: IslandLayoutZone, element: IslandLayoutElement): boolean {
   if (zone === 'bottom') return element === 'localServers'
   if (zone === 'left' || zone === 'right') return PROVIDERS.includes(element as IslandProviderElement)
-  if (zone === 'player') return PLAYER_DEFAULT_ORDER.includes(element as IslandPlayerElement)
+  if (zone === 'player') return PLAYER_ELEMENTS.includes(element as IslandPlayerElement)
   if (zone === 'reactionLeft' || zone === 'reactionRight') return REACTIONS.includes(element as IslandReactionElement)
   return ACTIONS.includes(element as IslandActionElement)
 }
@@ -178,16 +187,14 @@ export function moveIslandElement(layout: IslandLayout, element: IslandLayoutEle
   if (!canPlaceIslandElement(current, element, target)) return current
   if (isIslandCatalog(target)) return removeIslandElement(current, element)
 
-  const without = removeIslandElement(current, element)
-  const zones = {
-    left: [...without.zones.left], player: [...without.zones.player], right: [...without.zones.right],
-    reactionLeft: [...without.zones.reactionLeft], reactionRight: [...without.zones.reactionRight], actions: [...without.zones.actions], bottom: [...without.zones.bottom],
-  }
+  const zones = Object.fromEntries(Object.entries(current.zones).map(([zone, items]) =>
+    [zone, (items as IslandLayoutElement[]).filter((item) => item !== element)]
+  )) as IslandLayout['zones']
   const values = zones[target] as IslandLayoutElement[]
   values.splice(Math.max(0, Math.min(index ?? values.length, values.length)), 0, element)
-  return normalizeIslandLayout({ ...without, zones })
+  return normalizeIslandLayout({ ...current, zones })
 }
 
 export const ISLAND_LAYOUT_ELEMENTS = {
-  providers: PROVIDERS, player: PLAYER_DEFAULT_ORDER, reactions: REACTIONS, actions: ACTIONS, bottom: BOTTOM_WIDGETS,
+  providers: PROVIDERS, player: PLAYER_ELEMENTS, reactions: REACTIONS, actions: ACTIONS, bottom: BOTTOM_WIDGETS,
 } as const

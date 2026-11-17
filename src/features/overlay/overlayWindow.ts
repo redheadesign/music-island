@@ -1,4 +1,5 @@
 import { setOverlayBounds } from '../../app/tauriApi'
+import { inlineActionsWidth, type IslandArrangement } from '../../shared/lib/islandLayout'
 
 export type OverlayWindowPhase = 'collapsed' | 'opening' | 'open' | 'closing'
 
@@ -91,10 +92,12 @@ export function measureExpandedHitBand(zone: HTMLElement): {
   height: number
 } {
   const centerX = window.innerWidth / 2
-  let left = zone.getBoundingClientRect().left
-  let right = zone.getBoundingClientRect().right
-  let top = zone.getBoundingClientRect().top
-  let bottom = zone.getBoundingClientRect().bottom
+  const zoneRect = zone.getBoundingClientRect()
+  let left = zoneRect.left
+  let right = zoneRect.right
+  // The lower widgets publish their own hit regions. The layout wrapper also
+  // spans those widgets and the empty space beside them.
+  let bottom = 0
 
   zone
     .querySelectorAll(
@@ -104,7 +107,6 @@ export function measureExpandedHitBand(zone: HTMLElement): {
       const rect = node.getBoundingClientRect()
       left = Math.min(left, rect.left)
       right = Math.max(right, rect.right)
-      top = Math.min(top, rect.top)
       bottom = Math.max(bottom, rect.bottom)
     })
 
@@ -115,7 +117,7 @@ export function measureExpandedHitBand(zone: HTMLElement): {
 
   return {
     width: cssToPhysicalHitPx(widthCss),
-    height: cssToPhysicalHitPx(Math.max(heightCss, 96)),
+    height: cssToPhysicalHitPx(Math.max(heightCss, 24)),
   }
 }
 
@@ -158,12 +160,16 @@ export function getOverlayBounds(
   widthPercent: number,
   scalePercent: number,
   usage: OverlayUsageBoundsOptions | boolean = false,
+  arrangement: IslandArrangement = 'stacked',
+  actionCount = 2,
 ): OverlayBounds {
   const width = widthPercent / 100
   const islandScale = scalePercent / 100
+  const actionWidth = arrangement === 'inline' ? inlineActionsWidth(actionCount) + USAGE_GAP : 0
+  const gutter = Math.max(ACTIONS_GUTTER_PER_SIDE, actionWidth)
   const base = {
-    cardWidth: (500 * width + ACTIONS_GUTTER_PER_SIDE * 2) * islandScale,
-    expandedHeight: 300 * islandScale,
+    cardWidth: (500 * width + gutter * 2) * islandScale,
+    expandedHeight: (arrangement === 'inline' ? 96 : 300) * islandScale,
     collapsedWidth: 220 * islandScale,
     collapsedHeight: 20 * islandScale,
   }
@@ -185,8 +191,8 @@ export function getOverlayBounds(
     : USAGE_DETAILED_WIDTH
   const centerHalfWidth = 250 * width * islandScale
   const sideExtent = Math.max(
-    ACTIONS_GUTTER_PER_SIDE * islandScale,
-    USAGE_GAP * islandScale + satelliteWidth * usageScale,
+    gutter * islandScale,
+    (actionWidth + USAGE_GAP) * islandScale + satelliteWidth * usageScale,
   )
   const detailedHeight = USAGE_DETAILED_PROVIDER_HEIGHT * providers
     + USAGE_DETAILED_PROVIDER_GAP * (providers - 1)
@@ -198,7 +204,7 @@ export function getOverlayBounds(
     // remains stable even when only one side is populated.
     cardWidth: (centerHalfWidth + sideExtent) * 2,
     // Fallback until ResizeObserver measures the real hover-zone.
-    expandedHeight: Math.max(base.expandedHeight, USAGE_RIGHT_TOP * islandScale + satelliteHeight * usageScale),
+    expandedHeight: Math.max(base.expandedHeight, (arrangement === 'inline' ? USAGE_GAP : USAGE_RIGHT_TOP) * islandScale + satelliteHeight * usageScale),
     collapsedWidth: usage.visibleWhenCollapsed
       ? base.collapsedWidth + 2 * (USAGE_GAP * islandScale + (
           USAGE_COMPACT_PROVIDER_WIDTH * providers + USAGE_COMPACT_GAP * (providers - 1)

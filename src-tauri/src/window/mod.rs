@@ -203,7 +203,7 @@ pub fn set_overlay_bounds(
 
     let hit_width = visual_width.max(160.0);
     let hit_height = if expanded {
-        visual_height.max(96.0)
+        visual_height.max(COLLAPSED_STRIP_HEIGHT)
     } else {
         COLLAPSED_HIT_HEIGHT
     };
@@ -415,11 +415,7 @@ mod platform {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         let hit_w = layout.hit_width.clamp(120.0, width);
-        let hit_h = if layout.expanded {
-            layout.hit_height.clamp(96.0, height)
-        } else {
-            layout.hit_height.clamp(COLLAPSED_STRIP_HEIGHT, height)
-        };
+        let hit_h = layout.hit_height.max(COLLAPSED_STRIP_HEIGHT).min(height);
         let left = ((width - hit_w) / 2.0).max(0.0);
         let right = left + hit_w;
         let top = 0.0;

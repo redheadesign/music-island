@@ -30,13 +30,13 @@ function renderPlayer(overrides: Partial<ComponentProps<typeof MusicModule>> = {
   />)
 }
 
-function v2Layout(
+function islandLayout(
   player: IslandPlayerElement[],
   reactionLeft: IslandReactionElement[] = ['dislike'],
   reactionRight: IslandReactionElement[] = ['like'],
 ): IslandLayout {
   return {
-    version: 2,
+    version: 3, arrangement: 'stacked',
     zones: { left: [], player, right: [], reactionLeft, reactionRight, actions: ['settings'], bottom: [] },
   }
 }
@@ -100,10 +100,10 @@ describe('MusicModule progress characterization', () => {
   })
 })
 
-describe('MusicModule V2 layout behavior', () => {
+describe('MusicModule saved layout behavior', () => {
   it('renders previous and next independently while keeping protected playback without artwork', () => {
     const previousOnly = renderPlayer({
-      layout: v2Layout(['previous', 'transport', 'progress']),
+      layout: islandLayout(['previous', 'transport', 'progress']),
       showArtwork: false,
     })
     expect(previousOnly).toContain('aria-label="Предыдущий трек"')
@@ -112,7 +112,7 @@ describe('MusicModule V2 layout behavior', () => {
     expect(previousOnly).not.toContain('artwork-shell')
 
     const nextOnly = renderPlayer({
-      layout: v2Layout(['transport', 'next', 'progress']),
+      layout: islandLayout(['transport', 'next', 'progress']),
       showArtwork: false,
     })
     expect(nextOnly).not.toContain('aria-label="Предыдущий трек"')
@@ -128,7 +128,7 @@ describe('MusicModule V2 layout behavior', () => {
     const together = document.createElement('div')
     together.innerHTML = renderPlayer({
       media: direct,
-      layout: v2Layout(['artwork', 'transport', 'progress'], ['like', 'dislike'], []),
+      layout: islandLayout(['artwork', 'transport', 'progress'], ['like', 'dislike'], []),
       renderZone,
     })
     const sameSideButtons = together.querySelectorAll('[data-zone="reactionLeft"] button')
@@ -139,7 +139,7 @@ describe('MusicModule V2 layout behavior', () => {
     const removed = document.createElement('div')
     removed.innerHTML = renderPlayer({
       media: direct,
-      layout: v2Layout(['artwork', 'transport', 'progress'], ['dislike'], []),
+      layout: islandLayout(['artwork', 'transport', 'progress'], ['dislike'], []),
       renderZone,
     })
     expect(removed.querySelector('[data-zone="reactionLeft"] [aria-label="Добавить в любимое"]')).toBeNull()
@@ -151,7 +151,7 @@ describe('MusicModule V2 layout behavior', () => {
     const onCommand = vi.fn()
     const mounted = await mountPlayer({
       media: { ...snapshot, provider: 'yandex-direct', canLike: true, canDislike: true },
-      layout: v2Layout(['previous', 'transport', 'next', 'progress'], ['like'], ['dislike']),
+      layout: islandLayout(['previous', 'transport', 'next', 'progress'], ['like'], ['dislike']),
       showArtwork: false,
       onCommand,
     })
@@ -173,7 +173,7 @@ describe('MusicModule V2 layout behavior', () => {
     const onCommand = vi.fn()
     const mounted = await mountPlayer({
       media: { ...snapshot, canShuffle: true, isShuffleActive: true, canRepeat: true, repeatMode: 'one' },
-      layout: v2Layout(['transport', 'progress'], ['shuffle', 'repeat'], []),
+      layout: islandLayout(['transport', 'progress'], ['shuffle', 'repeat'], []),
       showArtwork: false,
       onCommand,
     })
@@ -190,6 +190,30 @@ describe('MusicModule V2 layout behavior', () => {
     } finally {
       await mounted.unmount()
     }
+  })
+
+  it('renders inline progress at its saved position using the same production controls', () => {
+    for (const order of [['progress', 'transport', 'next'], ['next', 'transport', 'progress']] as const) {
+      const root = document.createElement('div')
+      const layout = { ...islandLayout([...order], [], []), arrangement: 'inline' as const }
+      root.innerHTML = renderPlayer({ layout, showArtwork: false, renderElement: (id, node) => node && <div data-control={id}>{node}</div> })
+      expect([...root.querySelectorAll('.media-controls [data-control]')].map(node => node.getAttribute('data-control'))).toEqual(order)
+      expect(root.querySelectorAll('[role="slider"]')).toHaveLength(1)
+    }
+  })
+
+  it('clamps optional ten-second jumps to the track and honors seek capability', async () => {
+    const onCommand = vi.fn()
+    const layout = islandLayout(['seekBack', 'transport', 'seekForward'], [], [])
+    const mounted = await mountPlayer({ layout, progressMs: 4000, media: { ...snapshot, durationMs: 9000 }, onCommand })
+    try {
+      for (const label of ['Назад на 10 секунд', 'Вперёд на 10 секунд']) {
+        await act(async () => mounted.container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!.click())
+      }
+      expect(onCommand.mock.calls.map(([command]) => command)).toEqual([{ seek: { positionMs: 0 } }, { seek: { positionMs: 9000 } }])
+      const html = renderPlayer({ layout, media: { ...snapshot, canSeek: false } })
+      expect(html).toMatch(/<button[^>]*aria-label="Назад на 10 секунд"[^>]*disabled/)
+    } finally { await mounted.unmount() }
   })
 
   it('describes time and seeks by keyboard in the selected language', async () => {
