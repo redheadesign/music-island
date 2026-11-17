@@ -159,7 +159,7 @@ export const BassSourceShortcut: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('switch', { name: 'Реакция фона на бас' })).toBeDisabled()
     await userEvent.click(canvas.getByRole('button', { name: 'Настроить источник' }))
-    await expect(await canvas.findByRole('heading', { name: 'Источник музыки' })).toBeVisible()
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Источник музыки' })).toBeVisible())
     await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument()
     await waitFor(() => expect(canvas.getByRole('button', { name: 'Источник музыки' })).toHaveFocus())
   },
@@ -346,7 +346,7 @@ export const DictationNavigation: Story = { name: 'Диктовка · един�
   await userEvent.click(canvas.getByRole('button', { name: 'Модели' }))
   await canvas.findByRole('heading', { name: 'Модели' })
   await userEvent.click(canvas.getByRole('button', { name: 'Дополнительно' }))
-  await expect(await canvas.findByRole('heading', { name: 'Запись' })).toBeVisible()
+  await waitFor(() => expect(canvas.getByRole('heading', { name: 'Запись' })).toBeVisible())
   const scroller = canvasElement.querySelector<HTMLElement>('[data-settings-scroll]')!
   await waitFor(() => expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight))
   const offset = Math.min(600, scroller.scrollHeight - scroller.clientHeight)
@@ -803,6 +803,7 @@ export const VoiceDeveloperMode: Story = {
     ))
 
     await userEvent.click(canvas.getByRole('button', { name: /^Music Island$/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^(О программе|About)$/ }))
     await userEvent.click(canvas.getByRole('switch', { name: /^(Режим разработчика|Developer mode)$/ }))
     await userEvent.click(canvas.getByRole('button', { name: /^Better Voice/ }))
     await waitFor(() => expect(args.onChange).toHaveBeenLastCalledWith(

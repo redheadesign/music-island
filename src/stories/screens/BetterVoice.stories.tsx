@@ -73,8 +73,9 @@ export const Running: Story = {
     await expect(canvas.getByRole('button', { name: /^(Виртуальный выход|Virtual output)$/ })).toHaveTextContent('CABLE Input')
     const meters = canvas.getAllByRole('meter')
     await expect(meters).toHaveLength(2)
-    await expect(Number(meters[0].getAttribute('aria-valuenow'))).toBeGreaterThan(0)
-    await expect(Number(meters[1].getAttribute('aria-valuenow'))).toBeGreaterThan(0)
+    for (const meter of meters) {
+      await waitFor(() => expect(Number(meter.getAttribute('aria-valuenow'))).toBeGreaterThan(0))
+    }
   },
 }
 export const ClassicRunning: Story = {
@@ -93,7 +94,7 @@ export const ReducedMotion: Story = {
     await waitFor(() => expect(canvas.getByRole('button', { name: /Остановить|Stop processing/ })).toBeEnabled())
     await expect(canvas.getByRole('group', { name: /Обработка|Processing/ })).toHaveAttribute('data-signal-active', 'false')
     for (const meter of canvas.getAllByRole('meter')) {
-      await expect(Number(meter.getAttribute('aria-valuenow'))).toBeGreaterThan(0)
+      await waitFor(() => expect(Number(meter.getAttribute('aria-valuenow'))).toBeGreaterThan(0))
     }
   },
 }

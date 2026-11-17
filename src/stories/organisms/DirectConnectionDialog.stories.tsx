@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { DirectConnectionDialog } from '../../features/settings/DirectConnectionDialog'
 
 const meta = {
@@ -83,7 +83,7 @@ export const GlassErrorNarrow: Story = {
   parameters: { ...ErrorNarrow.parameters, settingsColorScheme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('alert')).toBeVisible()
+    await waitFor(() => expect(canvas.getByRole('alert')).toBeVisible())
     const dialog = canvas.getByRole('dialog')
     await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth)
   },
