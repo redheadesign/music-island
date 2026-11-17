@@ -63,7 +63,7 @@ export function VoiceControlCard({
         <VoiceEffects locale={locale} label={t.extras}
           disabled={!running || busy || !hydrated} activeEffect={activeEffect} onToggle={onToggleEffect} />
       </div>
-      {error ? <Notice className="voice-control-card__error" tone="danger">{error.replace(/^Error:\s*/, '')}</Notice> : null}
+      {error ? <Notice className="voice-control-card__error" tone="danger" compact>{error.replace(/^Error:\s*/, '')}</Notice> : null}
       {children ? <div className="voice-control-card__developer">{children}</div> : null}
     </section>
   )

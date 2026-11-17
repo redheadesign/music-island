@@ -101,3 +101,23 @@ input.range-slider.range-slider--vertical[type='range']::-moz-range-track {
     var(--range-fill-color) var(--range-fill, 0%),
     var(--range-track-color) var(--range-fill, 0%));
 }
+
+[data-interface-theme='glass'] input.range-slider.range-slider[type='range'] {
+  --range-track-size: var(--space-1-5);
+  --range-thumb-size: var(--space-4-5);
+  --range-thumb-material: var(--glass-control-sheen) var(--fg-primary);
+}
+
+[data-interface-theme='glass'] input.range-slider.range-slider[type='range']::-webkit-slider-thumb {
+  background: var(--range-thumb-material);
+  box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
+}
+
+[data-interface-theme='glass'] input.range-slider.range-slider[type='range']::-moz-range-thumb {
+  background: var(--range-thumb-material);
+  box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
+}
+
+@media (forced-colors: active) {
+  input.range-slider.range-slider[type='range'] { appearance: auto; accent-color: auto; }
+}

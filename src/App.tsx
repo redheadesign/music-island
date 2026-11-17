@@ -13,10 +13,12 @@ import { TaskbarPlayer } from './features/taskbar/TaskbarPlayer'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
 import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme } from './shared/lib/uiPrefs'
 import { SettingsWindow } from './features/settings/SettingsWindow'
+import { useGlassPointerLight } from './shared/ui/useGlassPointerLight'
 import './App.css'
 
 function App() {
   const windowLabel = isTauriRuntime() ? getCurrentWindow().label : 'main'
+  useGlassPointerLight(windowLabel === 'settings' || windowLabel === 'intro')
 
   // Intro is a separate Tauri window — keep it free of island hooks/state.
   if (windowLabel === 'intro') {

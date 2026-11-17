@@ -82,7 +82,7 @@
 .voice-control-card__monitor[aria-pressed='true'] .voice-control-card__monitor-dot { opacity: 1; }
 .voice-control-card__primary:disabled, .voice-control-card__monitor:disabled { cursor: default; opacity: .45; }
 .voice-control-card button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
-.voice-control-card__error { grid-column: 1 / -1; margin: 0; padding-top: var(--space-3); border: 0; color: var(--status-danger); font-size: var(--text-label); line-height: var(--leading-body); }
+.voice-control-card__error { grid-column: 1 / -1; margin: 0; }
 .voice-control-card__developer { grid-column: 1 / -1; min-width: 0; }
 .voice-control-card__spinner { animation: voice-control-busy 1s linear infinite; }
 @keyframes voice-control-busy { to { transform: rotate(360deg); } }

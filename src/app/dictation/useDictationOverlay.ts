@@ -6,6 +6,7 @@ import type { DictationStatus } from '../../shared/lib/dictationTypes'
 import type { AppConfig } from '../../shared/lib/types'
 import { defaultDictationAppearance, getDictationAppearance } from '../../shared/lib/dictationAppearance'
 import { applyAccentTheme } from '../../shared/lib/accentTheme'
+import { getInterfaceTheme } from '../../shared/lib/uiPrefs'
 export function useDictationOverlay() {
   const [status, setStatus] = useState<DictationStatus>({ revision: 0, operationId: 0, phase: 'idle', ready: false, text: '', error: null })
   const [visible, setVisible] = useState(false)
@@ -13,7 +14,9 @@ export function useDictationOverlay() {
   const operation = useRef(0)
   const [levels, setLevels] = useState<number[]>([])
   const [text, setText] = useState({ committed: '', tentative: '' })
-  const [preferences, setPreferences] = useState({ locale: 'ru' as 'ru' | 'en', reducedMotion: false, appearance: defaultDictationAppearance })
+  const [preferences, setPreferences] = useState({
+    locale: 'ru' as 'ru' | 'en', reducedMotion: false, appearance: defaultDictationAppearance, interfaceTheme: getInterfaceTheme(undefined),
+  })
   useEffect(() => {
     let alive = true
     const cleanup: (() => void)[] = []
@@ -41,7 +44,10 @@ export function useDictationOverlay() {
     const applyPreferences = (config: AppConfig) => {
       if (!alive) return
       applyAccentTheme(config.appearance.accentColor)
-      setPreferences({ locale: config.appearance.locale, reducedMotion: config.appearance.reducedMotion, appearance: getDictationAppearance(config) })
+      setPreferences({
+        locale: config.appearance.locale, reducedMotion: config.appearance.reducedMotion,
+        appearance: getDictationAppearance(config), interfaceTheme: getInterfaceTheme(config),
+      })
     }
     // Subscribe before reading the store, so a theme changed during window startup
     // cannot be replaced by an older cache read. Hidden overlay windows stay in sync.

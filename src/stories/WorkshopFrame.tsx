@@ -7,6 +7,7 @@ import {
 } from 'react'
 import type { StoryContext } from '@storybook/react-vite'
 import { applyAccentTheme } from '../shared/lib/accentTheme'
+import { useGlassPointerLight } from '../shared/ui/useGlassPointerLight'
 
 export function WorkshopFrame({
   children,
@@ -15,6 +16,7 @@ export function WorkshopFrame({
   children: ReactNode
   context: StoryContext
 }) {
+  useGlassPointerLight(context.viewMode === 'story')
   const [feedback, setFeedback] = useState('')
   const [copied, setCopied] = useState(false)
   const {

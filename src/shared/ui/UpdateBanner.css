@@ -1,4 +1,24 @@
 /* The same component owns its presentation in Settings, Island and Storybook. */
+[data-interface-theme='glass'] .update-notice.update-banner--settings[data-status='error'] {
+  border-radius: var(--glass-panel-radius);
+  box-shadow: var(--glass-panel-rim);
+}
+
+[data-interface-theme='glass'] .update-banner[data-status='error'] .update-banner__icon {
+  color: var(--status-danger);
+  background: var(--status-danger-surface);
+}
+
+.update-notice .island-update-rail__error {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.island-update-rail__error > svg { flex: none; }
+.island-update-rail__error > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .update-notice.update-banner--settings {
   container: update-banner / inline-size;
   display: grid;

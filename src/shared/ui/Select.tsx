@@ -242,6 +242,7 @@ function Menu({
               data-interface-theme={portalTheme?.interfaceTheme}
               data-interface-scene={portalTheme?.interfaceScene}
               data-interface-palette={portalTheme?.interfacePalette}
+              data-reduced-motion={portalTheme?.reducedMotion || undefined}
               data-reduced-transparency={portalTheme?.reducedTransparency}
               data-enter={opening === 'pointer' && pos.width > 0 && !portalTheme?.reducedMotion ? (pos.above ? 'above' : 'below') : undefined}
               role={actions ? 'menu' : 'listbox'}

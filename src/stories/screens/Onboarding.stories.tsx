@@ -36,10 +36,12 @@ export const Skip: Story = { name: 'Пропустить · автозагруз
   await expect(args.onFinish).toHaveBeenCalledWith(undefined)
 } }
 export const AutostartEnabled: Story = { name: 'Автозагрузка уже включена', args: { initialStep: 3, config: { ...getDefaultConfig(), behavior: { ...getDefaultConfig().behavior, launchAtStartup: true } } } }
-export const SaveError: Story = { name: 'Ошибка регистрации', args: { initialStep: 3, onFinish: fn(async () => { throw new Error('Access denied') }) }, play: async ({ canvasElement }) => {
+export const SaveError: Story = { name: 'Стекло · ошибка настройки автозапуска', globals: { interfaceTheme: 'glass' }, args: { initialStep: 3, onFinish: fn(async () => { throw new Error('Access denied') }) }, play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
   await userEvent.click(canvas.getByRole('button', { name: 'Включить и начать' }))
-  await expect(await canvas.findByRole('alert')).toHaveTextContent('Не удалось')
+  const alert = await canvas.findByRole('alert')
+  await expect(alert).toHaveTextContent('Не удалось')
+  await expect(alert).toHaveAttribute('data-compact', 'true')
   await expect(canvas.getByRole('button', { name: 'Не сейчас' })).toBeEnabled()
 } }
 export const Light: Story = { name: 'Светлая тема', args: { config: withUiPrefs(getDefaultConfig(), { settingsColorScheme: 'light' }) } }

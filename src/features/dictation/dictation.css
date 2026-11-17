@@ -212,7 +212,6 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-cloud__satellite--right { right: 4px; }
 .dictation-overlay--cloud:is([data-phase='recording'],[data-phase='streaming']) .dictation-cloud__satellite { opacity: 1; transform: scale(1); pointer-events: auto; }
 .dictation-cloud__satellite:hover { color: #fff; }
-.dictation-cloud__copy { position: absolute; right: -38px; bottom: 9px; width: 32px; height: 32px; border-radius: var(--radius-round); background: #101014 !important; }
 .dictation-cloud__fallback { display: none; }
 .dictation-overlay--cloud:has([data-fallback='true']) .dictation-cloud__core { background: #0b0b0e; box-shadow: inset 0 0 0 1px #ffffff19; }
 .dictation-overlay--cloud:has([data-fallback='true']) .dictation-cloud__fallback { display: block; }
@@ -226,5 +225,57 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-overlay--cloud[data-expanded='true'] .dictation-cloud__satellite--right { right: 16px; }
 .dictation-cloud-surface { display: block; width: 100px; height: 50px; }
 .dictation-cloud-surface[data-fallback='true'] { visibility: hidden; }
+.dictation-overlay.dictation-overlay--cloud[data-phase='error'] {
+  width: 248px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  color: var(--fg-primary);
+  transition: none;
+}
+
+.dictation-overlay[data-phase='error'][data-interface-theme='glass'] {
+  background: color-mix(in srgb, var(--status-danger) 8%, var(--surface-raised));
+  box-shadow: var(--glass-panel-rim), inset 0 0 0 1px color-mix(in srgb, var(--status-danger) 22%, transparent);
+}
+
+.dictation-overlay--cloud[data-phase='error'] .dictation-cloud-surface { display: none; }
+.dictation-overlay--cloud[data-phase='error'] .dictation-cloud__bar {
+  justify-content: flex-start;
+  gap: var(--space-1);
+  padding-inline: var(--space-2);
+}
+
+.dictation-overlay--cloud[data-phase='error'] .dictation-cloud__core {
+  width: 56px;
+  height: var(--control-height);
+  color: var(--status-danger);
+}
+
+.dictation-overlay--cloud[data-phase='error'] .dictation-cloud__fallback { display: block; }
+.dictation-cloud__error-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-label);
+  overflow-wrap: anywhere;
+}
+
+.dictation-cloud__bar :is(.dictation-cloud__copy, .dictation-cloud__dismiss) {
+  flex: 0 0 var(--control-height-compact);
+  width: var(--control-height-compact);
+  height: var(--control-height-compact);
+  border-radius: var(--radius-round);
+  color: var(--fg-primary);
+}
+
+.dictation-cloud__bar .dictation-cloud__copy { background: var(--control-surface); }
+.dictation-cloud__bar :is(.dictation-cloud__copy, .dictation-cloud__dismiss):hover { background: var(--control-surface-hover); }
+
+@media (forced-colors: active) {
+  .dictation-overlay[data-phase='error'] { border: 1px solid CanvasText; }
+  .dictation-cloud__bar .dictation-cloud__copy { border: 1px solid ButtonText; }
+}
+
 .dictation-theme-choice__art { height: 50px; }
 .dictation-theme-choice__art .dictation-cloud-surface { position: static; max-width: 100%; }

@@ -1,4 +1,5 @@
 import type { DirectYandexStatus, TaskbarStatus, MonitorSnapshot } from '../../shared/lib/types'
+import { checkForUpdates as checkBrowserUpdates } from '../../app/tauriApi'
 
 // The Storybook resolver lets this re-export reach the real browser adapter.
 export * from '../../app/tauriApi'
@@ -11,15 +12,27 @@ const defaultMonitors: MonitorSnapshot = { revision: 1, preferredId: null, activ
   { id: 'display-portrait', name: '2 · Display', x: -1080, y: 0, width: 1080, height: 1920, scaleFactor: 1, primary: false },
 ] }
 let monitors = defaultMonitors
-export async function getMonitorSnapshot() { return monitors }
+let monitorLoadError = false
+let updateCheckError: string | undefined
+export async function getMonitorSnapshot() {
+  if (monitorLoadError) throw new Error('Display enumeration failed')
+  return monitors
+}
+export function restoreMonitorPreview() { monitorLoadError = false }
 export async function onMonitorsChanged(_callback: (snapshot: MonitorSnapshot) => void) { return () => {} }
 const listeners = new Set<(value: DirectYandexStatus) => void>()
 
-export function resetNativePreview(options: { direct?: DirectYandexStatus; taskbar?: TaskbarStatus; monitors?: MonitorSnapshot } = {}) {
+export function resetNativePreview(options: { direct?: DirectYandexStatus; taskbar?: TaskbarStatus; monitors?: MonitorSnapshot; monitorLoadError?: boolean; updateCheckError?: string } = {}) {
   monitors = options.monitors ?? defaultMonitors
+  monitorLoadError = options.monitorLoadError ?? false
+  updateCheckError = options.updateCheckError
   direct = { ...(options.direct ?? disabled) }
   taskbar = options.taskbar ?? { state: 'off' }
   listeners.clear()
+}
+export async function checkForUpdates(forceSameVersion = false) {
+  if (updateCheckError) throw new Error(updateCheckError)
+  return checkBrowserUpdates(forceSameVersion)
 }
 export async function getDirectYandexStatus() { return direct }
 export async function onDirectYandexStatus(callback: (status: DirectYandexStatus) => void) {

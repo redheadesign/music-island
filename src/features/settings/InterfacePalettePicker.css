@@ -46,15 +46,15 @@
   background-color: var(--palette-preview-base);
   /* ai-design-check-ignore-next-line no-radial-halo -- Each swatch previews both colors of the selected palette. */
   background-image:
-    radial-gradient(circle at 72% 22%, var(--palette-preview-first), transparent 74%),
-    radial-gradient(circle at 18% 82%, var(--palette-preview-second), transparent 74%);
+    radial-gradient(ellipse at 30% 5%, rgb(255 255 255 / .38), transparent 45%),
+    linear-gradient(140deg, var(--palette-preview-first) 18%, var(--palette-preview-second) 82%);
 }
 
 .interface-palette-picker__swatch[data-scheme='dark'] {
   /* ai-design-check-ignore-next-line no-radial-halo -- Matches the mirrored colors of the T3 Code dark preview. */
   background-image:
-    radial-gradient(circle at 28% 78%, var(--palette-preview-first), transparent 74%),
-    radial-gradient(circle at 82% 18%, var(--palette-preview-second), transparent 74%);
+    radial-gradient(ellipse at 70% 5%, rgb(255 255 255 / .27), transparent 43%),
+    linear-gradient(224deg, var(--palette-preview-second) 18%, var(--palette-preview-first) 82%);
 }
 
 .interface-palette-picker__swatch--custom { background-image: none; }

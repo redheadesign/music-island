@@ -70,7 +70,53 @@ export const FoxPreparing: Story = { ...PixelFox, name: 'Лиса · подго�
 export const FoxProcessing: Story = { ...PixelFox, name: 'Распознавание · мини-игры без ушек', args: { ...PixelFox.args, status: { ...meta.args.status, phase: 'transcribing' } } }
 export const FoxSnake: Story = { ...FoxProcessing, name: 'Змейка · без ушек', args: { ...FoxProcessing.args, status: { ...meta.args.status, phase: 'transcribing', operationId: 2 }, reducedMotion: true } }
 export const FoxCompleted: Story = { ...PixelFox, name: 'Лиса · готово', args: { ...PixelFox.args, status: { ...meta.args.status, phase: 'completed' } } }
-export const FoxError: Story = { ...PixelFox, name: 'Лиса · ошибка вставки', args: { ...PixelFox.args, status: { ...meta.args.status, phase: 'error', text: 'Тестовая запись.' } } }
+export const FoxError: Story = {
+  ...PixelFox,
+  name: 'Лиса · ошибка вставки · копирование',
+  args: { ...PixelFox.args, status: { ...meta.args.status, phase: 'error', text: 'Тестовая запись.' } },
+  parameters: { workshop: { width: 256 } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    const overlay = canvasElement.querySelector('.dictation-overlay')!
+    const alert = canvas.getByRole('alert')
+    const copy = canvas.getByRole('button', { name: 'Скопировать текст' })
+    const close = canvas.getByRole('button', { name: 'Закрыть' })
+    await expect(alert).toBeVisible()
+    await expect(alert).toHaveTextContent('Не удалось вставить')
+    const bounds = overlay.getBoundingClientRect()
+    await expect(bounds.width).toBeLessThanOrEqual(248)
+    await expect(bounds.height).toBeLessThanOrEqual(50)
+    for (const item of [alert, copy, close]) {
+      await expect(item.getBoundingClientRect().right).toBeLessThanOrEqual(bounds.right)
+    }
+    await userEvent.click(copy)
+    await expect(args.copy).toHaveBeenCalledOnce()
+    await userEvent.click(close)
+    await expect(args.cancel).toHaveBeenCalledOnce()
+  },
+}
+export const FoxCopyError: Story = {
+  ...FoxError,
+  name: 'Лиса · не удалось скопировать текст',
+  args: { ...FoxError.args, copy: fn(async () => { throw new Error('Clipboard unavailable') }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Скопировать текст' }))
+    await expect(canvas.getByRole('alert')).toHaveTextContent('Не удалось скопировать')
+    await expect(canvas.getByRole('button', { name: 'Скопировать текст' })).toBeEnabled()
+  },
+}
+export const WaveError: Story = {
+  ...Waves,
+  name: 'Волны · не удалось распознать',
+  args: { ...Waves.args, status: { ...meta.args.status, phase: 'error' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('alert')).toHaveTextContent('Не удалось распознать')
+    await expect(canvas.queryByRole('button', { name: 'Скопировать текст' })).not.toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Закрыть' })).toBeVisible()
+  },
+}
 export const FoxStill: Story = { ...PixelFox, name: 'Лиса · без движения', args: { ...PixelFox.args, reducedMotion: true } }
 
 function RestartPreview(args: ComponentProps<typeof DictationOverlayView>) {

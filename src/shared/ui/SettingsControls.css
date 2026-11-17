@@ -75,7 +75,7 @@
 
 [data-interface-theme='glass'] :is(.ui-input, .ui-search, .dark-select:not(.dark-select--actions), .ui-button--secondary) {
   border-radius: var(--glass-control-radius);
-  background-image: var(--glass-sheen);
+  background-image: var(--glass-control-sheen);
   box-shadow: var(--glass-control-rim);
 }
 [data-interface-theme='glass'] .ui-input.ui-textarea { border-radius: var(--radius-md); }

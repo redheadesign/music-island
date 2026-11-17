@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { OverlayShell } from '../../features/overlay/OverlayShell'
+import { IslandTopIndicator } from '../../features/overlay/IslandTopIndicator'
 import type { IslandAppState, OverlayMode } from '../../app/useIslandApp'
 import type { MediaSnapshot } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
@@ -204,6 +205,22 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
   },
 }
 export const GlassWithoutCover: StoryObj<typeof meta> = { ...Glass, name: 'Стекло · нейтральный прогресс без обложки', args: { artwork: 'missing' } }
+export const GlassEdge: StoryObj<typeof meta> = {
+  ...Glass,
+  name: 'Стекло · отблеск у верхнего края',
+  parameters: { workshop: { width: 460, height: 184, note: 'Момент наведения перед раскрытием островка.' } },
+  render: ({ reducedMotion }) => (
+    <div className={`island-root${reducedMotion ? ' reduced-motion' : ''}`} data-interface-theme="glass" data-cover-art="true"
+      style={{ '--artwork-primary': '24, 133, 212', '--artwork-secondary': '25, 175, 187' } as CSSProperties}>
+      <div className="island-top-chrome">
+        <div className="edge-trigger edge-trigger--peeking" aria-hidden="true"
+          style={{ '--peek-progress': 0.88, '--peek-x': '144px' } as CSSProperties}>
+          <IslandTopIndicator progressPercent={38} hidden />
+        </div>
+      </div>
+    </div>
+  ),
+}
 export const GlassReducedMotion: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · частицы при уменьшенном движении', args: { reducedMotion: true },
   play: async ({ canvasElement }) => {

@@ -140,10 +140,19 @@ export const Light: Story = { name: 'Модели · светлая тема', p
 export const English: Story = { name: 'Models · English', args: { locale: 'en' } }
 export const Dictionary: Story = { name: 'Словарь', args: { page: 'dictionary' } }
 export const GlassDictionary: Story = {
-  ...Dictionary, name: 'Стекло · многострочные поля словаря', globals: { interfaceTheme: 'glass' },
+  ...Dictionary, name: 'Стекло · поля и порог коррекции', globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
-    const field = within(canvasElement).getByRole('textbox', { name: /^Свои слова$/ })
+    const canvas = within(canvasElement)
+    const field = canvas.getByRole('textbox', { name: /^Свои слова$/ })
+    const threshold = canvas.getByRole<HTMLInputElement>('slider', { name: 'Порог коррекции' })
     await expect(getComputedStyle(field).borderTopLeftRadius).toBe('18px')
+    await expect(threshold).toHaveClass('range-slider')
+    await expect(getComputedStyle(threshold).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    threshold.focus()
+    await expect(threshold).toHaveFocus()
+    fireEvent.change(threshold, { target: { value: '0.05' } })
+    await expect(threshold.valueAsNumber).toBe(0.05)
+    await expect(getComputedStyle(threshold).getPropertyValue('--range-fill')).toBe('5%')
   },
 }
 export const DictionaryAddWord: Story = {
@@ -280,6 +289,17 @@ export const AdvancedLight: Story = { name: 'Дополнительно · св�
 export const AdvancedEnglish: Story = { name: 'Дополнительно · английский', args: { page: 'advanced', locale: 'en' } }
 export const AdvancedNarrow: Story = { name: 'Дополнительно · узкое окно', args: { page: 'advanced' }, parameters: { workshop: { width: 420 } } }
 export const AdvancedLoadError: Story = { name: 'Дополнительно · устройства недоступны', args: { page: 'advanced', controller: { ...controller, api: { ...dictationApi, getAvailableOutputDevices: fn(async () => { throw new Error('Unavailable') }), getAvailableAccelerators: fn(async () => { throw new Error('Unavailable') }) } } } }
+export const GlassAdvancedLoadError: Story = {
+  ...AdvancedLoadError,
+  name: 'Стекло · не удалось загрузить устройства',
+  globals: { interfaceTheme: 'glass' },
+  parameters: { light: true, workshop: { width: 420 } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Не удалось загрузить устройства.')
+    await expect(canvas.getByRole('button', { name: 'Повторить' })).toBeEnabled()
+  },
+}
 export const AdvancedLoading: Story = { name: 'Дополнительно · загрузка устройств', args: { page: 'advanced', controller: { ...controller, api: { ...dictationApi, getAvailableOutputDevices: fn(async () => { await new Promise(() => {}); return dictationApi.getAvailableOutputDevices() }), getAvailableAccelerators: fn(async () => { await new Promise(() => {}); return dictationApi.getAvailableAccelerators() }) } } } }
 export const GeneralLight: Story = { name: 'Превью диктовки · светлая тема', args: { page: 'general', reducedMotion: true }, parameters: { light: true } }
 export const MicrophoneDiagnostic: Story = { name: 'Диагностика · микрофон доступен', args: { page: 'advanced' }, play: async ({ canvasElement }) => {

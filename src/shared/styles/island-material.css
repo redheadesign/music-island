@@ -16,6 +16,9 @@
 }
 
 [data-interface-theme='glass'] .island-card {
+  background-image:
+    var(--glass-sheen),
+    linear-gradient(115deg, var(--island-artwork-tint, transparent), transparent 76%);
   border-radius: 0 0 var(--glass-island-radius) var(--glass-island-radius);
   box-shadow: inset 1px 0 rgb(255 255 255 / .16), inset -1px -1px rgb(255 255 255 / .12), var(--glass-depth);
   backdrop-filter: var(--glass-frost-filter);
@@ -30,16 +33,15 @@
   background: rgb(255 255 255 / .15);
 }
 
-/* The glass artwork cap and the island's floating controls share the same
-   beveled material. Neither reads the album's extracted colors. */
+/* Controls stay neutral. The plate, playback fill and light pick up the cover. */
 .island-root[data-interface-theme='glass'] {
   --island-glass-control: rgb(66 66 65 / .78);
   --island-glass-hover: rgb(85 85 83 / .89);
   --island-glass-pressed: rgb(45 45 44 / .94);
   --island-cover-primary: #a6a6a2;
   --island-cover-secondary: #777774;
-  --island-progress-start: color-mix(in srgb, var(--island-cover-primary) 35%, #252525);
-  --island-progress-end: color-mix(in srgb, var(--island-cover-secondary) 28%, #303030);
+  --island-progress-start: color-mix(in srgb, var(--island-cover-primary) 78%, #fff);
+  --island-progress-end: color-mix(in srgb, var(--island-cover-secondary) 78%, #fff);
   --island-particle-ink: color-mix(in srgb, var(--island-cover-primary) 65%, #fff);
   --island-particle-soft-ink: color-mix(in srgb, var(--island-cover-secondary) 52%, #fff);
   --island-glass-ink: #f4f4f1;
@@ -47,6 +49,13 @@
 .island-root[data-interface-theme='glass'][data-cover-art='true'] {
   --island-cover-primary: rgb(var(--artwork-primary));
   --island-cover-secondary: rgb(var(--artwork-secondary));
+  --island-artwork-tint: color-mix(in srgb, var(--island-cover-primary) 16%, transparent);
+}
+@supports (color: oklch(from red l c h)) {
+  .island-root[data-interface-theme='glass'] {
+    --island-progress-start: oklch(from var(--island-cover-primary) clamp(.67, l, .82) min(.20, calc(c * 1.17)) h);
+    --island-progress-end: oklch(from var(--island-cover-secondary) clamp(.63, l, .77) min(.18, calc(c * 1.12)) h);
+  }
 }
 .island-particles { display: none; }
 @media (prefers-reduced-motion: no-preference) {
@@ -122,11 +131,77 @@
 }
 .island-root[data-interface-theme='glass'] .progress-track::before { background: none; }
 .island-root[data-interface-theme='glass'] .progress-fill {
-  background: linear-gradient(90deg, var(--island-progress-start), var(--island-progress-end));
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / .25), transparent 26%, transparent 72%, rgb(24 24 24 / .18)),
+    linear-gradient(90deg, var(--island-progress-start), var(--island-progress-end));
   box-shadow: inset -1px 0 rgb(255 255 255 / .18);
 }
+.island-root[data-interface-theme='glass'] .progress-visual::after {
+  /* Fixed to the lettering, so the bright seek edge can pass underneath it. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 9%, rgb(16 16 16 / .63) 36% 64%, transparent 91%);
+}
+.island-root[data-interface-theme='glass'] .progress-content { color: var(--island-glass-ink); }
 .island-root[data-interface-theme='glass'] .collapsed-progress__fill {
-  background: linear-gradient(90deg, var(--island-particle-soft-ink), var(--island-particle-ink));
+  background: linear-gradient(90deg, var(--island-progress-end), var(--island-progress-start));
+}
+
+/* A fixed shallow lens stays flush with the screen edge. The reflected rim
+   and the color beneath it track the existing hover position at different rates. */
+.island-root[data-interface-theme='glass'] .edge-peek {
+  --edge-lens-depth: calc(13px * var(--island-scale, 1));
+  --edge-lens-anchor: 50%;
+  --edge-lens-travel: 0px;
+  left: 0;
+  width: 100%;
+  height: var(--edge-lens-depth);
+  overflow: hidden;
+  border-radius: 0;
+  background: none;
+  opacity: var(--peek-progress, 0);
+  transform: none;
+}
+.island-root[data-interface-theme='glass'] .edge-peek::before,
+.island-root[data-interface-theme='glass'] .edge-peek::after {
+  content: '';
+  position: absolute;
+  left: var(--edge-lens-anchor);
+  transform: translateX(calc(var(--edge-lens-travel) - 50%));
+  mask-image: linear-gradient(90deg, transparent, #000 22% 78%, transparent);
+}
+.island-root[data-interface-theme='glass'] .edge-peek::before {
+  inset-block: 0;
+  width: calc(148px * var(--island-scale, 1));
+  border-radius: 0 0 var(--glass-island-radius) var(--glass-island-radius);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / .16), transparent 40%, color-mix(in srgb, var(--island-progress-start) 22%, transparent)),
+    var(--glass-island-fill);
+  box-shadow: inset 0 -1px rgb(255 255 255 / .33);
+}
+.island-root[data-interface-theme='glass'] .edge-peek::after {
+  inset-block-end: 1px;
+  width: calc(90px * var(--island-scale, 1));
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--island-progress-end), rgb(255 255 255 / .84) 61%, var(--island-progress-start));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .island-root[data-interface-theme='glass']:not(.reduced-motion, [data-reduced-motion='true']) .edge-peek {
+    --edge-lens-anchor: 0%;
+    --edge-lens-travel: var(--peek-x, 110px);
+    transform: translateY(calc(-.48 * var(--edge-lens-depth) * (1 - var(--peek-progress, 0))));
+  }
+  .island-root[data-interface-theme='glass']:not(.reduced-motion, [data-reduced-motion='true']) .edge-trigger--peeking .edge-peek {
+    transition: opacity var(--motion-fast) var(--ease-enter), transform var(--motion-fast) var(--ease-enter);
+  }
+  .island-root[data-interface-theme='glass']:not(.reduced-motion, [data-reduced-motion='true']) .edge-trigger--peeking .edge-peek::before {
+    transition: transform var(--motion-normal) var(--ease-enter);
+  }
+  .island-root[data-interface-theme='glass']:not(.reduced-motion, [data-reduced-motion='true']) .edge-trigger--peeking .edge-peek::after {
+    transition: transform var(--motion-fast) var(--ease-enter);
+  }
 }
 .island-root[data-interface-theme='glass'][data-reduced-transparency='true'] {
   --island-glass-control: #424241;

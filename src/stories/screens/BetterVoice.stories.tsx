@@ -27,7 +27,7 @@ const meta = {
     const [, updateArgs] = useArgs()
     const colorScheme = context.parameters.settingsColorScheme === 'light' ? 'light' : 'dark'
     return (
-      <div className="settings-window-root" data-color-scheme={colorScheme}>
+      <div className="settings-window-root" data-color-scheme={colorScheme} data-interface-theme={context.globals.interfaceTheme}>
         <VoiceSettingsView
           {...args}
           locale={context.globals.locale}
@@ -114,6 +114,7 @@ export const StartError: Story = {
     await expect(canvas.getByRole('button', { name: /Робот|Robot/ })).toBeDisabled()
   },
 }
+export const GlassStartError: Story = { ...StartError, name: 'Стекло · не удалось открыть микрофон', globals: { interfaceTheme: 'glass' } }
 export const Developer: Story = {
   name: 'Просмотр клипов',
   args: { developerMode: true },

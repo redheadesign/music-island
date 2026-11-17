@@ -62,3 +62,29 @@ it('shows slow model loading after two seconds without flashing fast loads or ch
     expect(vi.getTimerCount()).toBe(0)
   } finally { await act(async () => root.unmount()); vi.useRealTimers() }
 })
+
+it('reports copy failure on the current Fox error and clears it for a new recording', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  const container = document.createElement('div'), root = createRoot(container)
+  const copy = vi.fn(async () => { throw new Error('Clipboard unavailable') })
+  const cancel = vi.fn(async () => {})
+  const render = (operationId: number, phase: 'error' | 'completed' = 'error') => (
+    <DictationOverlayView visible reducedMotion appearance={defaultDictationAppearance}
+      status={{ revision: 2, operationId, phase, ready: true, text: 'Тестовая запись.', error: phase === 'error' ? 'Target closed' : null }}
+      levels={[]} text={{ committed: '', tentative: '' }} copy={copy} cancel={cancel} />
+  )
+  try {
+    await act(async () => root.render(render(1)))
+    const alert = () => container.querySelector('[role="alert"]')
+    expect(alert()?.textContent).toBe('Не удалось вставить')
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Скопировать текст"]')?.click())
+    expect(alert()?.textContent).toBe('Не удалось скопировать')
+    await act(async () => root.render(render(1, 'completed')))
+    expect(alert()).toBeNull()
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('Готово')
+    await act(async () => root.render(render(2)))
+    expect(alert()?.textContent).toBe('Не удалось вставить')
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Закрыть"]')?.click())
+    expect(cancel).toHaveBeenCalledOnce()
+  } finally { await act(async () => root.unmount()) }
+})

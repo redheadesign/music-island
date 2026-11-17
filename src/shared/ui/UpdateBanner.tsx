@@ -56,7 +56,7 @@ export function UpdateBanner({
             {heading}
           </strong>
           {hasError && error ? (
-            <span className="island-update-rail__error" role="alert">{error}</span>
+            <span className="island-update-rail__error" role="alert" title={error}><TriangleAlert size={13} aria-hidden="true" /><span>{error}</span></span>
           ) : null}
           {busy ? (
             <UpdateProgress variant="island" percent={percent} label={heading} />
@@ -105,7 +105,7 @@ export function UpdateBanner({
           <UpdateProgress variant="settings" percent={percent} label={heading} />
         ) : null}
         {hasError && error ? (
-          <Notice tone="danger">{error}</Notice>
+          <Notice tone="danger" compact>{error}</Notice>
         ) : null}
         {!busy ? (
           <div className="update-banner__actions">

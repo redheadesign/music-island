@@ -34,7 +34,7 @@
   background-color: var(--surface-glass);
   background-image: var(--glass-sheen);
   backdrop-filter: var(--glass-filter);
-  box-shadow: var(--glass-panel-rim), var(--shadow-popover);
+  box-shadow: var(--glass-control-rim), var(--shadow-popover);
 }
 .dark-select-menu[data-interface-theme='glass'] .dark-select-option--active {
   background-color: var(--glass-selection-fill);

@@ -7,6 +7,7 @@ import type {
   UsageSnapshot,
 } from '../../shared/lib/usageTypes'
 import { BrandLogo } from '../../shared/ui/BrandLogo'
+import { StatusChip } from '../../shared/ui/StatusChip'
 import { clampUsagePercent, formatUsageWindowLabel, getUsageQuotaTone, type UsageLocale } from './usageFormat'
 import './usage.css'
 
@@ -84,6 +85,7 @@ function ProviderCard({
 }) {
   const text = copy[locale]
   const state = data?.state ?? 'disabled'
+  const failed = state === 'needs-auth' || state === 'unavailable' || state === 'error'
   return (
     <article className="usage-settings__provider">
       <div className="usage-settings__heading">
@@ -92,7 +94,9 @@ function ProviderCard({
           <strong>{provider === 'codex' ? text.codex : text.claude}</strong>
           {!enabled ? <small>{provider === 'codex' ? text.codexConsent : text.claudeConsent}</small> : null}
         </div>
-        {enabled || state !== 'disabled' ? <span className={`usage-settings__state usage-settings__state--${state}`}>{text.states[state]}</span> : null}
+        {enabled || state !== 'disabled' ? failed
+          ? <StatusChip tone="danger" appearance="flat" role="status">{text.states[state]}</StatusChip>
+          : <span className={`usage-settings__state usage-settings__state--${state}`}>{text.states[state]}</span> : null}
       </div>
       {enabled && data?.windows.length ? (
         <div className="usage-settings__limits">

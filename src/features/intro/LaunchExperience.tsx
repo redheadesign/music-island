@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type { AppConfig } from '../../shared/lib/types'
+import { getInterfaceTheme, getSettingsColorScheme } from '../../shared/lib/uiPrefs'
 import { Button, Notice } from '../../shared/ui/SettingsControls'
 import { Onboarding } from './Onboarding'
 import { IntroSplash } from './IntroSplash'
@@ -26,7 +27,7 @@ export function LaunchExperience() {
     })().catch(() => { if (active) setError(true) })
     return () => { active = false; dispose?.() }
   }, [receive])
-  if (error) return <div className="onboarding"><Notice tone="danger" action={<Button onClick={() => { void invoke<LaunchState>('get_launch_state').then(receive).catch(() => setError(true)) }}>Повторить / Retry</Button>}>Не удалось открыть знакомство / Could not open the introduction</Notice></div>
+  if (error) return <div className="onboarding" data-color-scheme={getSettingsColorScheme(state?.config)} data-interface-theme={getInterfaceTheme(state?.config)}><Notice tone="danger" action={<Button onClick={() => { void invoke<LaunchState>('get_launch_state').then(receive).catch(() => setError(true)) }}>Повторить / Retry</Button>}>Не удалось открыть знакомство / Could not open the introduction</Notice></div>
   if (!state) return null
   return state.onboarding ? <Onboarding key={state.generation} config={state.config} exePath={state.exePath} onFinish={async (enableAutostart) => {
     await invoke('finish_onboarding', { generation: state.generation, enableAutostart: enableAutostart ?? null })

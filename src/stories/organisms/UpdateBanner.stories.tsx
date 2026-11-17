@@ -79,6 +79,12 @@ export const Error: Story = {
     await expect(args.onPrimary).toHaveBeenCalled()
   },
 }
+export const GlassError: Story = {
+  ...Error,
+  name: 'Стекло · не удалось загрузить обновление',
+  globals: { interfaceTheme: 'glass' },
+  decorators: [(Story) => <div className="auxiliary-ui" data-interface-theme="glass" data-color-scheme="light"><Story /></div>],
+}
 export const Island: Story = {
   name: 'Баннер на островке',
   args: { variant: 'island' },
@@ -160,6 +166,12 @@ export const IslandError: Story = {
     primaryLabel: 'Повторить',
     error: 'Не удалось загрузить обновление. Проверьте подключение и повторите попытку.',
   },
+}
+export const GlassIslandError: Story = {
+  ...IslandError,
+  name: 'Стекло · ошибка обновления на островке',
+  globals: { interfaceTheme: 'glass' },
+  play: Error.play,
 }
 
 export const IslandNarrow: Story = {

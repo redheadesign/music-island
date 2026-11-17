@@ -18,7 +18,9 @@ const meta = {
     },
     controls: { exclude: ['ref', 'locale'] },
   },
-  render: (args, context) => <DirectConnectionDialog {...args} locale={context.globals.locale} />,
+  render: (args, context) => <div className="auxiliary-ui" data-interface-theme={context.globals.interfaceTheme} data-color-scheme={context.parameters.settingsColorScheme ?? 'dark'}>
+    <DirectConnectionDialog {...args} locale={context.globals.locale} />
+  </div>,
 } satisfies Meta<typeof DirectConnectionDialog>
 export default meta
 type Story = StoryObj<typeof meta>
@@ -72,6 +74,19 @@ export const ErrorNarrow: Story = {
     error: 'Яндекс Музыка запустилась, но управление плеером пока недоступно. Дождитесь загрузки приложения и повторите подключение. Если ошибка повторяется, вернитесь на Windows.',
   },
   parameters: { workshop: { width: 320 } },
+}
+export const GlassError: Story = { ...Error, name: 'Стекло · ошибка подключения', globals: { interfaceTheme: 'glass' } }
+export const GlassErrorNarrow: Story = {
+  ...ErrorNarrow,
+  name: 'Стекло · длинная ошибка подключения',
+  globals: { interfaceTheme: 'glass' },
+  parameters: { ...ErrorNarrow.parameters, settingsColorScheme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('alert')).toBeVisible()
+    const dialog = canvas.getByRole('dialog')
+    await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth)
+  },
 }
 
 export const English: Story = {

@@ -91,9 +91,6 @@
 .usage-settings__state--connected { color: var(--status-success); }
 .usage-settings__state--stale,
 .usage-settings__state--connecting { color: var(--status-warning); }
-.usage-settings__state--needs-auth,
-.usage-settings__state--unavailable,
-.usage-settings__state--error { color: var(--status-danger); }
 
 .usage-settings__limits {
   display: grid;

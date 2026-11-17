@@ -167,6 +167,10 @@ export details: [MOTION_PRODUCTION.md](MOTION_PRODUCTION.md).
 
 ## Settings consistency pass · October 2026
 
+- `Screens/Settings/GlassOptics` exercises a rim highlight under the pointer.
+  `Screens/Dictation/GlassDictionary` checks the correction slider's transparent
+  control box, focus and progress fill. `Screens/Island` includes warm,
+  cool and neutral cover examples and the Glass top-edge preview.
 - `Atoms/SettingsControls/Messages` shows semantic notices and named icon buttons.
 - `Screens/Dictation/AdvancedLight`, `AdvancedEnglish`, `AdvancedNarrow`,
   `AdvancedLoading` and `AdvancedLoadError` cover the grouped advanced page,

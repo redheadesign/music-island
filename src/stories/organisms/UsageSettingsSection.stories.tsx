@@ -4,9 +4,9 @@ import { expect, fn } from 'storybook/test'
 import { UsageSettingsSection } from '../../features/usage/UsageSettingsSection'
 import type { UsagePreferences, UsageSnapshot } from '../../shared/lib/usageTypes'
 
-function UsageSettingsPreview({ args, locale, colorScheme }: { args: Parameters<typeof UsageSettingsSection>[0]; locale: 'ru' | 'en'; colorScheme: 'dark' | 'light' }) {
+function UsageSettingsPreview({ args, locale, colorScheme, interfaceTheme }: { args: Parameters<typeof UsageSettingsSection>[0]; locale: 'ru' | 'en'; colorScheme: 'dark' | 'light'; interfaceTheme: string }) {
   const [preferences, setPreferences] = useState<UsagePreferences>(args.preferences)
-  return <div className="settings-window-root" data-color-scheme={colorScheme}>
+  return <div className="settings-window-root" data-color-scheme={colorScheme} data-interface-theme={interfaceTheme}>
     <UsageSettingsSection {...args} locale={locale} preferences={preferences} onConnect={(provider) => { args.onConnect(provider); setPreferences((current) => ({ ...current, [`${provider}Enabled`]: true })) }} onDisconnect={(provider) => { args.onDisconnect(provider); setPreferences((current) => ({ ...current, [`${provider}Enabled`]: false })) }} />
   </div>
 }
@@ -41,7 +41,7 @@ const meta = {
     preferences: { codexEnabled: true, claudeEnabled: false }, snapshot, busyProvider: null,
     onConnect: fn(), onDisconnect: fn(), onRefresh: fn(),
   },
-  render: (args, context) => <UsageSettingsPreview args={args} locale={context.globals.locale} colorScheme={context.parameters.settingsColorScheme === 'light' ? 'light' : 'dark'} />,
+  render: (args, context) => <UsageSettingsPreview args={args} locale={context.globals.locale} colorScheme={context.parameters.settingsColorScheme === 'light' ? 'light' : 'dark'} interfaceTheme={context.globals.interfaceTheme} />,
   parameters: { settingsColorScheme: 'dark', workshop: { width: 620, height: 560, note: 'Согласие показано перед действием; история не обращается к Codex или Claude.' } },
 } satisfies Meta<typeof UsageSettingsSection>
 export default meta
@@ -101,5 +101,14 @@ export const NeedsClaudeLogin: Story = {
   args: {
     preferences: { codexEnabled: false, claudeEnabled: true },
     snapshot: { ...snapshot, claude: { ...snapshot.claude, state: 'needs-auth', messageCode: 'needs-auth' } },
+  },
+}
+export const GlassProviderError: Story = {
+  name: 'Стекло · не удалось получить лимиты',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  args: { snapshot: { ...snapshot, codex: { ...snapshot.codex, state: 'error', windows: [] } } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('status')).toHaveTextContent('Лимиты недоступны')
+    await expect(canvas.getByRole('button', { name: 'Обновить' })).toBeEnabled()
   },
 }

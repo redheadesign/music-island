@@ -129,6 +129,23 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = { name: 'Настройки приложения' }
 export const Glass: Story = { name: 'Стекло · тёмное оформление', globals: { interfaceTheme: 'glass' } }
+export const GlassOptics: Story = {
+  ...Glass,
+  name: 'Стекло · блик на кромке',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  play: async ({ canvasElement }) => {
+    if (matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches) return
+    const trigger = within(canvasElement).getByRole('button', { name: 'Тема интерфейса' })
+    const { left, top, width } = trigger.getBoundingClientRect()
+    fireEvent.pointerMove(trigger, { pointerType: 'mouse', clientX: left + width * 0.2, clientY: top + 4 })
+    await waitFor(() => expect(trigger).toHaveAttribute('data-glass-light'))
+    const initial = trigger.style.getPropertyValue('--glass-light-x')
+    fireEvent.pointerMove(trigger, { pointerType: 'mouse', clientX: left + width * 0.8, clientY: top + 4 })
+    await waitFor(() => expect(trigger.style.getPropertyValue('--glass-light-x')).not.toBe(initial))
+    fireEvent.pointerOut(trigger, { pointerType: 'mouse', relatedTarget: canvasElement })
+    await waitFor(() => expect(trigger).not.toHaveAttribute('data-glass-light'))
+  },
+}
 export const GlassScopes: Story = {
   ...Glass,
   name: 'Стекло · состояния верхнего меню',
@@ -427,7 +444,32 @@ export const AutostartError: Story = {
   name: 'Ошибка автозапуска',
   args: { autostartError: 'Не удалось включить автозапуск.' },
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: /^(Система|System)$/ }))
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: /^(Система|System)$/ }))
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Не удалось включить автозапуск.')
+  },
+}
+export const GlassAutostartError: Story = { ...AutostartError, name: 'Стекло · ошибка автозапуска', globals: { interfaceTheme: 'glass' } }
+export const GlassTaskbarError: Story = {
+  name: 'Стекло · мини-плеер недоступен',
+  globals: { interfaceTheme: 'glass' },
+  parameters: { nativePreview: { taskbar: { state: 'error' } } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: /^(Панель задач|Taskbar)$/ }))
+    await userEvent.click(await canvas.findByRole('switch', { name: /^(Мини-плеер|Taskbar mini-player)$/ }))
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(/Не удалось показать мини-плеер|Could not show the mini-player/)
+  },
+}
+export const GlassUpdateCheckError: Story = {
+  name: 'Стекло · проверка обновлений недоступна',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  parameters: { nativePreview: { updateCheckError: 'Сервер обновлений недоступен. Повторите позже.' }, settingsColorScheme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'О программе' }))
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Сервер обновлений недоступен.')
+    await expect(canvas.getByRole('button', { name: 'Проверить обновления' })).toBeEnabled()
   },
 }
 export const English: Story = { name: 'English', globals: { locale: 'en' } }

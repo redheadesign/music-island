@@ -1,5 +1,6 @@
 import { Children, cloneElement, isValidElement, useId, type ButtonHTMLAttributes, type ComponentPropsWithRef, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import './SettingsControls.css'
+import './Notice.css'
 import { Search, X, Info, TriangleAlert, CheckCircle2, LoaderCircle } from './SettingsIcons'
 
 export function Button({ variant = 'secondary', size = 'normal', className = '', type = 'button', ...props }: ComponentPropsWithRef<'button'> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; size?: 'normal' | 'compact' }) {
@@ -17,9 +18,22 @@ export function SettingsIconButton({ label, busy = false, children, ...props }: 
   return <Button {...props} className={`ui-button--icon ${props.className ?? ''}`} aria-label={label} title={label} aria-busy={busy || undefined} disabled={busy || props.disabled}>{busy ? <LoaderCircle className="ui-spinner" size={18} aria-hidden="true" /> : children}</Button>
 }
 
-export function Notice({ tone = 'info', title, children, action, className = '' }: { tone?: 'info' | 'success' | 'warning' | 'danger'; title?: string; children: ReactNode; action?: ReactNode; className?: string }) {
+export function Notice({ tone = 'info', title, children, action, compact = false, className = '' }: {
+  tone?: 'info' | 'success' | 'warning' | 'danger'
+  title?: string
+  children: ReactNode
+  action?: ReactNode
+  compact?: boolean
+  className?: string
+}) {
   const Icon = tone === 'danger' || tone === 'warning' ? TriangleAlert : tone === 'success' ? CheckCircle2 : Info
-  return <div className={`ui-notice ui-notice--${tone} ${className}`} role={tone === 'danger' ? 'alert' : 'status'}><Icon size={19} aria-hidden="true" /><div className="ui-notice__copy">{title ? <strong>{title}</strong> : null}<div>{children}</div></div>{action ? <div className="ui-notice__action">{action}</div> : null}</div>
+  return (
+    <div className={`ui-notice ui-notice--${tone} ${className}`} data-compact={compact || undefined} role={tone === 'danger' ? 'alert' : 'status'}>
+      <Icon size={compact ? 16 : 19} aria-hidden="true" />
+      <div className="ui-notice__copy">{title ? <strong>{title}</strong> : null}<div>{children}</div></div>
+      {action ? <div className="ui-notice__action">{action}</div> : null}
+    </div>
+  )
 }
 
 export function Toggle({ checked, onChange, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> & { checked: boolean; onChange: (checked: boolean) => void }) {
