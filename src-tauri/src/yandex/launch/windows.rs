@@ -15,7 +15,7 @@ use windows::{
         },
         UI::Shell::{
             FOLDERID_Desktop, FOLDERID_Programs, FOLDERID_Startup, IShellLinkW,
-            SHGetKnownFolderPath, ShellLink, KF_FLAG_DEFAULT, SLGP_RAWPATH,
+            SHGetKnownFolderPath, ShellLink, KF_FLAG_DEFAULT,
         },
     },
 };
@@ -133,7 +133,9 @@ impl WindowsBackend {
         let mut target = vec![0; 32768];
         let mut args = vec![0; 32768];
         unsafe {
-            link.GetPath(&mut target, std::ptr::null_mut(), SLGP_RAWPATH.0 as u32)?;
+            // Shell links can store %LOCALAPPDATA% instead of a literal path.
+            // Request the filesystem target before matching the installed player.
+            link.GetPath(&mut target, std::ptr::null_mut(), 0)?;
             link.GetArguments(&mut args)?;
         }
         let decode = |value: &[u16]| -> Result<String> {

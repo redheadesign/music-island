@@ -1534,7 +1534,8 @@ mod platform {
             };
             assert!(plan_from_scan(shell.clone(), Some(&failed), Some(&confirmed)).retain);
             let expired = Scan {
-                requested: Instant::now() - Duration::from_secs(3600),
+                requested: Instant::now() - SNAPSHOT_TTL - Duration::from_millis(1),
+                occupied: Ok(vec![]),
                 ..failed
             };
             assert!(plan_from_scan(shell, Some(&expired), Some(&confirmed)).retain);

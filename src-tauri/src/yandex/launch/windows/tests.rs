@@ -31,17 +31,21 @@ fn shell_link_can_use_a_worker_with_an_existing_mta_apartment() {
 
 #[test]
 fn real_windows_shortcuts_and_isolated_run_entry_roundtrip_preserves_metadata() {
-    let folder = tempfile::tempdir().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    // The runner can expose the user directory through an 8.3 TEMP alias.
+    // Windows Shell returns the long target path when it reloads the link.
+    let folder = temp.path().canonicalize().unwrap();
+    let folder = Path::new(folder.to_str().unwrap().trim_start_matches(r"\\?\"));
     let roots: Vec<_> = ["Desktop", "Programs", "Startup", "TaskBar"]
         .iter()
-        .map(|p| folder.path().join(p))
+        .map(|p| folder.join(p))
         .collect();
     for root in &roots {
         fs::create_dir(root).unwrap();
     }
     let stale = roots[0].join(format!(".music-island-{}-0.lnk", std::process::id()));
     fs::write(&stale, b"previous crashed process with a recycled PID").unwrap();
-    let install = folder.path().join("YandexMusic");
+    let install = folder.join("YandexMusic");
     fs::create_dir(&install).unwrap();
     let executable = install.join("Yandex Music.exe");
     fs::write(&executable, b"fixture, never executed").unwrap();
@@ -84,7 +88,7 @@ fn real_windows_shortcuts_and_isolated_run_entry_roundtrip_preserves_metadata() 
                 .unwrap();
             link.SetDescription(windows::core::w!("Preserve this description"))
                 .unwrap();
-            link.SetWorkingDirectory(PCWSTR(wide(folder.path().as_os_str()).as_ptr()))
+            link.SetWorkingDirectory(PCWSTR(wide(folder.as_os_str()).as_ptr()))
                 .unwrap();
             let persist: IPersistFile = link.cast().unwrap();
             persist
@@ -95,7 +99,12 @@ fn real_windows_shortcuts_and_isolated_run_entry_roundtrip_preserves_metadata() 
                 .unwrap();
         }
     }
-    let journal = folder.path().join("launch.json");
+    for root in &roots {
+        let link = backend.open_link(&root.join("Музыка.lnk")).unwrap();
+        let (target, _) = WindowsBackend::link_values(&link).unwrap();
+        assert!(same_path(&target, &executable), "{target:?} vs {executable:?}");
+    }
+    let journal = folder.join("launch.json");
     super::super::prepare_with(&backend, &journal, &executable, 49200).unwrap();
     assert_eq!(
         super::super::load(&journal).unwrap().unwrap().entries.len(),
