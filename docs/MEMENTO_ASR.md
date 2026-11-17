@@ -24,4 +24,18 @@ The [GigaAM v3 MIT release](https://developers.sber.ru/kak-v-sbere/culture/gigaA
 | [Parakeet TDT 0.6B v3](https://huggingface.co/handy-computer/parakeet-tdt-0.6b-v3-gguf) | Existing multilingual entry for checking Russian speech with English names and terms. |
 | [GigaAM Multilingual](https://huggingface.co/ai-sage/GigaAM-Multilingual) | A newer MIT CTC family. A port would still need verified inference compatibility and measured Russian performance. |
 
-These models offer comparison points. A benchmark of the exact Duo pack against Music Island was not run.
+## Local import and long recording check
+
+The installed decoder's filename ends in `.onnx`, but the packaged file is not readable as a standard model. We tried the installed `decoder.onnx` directly with [`CreateSession` from Microsoft ONNX Runtime 1.24.2](https://github.com/microsoft/onnxruntime/blob/v1.24.2/include/onnxruntime/core/session/onnxruntime_c_api.h), using the runtime shipped with the Music Island test build. The same CPU loader opened Music Island's Silero ONNX control. It rejected the Duo decoder with code `7`, `Protobuf parsing failed`. Only model files were read for this check. The pack requires a supported loader before Music Island can offer it for local import.
+
+The synthetic test WAV is `.local/memento-bench/ru-repeated-121s.wav` in the primary workspace. It is 121.125 seconds of mono PCM at 16 kHz, made by repeating the existing 8.075-second Russian fixture 15 times. Its SHA-256 is `994e12f01bf9e6f60c63519a7b8cfbe314c2283ddb47703f29aa01279683f8a5`. No private recordings were used.
+
+| Same audio on an AMD Ryzen 7 4700U with Radeon graphics | Inference after the model was loaded | Transcript check |
+| --- | ---: | --- |
+| Music Island GigaAM v3 E2E RNN-T Q8, Vulkan, one call | 83.524 s | 148 output words for 165 expected from the repeated short fixture |
+| Same Music Island model, seven pause-aligned calls | 41.100 s, plus 40 ms to plan the cuts | All 165 words matched the repeated short-fixture transcription in order |
+| Memento's installed Duo | Unmeasured | Unmeasured |
+
+These Music Island runs measure inference over an already recorded file. They exclude initial model loading, recording, optional AI processing and text insertion. The transcript check compares with repeated short-fixture recognition, so it measures consistency rather than a human-annotated word error rate. Raw results are in `.local/dictation-long-qa/{auto,chunks-auto}.jsonl`.
+
+The desktop tool timed out while waiting for app-launch approval before the Memento window opened. A supported local audio-file import or scripting interface could not be verified, so the table contains no claim about Duo speed or accuracy. If a supported Memento file flow becomes available, feed it the same WAV, time from starting recognition to the final transcript, and compare the unprocessed text with the same reference.
