@@ -28,3 +28,10 @@
 @keyframes select-enter {
   from { opacity: .7; transform: translateY(var(--select-enter-offset)); }
 }
+
+.dark-select-menu[data-interface-theme='glass'] {
+  background-color: var(--surface-glass);
+  background-image: var(--glass-sheen);
+  backdrop-filter: var(--glass-filter);
+  box-shadow: var(--glass-panel-rim), var(--shadow-popover);
+}

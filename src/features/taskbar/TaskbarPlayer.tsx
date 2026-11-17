@@ -2,6 +2,7 @@ import { Heart, Music2, Pause, Play, Repeat, Repeat1, Shuffle } from 'lucide-rea
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { Locale, MediaCommand, MediaSnapshot } from '../../shared/lib/types'
+import type { InterfaceScene, InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import { TASKBAR_ELEMENT_LABELS, normalizeTaskbarLayout, type TaskbarElement, type TaskbarLayoutV1 } from '../../shared/lib/taskbarLayout'
 import { IconButton } from '../../shared/ui/IconButton'
@@ -12,6 +13,9 @@ export interface TaskbarPlayerProps {
   snapshot: MediaSnapshot | null
   locale: Locale
   reducedMotion?: boolean
+  interfaceTheme?: InterfaceThemeId
+  interfaceScene?: InterfaceScene
+  reducedTransparency?: boolean
   unavailable?: boolean
   onCommand: (command: MediaCommand) => void
   onOpenIsland?: () => void
@@ -22,12 +26,13 @@ export interface TaskbarPlayerProps {
 }
 
 /** The same ordered controls used in the preview and the native taskbar renderer. */
-export function TaskbarPlayer({ layout, showLike = false, scale = 1, renderElement = (_element, node) => node, reducedMotion, ...props }: TaskbarPlayerProps) {
+export function TaskbarPlayer({ layout, showLike = false, scale = 1, renderElement = (_element, node) => node, reducedMotion, interfaceTheme, interfaceScene, reducedTransparency, ...props }: TaskbarPlayerProps) {
   const elements = normalizeTaskbarLayout(layout ?? { elements: ['cover', 'previous', 'transport', 'next', ...(showLike ? ['like'] : [])] }).elements
   const coverGap = elements.includes('cover') && elements.at(-1) !== 'cover' ? 4 : 0
   const width = 12 + elements.length * 32 + coverGap
   return <section className="taskbar-player" aria-label={props.locale === 'ru' ? 'Плеер в панели задач' : 'Taskbar player'}
     style={{ '--taskbar-scale': Math.min(1.25, Math.max(.75, Number.isFinite(scale) ? scale : 1)), '--taskbar-width': `${width}px` } as CSSProperties}
+    data-interface-theme={interfaceTheme} data-interface-scene={interfaceScene} data-reduced-transparency={reducedTransparency || undefined}
     data-reduced-motion={reducedMotion || undefined} data-empty={!props.snapshot?.hasSession || undefined}>
     {elements.map((element) => <Fragment key={element}>{renderElement(element, <TaskbarControl element={element} {...props} />)}</Fragment>)}
   </section>

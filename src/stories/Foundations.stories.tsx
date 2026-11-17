@@ -8,7 +8,7 @@ import { StatusChip } from '../shared/ui/StatusChip'
 
 export default {
   title: 'Foundations',
-  decorators: [(Story, context) => <div className="auxiliary-ui" data-color-scheme={context.parameters.settingsColorScheme}
+  decorators: [(Story, context) => <div className="auxiliary-ui" data-color-scheme={context.parameters.settingsColorScheme} data-interface-theme={context.globals.interfaceTheme}
     style={{ background: 'var(--surface-canvas)', padding: 'var(--space-6)' }}><Story /></div>],
   parameters: { workshop: { width: 920 }, controls: { disable: true } },
 } satisfies Meta
@@ -112,6 +112,9 @@ export const Palette: StoryObj = {
     </FoundationPage>
   ),
 }
+
+export const GlassPalette: StoryObj = { ...Palette, name: 'Стекло · токены цвета', globals: { interfaceTheme: 'glass' } }
+export const GlassPaletteLight: StoryObj = { ...GlassPalette, name: 'Стекло · светлые токены цвета', parameters: { settingsColorScheme: 'light' } }
 
 const typeStyles = [
   { role: 'Заголовок экрана', token: 'display', weight: 'semibold', example: 'Настройки', usage: 'Один главный заголовок на странице' },

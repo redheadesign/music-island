@@ -36,7 +36,10 @@ import { LatestDictationPanel } from './LatestDictationPanel'
 import { buildAccentTokens } from '../../shared/lib/accentTheme'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import {
+  getInterfaceScene,
+  getInterfaceTheme,
   getLocalServersWidgetScale,
+  getReducedTransparency,
   getUiPrefs,
   getUsageWidgetCompact,
   getUsageWidgetScale,
@@ -916,6 +919,9 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
         expandedVisible ? 'island-root--expanded' : '',
         reducedMotion ? 'reduced-motion' : '',
       ].join(' ')}
+      data-interface-theme={getInterfaceTheme(config)}
+      data-interface-scene={getInterfaceScene(config)}
+      data-reduced-transparency={getReducedTransparency(config) || undefined}
       style={style}
     >
       <div className="island-stage">

@@ -34,6 +34,7 @@ import { getUsagePreferences, withUsageProviderEnabled, type UsageController } f
 import type { UsageProvider } from '../../shared/lib/usageTypes'
 import { AccentColorPicker } from './AccentColorPicker'
 import { MonitorSetting } from './MonitorSetting'
+import { InterfaceAppearanceSettings } from './InterfaceAppearanceSettings'
 import { DirectConnectionDialog } from './DirectConnectionDialog'
 import { useAppUpdater } from './useAppUpdater'
 import { useWindowVisible } from './useWindowVisible'
@@ -50,6 +51,9 @@ import type {
 import { createTranslator, directStatusMessage, normalizeLocale } from '../../shared/i18n/messages'
 import { applyAccentTheme, normalizeHexColor } from '../../shared/lib/accentTheme'
 import {
+  getInterfaceScene,
+  getInterfaceTheme,
+  getReducedTransparency,
   getUiPrefs,
   getUsageWidgetCompact,
   getUsageWidgetScale,
@@ -98,6 +102,9 @@ export function SettingsPanel({
   const reducedMotion = Boolean(draft.appearance.reducedMotion || prefersReducedMotion)
   const uiPrefs = getUiPrefs(draft)
   const settingsColorScheme = getSettingsColorScheme(draft)
+  const interfaceTheme = getInterfaceTheme(draft)
+  const interfaceScene = getInterfaceScene(draft)
+  const reducedTransparency = getReducedTransparency(draft)
   const usageCompact = getUsageWidgetCompact(draft)
   const usageScale = getUsageWidgetScale(draft)
   const updater = useAppUpdater(true, Boolean(uiPrefs.forceSameVersionUpdate))
@@ -408,7 +415,17 @@ export function SettingsPanel({
   const directMessage = directStatusMessage(directStatus.state, directStatus.message, t)
 
   return (
-    <WarpSurfaceProvider><section ref={panelRef} className="settings-panel" aria-label={t('settings.title')} data-color-scheme={settingsColorScheme} data-reduced-motion={reducedMotion || undefined}>
+    <WarpSurfaceProvider scene={interfaceScene} colorScheme={settingsColorScheme}>
+    <section
+      ref={panelRef}
+      className="settings-panel"
+      aria-label={t('settings.title')}
+      data-color-scheme={settingsColorScheme}
+      data-interface-theme={interfaceTheme}
+      data-interface-scene={interfaceScene}
+      data-reduced-transparency={reducedTransparency || undefined}
+      data-reduced-motion={reducedMotion || undefined}
+    >
       <header className="settings-hero">
         <div className="settings-scope-switch" role="group" aria-label={t('settings.scope')}>
           <button
@@ -581,6 +598,8 @@ export function SettingsPanel({
         <IslandLayoutEditor config={draft} onChange={previewAndSave} onReset={resetIslandSettings} usage={usage?.snapshot ?? null} showHeading={false} active={settingsVisible && settingsPage === 'appearance'} />
 
         <div className="settings-control-group">
+
+        <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} />
 
         <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
 
@@ -915,7 +934,15 @@ export function SettingsPanel({
 
 
       {showConsent ? createPortal((
-        <div className="direct-connection-backdrop" role="presentation" data-color-scheme={settingsColorScheme} data-reduced-motion={reducedMotion || undefined}>
+        <div
+          className="direct-connection-backdrop"
+          role="presentation"
+          data-color-scheme={settingsColorScheme}
+          data-interface-theme={interfaceTheme}
+          data-interface-scene={interfaceScene}
+          data-reduced-transparency={reducedTransparency || undefined}
+          data-reduced-motion={reducedMotion || undefined}
+        >
           <DirectConnectionDialog
             reducedMotion={reducedMotion}
             ref={consentRef}

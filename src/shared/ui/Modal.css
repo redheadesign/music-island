@@ -1,5 +1,11 @@
 .app-modal { width: min(480px, calc(100vw - 48px)); max-height: calc(100vh - 48px); box-sizing: border-box; overflow: auto; padding: var(--space-6-5); border: 0; border-radius: calc(var(--radius-unit) * 5.5); background: var(--surface-panel); color: var(--fg-primary); font: var(--text-body)/var(--leading-body) var(--font-sans); box-shadow: var(--shadow-panel); }
 .app-modal::backdrop { background: var(--overlay-scrim); }
+[data-interface-theme='glass'] .app-modal {
+  background-color: var(--surface-panel);
+  background-image: var(--glass-sheen);
+  backdrop-filter: var(--glass-filter);
+  box-shadow: var(--glass-panel-rim), var(--shadow-panel);
+}
 .app-modal h3 { margin: 0 0 var(--space-3); font-size: var(--text-title); font-weight: var(--weight-semibold); }
 .app-modal p { color: var(--fg-secondary); }
 .app-modal button { min-height: 38px; padding: var(--space-2) var(--space-3-5); border: 0; border-radius: calc(var(--radius-unit) * 2.5); background: var(--control-surface); color: var(--fg-primary); font: inherit; cursor: pointer; }

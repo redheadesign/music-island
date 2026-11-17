@@ -1,0 +1,200 @@
+/* Theme-level roles. Components use their usual semantic tokens; a theme does
+   not own component markup, desktop geometry, or user-selected accent colors. */
+[data-interface-theme='glass'] {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --radius-unit: 4.5px;
+
+  --glass-opacity: 82%;
+  --glass-panel-opacity: 88%;
+  --glass-blur: 12px;
+  --glass-saturation: 1.45;
+  --glass-canvas: #16191f;
+  --glass-panel: #242932;
+  --glass-raised: #323844;
+  --glass-field: #292f3a;
+  --glass-ink: 237 243 255;
+  --glass-edge: rgb(var(--glass-ink) / .15);
+  --glass-sheen: linear-gradient(165deg, rgb(var(--glass-ink) / .09), transparent 52%);
+  --glass-panel-rim: inset 0 0 0 1px rgb(var(--glass-ink) / .10), inset 0 1px rgb(var(--glass-ink) / .13);
+  --glass-control-rim: inset 0 0 0 1px rgb(var(--glass-ink) / .16), inset 0 1px rgb(var(--glass-ink) / .20);
+  --glass-dust: rgb(var(--glass-ink) / .52);
+  --glass-island-fill: rgb(14 18 25 / .88);
+  --glass-island-opaque: #171b23;
+  --glass-depth: 0 8px 24px -14px rgb(0 0 0 / .62);
+  --glass-action: #69e8d4;
+  --glass-action-ink: #152828;
+  --glass-preview-base: #171d26;
+  --glass-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  --glass-frost-filter: blur(min(3.5px, var(--glass-blur))) saturate(var(--glass-saturation));
+  --preview-resting-opacity: .34;
+  --motion-glass-sheen: calc(var(--motion-unit) * 22);
+  --motion-glass-drift: calc(var(--motion-unit) * 420);
+
+  --surface-canvas: var(--glass-canvas);
+  --surface-panel: color-mix(in srgb, var(--glass-panel) var(--glass-panel-opacity), transparent);
+  --surface-raised: var(--glass-raised);
+  --surface-glass: color-mix(in srgb, var(--glass-raised) var(--glass-opacity), transparent);
+  --surface-glass-subtle: rgb(var(--glass-ink) / .05);
+  --surface-sunken: var(--glass-field);
+  --surface-hover: rgb(var(--glass-ink) / .10);
+  --surface-selected: rgb(var(--glass-ink) / .16);
+  --surface-selected-subtle: rgb(var(--glass-ink) / .06);
+  --control-surface: color-mix(in srgb, var(--glass-field) var(--glass-opacity), transparent);
+  --control-surface-hover: color-mix(in srgb, var(--glass-raised) 95%, transparent);
+  --control-off: #4e5664;
+  --control-track: #657081;
+  --control-primary-hover: #cbd7e2;
+  --fg-primary: #f2f5f8;
+  --fg-secondary: #c0cad7;
+  --fg-muted: #a5b0c0;
+  --fg-on-solid: #171b23;
+  --fg-on-glass: var(--fg-primary);
+  --fg-on-glass-secondary: var(--fg-secondary);
+  --window-titlebar: rgb(var(--glass-ink) / .035);
+  --shadow-control: var(--glass-control-rim);
+  --focus-ring: 2px solid #9de6f7;
+  font-family: var(--font-sans);
+}
+
+[data-interface-theme='glass'][data-interface-scene='fox'] {
+  --glass-action: #fa8744;
+  --glass-action-ink: #2d1d17;
+}
+
+[data-interface-theme='glass'][data-color-scheme='light'] {
+  color-scheme: light;
+  --glass-opacity: 85%;
+  --glass-panel-opacity: 88%;
+  --glass-canvas: #e5ebf1;
+  --glass-panel: #fcfdff;
+  --glass-raised: #edf2f7;
+  --glass-field: #f4f8fb;
+  --glass-ink: 31 56 77;
+  --glass-edge: rgb(var(--glass-ink) / .22);
+  --glass-sheen: linear-gradient(165deg, rgb(255 255 255 / .66), transparent 56%);
+  --glass-panel-rim: inset 0 0 0 1px rgb(var(--glass-ink) / .12), inset 0 1px rgb(255 255 255 / .82);
+  --glass-control-rim: inset 0 0 0 1px rgb(var(--glass-ink) / .26), inset 0 1px rgb(255 255 255 / .78);
+  --glass-dust: rgb(var(--glass-ink) / .36);
+  --glass-depth: 0 12px 24px -18px rgb(27 48 70 / .46);
+  --control-off: #677381;
+  --control-track: #808e9e;
+  --control-primary-hover: #35475a;
+  --fg-primary: #192632;
+  --fg-secondary: #405265;
+  --fg-muted: #4c5e70;
+  --fg-on-solid: #fafcff;
+  --focus-ring: 2px solid #205b7c;
+
+  /* Resolve the roles here too: classic light-scheme roots set these locally. */
+  --surface-canvas: var(--glass-canvas);
+  --surface-panel: color-mix(in srgb, var(--glass-panel) var(--glass-panel-opacity), transparent);
+  --surface-raised: var(--glass-raised);
+  --surface-glass: color-mix(in srgb, var(--glass-raised) var(--glass-opacity), transparent);
+  --surface-glass-subtle: rgb(var(--glass-ink) / .05);
+  --surface-sunken: var(--glass-field);
+  --surface-hover: rgb(var(--glass-ink) / .10);
+  --surface-selected: rgb(var(--glass-ink) / .16);
+  --surface-selected-subtle: rgb(var(--glass-ink) / .06);
+  --control-surface: color-mix(in srgb, var(--glass-field) var(--glass-opacity), transparent);
+  --control-surface-hover: color-mix(in srgb, var(--glass-raised) 95%, transparent);
+  --fg-on-glass: var(--fg-primary);
+  --fg-on-glass-secondary: var(--fg-secondary);
+  --window-titlebar: rgb(var(--glass-ink) / .05);
+  --shadow-control: var(--glass-control-rim);
+}
+
+[data-interface-theme='glass'][data-reduced-transparency='true'] {
+  --glass-opacity: 100%;
+  --glass-panel-opacity: 100%;
+  --glass-blur: 0px;
+  --glass-saturation: 1;
+  --glass-filter: none;
+  --glass-frost-filter: none;
+  --glass-sheen: none;
+  --glass-dust: transparent;
+  --glass-island-fill: var(--glass-island-opaque);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-interface-theme='glass'][data-interface-theme] {
+    --glass-opacity: 100%;
+    --glass-panel-opacity: 100%;
+    --glass-blur: 0px;
+    --glass-saturation: 1;
+    --glass-filter: none;
+    --glass-frost-filter: none;
+    --glass-sheen: none;
+    --glass-dust: transparent;
+    --glass-island-fill: var(--glass-island-opaque);
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  [data-interface-theme='glass'][data-interface-theme] { --glass-opacity: 100%; }
+}
+
+/* A small set of particles rises a few pixels as in ComposerDust. A single
+   composited layer does the work and goes idle after one cycle. */
+[data-interface-theme='glass'] :is(.island-feedback__layer, .ui-search) {
+  /* ai-design-check-ignore-next-line no-radial-halo -- Each gradient is one subpixel dust particle from the composer reference. */
+  --glass-particles:
+    radial-gradient(circle at 9% 66%, var(--glass-dust) .7px, transparent 1.2px),
+    radial-gradient(circle at 18% 89%, var(--glass-dust) 1px, transparent 1.5px),
+    radial-gradient(circle at 27% 73%, var(--glass-dust) .65px, transparent 1.1px),
+    radial-gradient(circle at 38% 92%, var(--glass-dust) .75px, transparent 1.25px),
+    radial-gradient(circle at 53% 53%, var(--glass-dust) .7px, transparent 1.2px),
+    radial-gradient(circle at 65% 82%, var(--glass-dust) 1px, transparent 1.5px),
+    radial-gradient(circle at 73% 69%, var(--glass-dust) .6px, transparent 1.1px),
+    radial-gradient(circle at 87% 90%, var(--glass-dust) .85px, transparent 1.35px),
+    radial-gradient(circle at 94% 46%, var(--glass-dust) .7px, transparent 1.2px);
+}
+
+@keyframes glass-drift {
+  0%, 100% { opacity: 0; }
+  20%, 60% { opacity: .85; }
+  100% { transform: translateY(calc(-1 * var(--space-2))); }
+}
+
+@keyframes glass-rim-sheen {
+  from { background-position: 100% 0; }
+  30% { opacity: .85; }
+  to { background-position: 0 0; opacity: 0; }
+}
+
+[data-interface-theme='glass'] :is(.ui-button--primary, .play-button) { position: relative; }
+
+[data-interface-theme='glass'] :is(.settings-preview, .island-preview, .taskbar-preview, .usage-widget-preview, .stateful-warp-surface) {
+  background-color: var(--glass-preview-base);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-interface-theme='glass'] :is(.island-feedback__layer, .ui-search:focus-within)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: var(--glass-particles);
+    opacity: 0;
+    animation: glass-drift var(--motion-glass-drift) linear;
+  }
+  [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):enabled::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: calc(var(--space-unit) * .25);
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 25%, #fff 50%, transparent 75%) 100% 0 / 250% 100%;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    opacity: 0;
+    animation: glass-rim-sheen var(--motion-glass-sheen) var(--ease-standard);
+  }
+  [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):enabled:focus-visible::after { content: ''; }
+  @media (hover: hover) {
+    [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):enabled:hover::after { content: ''; }
+  }
+  [data-interface-theme='glass'] :is(.island-feedback__layer, .ui-search):is(.reduced-motion *, [data-reduced-motion='true'] *)::before,
+  [data-interface-theme='glass'] :is(.ui-button--primary, .play-button):is(.reduced-motion *, [data-reduced-motion='true'], [data-reduced-motion='true'] *)::after {
+    display: none;
+  }
+}

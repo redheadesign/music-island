@@ -33,6 +33,12 @@
   padding: var(--space-7);
 }
 
+.direct-connection-backdrop[data-interface-theme='glass'] { backdrop-filter: var(--glass-filter); }
+.direct-connection-backdrop[data-interface-theme='glass'] .direct-connection-dialog {
+  background-image: var(--glass-sheen);
+  box-shadow: var(--glass-panel-rim), var(--shadow-panel);
+}
+
 .direct-connection-dialog__header {
   display: flex;
   align-items: center;

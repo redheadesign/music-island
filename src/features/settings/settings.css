@@ -589,6 +589,24 @@
 /* Settings presentation. Shared tokens also document the component workshop.
    Scope overrides to the settings window to preserve the media island. */
 .settings-window-root { container: settings-window / inline-size; }
+.settings-window-root[data-interface-theme='glass'] {
+  box-shadow: var(--glass-panel-rim);
+  background-image: var(--glass-sheen);
+}
+.settings-window-root[data-interface-theme='glass'] .settings-titlebar {
+  box-shadow: var(--glass-panel-rim);
+}
+.settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch, .locale-switch) {
+  box-shadow: var(--glass-control-rim);
+  background-image: var(--glass-sheen);
+}
+.settings-panel[data-interface-theme='glass'] :is(.settings-content .settings-section, .settings-usage-page) {
+  box-shadow: var(--glass-panel-rim), var(--glass-depth);
+  background-image: var(--glass-sheen);
+}
+.settings-panel[data-interface-theme='glass'] .settings-page-heading {
+  letter-spacing: 0;
+}
 .settings-window-root .settings-titlebar { background: var(--window-titlebar); }
 .settings-window-root .settings-window-actions button:hover { background: var(--surface-hover); }
 .settings-window-root .settings-window-actions button:last-child:hover {

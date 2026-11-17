@@ -11,7 +11,7 @@ import { OverlayShell } from './features/overlay/OverlayShell'
 import { SettingsPanel } from './features/settings/SettingsPanel'
 import { TaskbarPlayer } from './features/taskbar/TaskbarPlayer'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
-import { getSettingsColorScheme } from './shared/lib/uiPrefs'
+import { getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme } from './shared/lib/uiPrefs'
 import { SettingsWindow } from './features/settings/SettingsWindow'
 import './App.css'
 
@@ -33,6 +33,9 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
   const usage = useUsageController(windowLabel === 'main' || windowLabel === 'settings')
   const locale = normalizeLocale(app.config?.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
+  const interfaceTheme = getInterfaceTheme(app.config)
+  const interfaceScene = getInterfaceScene(app.config)
+  const reducedTransparency = getReducedTransparency(app.config)
 
   useEffect(() => {
     document.documentElement.lang = locale
@@ -53,6 +56,7 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
   if (windowLabel === 'taskbar') {
     return <TaskbarPlayer snapshot={app.media} locale={locale}
       reducedMotion={app.config.appearance.reducedMotion}
+      interfaceTheme={interfaceTheme} interfaceScene={interfaceScene} reducedTransparency={reducedTransparency}
       unavailable={app.config.media.protocol === 'yandex-direct' && app.directNeedsRecovery}
       onCommand={(command) => void app.sendCommand(command)}
       scale={app.config.taskbar?.scale} showLike={app.config.taskbar?.showLike} />
@@ -60,11 +64,20 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
 
   if (windowLabel === 'settings') {
     if (!app.config) {
-      return <main className="settings-window-root" data-color-scheme={getSettingsColorScheme(app.config)}>{t('settings.loading')}</main>
+      return <main className="settings-window-root" data-color-scheme={getSettingsColorScheme(app.config)} data-interface-theme={interfaceTheme} data-interface-scene={interfaceScene} data-reduced-transparency={reducedTransparency || undefined}>{t('settings.loading')}</main>
     }
 
     return (
-      <SettingsWindow locale={locale} colorScheme={getSettingsColorScheme(app.config)} onMinimize={() => void runWindowAction('minimize')} onClose={() => void runWindowAction('hide')}>
+      <SettingsWindow
+        locale={locale}
+        colorScheme={getSettingsColorScheme(app.config)}
+        interfaceTheme={interfaceTheme}
+        interfaceScene={interfaceScene}
+        reducedTransparency={reducedTransparency}
+        reducedMotion={app.config.appearance.reducedMotion}
+        onMinimize={() => void runWindowAction('minimize')}
+        onClose={() => void runWindowAction('hide')}
+      >
           <SettingsPanel
             usage={usage}
             config={app.config}

@@ -4,12 +4,18 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { StatefulWarpSurface } from '../../shared/ui/StatefulWarpSurface'
 import { WarpSurfaceProvider } from '../../shared/ui/WarpSurface'
 import { Button } from '../../shared/ui/SettingsControls'
+import type { InterfaceScene } from '../../shared/lib/interfaceTheme'
 
-function MaterialState({ light = false, reducedMotion = false }) {
+function MaterialState({ light = false, reducedMotion = false, scene }: {
+  light?: boolean
+  reducedMotion?: boolean
+  scene?: InterfaceScene
+}) {
   const [running, setRunning] = useState(true)
-  return <div className="settings-panel" data-color-scheme={light ? 'light' : 'dark'} data-reduced-motion={reducedMotion || undefined} style={{ padding: 24, background: 'var(--surface-canvas)' }}>
+  const colorScheme = light ? 'light' : 'dark'
+  return <div className="settings-panel" data-color-scheme={colorScheme} data-interface-theme={scene ? 'glass' : 'classic'} data-reduced-motion={reducedMotion || undefined} style={{ padding: 24, background: 'var(--surface-canvas)' }}>
     <Button aria-pressed={running} onClick={() => setRunning(value => !value)}>Включено</Button>
-    <WarpSurfaceProvider><div style={{ position: 'relative', height: 256, marginTop: 16, borderRadius: 24, overflow: 'hidden' }}>
+    <WarpSurfaceProvider scene={scene} colorScheme={colorScheme}><div style={{ position: 'relative', height: 256, marginTop: 16, borderRadius: 24, overflow: 'hidden' }}>
       <StatefulWarpSurface running={running} reducedMotion={reducedMotion} />
     </div></WarpSurfaceProvider>
   </div>
@@ -38,3 +44,21 @@ export const ReducedMotion: Story = { name: 'Без движения · цвет
   await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0')
   await expect(getComputedStyle(canvasElement.querySelector('.stateful-warp-surface__shader')!).opacity).toBe('1')
 } }
+export const GlassManta: Story = { name: 'Стекло · скаты в движении', args: { scene: 'manta' }, play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement)
+  const renderer = await waitFor(() => paintedScene(canvasElement, 'manta'))
+  await userEvent.click(canvas.getByRole('button', { name: 'Включено' }))
+  await expect(canvasElement.querySelector('[data-ascii-scene="manta"]')).toBe(renderer)
+  await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0.225')
+} }
+export const GlassFox: Story = { name: 'Стекло · лисы без движения', args: { scene: 'fox', light: true, reducedMotion: true }, play: async ({ canvasElement }) => {
+  await waitFor(() => paintedScene(canvasElement, 'fox'))
+  await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0')
+} }
+
+function paintedScene(canvasElement: HTMLElement, scene: InterfaceScene) {
+  const canvas = canvasElement.querySelector<HTMLCanvasElement>(`canvas[data-ascii-scene="${scene}"]`)
+  const pixels = canvas?.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data
+  expect(pixels?.some((value, index) => index % 4 === 3 && value > 0)).toBe(true)
+  return canvas
+}

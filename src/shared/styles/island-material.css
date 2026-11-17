@@ -9,3 +9,15 @@
 }
 
 .preview-warp-material { opacity: 1; }
+
+[data-interface-theme='glass'] .island-surface {
+  background:
+    var(--glass-sheen),
+    radial-gradient(ellipse at 16% 0%, rgba(var(--artwork-primary,22,23,25),.24), transparent 69%),
+    var(--glass-island-fill);
+  box-shadow: var(--glass-panel-rim), var(--glass-depth);
+}
+
+[data-interface-theme='glass'] .island-card {
+  backdrop-filter: var(--glass-frost-filter);
+}

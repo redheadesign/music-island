@@ -1,4 +1,5 @@
 @import './shared/styles/tokens.css';
+@import './shared/styles/theme-glass.css';
 @import './shared/styles/primitives.css';
 @import './shared/styles/island-material.css';
 

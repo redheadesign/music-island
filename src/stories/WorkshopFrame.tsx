@@ -21,6 +21,7 @@ export function WorkshopFrame({
     locale = 'ru',
     accent = '#f76100',
     surface = 'studio',
+    interfaceTheme = 'classic',
   } = context.globals
   useLayoutEffect(() => {
     applyAccentTheme(String(accent))
@@ -30,7 +31,7 @@ export function WorkshopFrame({
   useEffect(() => {
     setCopied(false)
     setFeedback('')
-  }, [context.id, context.args, locale, accent, surface])
+  }, [context.id, context.args, locale, accent, surface, interfaceTheme])
 
   async function copyContext() {
     const url = new URL(window.parent.location.href)
@@ -44,7 +45,7 @@ export function WorkshopFrame({
         return '[локальный ресурс]'
       return value
     })
-    const text = `${context.title} / ${context.name}\n${url.href}\nЯзык: ${locale}; акцент: ${accent}; фон: ${surface}\nПараметры: ${args}\n\nЧто изменить: `
+    const text = `${context.title} / ${context.name}\n${url.href}\nЯзык: ${locale}; акцент: ${accent}; фон: ${surface}; тема: ${interfaceTheme}\nПараметры: ${args}\n\nЧто изменить: `
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
@@ -87,6 +88,7 @@ export function WorkshopFrame({
       >
         <div
           className="workshop-content"
+          data-interface-theme={context.parameters.handlesInterfaceTheme ? undefined : interfaceTheme}
           style={{ width: context.parameters.workshop?.width ?? 480 }}
         >
           {children}

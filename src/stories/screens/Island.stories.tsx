@@ -5,6 +5,7 @@ import { OverlayShell } from '../../features/overlay/OverlayShell'
 import type { IslandAppState, OverlayMode } from '../../app/useIslandApp'
 import type { MediaSnapshot } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
+import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { getUiPrefs } from '../../shared/lib/uiPrefs'
 import { media, health } from '../fixtures'
 import { useWorkshopConfig } from '../useWorkshopConfig'
@@ -25,6 +26,7 @@ function IslandPreview({
   localServersMode,
   localServersWidgetScale = 100,
   latestMessageMode,
+  interfaceTheme,
 }: {
   locale: 'ru' | 'en'
   accent: string
@@ -40,8 +42,9 @@ function IslandPreview({
   localServersMode?: 'expanded' | 'collapsed' | 'empty' | 'stoppable'
   localServersWidgetScale?: number
   latestMessageMode?: 'expanded' | 'collapsed'
+  interfaceTheme?: InterfaceThemeId
 }) {
-  const [config, setConfig] = useWorkshopConfig(locale, accent, localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed')
+  const [config, setConfig] = useWorkshopConfig(locale, accent, localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed', interfaceTheme)
   const [localServers, setLocalServers] = useState(() => {
     if (localServersMode === 'empty') return []
     if (localServersMode === 'stoppable') return demoLocalServers.map((server) => ({ ...server, canStop: true }))
@@ -157,6 +160,7 @@ const meta = {
     accent: { table: { disable: true } },
   },
   parameters: {
+    handlesInterfaceTheme: true,
     workshop: {
       width: 850,
       height: 500,
@@ -170,11 +174,13 @@ const meta = {
       key={`${context.id}-${args.empty}`}
       locale={context.globals.locale}
       accent={context.globals.accent}
+      interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)}
     />
   ),
 } satisfies Meta<typeof IslandPreview>
 export default meta
 export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый островок' }
+export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный островок', globals: { interfaceTheme: 'glass' } }
 export const AssistantLimits: StoryObj<typeof meta> = { name: 'Лимиты Codex рядом с островком', args: { assistantLimits: true } }
 export const LocalServersExpanded: StoryObj<typeof meta> = {
   name: 'Локальные серверы под раскрытым островком',

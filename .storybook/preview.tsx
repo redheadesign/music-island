@@ -11,6 +11,14 @@ import '../src/stories/workshop.css'
 
 const preview: Preview = {
   globalTypes: {
+    interfaceTheme: {
+      description: 'Тема интерфейса',
+      toolbar: {
+        icon: 'contrast',
+        items: [{ value: 'classic', title: 'Классическая' }, { value: 'glass', title: 'Стекло' }],
+        dynamicTitle: true,
+      },
+    },
     locale: {
       description: 'Язык компонентов',
       toolbar: {
@@ -48,7 +56,7 @@ const preview: Preview = {
       },
     },
   },
-  initialGlobals: { locale: 'ru', accent: '#f76100', surface: 'studio' },
+  initialGlobals: { locale: 'ru', accent: '#f76100', surface: 'studio', interfaceTheme: 'classic' },
   parameters: {
     layout: 'fullscreen',
     controls: {

@@ -24,6 +24,27 @@ it('keeps the trigger typography when its menu is portaled outside the page',asy
   } finally { await act(async()=>root.unmount()); container.remove() }
 })
 
+it('keeps the Glass palette and accessibility preferences in a detached menu', async () => {
+  const container = document.createElement('div')
+  document.body.append(container)
+  const root = createRoot(container)
+  try {
+    await act(async () => root.render(
+      <section data-color-scheme="light" data-interface-theme="glass" data-interface-scene="manta" data-reduced-transparency="true" data-reduced-motion="true">
+        <Select value="usb" options={[{ value: 'usb', label: 'USB' }]} onChange={vi.fn()} ariaLabel="Device" />
+      </section>,
+    ))
+    const trigger = container.querySelector('button')!
+    await act(async () => trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })))
+    const menu = document.querySelector<HTMLElement>('[role="listbox"]')!
+    expect(menu.dataset).toMatchObject({ colorScheme: 'light', interfaceTheme: 'glass', interfaceScene: 'manta', reducedTransparency: 'true' })
+    expect(menu.hasAttribute('data-enter')).toBe(false)
+  } finally {
+    await act(async () => root.unmount())
+    container.remove()
+  }
+})
+
 it('keeps a checkbox menu open for multiple changes and restores focus on Escape', async () => {
   function Filter() {
     const [english, setEnglish] = useState(false)

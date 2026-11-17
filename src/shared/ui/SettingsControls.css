@@ -49,6 +49,7 @@
 .ui-textarea { width: 100%; resize: vertical; line-height: var(--leading-body); }
 .ui-search { display: flex; align-items: center; gap: var(--space-2-5); min-width: 0; min-height: var(--control-height); padding-inline: var(--space-3); border-radius: var(--radius-sm); background: var(--control-surface); color: var(--fg-secondary); }
 .ui-search > svg { flex: 0 0 auto; }
+/* ai-design-check-ignore-next-line focus-ring-removed -- The full search control has a focus-within ring. */
 .ui-search > input { flex: 1 1 0; min-width: 0; width: 100%; padding: var(--space-2-5) 0; border: 0; border-radius: 0; background: transparent; color: var(--fg-primary); font: inherit; font-size: var(--text-caption); outline: none !important; }
 .ui-search > input::placeholder { color: var(--fg-muted); }
 .ui-search > input::-webkit-search-cancel-button { display: none; }
@@ -71,6 +72,36 @@
 .settings-preview__header .dark-select { width: auto; min-width: 150px; }
 .settings-preview__header--end { justify-content: flex-end; }
 .settings-preview .ui-toggle { --control-off: #555; }
+
+[data-interface-theme='glass'] :is(.ui-input, .ui-search, .dark-select:not(.dark-select--actions), .ui-button--secondary) {
+  background-image: var(--glass-sheen);
+  box-shadow: var(--glass-control-rim);
+}
+[data-interface-theme='glass'] .ui-search {
+  position: relative;
+  isolation: isolate;
+  backdrop-filter: var(--glass-frost-filter);
+}
+[data-interface-theme='glass'] .ui-search > * { position: relative; z-index: 1; }
+[data-interface-theme='glass'] :is(.ui-section, .ui-feature-toggle, .ui-navigation__item[aria-current='page']) {
+  background-image: var(--glass-sheen);
+  box-shadow: var(--glass-panel-rim);
+}
+[data-interface-theme='glass'] .ui-toggle { box-shadow: var(--glass-control-rim); }
+
+[data-interface-theme='glass'] .ui-button--primary:enabled {
+  background-color: var(--glass-action);
+  color: var(--glass-action-ink);
+  box-shadow: var(--glass-control-rim);
+}
+@media (hover: hover) {
+  [data-interface-theme='glass'] .ui-button--primary:enabled:hover {
+    background-color: color-mix(in srgb, var(--glass-action), white 14%);
+  }
+}
+[data-interface-theme='glass'] .ui-button--primary:enabled:active {
+  background-color: color-mix(in srgb, var(--glass-action), black 12%);
+}
 .ui-notice__copy pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-small); }
 .ui-notice summary { cursor: pointer; margin-block: var(--space-2); }
 @media (prefers-reduced-motion: reduce) { .ui-spinner { animation: none; } }

@@ -10,6 +10,12 @@
   position: absolute;
   inset: 0;
 }
+.warp-material__ascii {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  mask-image: radial-gradient(ellipse 55% 30% at center, rgb(0 0 0 / 0.35), #000 100%);
+}
 .warp-shared-host { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) {

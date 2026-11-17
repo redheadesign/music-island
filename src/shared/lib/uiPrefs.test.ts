@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { AppConfig } from './types'
 import {
+  getInterfaceScene,
+  getInterfaceTheme,
+  getReducedTransparency,
+  getSettingsColorScheme,
   getUsageWidgetCompact,
   getUsageWidgetScale,
   normalizeUsageWidgetScale,
@@ -12,6 +16,28 @@ function configWithUi(ui?: unknown): AppConfig {
     plugins: { enabled: [], settings: ui === undefined ? {} : { ui } },
   } as unknown as AppConfig
 }
+
+describe('interface theme preferences', () => {
+  it('opens existing profiles in Classic and falls back from unknown choices', () => {
+    expect(getInterfaceTheme(configWithUi())).toBe('classic')
+    expect(getInterfaceTheme(configWithUi({ interfaceTheme: 'future' }))).toBe('classic')
+    expect(getInterfaceTheme(configWithUi({ interfaceTheme: 'constructor' }))).toBe('classic')
+    expect(getInterfaceScene(configWithUi({ interfaceScenes: { glass: 'fox' } }))).toBeUndefined()
+    expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'unknown' } }))).toBe('manta')
+  })
+
+  it('remembers the selected Glass scene when switching back from Classic', () => {
+    const glass = withUiPrefs(configWithUi({ settingsColorScheme: 'light' }), {
+      interfaceTheme: 'glass', interfaceScenes: { glass: 'fox' }, reducedTransparency: true,
+    })
+    const classic = withUiPrefs(glass, { interfaceTheme: 'classic' })
+    const restored = withUiPrefs(classic, { interfaceTheme: 'glass' })
+    expect(getInterfaceScene(classic)).toBeUndefined()
+    expect(getInterfaceScene(restored)).toBe('fox')
+    expect(getReducedTransparency(restored)).toBe(true)
+    expect(getSettingsColorScheme(restored)).toBe('light')
+  })
+})
 
 describe('usage widget preferences', () => {
   it('keeps legacy and absent configuration at stable defaults', () => {

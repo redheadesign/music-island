@@ -6,17 +6,34 @@ import './Select.css'
 type Option = { value: string; label: string; danger?: boolean; checked?: boolean }
 
 const PORTAL_THEME_PROPERTIES = [
+  '--accent',
   '--focus-ring',
   '--shadow-popover',
   '--status-danger',
   '--control-surface',
   '--control-surface-hover',
+  '--control-height',
   '--fg-primary',
   '--fg-secondary',
+  '--fg-muted',
   '--surface-glass',
   '--surface-hover',
   '--surface-raised',
+  '--glass-blur',
+  '--space-1',
+  '--space-2',
+  '--space-3',
+  '--radius-unit',
+  '--radius-sm',
+  '--radius-md',
+  '--leading-caption',
+  '--weight-semibold',
+  '--motion-fast',
+  '--motion-distance-small',
+  '--ease-enter',
 ] as const
+
+const PORTAL_SCOPE_ATTRIBUTES = ['data-color-scheme', 'data-interface-theme', 'data-interface-scene', 'data-reduced-transparency', 'data-reduced-motion']
 
 interface SelectProps {
   value: string
@@ -54,7 +71,7 @@ function Menu({
   const open = opening !== null && !disabled
   if (disabled && opening !== null) setOpening(null)
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0, maxHeight: 280, above: false })
-  const [portalTheme, setPortalTheme] = useState<CSSProperties>({})
+  const [portalTheme, setPortalTheme] = useState<ReturnType<typeof readPortalTheme>>()
 
   const selected = options.find((o) => o.value === value)
   const label = selected?.label || placeholder
@@ -156,10 +173,11 @@ function Menu({
     const syncPortalTheme = () => setPortalTheme(readPortalTheme(trigger))
     syncPortalTheme()
 
-    const settingsRoot = trigger.closest('[data-color-scheme]')
-    if (!settingsRoot) return
+    const scopes = new Set(PORTAL_SCOPE_ATTRIBUTES.map(attribute => trigger.closest(`[${attribute}]`)))
     const observer = new MutationObserver(syncPortalTheme)
-    observer.observe(settingsRoot, { attributes: true, attributeFilter: ['data-color-scheme'] })
+    for (const scope of scopes) {
+      if (scope) observer.observe(scope, { attributes: true, attributeFilter: PORTAL_SCOPE_ATTRIBUTES })
+    }
     return () => observer.disconnect()
   }, [open])
 
@@ -217,10 +235,14 @@ function Menu({
               ref={menuRef}
               id={`${id}-menu`}
               className="dark-select-menu"
-              data-enter={opening === 'pointer' && pos.width > 0 ? (pos.above ? 'above' : 'below') : undefined}
+              data-color-scheme={portalTheme?.colorScheme}
+              data-interface-theme={portalTheme?.interfaceTheme}
+              data-interface-scene={portalTheme?.interfaceScene}
+              data-reduced-transparency={portalTheme?.reducedTransparency}
+              data-enter={opening === 'pointer' && pos.width > 0 && !portalTheme?.reducedMotion ? (pos.above ? 'above' : 'below') : undefined}
               role={actions ? 'menu' : 'listbox'}
               aria-labelledby={id}
-              style={{ ...portalTheme, top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight }}
+              style={{ ...portalTheme?.style, top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight }}
               onKeyDown={handleMenuKey}
             >
               {options.length === 0 ? (
@@ -266,12 +288,19 @@ function Menu({
 
 function readPortalTheme(trigger: HTMLElement) {
   const computed = getComputedStyle(trigger)
-  const theme = { colorScheme: computed.colorScheme, fontFamily: computed.fontFamily,
+  const style = { colorScheme: computed.colorScheme, fontFamily: computed.fontFamily,
     fontSize: computed.fontSize, fontWeight: computed.fontWeight, lineHeight: computed.lineHeight } as CSSProperties & Record<string, string>
   for (const property of PORTAL_THEME_PROPERTIES) {
-    theme[property] = computed.getPropertyValue(property)
+    style[property] = computed.getPropertyValue(property)
   }
-  return theme
+  return {
+    style,
+    colorScheme: trigger.closest('[data-color-scheme]')?.getAttribute('data-color-scheme'),
+    interfaceTheme: trigger.closest('[data-interface-theme]')?.getAttribute('data-interface-theme'),
+    interfaceScene: trigger.closest('[data-interface-theme]')?.getAttribute('data-interface-scene'),
+    reducedTransparency: trigger.closest('[data-reduced-transparency="true"]') ? true : undefined,
+    reducedMotion: Boolean(trigger.closest('.reduced-motion, [data-reduced-motion="true"]')),
+  }
 }
 
 function adjacentTabStop(trigger: HTMLElement, menu: HTMLElement | null, backwards: boolean) {

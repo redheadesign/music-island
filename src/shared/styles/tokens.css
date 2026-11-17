@@ -40,26 +40,7 @@
 
   /* Related content is close; independent sections have more breathing room. */
   --space-unit: 4px;
-  --space-half: calc(var(--space-unit) / 2);
-  --space-1: var(--space-unit);
-  --space-1-5: calc(var(--space-unit) * 1.5);
-  --space-2: calc(var(--space-unit) * 2);
-  --space-2-5: calc(var(--space-unit) * 2.5);
-  --space-3: calc(var(--space-unit) * 3);
-  --space-3-5: calc(var(--space-unit) * 3.5);
-  --space-4: calc(var(--space-unit) * 4);
-  --space-4-5: calc(var(--space-unit) * 4.5);
-  --space-5: calc(var(--space-unit) * 5);
-  --space-6: calc(var(--space-unit) * 6);
-  --space-6-5: calc(var(--space-unit) * 7);
-  --space-7: calc(var(--space-unit) * 8);
-  --space-8: calc(var(--space-unit) * 10);
-  --space-9: calc(var(--space-unit) * 12);
   --radius-unit: 4px;
-  --radius-sm: calc(var(--radius-unit) * 2);
-  --radius-md: calc(var(--radius-unit) * 3);
-  --radius-lg: calc(var(--radius-unit) * 4);
-  --radius-xl: calc(var(--radius-unit) * 5);
   --radius-pill: 999px;
   --radius-round: 50%;
 
@@ -107,6 +88,30 @@
   --drop-zone-ready: color-mix(in srgb, var(--accent, #f76100) 12%, transparent);
   --drag-indicator: var(--accent, #f76100);
   --drop-zone-active: color-mix(in srgb, var(--accent, #f76100) 24%, transparent);
+}
+
+/* Recompute the aliases on each theme root. Inherited custom properties are
+   already resolved, so overriding a unit alone would not change the scale. */
+:root, [data-interface-theme] {
+  --space-half: calc(var(--space-unit) / 2);
+  --space-1: var(--space-unit);
+  --space-1-5: calc(var(--space-unit) * 1.5);
+  --space-2: calc(var(--space-unit) * 2);
+  --space-2-5: calc(var(--space-unit) * 2.5);
+  --space-3: calc(var(--space-unit) * 3);
+  --space-3-5: calc(var(--space-unit) * 3.5);
+  --space-4: calc(var(--space-unit) * 4);
+  --space-4-5: calc(var(--space-unit) * 4.5);
+  --space-5: calc(var(--space-unit) * 5);
+  --space-6: calc(var(--space-unit) * 6);
+  --space-6-5: calc(var(--space-unit) * 7);
+  --space-7: calc(var(--space-unit) * 8);
+  --space-8: calc(var(--space-unit) * 10);
+  --space-9: calc(var(--space-unit) * 12);
+  --radius-sm: calc(var(--radius-unit) * 2);
+  --radius-md: calc(var(--radius-unit) * 3);
+  --radius-lg: calc(var(--radius-unit) * 4);
+  --radius-xl: calc(var(--radius-unit) * 5);
 }
 
 /* Auxiliary windows have their own material. The media island retains its tokens. */
