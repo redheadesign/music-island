@@ -1,3 +1,5 @@
+import { rgbLuminance } from '../../shared/lib/accentTheme'
+
 type Rgb = readonly [red: number, green: number, blue: number]
 
 export interface ArtworkPalette {
@@ -78,4 +80,25 @@ export function artworkCssColors(palette: ArtworkPalette | null, glass: boolean)
   // Classic uses the cover as a dark background rather than a foreground accent.
   const classicTone = (strength: number) => palette.primary.map(channel => Math.round(channel * strength)).join(', ')
   return { primary: classicTone(0.72), secondary: classicTone(0.32) }
+}
+
+/** Brightest cover hue that still leaves a 4.7:1 margin for the track title. */
+export function progressFillColor(primary: Rgb): string {
+  const max = Math.max(...primary)
+  if (!max) return '#6d6d69'
+  const hue = primary.map(channel => channel * 255 / max)
+  const maxLuminance = (rgbLuminance(244, 244, 241) + .05) / 4.7 - .05
+  // Walk black → cover hue → white. All stops preserve the cover's hue,
+  // including dark blues that need a little white to reach the target.
+  const channels = (level: number) => hue.map(channel => Math.round(
+    level <= 1 ? channel * level : channel + (255 - channel) * (level - 1),
+  ))
+  let low = 0, high = 2
+  for (let step = 0; step < 11; step++) {
+    const middle = (low + high) / 2
+    const [red, green, blue] = channels(middle)
+    if (rgbLuminance(red, green, blue) <= maxLuminance) low = middle
+    else high = middle
+  }
+  return '#' + channels(low).map(channel => channel.toString(16).padStart(2, '0')).join('')
 }

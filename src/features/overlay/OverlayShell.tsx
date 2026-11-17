@@ -31,7 +31,7 @@ import {
 } from './overlayWindow'
 import { transitionOverlay, type OverlayTransition } from './overlayTransition'
 import { IslandTopIndicator } from './IslandTopIndicator'
-import { artworkCssColors, readArtworkPalette, type ArtworkPalette } from './artworkPalette'
+import { artworkCssColors, progressFillColor, readArtworkPalette, type ArtworkPalette } from './artworkPalette'
 import { HoverCoach } from './HoverCoach'
 import { LocalServersPanel } from './LocalServersPanel'
 import { LatestDictationPanel } from './LatestDictationPanel'
@@ -282,6 +282,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const artworkSource = media?.hasSession ? media.thumbnailDataUrl : undefined
   const [resolvedArtwork, setResolvedArtwork] = useState<{ source: string; palette: ArtworkPalette } | null>(null)
   const artworkPalette = resolvedArtwork && resolvedArtwork.source === artworkSource ? resolvedArtwork.palette : null
+
+  const progressColor = useMemo(() => artworkPalette ? progressFillColor(artworkPalette.primary) : undefined, [artworkPalette])
 
   const showCollapsedLayer = windowPhase === 'collapsed'
   const showTopChrome = windowPhase === 'collapsed' || windowPhase === 'opening'
@@ -575,10 +577,11 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,
       '--island-hit-width': `${(500 * (config.layout.width / 100) + 112) * (config.layout.scale / 100)}px`,
       ...getInterfacePaletteStyle(config, 'dark'),
+      '--artwork-progress-color': progressColor,
       '--artwork-primary': artworkColors.primary,
       '--artwork-secondary': artworkColors.secondary,
     } as CSSProperties
-  }, [artworkPalette, config, playbackVisual])
+  }, [artworkPalette, config, playbackVisual, progressColor])
 
   const clearCloseTimer = () => {
     if (closeTimerRef.current) {

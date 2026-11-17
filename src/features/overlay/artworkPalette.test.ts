@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { artworkCssColors, selectArtworkPalette } from './artworkPalette'
+import { relativeLuminance } from '../../shared/lib/accentTheme'
+import { artworkCssColors, progressFillColor, selectArtworkPalette } from './artworkPalette'
 
 const pixels = (...groups: Array<{ rgba: [number, number, number, number]; count: number }>) =>
   new Uint8ClampedArray(groups.flatMap(({ rgba, count }) => Array.from({ length: count }, () => rgba).flat()))
@@ -29,4 +30,14 @@ describe('artwork palette', () => {
     expect(palette).toBeNull()
     expect(artworkCssColors(palette, true)).toEqual({ primary: '26, 30, 40', secondary: '10, 12, 18' })
   })
+})
+
+it.each([
+  [242, 106, 18], [8, 78, 133], [250, 225, 47], [26, 244, 191],
+  [255, 247, 242], [245, 0, 245], [6, 2, 18], [175, 175, 175], [0, 0, 0],
+])('keeps a bright readable fill for cover rgb(%i,%i,%i)', (red, green, blue) => {
+  const result = progressFillColor([red, green, blue])
+  const ratio = (relativeLuminance('#f4f4f1') + .05) / (relativeLuminance(result) + .05)
+  expect(ratio).toBeGreaterThanOrEqual(4.65)
+  expect(ratio).toBeLessThan(4.9)
 })

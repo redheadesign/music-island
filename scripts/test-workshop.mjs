@@ -20,6 +20,7 @@ const criticalStories = [
   'organisms-usagesettingssection--stale-limit',
   'screens-onboarding--save-error', 'screens-installnotice--running', 'screens-installnotice--open-failed',
   'screens-island--glass-edge-gesture', 'screens-island--glass-bass-burst', 'screens-island--glass-playback',
+  'screens-island--glass-cool-cover', 'screens-island--glass-without-cover',
   'screens-island--glass-rays', 'screens-island--glass-mercury', 'screens-island--glass-widget-panels',
   'organisms-taskbarplayer--source-unavailable', 'organisms-directconnectiondialog--glass-error-narrow',
 ]

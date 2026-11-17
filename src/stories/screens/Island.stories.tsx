@@ -481,11 +481,10 @@ export const GlassRays: StoryObj<typeof meta> = {
     await expect(getComputedStyle(ambient, '::before').backgroundImage).toContain('conic-gradient')
     const island = canvasElement.querySelector('.island-root')
     await waitFor(() => expect(island).toHaveAttribute('data-cover-art', 'true'))
-    const stops = [...getComputedStyle(canvasElement.querySelector('.progress-fill')!).backgroundImage.matchAll(/oklch\(([^)]+)\)/g)]
-    if (CSS.supports('color: oklch(from red l c h)')) {
-      await expect(stops).toHaveLength(2)
-      await expect(Number(stops[0][1].split(' ')[2])).toBeCloseTo(Number(stops[1][1].split(' ')[2]))
-    }
+    const color = (island as HTMLElement).style.getPropertyValue('--artwork-progress-color')
+    await expect(color).toMatch(/^#[a-f0-9]{6}$/)
+    const fill = canvasElement.querySelector('.progress-fill')!
+    await expect(getComputedStyle(fill).backgroundImage).toContain('linear-gradient')
   },
 }
 export const GlassMercury: StoryObj<typeof meta> = {

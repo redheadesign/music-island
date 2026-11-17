@@ -75,9 +75,13 @@ export function buildAccentTokens(hex: string) {
 }
 
 export function relativeLuminance(hex: string) {
-  const rgb = hexToRgb(hex)!
+  const { r, g, b } = hexToRgb(hex)!
+  return rgbLuminance(r, g, b)
+}
+
+export function rgbLuminance(red: number, green: number, blue: number) {
   const linear = (value: number) => { const v = value / 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4 }
-  return .2126 * linear(rgb.r) + .7152 * linear(rgb.g) + .0722 * linear(rgb.b)
+  return .2126 * linear(red) + .7152 * linear(green) + .0722 * linear(blue)
 }
 
 export function applyAccentTheme(hex: string, target: HTMLElement = document.documentElement) {

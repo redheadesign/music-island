@@ -55,8 +55,8 @@
   --island-lens-hover-sheen: var(--glass-sheen), linear-gradient(rgb(255 255 255 / .05), transparent);
   --island-cover-primary: #a6a6a2;
   --island-cover-secondary: #777774;
-  --island-progress-start: #565656;
-  --island-progress-end: #484848;
+  --island-progress-start: var(--artwork-progress-color, #6d6d69);
+  --island-progress-end: color-mix(in srgb, var(--island-progress-start) 96%, black);
   --island-particle-ink: color-mix(in srgb, var(--island-cover-primary) 65%, #fff);
   --island-particle-soft-ink: color-mix(in srgb, var(--island-cover-secondary) 52%, #fff);
   --island-glass-ink: #f4f4f1;
@@ -70,14 +70,6 @@
   --island-artwork-tint: color-mix(in srgb, var(--island-cover-primary) 16%, transparent);
   --island-wave-crest: color-mix(in srgb, var(--island-cover-primary) 50%, transparent);
   --island-wave-trough: color-mix(in srgb, var(--island-cover-secondary) 21%, transparent);
-}
-
-@supports (color: oklch(from red l c h)) {
-  .island-root[data-interface-theme='glass'][data-cover-art='true'] {
-    /* One cover hue throughout the rail, with lightness and chroma capped for the track title. */
-    --island-progress-start: oklch(from var(--island-cover-primary) clamp(.48, l, .50) min(calc(c * 1.35), .15) h);
-    --island-progress-end: oklch(from var(--island-cover-primary) clamp(.43, calc(l - .065), .46) min(calc(c * 1.25), .14) h);
-  }
 }
 
 @property --island-bass {

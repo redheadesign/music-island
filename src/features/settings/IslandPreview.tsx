@@ -16,7 +16,7 @@ import { UsageStatusChip } from '../usage/UsageStatusChip'
 import { WarpSurface } from '../../shared/ui/WarpSurface'
 import { projectPreviewScale } from '../../shared/lib/previewSizing'
 import { PreviewResizeHandle } from '../../shared/ui/PreviewResizeHandle'
-import { APPEARANCE_PREVIEW_ARTWORK_THEME, APPEARANCE_PREVIEW_MEDIA as media } from './previewMedia'
+import { PREVIEW_COVER_PROGRESS, APPEARANCE_PREVIEW_ARTWORK_THEME, APPEARANCE_PREVIEW_MEDIA as media } from './previewMedia'
 import './IslandPreview.css'
 
 type ResizeValues = Pick<AppConfig['layout'], 'width' | 'scale'> & { localServersScale: number }
@@ -164,6 +164,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     '--island-scale': 1,
     '--actions-scale': 1,
     ...(playbackVisual ? APPEARANCE_PREVIEW_ARTWORK_THEME : {
+      '--artwork-progress-color': PREVIEW_COVER_PROGRESS,
       '--artwork-primary': '168, 98, 55', '--artwork-secondary': '87, 63, 49',
     }),
     '--preview-left': `${sideWidth('left')}px`, '--preview-right': `${sideWidth('right')}px`,
