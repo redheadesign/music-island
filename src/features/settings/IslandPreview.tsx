@@ -153,7 +153,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     }
   }
   const paletteStyle = getInterfacePaletteStyle(config, 'dark')
-  const style = {
+  const style: CSSProperties & Record<`--${string}`, string | number | undefined> = {
     ...paletteStyle,
     '--drag-indicator': paletteStyle['--accent'],
     '--preview-render-scale': scale,
@@ -167,7 +167,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     }),
     '--preview-left': `${sideWidth('left')}px`, '--preview-right': `${sideWidth('right')}px`,
     width: sceneWidth, transform: `scale(${scale})`, transformOrigin: 'top left',
-  } as CSSProperties
+  }
   const satellite = (side: 'left' | 'right') => renderZone(side, layout.zones[side].map((provider) => <Fragment key={provider}>{renderElement(provider, <div style={{ zoom: usageScale }}><UsageStatusChip snapshot={snapshot ?? null} enabledProviders={[provider]} compact={compact} locale={config.appearance.locale} /></div>)}</Fragment>))
   return <div className="island-preview-section"><div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined} data-reduced-motion={config.appearance.reducedMotion || undefined}>
     {active ? <WarpSurface className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
