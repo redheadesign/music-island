@@ -1120,8 +1120,7 @@
 :is(.settings-window-root, .settings-panel)[data-interface-theme='glass'] :is(
   .settings-control-group, .settings-taskbar > .settings-control-row, .settings-source-picker,
   .settings-section:not(.settings-appearance, .settings-section--plain, .settings-taskbar),
-  .usage-settings__provider, .dictation-card, .dictation-history, .dictation-model,
-  .dictation-welcome, .about-update--elevated, .voice-experimental-banner, .voice-setup-guide__device
+  .about-update--elevated
 ) {
   padding-inline: var(--settings-group-gutter);
   background: var(--settings-group-fill);

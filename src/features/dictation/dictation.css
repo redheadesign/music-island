@@ -1,11 +1,11 @@
 .dictation-page { display: grid; align-content: start; gap: var(--space-5); min-width: 0; color: var(--fg-primary); }
 .dictation-page :is(button,input,select,textarea):focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
-.dictation-card, .dictation-model, .dictation-history { padding: var(--space-6); border-radius: var(--radius-xl); background: var(--surface-panel); min-width: 0; }
+.dictation-card, .dictation-model, .dictation-history { padding: var(--space-6) var(--settings-group-gutter, var(--space-6)); border-radius: var(--radius-xl); background: var(--settings-group-fill, var(--surface-panel)); min-width: 0; }
 .dictation-page h3 { margin: 0; font-size: calc(var(--type-unit) * 15); font-weight: var(--weight-semibold); line-height: var(--leading-label); }
 .dictation-page p { margin: var(--space-2-5) 0 var(--space-4); color: var(--fg-secondary); font-size: var(--text-label); line-height: calc(var(--leading-unit) * 1.65); }
 .dictation-card > button + button { margin-left: var(--space-2); }
 .dictation-page textarea { width: 100%; resize: vertical; line-height: var(--leading-body); margin-block: var(--space-3); }
-.dictation-welcome { display: grid; justify-items: start; padding: calc(var(--space-unit) * 9); border-radius: calc(var(--radius-unit) * 6); background: var(--surface-panel); }
+.dictation-welcome { display: grid; justify-items: start; padding: calc(var(--space-unit) * 9) var(--settings-group-gutter, calc(var(--space-unit) * 9)); border-radius: calc(var(--radius-unit) * 6); background: var(--settings-group-fill, var(--surface-panel)); }
 .dictation-welcome__icon { display: grid; place-items: center; width: 64px; height: 64px; background: var(--surface-raised); border-radius: var(--radius-xl); margin-bottom: var(--space-7); }
 .dictation-welcome h3 { max-width: 340px; font-size: calc(var(--type-unit) * 24); letter-spacing: calc(var(--type-unit) * -0.5); }
 .dictation-welcome small { margin-top: var(--space-3-5); color: var(--fg-muted); font-size: var(--text-small); }
@@ -27,7 +27,7 @@
 .dictation-confirm > div { position: relative; width: min(400px,100%); padding: var(--space-6-5); border-radius: calc(var(--radius-unit) * 5.5); background: var(--surface-panel); box-shadow: var(--shadow-panel); }
 .dictation-confirm .dictation-confirm__close { position: absolute; right: 12px; top: 12px; padding: var(--space-1-5); min-height: 30px; background: transparent; }
 .dictation-confirm__actions { display: flex; gap: var(--space-2); justify-content: flex-end; margin-top: var(--space-6); }
-@container settings (max-width: 640px) { .dictation-card, .dictation-model { padding: var(--space-4-5); } .dictation-welcome { padding: var(--space-6); } }
+@container settings (max-width: 640px) { .dictation-card, .dictation-model { padding: var(--space-4-5) var(--settings-group-gutter, var(--space-4-5)); } .dictation-welcome { padding: var(--space-6) var(--settings-group-gutter, var(--space-6)); } }
 
 dialog.dictation-confirm { position: fixed; inset: 0; padding: 0; width: min(456px,calc(100vw - 48px)); border: 0; border-radius: calc(var(--radius-unit) * 5.5); color: var(--fg-primary); background: var(--surface-panel); }
 dialog.dictation-confirm:not([open]) { display: none; }

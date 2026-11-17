@@ -21,11 +21,11 @@
   align-items: center;
   gap: var(--space-3);
   margin: calc(-1 * var(--space-3)) 0 0;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--settings-group-gutter, var(--space-4));
   border: 0;
   border-radius: var(--radius-md);
   color: var(--fg-secondary);
-  background: var(--surface-panel);
+  background: var(--settings-group-fill, var(--surface-panel));
   font-size: var(--text-caption);
   font-weight: var(--weight-regular);
   line-height: var(--leading-body);
@@ -53,10 +53,10 @@
   min-width: 0;
   gap: 0;
   overflow: visible;
-  padding: var(--space-5);
+  padding: var(--space-5) var(--settings-group-gutter, var(--space-5));
   border: 0;
   border-radius: var(--radius-lg);
-  background: var(--surface-panel);
+  background: var(--settings-group-fill, var(--surface-panel));
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
