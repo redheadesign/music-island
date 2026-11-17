@@ -3,6 +3,19 @@ const MIN_RISE = .03
 const BASELINE_STEP = .14
 const BURST_COOLDOWN_MS = 240
 const MAX_PARTICLES = 18
+const beatByCard = new WeakMap<HTMLElement, { at: number; interval: number }>()
+
+/** Time the second peak of the 2-beat gesture to a recent, regular bass attack. */
+export function localHeartDuration(button: HTMLElement, now = performance.now()): number | undefined {
+  const card = button.closest<HTMLElement>('.island-card')
+  const beat = card && beatByCard.get(card)
+  if (!beat || now - beat.at > beat.interval * 2) return
+  let nextPeak = beat.interval - (now - beat.at) % beat.interval
+  if (nextPeak < 170) nextPeak += beat.interval
+  // Keep clicks responsive on slow or irregular tracks.
+  if (nextPeak > 500) return
+  return Math.round(nextPeak / .49)
+}
 
 /** Applies the real playback level and releases a bounded spray on strong attacks. */
 export function createIslandBassEffect(layer: HTMLElement) {
@@ -10,6 +23,8 @@ export function createIslandBassEffect(layer: HTMLElement) {
   const active = new Map<Animation, HTMLElement>()
   let previous = 0
   let baseline = 0
+  const card = layer.closest<HTMLElement>('.island-card')
+  let lastInterval = 0
   let lastBurstAt = -Infinity
   let sequence = 0
 
@@ -23,6 +38,8 @@ export function createIslandBassEffect(layer: HTMLElement) {
     previous = 0
     baseline = 0
     lastBurstAt = -Infinity
+    lastInterval = 0
+    if (card) beatByCard.delete(card)
   }
 
   function onMediaChange() {
@@ -80,6 +97,15 @@ export function createIslandBassEffect(layer: HTMLElement) {
     if (level < MIN_SIGNAL || rise < MIN_RISE || excess < threshold) return
     const now = performance.now()
     if (now - lastBurstAt < BURST_COOLDOWN_MS) return
+    const interval = now - lastBurstAt
+    if (card) {
+      if (interval >= 280 && interval <= 950 && Math.abs(interval - lastInterval) <= interval * .18) {
+        beatByCard.set(card, { at: now, interval: (interval + lastInterval) / 2 })
+      } else {
+        beatByCard.delete(card)
+      }
+    }
+    lastInterval = interval
     lastBurstAt = now
     burst(Math.min(1, excess / .28))
   }

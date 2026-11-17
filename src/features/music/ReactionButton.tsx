@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Heart, HeartCrack } from 'lucide-react'
 import type { Locale } from '../../shared/lib/types'
+import { localHeartDuration } from '../../shared/ui/islandBassEffect'
 import './ReactionButton.css'
 
 const labels = {
@@ -28,7 +29,11 @@ export function ReactionButton({ kind, active = false, disabled, onClick, reduce
       const motionAllowed = !reducedMotion
         && !event.currentTarget.closest('.reduced-motion, [data-reduced-motion="true"]')
         && !matchMedia('(prefers-reduced-motion: reduce), (forced-colors: active)').matches
-      setPress(sequence => motionAllowed && kind === 'like' && !active ? sequence + 1 : 0)
+      const pulse = motionAllowed && kind === 'like' && !active
+      const duration = pulse && localHeartDuration(event.currentTarget)
+      if (duration) event.currentTarget.style.setProperty('--heart-duration', `${duration}ms`)
+      else event.currentTarget.style.removeProperty('--heart-duration')
+      setPress(sequence => pulse ? sequence + 1 : 0)
       onClick?.()
     }}>
     <span key={press} className="reaction-glyph" data-pulse={press > 0 || undefined}>
