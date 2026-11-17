@@ -71,6 +71,7 @@ function CompactProvider({
   return (
     <span
       className={`usage-chip__compact-provider island-surface usage-chip__provider--${state}`}
+      data-usage-provider={provider}
       data-tone={tone}
       title={`${providerName[provider]} · ${summary}`}
       aria-label={`${providerName[provider]}: ${summary}`}

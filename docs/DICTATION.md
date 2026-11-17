@@ -41,6 +41,26 @@ took 83.5 seconds in one call and 41.1 seconds in seven parts. The split
 results matched all 88 and 165 words respectively from the repeated short
 reference. These timings include model inference and vary with machine load.
 
+### GigaAM engine comparison · 17 November 2026
+
+The Windows x64 builds of transcribe.cpp 0.2.4 and 0.4.2 ran the same GigaAM v3
+E2E RNN-T Q8 weights and Music Island's pause-aligned chunks on Ryzen 7 4700U
+Radeon Vulkan. Each measured input ran twice, with the order of both engines
+and inputs reversed for the second pass. Times exclude loading and AI processing.
+The [LibriVox reading by Luiza Karimova](https://librivox.org/multilingual-short-works-collection-013-by-various/)
+was cropped to the story. In the denser copy, intervals of at least 180 ms
+below −42 dB were shortened to 70 ms. Word error rate uses the normalized
+[published text](https://ru.wikisource.org/wiki/Случай_с_классиком_(Чехов)).
+
+| Input | 0.2.4, seconds | 0.4.2, seconds | WER, both |
+| --- | ---: | ---: | ---: |
+| Natural pauses, 408.57 s | 127.67 / 100.72 | 82.65 / 109.57 | 5.98% |
+| Shortened pauses, 304.28 s | 72.65 / 91.28 | 69.65 / 78.11 | 6.36% |
+
+All four transcripts per input were byte-identical. The natural-pause input
+was slower on 0.4.2 in the reversed comparison, so the bundled engine stays
+at 0.2.4 with the existing ONNX path.
+
 The optional microphone can be placed in the island layout editor. It is absent
 from the default composition. The bottom overlay does not take keyboard focus.
 The target window is captured at recording start and checked again before paste.

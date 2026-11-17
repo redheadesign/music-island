@@ -21,6 +21,8 @@ export async function getMonitorSnapshot() {
 export function restoreMonitorPreview() { monitorLoadError = false }
 export async function onMonitorsChanged(_callback: (snapshot: MonitorSnapshot) => void) { return () => {} }
 const listeners = new Set<(value: DirectYandexStatus) => void>()
+const playbackBassListeners = new Set<(sample: { request: number; bass: number }) => void>()
+let playbackBassRequest: number | undefined
 
 export function resetNativePreview(options: { direct?: DirectYandexStatus; taskbar?: TaskbarStatus; monitors?: MonitorSnapshot; monitorLoadError?: boolean; updateCheckError?: string } = {}) {
   monitors = options.monitors ?? defaultMonitors
@@ -29,6 +31,20 @@ export function resetNativePreview(options: { direct?: DirectYandexStatus; taskb
   direct = { ...(options.direct ?? disabled) }
   taskbar = options.taskbar ?? { state: 'off' }
   listeners.clear()
+  playbackBassListeners.clear()
+  playbackBassRequest = undefined
+}
+export async function setPlaybackBass(request: number, enabled: boolean) {
+  if (enabled || request === playbackBassRequest) playbackBassRequest = enabled ? request : undefined
+  return true
+}
+export async function onPlaybackBass(callback: (sample: { request: number; bass: number }) => void) {
+  playbackBassListeners.add(callback)
+  return () => { playbackBassListeners.delete(callback) }
+}
+export function getPreviewPlaybackBassRequest() { return playbackBassRequest }
+export function emitPreviewPlaybackBass(bass: number, request = playbackBassRequest) {
+  if (request !== undefined) playbackBassListeners.forEach((callback) => callback({ request, bass }))
 }
 export async function checkForUpdates(forceSameVersion = false) {
   if (updateCheckError) throw new Error(updateCheckError)

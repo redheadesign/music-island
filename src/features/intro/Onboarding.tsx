@@ -8,7 +8,7 @@ import { IslandLayoutEditor } from '../settings/IslandLayoutEditor'
 import { MusicModule } from '../music/MusicModule'
 import { APPEARANCE_PREVIEW_ARTWORK_THEME, APPEARANCE_PREVIEW_MEDIA } from '../settings/previewMedia'
 import { DictationOverlayView } from '../dictation/DictationOverlay'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getPlaybackVisual, getReducedTransparency, getSettingsColorScheme } from '../../shared/lib/uiPrefs'
 import type { AppConfig } from '../../shared/lib/types'
 import { AppLogo } from '../../shared/ui/AppLogo'
 import './Onboarding.css'
@@ -72,7 +72,7 @@ export function Onboarding({ config, onFinish, exePath, initialStep = 0 }: Onboa
                 data-cover-art={glass || undefined}
                 style={glass ? { ...islandStyle, ...APPEARANCE_PREVIEW_ARTWORK_THEME } as CSSProperties : undefined}
               >
-                <IslandFeedback className="island-card island-surface" particles={glass}>
+                <IslandFeedback className="island-card island-surface" particles={glass} playbackMotion={glass ? playing : undefined} playbackVisual={getPlaybackVisual(demoConfig)}>
                   <MusicModule media={{ ...APPEARANCE_PREVIEW_MEDIA, playbackStatus: playing ? 'playing' : 'paused' }} progressMs={APPEARANCE_PREVIEW_MEDIA.positionMs} progressPercent={34} density="balanced" showArtwork showTitle showArtist showProgress showSource={false} showPreviousNext locale={locale} reducedMotion={reduced} onCommand={command => setPlaying(command === 'play-pause' ? !playing : true)} />
                 </IslandFeedback>
               </div>

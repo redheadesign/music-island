@@ -1038,7 +1038,7 @@
 
 /* Glass uses the window as a continuous canvas. Local controls and groups
    provide depth, so layout wrappers never introduce a separate frame. */
-.settings-window-root[data-interface-theme='glass'] { --settings-radius: var(--radius-md); }
+.settings-window-root[data-interface-theme='glass'] { --settings-radius: 0; }
 .settings-window-root[data-interface-theme='glass'] .settings-titlebar { background: transparent; }
 .settings-panel[data-interface-theme='glass'] {
   --surface-panel: color-mix(in srgb, var(--glass-panel) var(--glass-menu-opacity), transparent);
@@ -1053,19 +1053,44 @@
   outline: var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
-.settings-panel[data-interface-theme='glass'] :is(
-  .settings-theme-choice__button--active, .voice-segment-switch > button[aria-pressed='true'],
-  .voice-chip--active, .voice-effect-toggle, .voice-control-card__primary, .voice-control-card__monitor,
-  .secondary-button, .voice-setup-guide__action, .voice-setup-guide__return, .accent-picker__done, .about-social
+:is(.settings-window-root, .settings-panel)[data-interface-theme='glass'] :is(
+  .settings-window-actions > button, .settings-theme-toggle, .ui-button,
+  .settings-theme-choice__button, .voice-segment-switch > button, .voice-chip, .voice-effect-toggle,
+  .voice-control-card__primary, .voice-control-card__monitor, .primary-button, .secondary-button,
+  .voice-setup-guide__action, .voice-setup-guide__return, .accent-picker__done, .about-social
 ) {
-  background-image: var(--glass-sheen);
   box-shadow: var(--glass-control-rim);
+  backdrop-filter: var(--glass-frost-filter);
+}
+.settings-panel[data-interface-theme='glass'] :is(.ui-button--secondary, .secondary-button, .accent-picker__done, .about-social) {
+  --control-surface: var(--glass-button-fill);
+  --control-surface-hover: var(--glass-button-hover-fill);
+  background-color: var(--control-surface);
+}
+.settings-panel[data-interface-theme='glass'] :is(.ui-button--secondary, .secondary-button, .accent-picker__done, .about-social):hover:not(:disabled, [aria-pressed='true']) {
+  background-color: var(--control-surface-hover);
+}
+.settings-panel[data-interface-theme='glass'] :is(.voice-segment-switch > button, .voice-chip, .voice-effect-toggle, .voice-control-card__monitor) {
+  --surface-raised: var(--glass-button-fill);
+}
+.settings-panel[data-interface-theme='glass'] .ui-button--primary:enabled:not(:active) {
+  background-color: color-mix(in srgb, var(--glass-action) var(--glass-emphasis-opacity), transparent);
+}
+.settings-panel[data-interface-theme='glass'] :is(.voice-control-card__primary, .primary-button, .voice-chip--active):not(:hover, :active) {
+  background-color: color-mix(in srgb, var(--fg-primary) var(--glass-emphasis-opacity), transparent);
+}
+.settings-window-root[data-interface-theme='glass'] .settings-window-actions > button:not(:hover) {
+  background-color: var(--glass-button-fill);
 }
 .settings-panel[data-interface-theme='glass'] .fox-dev-preview__select {
   border-radius: var(--glass-control-radius);
-  background-color: var(--control-surface);
-  background-image: var(--glass-sheen);
+  background: var(--glass-field-fill);
   box-shadow: var(--glass-control-rim);
+  backdrop-filter: var(--glass-frost-filter);
+}
+.settings-panel[data-interface-theme='glass'] .dark-select:not(.dark-select--actions) { backdrop-filter: var(--glass-frost-filter); }
+@media (forced-colors: active) {
+  :is(.settings-window-root, .settings-panel)[data-interface-theme='glass'] { --glass-frost-filter: none; }
 }
 .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch, .locale-switch) {
   border-radius: var(--glass-control-radius);

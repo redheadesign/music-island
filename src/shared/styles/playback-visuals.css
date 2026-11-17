@@ -1,0 +1,76 @@
+/* Both alternatives start with the cover colors and share the ambient layer's
+   playback lifecycle. Only transform and opacity move inside the clipped card. */
+.island-feedback__ambient:is([data-playback-visual='rays'], [data-playback-visual='mercury'])::before,
+.island-feedback__ambient:is([data-playback-visual='rays'], [data-playback-visual='mercury'])::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.island-feedback__ambient[data-playback-visual='rays']::before {
+  background:
+    conic-gradient(at 50% 6%,
+      transparent 83deg, var(--island-wave-trough) 110deg, transparent 124deg,
+      transparent 138deg, var(--island-wave-crest) 156deg, transparent 172deg,
+      transparent 187deg, var(--island-wave-trough) 209deg, transparent 224deg,
+      var(--island-wave-crest) 244deg, transparent 267deg),
+    radial-gradient(ellipse at 50% 11%, var(--island-wave-crest), transparent 61%);
+  mask-image: radial-gradient(ellipse at 50% 35%, #000 19%, transparent 71%);
+  transform-origin: 50% 10%;
+  scale: calc(1 + var(--island-bass, 0) * .47);
+  opacity: calc(.60 + var(--island-bass, 0) * .40);
+}
+
+.island-feedback__ambient[data-playback-visual='rays']::after {
+  inset: 2% 11% 0;
+  background: radial-gradient(ellipse at 50% 21%, var(--island-particle-ink), transparent 61%);
+  transform-origin: 50% 10%;
+  scale: calc(.83 + var(--island-bass, 0) * .63);
+  opacity: calc(.09 + var(--island-bass, 0) * .31);
+}
+
+.island-feedback__ambient[data-playback-visual='mercury']::before {
+  inset: -8% 0;
+  background:
+    radial-gradient(ellipse 44% 34% at 32% 42%, transparent 22%, var(--island-wave-trough) 45%, var(--island-wave-crest) 57%, transparent 77%),
+    radial-gradient(ellipse 43% 40% at 73% 63%, transparent 33%, var(--island-wave-crest) 53%, var(--island-wave-trough) 62%, transparent 85%);
+  scale: calc(1 + var(--island-bass, 0) * .32);
+  opacity: calc(.65 + var(--island-bass, 0) * .35);
+}
+
+.island-feedback__ambient[data-playback-visual='mercury']::after {
+  inset: 0 8%;
+  background:
+    radial-gradient(ellipse 44% 21% at 43% 46%, transparent 47%, var(--island-particle-ink) 56%, transparent 73%),
+    radial-gradient(ellipse 44% 24% at 63% 55%, transparent 44%, var(--island-particle-soft-ink) 58%, transparent 80%);
+  scale: calc(.92 + var(--island-bass, 0) * .53);
+  opacity: calc(.19 + var(--island-bass, 0) * .42);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .island-root:not(.reduced-motion, [data-reduced-motion='true']) .island-feedback__ambient[data-playback-visual='rays']::before {
+    animation: island-rays-drift calc(var(--motion-unit) * 760) ease-in-out infinite alternate;
+  }
+  .island-root:not(.reduced-motion, [data-reduced-motion='true']) .island-feedback__ambient[data-playback-visual='mercury']::before {
+    animation: island-mercury-flow calc(var(--motion-unit) * 890) ease-in-out infinite alternate;
+  }
+  .island-root:not(.reduced-motion, [data-reduced-motion='true']) .island-feedback__ambient[data-playback-visual='mercury']::after {
+    animation: island-mercury-flow calc(var(--motion-unit) * 1020) ease-in-out infinite alternate-reverse;
+  }
+  .island-card[data-document-hidden] .island-feedback__ambient::before,
+  .island-card[data-document-hidden] .island-feedback__ambient::after {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes island-rays-drift {
+  from { transform: rotate(-10deg) skewX(-9deg); }
+  to { transform: rotate(12deg) skewX(8deg); }
+}
+
+@keyframes island-mercury-flow {
+  from { transform: translate(-5%, -8%) rotate(-9deg) scaleX(1.1); }
+  to { transform: translate(6%, 9%) rotate(8deg) scaleX(.94); }
+}

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, type ButtonHTMLAttributes, type HTMLAttributes } from 'react'
+import type { PlaybackVisual } from '../lib/interfaceTheme'
 import { IslandParticles } from './IslandParticles'
 import './PressFeedback.css'
 export type RippleDirection = 'outward' | 'inward'
@@ -10,8 +11,14 @@ function rippleFrames(direction: RippleDirection): Keyframe[] {
     : [{ transform: 'scale(0)', opacity: .15 }, { transform: 'scale(1)', opacity: 0 }]
 }
 
+type IslandFeedbackProps = HTMLAttributes<HTMLElement> & {
+  particles?: boolean
+  playbackMotion?: boolean
+  playbackVisual?: PlaybackVisual
+}
+
 /** The ripple belongs to the surface, never to a moving button. */
-export function IslandFeedback({ children, className = '', particles = false, ...props }: HTMLAttributes<HTMLElement> & { particles?: boolean }) {
+export function IslandFeedback({ children, className = '', particles = false, playbackMotion, playbackVisual = 'wave', ...props }: IslandFeedbackProps) {
   const surface = useRef<HTMLElement>(null)
   const layer = useRef<HTMLSpanElement>(null)
   const animations = useRef<Animation[]>([])
@@ -43,7 +50,22 @@ export function IslandFeedback({ children, className = '', particles = false, ..
     const remove = () => { ink.remove(); animations.current = animations.current.filter((item) => item !== animation) }
     void animation.finished.then(remove, remove)
   }
-  return <Feedback.Provider value={ripple}><section {...props} ref={surface} className={`island-feedback ${className}`}><span ref={layer} className="island-feedback__layer" aria-hidden="true">{particles ? <IslandParticles /> : null}</span>{children}</section></Feedback.Provider>
+  return <Feedback.Provider value={ripple}>
+    <section {...props} ref={surface} className={`island-feedback ${className}`}>
+      <span ref={layer} className="island-feedback__layer" aria-hidden="true">
+        {particles || playbackMotion !== undefined ? (
+          <span
+            className="island-feedback__ambient"
+            data-playback-motion={playbackMotion === false ? 'paused' : 'playing'}
+            data-playback-visual={playbackVisual}
+          >
+            {particles ? <IslandParticles /> : null}
+          </span>
+        ) : null}
+      </span>
+      {children}
+    </section>
+  </Feedback.Provider>
 }
 
 /** Controlled icon state and command dispatch remain the caller's responsibility. */

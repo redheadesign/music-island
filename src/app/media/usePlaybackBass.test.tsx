@@ -70,3 +70,29 @@ it('cancels the pending first-sample retry when the island closes', async () => 
   expect(api.setPlaybackBass).toHaveBeenCalledTimes(2)
   expect(api.setPlaybackBass).toHaveBeenLastCalledWith(first, false)
 })
+
+it('suspends capture on system accessibility changes and ignores the old request', async () => {
+  const systemQuiet = window.matchMedia('(forced-colors: active)')
+  const matches = vi.spyOn(systemQuiet, 'matches', 'get').mockReturnValue(true)
+  vi.spyOn(window, 'matchMedia').mockReturnValue(systemQuiet)
+  await act(async () => root.render(<BassCapture enabled />))
+  expect(api.setPlaybackBass).not.toHaveBeenCalled()
+
+  const setQuiet = async (enabled: boolean) => {
+    matches.mockReturnValue(enabled)
+    await act(async () => { systemQuiet.dispatchEvent(new Event('change')) })
+  }
+  await setQuiet(false)
+  const first = vi.mocked(api.setPlaybackBass).mock.calls[0][0]
+  sample({ request: first, bass: .13 })
+  expect(apply).toHaveBeenLastCalledWith(.13)
+
+  await setQuiet(true)
+  expect(api.setPlaybackBass).toHaveBeenLastCalledWith(first, false)
+  expect(apply).toHaveBeenLastCalledWith()
+  await setQuiet(false)
+  const second = vi.mocked(api.setPlaybackBass).mock.calls[2][0]
+  expect(second).not.toBe(first)
+  sample({ request: first, bass: .9 })
+  expect(apply).not.toHaveBeenCalledWith(.9)
+})

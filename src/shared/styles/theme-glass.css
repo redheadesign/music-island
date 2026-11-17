@@ -40,6 +40,10 @@
   --glass-preview-base: #191919;
   --glass-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
   --glass-frost-filter: blur(min(3.5px, var(--glass-blur))) saturate(var(--glass-saturation));
+  --glass-field-fill: color-mix(in srgb, var(--glass-field) var(--glass-menu-opacity), transparent);
+  --glass-button-fill: color-mix(in srgb, var(--glass-raised) var(--glass-menu-opacity), transparent);
+  --glass-button-hover-fill: color-mix(in srgb, var(--glass-button-fill) 88%, rgb(var(--glass-ink)));
+  --glass-emphasis-opacity: max(96%, var(--glass-menu-opacity));
   --preview-resting-opacity: .34;
   --motion-glass-drift: calc(var(--motion-unit) * 420);
 

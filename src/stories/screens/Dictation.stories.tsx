@@ -45,6 +45,9 @@ export const GlassModelSearch: Story = {
     const input = canvas.getByRole('searchbox', { name: 'Найти модель' })
     const field = input.closest('.ui-search')!
     await expect(getComputedStyle(field).backgroundImage).toBe('none')
+    if (!matchMedia('(prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
+      await expect(getComputedStyle(field).backdropFilter).toContain('blur(')
+    }
     await userEvent.type(input, 'Whisper')
     await expect(input).toHaveValue('Whisper')
     await expect(getComputedStyle(field).outlineStyle).toBe('solid')
@@ -167,6 +170,10 @@ export const GlassDictionary: Story = {
     await expect(getComputedStyle(field).borderTopLeftRadius).toBe('18px')
     await expect(getComputedStyle(field).backgroundImage).toBe('none')
     await expect(getComputedStyle(fillers).backgroundImage).toBe('none')
+    if (!matchMedia('(prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
+      await expect(getComputedStyle(field).backdropFilter).toContain('blur(')
+      await expect(getComputedStyle(fillers).backdropFilter).toBe(getComputedStyle(field).backdropFilter)
+    }
     await expect(threshold).toHaveClass('range-slider')
     await expect(getComputedStyle(threshold).backgroundColor).toBe('rgba(0, 0, 0, 0)')
     threshold.focus()
@@ -175,6 +182,9 @@ export const GlassDictionary: Story = {
     await expect(threshold.valueAsNumber).toBe(0.05)
     await expect(getComputedStyle(threshold).getPropertyValue('--range-fill')).toBe('5%')
   },
+}
+export const GlassDictionaryLight: Story = {
+  ...GlassDictionary, name: 'Стекло · поля словаря в светлой теме', parameters: { light: true },
 }
 export const DictionaryAddWord: Story = {
   name: 'Словарь · редактирование списка',

@@ -3,6 +3,7 @@
 @import './shared/styles/glass-optics.css';
 @import './shared/styles/primitives.css';
 @import './shared/styles/island-material.css';
+@import './shared/styles/playback-visuals.css';
 
 :root {
   color-scheme: dark;

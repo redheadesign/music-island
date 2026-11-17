@@ -26,6 +26,8 @@ export function usePlaybackBass(enabled: boolean, applyLevel: (bass?: number) =>
     let unlisten: (() => void) | undefined
     let disposed = false
     let hasSample = false
+    const systemQuiet = window.matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)')
+    const unavailable = () => document.hidden || systemQuiet.matches
 
     const stop = () => {
       window.clearTimeout(startTimer)
@@ -43,21 +45,22 @@ export function usePlaybackBass(enabled: boolean, applyLevel: (bass?: number) =>
       void queueCapture(activeRequest, true).then((started) => {
         if (!mayRetry || hasSample || request !== activeRequest) return
         startTimer = window.setTimeout(() => {
-          if (hasSample || request !== activeRequest || document.hidden) return
+          if (hasSample || request !== activeRequest || unavailable()) return
           stop()
           start(false)
         }, started ? FIRST_SAMPLE_TIMEOUT_MS : START_RETRY_MS)
       })
     }
 
-    const syncVisibility = () => {
-      if (document.hidden) stop()
+    const syncAvailability = () => {
+      if (unavailable()) stop()
       else if (unlisten && request === undefined) start(true)
     }
 
-    document.addEventListener('visibilitychange', syncVisibility)
+    document.addEventListener('visibilitychange', syncAvailability)
+    systemQuiet.addEventListener('change', syncAvailability)
     void onPlaybackBass(({ request: sampleRequest, bass }) => {
-      if (sampleRequest !== request || document.hidden || !Number.isFinite(bass)) return
+      if (sampleRequest !== request || unavailable() || !Number.isFinite(bass)) return
       hasSample = true
       window.clearTimeout(startTimer)
       applyLevel(Math.max(0, Math.min(1, bass)))
@@ -69,14 +72,15 @@ export function usePlaybackBass(enabled: boolean, applyLevel: (bass?: number) =>
         return
       }
       unlisten = remove
-      syncVisibility()
+      syncAvailability()
     }).catch(() => undefined)
 
     return () => {
       disposed = true
       stop()
       unlisten?.()
-      document.removeEventListener('visibilitychange', syncVisibility)
+      document.removeEventListener('visibilitychange', syncAvailability)
+      systemQuiet.removeEventListener('change', syncAvailability)
     }
   }, [enabled, applyLevel])
 }

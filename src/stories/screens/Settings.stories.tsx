@@ -146,6 +146,21 @@ export const GlassReactiveWave: Story = {
     await expect(setting).toBeChecked()
   },
 }
+export const GlassPlaybackBackground: Story = {
+  ...Glass,
+  name: 'Стекло · выбор фона при воспроизведении',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('button', { name: 'Фон при воспроизведении' })
+    for (const [from, to] of [['Волна', 'Лучи'], ['Лучи', 'Жидкий металл']]) {
+      await userEvent.click(trigger)
+      const menu = await within(canvasElement.ownerDocument.body).findByRole('listbox')
+      await expect(within(menu).getByRole('option', { name: from })).toHaveAttribute('aria-selected', 'true')
+      await userEvent.click(within(menu).getByRole('option', { name: to }))
+      await expect(trigger).toHaveTextContent(to)
+    }
+  },
+}
 export const GlassOptics: Story = {
   ...Glass,
   name: 'Стекло · блик на кромке',
@@ -170,6 +185,11 @@ export const GlassLegacyActions: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const minimize = canvas.getByRole('button', { name: 'Свернуть' })
+    const shell = minimize.closest('.settings-window-root')!
+    await expect(getComputedStyle(shell).borderTopLeftRadius).toBe('0px')
+    if (!matchMedia('(prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
+      await expect(getComputedStyle(minimize).backdropFilter).toContain('blur(')
+    }
     if (!matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
       const { left, top, width } = minimize.getBoundingClientRect()
       fireEvent.pointerMove(minimize, { pointerType: 'mouse', clientX: left + width / 2, clientY: top + 4 })

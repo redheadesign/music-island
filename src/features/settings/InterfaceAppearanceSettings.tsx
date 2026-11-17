@@ -1,7 +1,7 @@
 import { createTranslator } from '../../shared/i18n/messages'
-import { getInterfaceThemeDefinition, INTERFACE_THEME_IDS, INTERFACE_THEMES } from '../../shared/lib/interfaceTheme'
+import { getInterfaceThemeDefinition, INTERFACE_THEME_IDS, INTERFACE_THEMES, PLAYBACK_VISUALS } from '../../shared/lib/interfaceTheme'
 import type { AppConfig, Locale } from '../../shared/lib/types'
-import { getInterfaceScene, getInterfaceTheme, getReducedTransparency, getUiPrefs, withUiPrefs } from '../../shared/lib/uiPrefs'
+import { getInterfaceScene, getInterfaceTheme, getPlaybackVisual, getReducedTransparency, getUiPrefs, withUiPrefs } from '../../shared/lib/uiPrefs'
 import { Select } from '../../shared/ui/Select'
 import { SettingRow, Switch } from '../../shared/ui/SettingsControls'
 
@@ -17,6 +17,7 @@ export function InterfaceAppearanceSettings({ config, locale, onChange }: {
   const sceneOptions = definition.scene?.options
   const themeLabel = t('settings.interfaceTheme')
   const sceneLabel = t('settings.interfaceScene')
+  const visualLabel = t('settings.playbackVisual')
 
   return <>
     <SettingRow label={themeLabel}>
@@ -45,7 +46,18 @@ export function InterfaceAppearanceSettings({ config, locale, onChange }: {
         />
       </SettingRow>
     ) : null}
-    {theme === 'glass' ? (
+    {theme === 'glass' ? <>
+      <SettingRow label={visualLabel}>
+        <Select
+          ariaLabel={visualLabel}
+          value={getPlaybackVisual(config)}
+          options={PLAYBACK_VISUALS.map(value => ({ value, label: t(`settings.playbackVisual.${value}`) }))}
+          onChange={value => {
+            const playbackVisual = PLAYBACK_VISUALS.find(visual => visual === value)
+            if (playbackVisual) onChange(withUiPrefs(config, { playbackVisual }))
+          }}
+        />
+      </SettingRow>
       <Switch
         label={t('settings.playbackReactiveWave')}
         hint={t('settings.playbackReactiveWaveHint')}
@@ -53,7 +65,7 @@ export function InterfaceAppearanceSettings({ config, locale, onChange }: {
         disabled={config.media.protocol !== 'yandex-direct'}
         onChange={playbackReactiveWave => onChange(withUiPrefs(config, { playbackReactiveWave }))}
       />
-    ) : null}
+    </> : null}
     {definition.translucent ? (
       <Switch
         label={t('settings.reducedTransparency')}

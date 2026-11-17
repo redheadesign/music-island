@@ -42,6 +42,7 @@ import {
   getInterfaceScene,
   getInterfaceTheme,
   getLocalServersWidgetScale,
+  getPlaybackVisual,
   getReducedTransparency,
   getUiPrefs,
   getUsageWidgetCompact,
@@ -148,6 +149,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const transitionRef = useRef(transition)
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
+  const hasGlassPlayback = getInterfaceTheme(config) === 'glass' && Boolean(media?.hasSession)
+  const playbackMotion = hasGlassPlayback && media?.playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -158,16 +161,15 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     }
     if (!bassEffect.current?.layer.isConnected) {
       bassEffect.current?.dispose()
-      const layer = bass > 0 ? overlay.current?.querySelector<HTMLElement>('.island-card .island-feedback__layer') : null
+      const layer = bass > 0 ? overlay.current?.querySelector<HTMLElement>('.island-card .island-feedback__ambient[data-playback-motion="playing"]') : null
       bassEffect.current = layer ? createIslandBassEffect(layer) : null
     }
     bassEffect.current?.update(bass)
   }, [])
   usePlaybackBass(
-    expandedVisible && getInterfaceTheme(config) === 'glass' && uiPrefs.playbackReactiveWave === true
-      && !reducedMotion && !getReducedTransparency(config) && Boolean(media?.hasSession)
-      && config.media.protocol === 'yandex-direct' && media?.provider === 'yandex-direct'
-      && media.playbackStatus === 'playing',
+    expandedVisible && playbackMotion && uiPrefs.playbackReactiveWave === true
+      && !reducedMotion && !getReducedTransparency(config)
+      && config.media.protocol === 'yandex-direct' && media?.provider === 'yandex-direct',
     applyBassLevel,
   )
   const localServersEnabled = islandLayout.zones.bottom.includes('localServers')
@@ -959,7 +961,12 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
               }}
             >
             <div className="island-scale-layer">
-            <IslandFeedback className="island-card island-surface" particles={getInterfaceTheme(config) === 'glass' && Boolean(media?.hasSession)}>
+            <IslandFeedback
+              className="island-card island-surface"
+              particles={hasGlassPlayback}
+              playbackMotion={hasGlassPlayback ? playbackMotion : undefined}
+              playbackVisual={getPlaybackVisual(config)}
+            >
               <MusicModule
                 layout={islandLayout}
                 media={media}

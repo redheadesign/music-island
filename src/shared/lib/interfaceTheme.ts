@@ -1,6 +1,9 @@
 export const INTERFACE_SCENES = ['fox', 'manta'] as const
 export type InterfaceScene = typeof INTERFACE_SCENES[number]
 
+export const PLAYBACK_VISUALS = ['wave', 'rays', 'mercury'] as const
+export type PlaybackVisual = typeof PLAYBACK_VISUALS[number]
+
 type ThemeDefinition = {
   label: { ru: string; en: string }
   translucent?: boolean
