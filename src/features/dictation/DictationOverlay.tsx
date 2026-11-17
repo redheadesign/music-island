@@ -33,10 +33,16 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   const labels: Record<string, [string, string]> = { preparing: ['Подготовка…', 'Preparing…'], recording: ['Слушаю', 'Listening'], streaming: ['Слушаю', 'Listening'], transcribing: ['Распознаю…', 'Transcribing…'], processing: ['Обработка с ИИ…', 'Processing with AI…'], completed: ['Готово', 'Done'], cancelled: ['Запись отменена', 'Cancelled'], error: [status.text ? 'Не удалось вставить' : 'Не удалось распознать', status.text ? 'Could not paste' : 'Transcription failed'] }
   const loadingLabel = ru ? 'Загружаю модель…' : 'Loading model…'
   const progress = status.phase === 'transcribing' && !status.modelLoading && status.progress && status.progress.totalAudioMs > 0 ? status.progress : null
-  const duration = progress ? `${formatTime(Math.min(progress.totalAudioMs, Math.max(0, progress.completedAudioMs)))} / ${formatTime(progress.totalAudioMs)}` : null
+  const elapsed = progress ? Math.min(progress.totalAudioMs, Math.max(0, progress.completedAudioMs)) : 0
+  const progressTime = progress ? <span role="progressbar" className={appearance.theme === 'classic' ? undefined : 'dictation-cloud__duration'}
+    aria-label={ru ? 'Распознано аудио' : 'Audio transcribed'} aria-valuemin={0}
+    aria-valuenow={elapsed / 1000} aria-valuemax={progress.totalAudioMs / 1000}
+    aria-valuetext={`${formatTime(elapsed)} ${ru ? 'из' : 'of'} ${formatTime(progress.totalAudioMs)}`}>
+    {formatTime(elapsed)} / {formatTime(progress.totalAudioMs)}
+  </span> : null
   const label = status.phase === 'transcribing' && status.modelLoading ? loadingLabel : labels[status.phase]?.[ru ? 0 : 1] ?? ''
   const error = status.phase === 'error'
-  const message = error && copyFailure === status.operationId ? ru ? 'Не удалось скопировать' : 'Could not copy' : duration ? `${label} ${duration}` : label
+  const message = error && copyFailure === status.operationId ? ru ? 'Не удалось скопировать' : 'Could not copy' : label
   const closeLabel = ru ? 'Закрыть' : 'Dismiss'
   const copyLabel = ru ? 'Скопировать текст' : 'Copy text'
   const hasText = Boolean(text.committed || text.tentative)
@@ -57,15 +63,15 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
     return <div hidden={!visible} className="dictation-overlay dictation-overlay--cloud" data-theme={appearance.theme} data-phase={status.phase} data-audio-progress={progress ? true : undefined} data-interface-theme={error ? interfaceTheme : undefined} data-recording-control={recordingControl || undefined} data-expanded={expanded || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
       <DictationCloudSurface appearance={appearance} phase={status.phase} levels={levels} still={still} active={artworkActive && !error} demo={demo} coreRef={core} effectRef={progress ? progressArt : undefined} expanded={expanded} singleControl controlsVisible={recording && recordingControl} />
       {previewText}
-      <div className="dictation-cloud__bar" role={error ? undefined : 'status'}>
+      <div className="dictation-cloud__bar">
         <div ref={core} className="dictation-cloud__core">
-          {duration ? <>
+          {progressTime ? <>
             <span ref={progressArt} className="dictation-cloud__progress-art">{visible ? visual : null}</span>
-            <span className="dictation-cloud__duration" aria-hidden="true">{duration}</span>
+            {progressTime}
           </> : visible ? visual : null}
           {!recording && !error ? <button className="dictation-cloud__interaction" type="button" aria-label={failed || status.phase === 'completed' ? closeLabel : ru ? 'Отменить обработку' : 'Cancel processing'} title={label} onPointerDown={event => event.preventDefault()} onClick={close} /> : null}
         </div>
-        <span role={error ? 'alert' : undefined} className={error ? 'dictation-cloud__error-label' : 'dictation-overlay__sr'}>{message}</span>
+        <span role={error ? 'alert' : 'status'} className={error ? 'dictation-cloud__error-label' : 'dictation-overlay__sr'}>{message}</span>
         {error ? <>
           {status.text ? <button className="dictation-cloud__copy" type="button" aria-label={copyLabel} title={copyLabel} onPointerDown={event => event.preventDefault()} onClick={copyText}><Copy size={16} /></button> : null}
           <button className="dictation-cloud__dismiss" type="button" aria-label={closeLabel} title={closeLabel} onPointerDown={event => event.preventDefault()} onClick={close}><X size={15} /></button>
@@ -75,9 +81,9 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   }
   if (!visible) return null
   return <div className="dictation-overlay" data-theme={appearance.theme} data-phase={status.phase} data-interface-theme={error ? interfaceTheme : undefined} data-expanded={Boolean(previewText) || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
-    <div className="dictation-overlay__bar" role={error ? undefined : 'status'}>
+    <div className="dictation-overlay__bar">
       <div className="dictation-overlay__art"><DictationVisual key={`${appearance.theme}:${status.operationId}:${status.phase}`} appearance={appearance} phase={status.phase} levels={levels} still={still} active={active} demo={demo} operationId={status.operationId} /></div>
-      <span role={error ? 'alert' : undefined} className="dictation-overlay__label">{message}</span>
+      <span className="dictation-overlay__label"><span role={error ? 'alert' : 'status'}>{message}</span>{progressTime && <> {progressTime}</>}</span>
       {recording ? <div className="dictation-overlay__levels" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <i key={index} style={{ height: `${Math.max(3, Math.min(23, (levels[index % Math.max(1, levels.length)] ?? 0) * 23))}px` }} />)}</div> : null}
       {status.phase === 'error' && status.text ? <button type="button" aria-label={ru ? 'Скопировать текст' : 'Copy text'} title={ru ? 'Скопировать текст' : 'Copy text'} onPointerDown={(event) => event.preventDefault()} onClick={() => { setCopyFailure(null); void copy().catch(() => setCopyFailure(status.operationId)) }}><Copy size={15} /></button> : null}
       {recording ? recordingControl ? <button type="button" aria-label={ru ? 'Завершить запись' : 'Finish recording'} onPointerDown={event => event.preventDefault()} onClick={() => { void finish?.().catch(() => {}) }}><Stop weight="fill" size={13} /></button> : null : <button type="button" aria-label={status.phase === 'transcribing' || status.phase === 'processing' ? ru ? 'Отменить обработку' : 'Cancel processing' : closeLabel} onPointerDown={event => event.preventDefault()} onClick={() => { void cancel().catch(() => {}) }}><X size={15} /></button>}

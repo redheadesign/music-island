@@ -19,9 +19,15 @@ export const LongTranscription: Story = {
   parameters: { workshop: { width: 256, height: 50 } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('status')).toHaveTextContent('1:20 / 6:00')
+    await expect(canvas.getByRole('status')).toHaveTextContent(/^Распознаю…$/)
+    await expect(canvas.getByRole('progressbar', { name: 'Распознано аудио' })).toHaveAttribute('aria-valuetext', '1:20 из 6:00')
     await expect(canvas.getByRole('button', { name: 'Отменить обработку' })).toBeEnabled()
   },
+}
+export const ClassicProgress: Story = {
+  ...LongTranscription,
+  name: 'Классическая · прогресс распознавания',
+  args: { ...LongTranscription.args, appearance: { ...defaultDictationAppearance, theme: 'classic' } },
 }
 export const FoxProgress: Story = {
   ...LongTranscription,
@@ -29,7 +35,8 @@ export const FoxProgress: Story = {
   args: { ...LongTranscription.args, appearance: { ...defaultDictationAppearance, theme: 'pixels' } },
   play: async ({ canvasElement }) => {
     const core = canvasElement.querySelector('.dictation-cloud__core')!
-    const digits = core.querySelector('.dictation-cloud__duration')!
+    const digits = within(core as HTMLElement).getByRole('progressbar', { name: 'Распознано аудио' })
+    await expect(within(canvasElement).getByRole('status')).toHaveTextContent(/^Распознаю…$/)
     await expect(digits).toHaveTextContent('1:20 / 6:00')
     const box = core.getBoundingClientRect()
     const time = digits.getBoundingClientRect()

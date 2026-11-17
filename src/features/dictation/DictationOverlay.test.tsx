@@ -67,18 +67,29 @@ it('shows measured audio time only while transcribing and offers cancellation in
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   const container = document.createElement('div'), root = createRoot(container)
   const cancel = vi.fn(async () => {})
-  const render = (theme: 'wave' | 'pixels' | 'classic', phase: string) => (
+  const render = (theme: 'wave' | 'pixels' | 'classic', phase: string, completedAudioMs = 67000) => (
     <DictationOverlayView visible active reducedMotion levels={[]} text={{ committed: '', tentative: '' }}
       appearance={{ ...defaultDictationAppearance, theme }} cancel={cancel} copy={async () => {}}
-      status={{ phase, revision: 4, operationId: 5, text: '', ready: true, error: null, progress: { completedAudioMs: 67000, totalAudioMs: 191000 } }} />
+      status={{ phase, revision: 4, operationId: 5, text: '', ready: true, error: null, progress: { completedAudioMs, totalAudioMs: 191000 } }} />
   )
   try {
     for (const theme of ['wave', 'pixels', 'classic'] as const) {
       await act(async () => root.render(render(theme, 'transcribing')))
-      expect(container.querySelector('[role="status"]')?.textContent).toContain('1:07 / 3:11')
+      const live = container.querySelector('[role="status"]')!
+      const timer = container.querySelector('[role="progressbar"]')!
+      expect(live.textContent).toBe('Распознаю…')
+      expect(live.contains(timer)).toBe(false)
+      expect(timer.getAttribute('aria-label')).toBe('Распознано аудио')
+      expect(timer.getAttribute('aria-valuemax')).toBe('191')
+      expect(timer.getAttribute('aria-valuenow')).toBe('67')
+      expect(timer.getAttribute('aria-valuetext')).toBe('1:07 из 3:11')
+      await act(async () => root.render(render(theme, 'transcribing', 197000)))
+      expect(container.querySelector('[role="status"]')).toBe(live)
+      expect(live.textContent).toBe('Распознаю…')
+      expect(timer.getAttribute('aria-valuenow')).toBe('191')
       await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Отменить обработку"]')!.click())
       await act(async () => root.render(render(theme, 'completed')))
-      expect(container.textContent).not.toContain('1:07')
+      expect(container.querySelector('[role="progressbar"]')).toBeNull()
     }
     expect(cancel).toHaveBeenCalledTimes(3)
   } finally { await act(async () => root.unmount()) }
