@@ -3,13 +3,13 @@ import { DictationCloudRenderer, type CloudFrame } from './DictationCloudRendere
 import type { DictationAppearance } from '../../shared/lib/dictationAppearance'
 import { getCloudGeometry } from './cloudGeometry'
 
-export function DictationCloudSurface({ appearance, phase, levels, still = false, active = true, demo = false, coreRef, expanded = false, singleControl = false }: {
+export function DictationCloudSurface({ appearance, phase, levels, still = false, active = true, demo = false, coreRef, effectRef, expanded = false, singleControl = false, controlsVisible = true }: {
   appearance: DictationAppearance; phase: string; levels: number[]; still?: boolean; active?: boolean; demo?: boolean
-  coreRef?: RefObject<HTMLElement | null>; expanded?: boolean; singleControl?: boolean
+  coreRef?: RefObject<HTMLElement | null>; effectRef?: RefObject<HTMLElement | null>; expanded?: boolean; singleControl?: boolean; controlsVisible?: boolean
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
-  const input = useRef({ appearance, phase, levels, demo, coreRef, expanded, singleControl, active, still })
-  input.current = { appearance, phase, levels, demo, coreRef, expanded, singleControl, active, still }
+  const input = useRef({ appearance, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still })
+  input.current = { appearance, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still }
   const redraw = useRef<(() => void) | null>(null)
   // A cheap, visible material while WebGL is being prepared (or unavailable).
   const [ready, setReady] = useState(false)
@@ -36,9 +36,13 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
       const { width, height, coreWidth, coreX } = getCloudGeometry({
         width: surface.clientWidth, height: surface.clientHeight, bounds, coreBounds, expanded: next.expanded,
       })
-      const controls = !next.expanded && next.coreRef ? Math.max(0,Math.min(1,(width-92)/(next.singleControl ? 40 : 80))) : 0
+      const effectBounds = next.effectRef?.current?.getBoundingClientRect()
+      const scale = bounds.width > 0 ? width / bounds.width : 1
+      const effectWidth = effectBounds ? effectBounds.width * scale : coreWidth
+      const effectX = effectBounds ? (effectBounds.left - bounds.left) * scale + effectWidth / 2 : coreX
+      const controls = next.controlsVisible && !next.expanded && next.coreRef ? Math.max(0,Math.min(1,(width-92)/(next.singleControl ? 40 : 80))) : 0
       const frame: CloudFrame = { time: still ? 0 : time, delta, level: envelope, phase: next.phase, instant: still || !active,
-        appearance: next.appearance, controls, coreWidth, coreX, singleControl: next.singleControl, coreHeight: next.expanded ? height-6 : 44,
+        appearance: next.appearance, controls, coreWidth, coreX, effectWidth, effectX, singleControl: next.singleControl, coreHeight: next.expanded ? height-6 : 44,
         coreY: next.expanded ? height/2 : height-25, accent }
       try { updateMaterialReady(renderer.render(frame)) }
       catch { updateMaterialReady(false); cancelAnimationFrame(raf); renderer.dispose(); renderer=null }
@@ -73,17 +77,20 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
     }
     const lost = (event: Event) => { event.preventDefault(); cancelAnimationFrame(raf); attempted=true; renderer?.dispose(); renderer=null; updateMaterialReady(false) }
     const restored = () => { attempted=false; update() }
+    // The compact capsule can change width after a still frame was rendered.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
+    observer?.observe(surface)
     redraw.current = update
     document.addEventListener('visibilitychange',update)
     surface.addEventListener('webglcontextlost',lost)
     surface.addEventListener('webglcontextrestored',restored)
     return () => {
-      cancelAnimationFrame(raf); redraw.current=null; renderer?.dispose()
+      observer?.disconnect(); cancelAnimationFrame(raf); redraw.current=null; renderer?.dispose()
       document.removeEventListener('visibilitychange',update)
       surface.removeEventListener('webglcontextlost',lost);surface.removeEventListener('webglcontextrestored',restored)
     }
   }, [])
-  useEffect(() => { redraw.current?.() }, [active,still,appearance,phase,expanded,singleControl])
+  useEffect(() => { redraw.current?.() }, [active,still,appearance,phase,expanded,singleControl,controlsVisible,effectRef])
   useEffect(() => { if (active && still) redraw.current?.() }, [active,still,levels])
   return <canvas ref={canvas} className={'dictation-cloud-surface'+(appearance.theme==='wave'?' dictation-visual--wave':'')} data-fallback={!ready || undefined} aria-hidden="true" />
 }

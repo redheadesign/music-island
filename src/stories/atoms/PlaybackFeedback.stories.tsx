@@ -26,3 +26,23 @@ export const ReducedMotion: Story = {name:'Без движения',args:{reduce
   await userEvent.click(within(canvasElement).getByRole('button',{name:'Play'}))
   await expect(canvasElement.querySelector('.island-feedback__wave')).not.toBeInTheDocument()
 }}
+
+export const LocalHeart: Story = {
+  name: 'Лайк · два удара и поворот внутри кнопки',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const button = canvas.getByRole('button', { name: 'Добавить в любимое' })
+    await userEvent.click(button)
+    await expect(button).toHaveAttribute('aria-pressed', 'true')
+    if (!matchMedia('(prefers-reduced-motion: reduce), (forced-colors: active)').matches) {
+      await expect(button.querySelector('[data-pulse]')).toBeInTheDocument()
+    }
+    await expect(canvasElement.querySelector('.island-feedback__wave')).not.toBeInTheDocument()
+    await userEvent.keyboard('{Enter}')
+    await expect(button).toHaveAttribute('aria-pressed', 'false')
+    await expect(button.querySelector('[data-pulse]')).not.toBeInTheDocument()
+    await userEvent.keyboard('{Enter}')
+    await expect(button).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvasElement.querySelector('.island-feedback__wave')).not.toBeInTheDocument()
+  },
+}

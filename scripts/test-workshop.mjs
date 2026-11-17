@@ -16,6 +16,8 @@ const criticalStories = [
   'screens-dictation--post-processing-setup', 'screens-dictation--glass-advanced-load-error',
   'screens-onboarding--first-launch', 'screens-onboarding--layout', 'screens-onboarding--voice',
   'screens-dictation--history-delete-confirmation', 'screens-dictation--custom-model-file',
+  'atoms-playbackfeedback--local-heart', 'molecules-dictationoverlay--fox-progress',
+  'organisms-islandlayouteditor--inline-layout', 'organisms-islandlayouteditor--full-inline-layout',
   'molecules-dictationoverlay--long-transcription', 'screens-onboarding--custom-shortcut',
   'organisms-usagesettingssection--stale-limit',
   'screens-onboarding--save-error', 'screens-installnotice--running', 'screens-installnotice--open-failed',

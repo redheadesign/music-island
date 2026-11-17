@@ -24,6 +24,7 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
     return () => window.clearTimeout(timer)
   }, [visible, active, status.modelLoading, status.phase, status.operationId])
   const core = useRef<HTMLDivElement>(null)
+  const progressArt = useRef<HTMLSpanElement>(null)
   const systemReducedMotion = useReducedMotion()
   const still = Boolean(reducedMotion || systemReducedMotion || !active)
   const ru = locale === 'ru'
@@ -54,15 +55,17 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
     const copyText = () => { setCopyFailure(null); void copy().catch(() => setCopyFailure(status.operationId)) }
     const visual = fox ? <DictationVisual appearance={appearance} phase={status.phase} levels={levels} still={still} active={artworkActive} demo={demo} operationId={status.operationId} /> : <Icon className="dictation-cloud__fallback" size={18} aria-hidden="true" />
     return <div hidden={!visible} className="dictation-overlay dictation-overlay--cloud" data-theme={appearance.theme} data-phase={status.phase} data-audio-progress={progress ? true : undefined} data-interface-theme={error ? interfaceTheme : undefined} data-recording-control={recordingControl || undefined} data-expanded={expanded || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
-      <DictationCloudSurface appearance={appearance} phase={status.phase} levels={levels} still={still} active={artworkActive && !error} demo={demo} coreRef={core} expanded={expanded} singleControl />
+      <DictationCloudSurface appearance={appearance} phase={status.phase} levels={levels} still={still} active={artworkActive && !error} demo={demo} coreRef={core} effectRef={progress ? progressArt : undefined} expanded={expanded} singleControl controlsVisible={recording && recordingControl} />
       {previewText}
       <div className="dictation-cloud__bar" role={error ? undefined : 'status'}>
         <div ref={core} className="dictation-cloud__core">
-          {visible ? visual : null}
+          {duration ? <>
+            <span ref={progressArt} className="dictation-cloud__progress-art">{visible ? visual : null}</span>
+            <span className="dictation-cloud__duration" aria-hidden="true">{duration}</span>
+          </> : visible ? visual : null}
           {!recording && !error ? <button className="dictation-cloud__interaction" type="button" aria-label={failed || status.phase === 'completed' ? closeLabel : ru ? 'Отменить обработку' : 'Cancel processing'} title={label} onPointerDown={event => event.preventDefault()} onClick={close} /> : null}
         </div>
         <span role={error ? 'alert' : undefined} className={error ? 'dictation-cloud__error-label' : 'dictation-overlay__sr'}>{message}</span>
-        {duration ? <span className="dictation-cloud__duration" aria-hidden="true">{duration}</span> : null}
         {error ? <>
           {status.text ? <button className="dictation-cloud__copy" type="button" aria-label={copyLabel} title={copyLabel} onPointerDown={event => event.preventDefault()} onClick={copyText}><Copy size={16} /></button> : null}
           <button className="dictation-cloud__dismiss" type="button" aria-label={closeLabel} title={closeLabel} onPointerDown={event => event.preventDefault()} onClick={close}><X size={15} /></button>

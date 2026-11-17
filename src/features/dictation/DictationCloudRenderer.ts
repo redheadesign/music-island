@@ -13,6 +13,7 @@ type Program = { value: WebGLProgram; linked: boolean; locations: Map<string, We
 type Target = { texture: WebGLTexture; framebuffer: WebGLFramebuffer; width: number; height: number }
 export type CloudFrame = {
   time: number; delta: number; level: number; phase: string; appearance: DictationAppearance; instant: boolean
+  effectX?: number; effectWidth?: number
   coreWidth: number; coreHeight: number; coreX: number; coreY: number; controls: number; singleControl: boolean; accent: number[]
 }
 const palettes: Record<DictationAppearance['palette'], number[][]> = {
@@ -168,7 +169,7 @@ export class DictationCloudRenderer {
     if (this.canvas.width !== width || this.canvas.height !== height) { this.canvas.width=width; this.canvas.height=height }
     const coreWidth=frame.coreWidth*dpr, coreHeight=frame.coreHeight*dpr, coreX=frame.coreX*dpr, coreY=frame.coreY*dpr
     const { waveBrightness, lightIntensity } = dictationArtworkDefaults
-    const ew=Math.max(1,Math.round(coreWidth*1.18)), eh=Math.max(1,Math.round(44*dpr*1.18))
+    const ew=Math.max(1,Math.round((frame.effectWidth ?? frame.coreWidth)*dpr*1.18)), eh=Math.max(1,Math.round(44*dpr*1.18))
     const effect=this.target(0,ew,eh), scene=this.target(1,width,height)
     const working=['preparing','transcribing','processing'].includes(phase)
     const result=['completed','error','cancelled'].includes(phase)
@@ -221,7 +222,7 @@ export class DictationCloudRenderer {
     this.draw(2,material,[['uBackground',this.empty]])
     gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA)
     this.draw(3,{uResolution:[width,height],uCanvasSize:[width,height],
-      uEffectOrigin:[coreX-ew/2,height-(25*dpr)-eh/2],uEffectSize:[ew,eh],
+      uEffectOrigin:[(frame.effectX ?? frame.coreX)*dpr-ew/2,height-(25*dpr)-eh/2],uEffectSize:[ew,eh],
       uContainer:.9,uContainerBlack:.25,uContainerFade:1,uContainerGauss:8,uContainerTint:[.36,.04,.05],uAnger:0},
       [['uEffectTexture',effect.texture]])
     gl.disable(gl.BLEND)

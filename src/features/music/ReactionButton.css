@@ -1,0 +1,36 @@
+.reaction-glyph {
+  position: relative;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.reaction-glyph > svg { position: relative; }
+
+@media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  .reaction-button--like:not([data-reduced-motion], .reduced-motion *, [data-reduced-motion='true'] *) .reaction-glyph[data-pulse] > svg {
+    animation: like-heartbeat calc(var(--motion-unit) * 36) cubic-bezier(.24,.72,.31,1) 1;
+  }
+  @keyframes like-heartbeat {
+    0% { fill: currentColor; color: var(--accent); transform: perspective(90px) rotateY(0) scale(.91); }
+    17% { transform: perspective(90px) rotateY(0) scale(1.21); }
+    32% { transform: perspective(90px) rotateY(0) scale(.96); }
+    49% { transform: perspective(90px) rotateY(32deg) scale(1.13); }
+    100% { fill: currentColor; color: var(--accent); transform: perspective(90px) rotateY(360deg) scale(1); }
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (prefers-reduced-transparency: no-preference) and (forced-colors: none) {
+  [data-interface-theme='glass'] .reaction-button--like:not([data-reduced-motion], .reduced-motion *, [data-reduced-motion='true'] *, [data-reduced-transparency='true'] *) .reaction-glyph[data-pulse]::before {
+    content: '';
+    position: absolute;
+    inset: -12%;
+    border-radius: var(--radius-round);
+    background: radial-gradient(ellipse, var(--accent), transparent 72%);
+    opacity: 0;
+    animation: like-reflection calc(var(--motion-unit) * 36) ease-out 1;
+  }
+  @keyframes like-reflection {
+    0%, 36%, 100% { opacity: 0; transform: scale(.72); }
+    17% { opacity: .58; transform: scale(1.23); }
+    51% { opacity: .36; transform: scale(1.08); }
+  }
+}

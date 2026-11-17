@@ -1,4 +1,4 @@
-import { Heart, HeartCrack, Repeat, Repeat1, Shuffle } from 'lucide-react'
+import { Repeat, Repeat1, Shuffle } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { PressFeedback } from '../../shared/ui/PressFeedback'
 import { createTranslator } from '../../shared/i18n/messages'
@@ -26,9 +26,7 @@ export function PlaybackButton({ playing = true, artwork = false, disabled, onCl
 export function MediaArtwork({ src, title = '', playing = true, disabled, onClick, reducedMotion = false, locale = 'ru' }: { locale?: Locale; src?: string | null; title?: string; reducedMotion?: boolean; playing?: boolean; disabled?: boolean; onClick?: () => void }) {
   return <div className="artwork-shell">{src ? <img src={src} alt="" draggable={false} /> : <div className="artwork-placeholder">{title.slice(0, 2).toUpperCase()}</div>}<PlaybackButton locale={locale} artwork reducedMotion={reducedMotion} playing={playing} disabled={disabled} onClick={onClick} /></div>
 }
-export function ReactionButton({ kind, active = false, disabled, onClick, locale = 'ru', reducedMotion = false }: { locale?: Locale; reducedMotion?: boolean; kind: 'like' | 'dislike'; active?: boolean; disabled?: boolean; onClick?: () => void }) {
-  return <PressFeedback direction={kind === 'like' && active ? 'inward' : 'outward'} reducedMotion={reducedMotion} type="button" className={`reaction-button${kind === 'like' ? ' reaction-button--like' : ''}${active ? ' reaction-button--active' : ''}`} aria-label={locale === 'ru' ? kind === 'like' ? active ? 'Убрать из любимого' : 'Добавить в любимое' : active ? 'Убрать дизлайк' : 'Не нравится' : kind === 'like' ? active ? 'Remove like' : 'Like' : active ? 'Remove dislike' : 'Dislike'} aria-pressed={active} disabled={disabled} onClick={onClick}>{kind === 'like' ? <Heart fill={active ? 'currentColor' : 'transparent'} /> : <HeartCrack fill={active ? 'currentColor' : 'transparent'} />}</PressFeedback>
-}
+export { ReactionButton } from './ReactionButton'
 
 export function PlaybackModeButton({ kind, active = false, repeatMode = 'off', disabled, onClick, locale = 'ru' }: { kind: 'shuffle' | 'repeat'; active?: boolean; repeatMode?: RepeatMode; disabled?: boolean; onClick?: () => void; locale?: Locale }) {
   const ru = locale === 'ru'

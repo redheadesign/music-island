@@ -23,6 +23,21 @@ export const LongTranscription: Story = {
     await expect(canvas.getByRole('button', { name: 'Отменить обработку' })).toBeEnabled()
   },
 }
+export const FoxProgress: Story = {
+  ...LongTranscription,
+  name: 'Лиса · длительность внутри капсулы',
+  args: { ...LongTranscription.args, appearance: { ...defaultDictationAppearance, theme: 'pixels' } },
+  play: async ({ canvasElement }) => {
+    const core = canvasElement.querySelector('.dictation-cloud__core')!
+    const digits = core.querySelector('.dictation-cloud__duration')!
+    await expect(digits).toHaveTextContent('1:20 / 6:00')
+    const box = core.getBoundingClientRect()
+    const time = digits.getBoundingClientRect()
+    await expect(time.left).toBeGreaterThan(box.left)
+    await expect(time.right).toBeLessThan(box.right)
+    await expect(within(core as HTMLElement).getByRole('button')).toBeEnabled()
+  },
+}
 export const Processing: Story = {name: 'Обработка текста', args: {status: {...meta.args.status, phase: 'processing'}}}
 export const Completed: Story = {name: 'Готово', args: {status: {...meta.args.status, phase: 'completed', text: 'Тестовая запись.'}}}
 export const Cancelled: Story = {name: 'Отменено', args: {status: {...meta.args.status, phase: 'cancelled'}}}

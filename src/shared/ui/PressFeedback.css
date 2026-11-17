@@ -3,6 +3,3 @@
 .island-feedback__wave { position: absolute; border-radius: var(--radius-round); background: #fff; pointer-events: none; }
 .island-feedback > :not(.island-feedback__layer) { position: relative; z-index: 1; }
 .playback-morph { overflow: visible; flex-shrink: 0; }
-.reaction-button--like > svg { transition: fill calc(var(--motion-unit) * 12) ease, color var(--motion-normal) ease; }
-@media (prefers-reduced-motion: reduce) { .reaction-button--like > svg { transition: none; } }
-[data-reduced-motion='true'] .reaction-button--like > svg, .reduced-motion .reaction-button--like > svg { transition: none; }

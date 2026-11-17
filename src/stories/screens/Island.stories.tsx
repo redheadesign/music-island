@@ -469,7 +469,7 @@ export const GlassPlayback: StoryObj<typeof meta> = {
 export const AssistantLimits: StoryObj<typeof meta> = { name: 'Лимиты Codex рядом с островком', args: { assistantLimits: true } }
 export const GlassRays: StoryObj<typeof meta> = {
   ...Glass,
-  name: 'Стекло · лучи и контрастная обложка',
+  name: 'Стекло · северное сияние и контрастная обложка',
   args: { artwork: 'mixed', playbackVisual: 'rays', playbackReactiveWave: true },
   play: async ({ canvasElement }) => {
     const ambient = await waitFor(() => {
@@ -478,7 +478,7 @@ export const GlassRays: StoryObj<typeof meta> = {
       return node!
     })
     if (matchMedia('(forced-colors: active), (prefers-reduced-transparency: reduce)').matches) return
-    await expect(getComputedStyle(ambient, '::before').backgroundImage).toContain('conic-gradient')
+    await expect(getComputedStyle(ambient, '::before').backgroundImage).toContain('radial-gradient')
     const island = canvasElement.querySelector('.island-root')
     await waitFor(() => expect(island).toHaveAttribute('data-cover-art', 'true'))
     const color = (island as HTMLElement).style.getPropertyValue('--artwork-progress-color')
@@ -489,7 +489,7 @@ export const GlassRays: StoryObj<typeof meta> = {
 }
 export const GlassMercury: StoryObj<typeof meta> = {
   ...Glass,
-  name: 'Стекло · жидкий металл',
+  name: 'Стекло · отражения',
   args: { artwork: 'cool', playbackVisual: 'mercury', playbackReactiveWave: true },
   play: async ({ canvasElement }) => {
     const ambient = await waitFor(() => {

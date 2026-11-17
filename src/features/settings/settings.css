@@ -1117,21 +1117,32 @@
   box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
 }
 .settings-panel[data-interface-theme='glass'] .settings-nav-item { border-radius: var(--radius-md); }
-.settings-panel[data-interface-theme='glass'] :is(.settings-control-group, .settings-content .settings-section:not(.settings-section--plain, .settings-appearance, .settings-taskbar), .settings-taskbar > .settings-control-row, .protocol-row, .settings-source-picker) {
-  border-radius: var(--glass-panel-radius);
+.settings-panel[data-interface-theme='glass'] {
+  --settings-group-fill: transparent;
+  --settings-group-gutter: var(--space-1);
+}
+.settings-panel[data-interface-theme='glass'] .settings-content :is(
+  .settings-control-group, .settings-taskbar > .settings-control-row, .settings-source-picker,
+  .settings-section:not(.settings-appearance, .settings-section--plain, .settings-taskbar),
+  .usage-settings__provider, .dictation-card, .dictation-history, .dictation-model,
+  .dictation-welcome, .about-update--elevated, .voice-experimental-banner
+) {
+  padding-inline: var(--settings-group-gutter);
+  background: var(--settings-group-fill);
   box-shadow: none;
-  background-image: none;
 }
-.settings-panel[data-interface-theme='glass'] :is(.settings-appearance, .settings-taskbar, .settings-section--plain, .settings-usage-page) {
+.settings-panel[data-interface-theme='glass'] .settings-content .settings-section--plain .protocol-row {
+  padding-inline: var(--settings-group-gutter);
+  background: var(--settings-group-fill);
   box-shadow: none;
-  background-image: none;
 }
-.settings-panel[data-interface-theme='glass'] .island-editor-element--catalog { background: var(--surface-raised); }
-.settings-panel[data-interface-theme='glass'] .settings-section--plain .protocol-row--selected {
-  background-color: var(--surface-current);
+.settings-panel[data-interface-theme='glass'] .island-layout-catalog:not([data-ready], [data-over]) {
+  padding-inline: var(--settings-group-gutter);
+  background: var(--settings-group-fill);
 }
-.settings-panel[data-interface-theme='glass'] .settings-section--plain .protocol-row--unavailable {
-  background-color: color-mix(in srgb, var(--status-warning) 7%, var(--surface-panel));
+.settings-panel[data-interface-theme='glass'] :is(.island-editor-element--catalog, .taskbar-editor-element--catalog) {
+  background: var(--glass-button-fill);
+  box-shadow: var(--glass-control-rim);
 }
 @media (hover: hover) {
   .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn):not([aria-pressed='true']):hover { background: var(--surface-hover); }
