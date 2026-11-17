@@ -131,10 +131,10 @@
     content: '';
     --island-wave-opacity: calc(.34 + var(--island-bass, 0) * .66);
     scale: calc(1 + var(--island-bass, 0) * .22);
-    animation: island-glass-wave-out var(--island-wave-duration) linear infinite;
+    animation: island-glass-wave-out var(--island-wave-duration) var(--island-front-delay, 0s) linear infinite;
   }
   .island-feedback__ambient[data-playback-visual='wave']::after {
-    animation-delay: calc(var(--island-wave-duration) / -2);
+    --island-front-delay: calc(var(--island-wave-duration) / -2);
   }
   :is(.reduced-motion, [data-reduced-motion='true']) .island-feedback__ambient {
     transition: none;
