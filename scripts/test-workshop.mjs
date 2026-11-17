@@ -29,7 +29,7 @@ await mkdir(output, { recursive: true })
 const server = await preview({
   configFile: false,
   build: { outDir: 'storybook-static' },
-  preview: { host: '127.0.0.1', port: 0 },
+  preview: { host: '127.0.0.1', port: 4177 },
   logLevel: 'error',
 })
 let browser

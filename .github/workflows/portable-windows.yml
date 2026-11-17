@@ -89,7 +89,7 @@ jobs:
       - name: Install the Vulkan SDK and ONNX Runtime for dictation
         run: |
           function Get-VerifiedDownload($url, $destination, $sha256) {
-            curl.exe --fail --silent --show-error --location --retry 3 --output $destination $url
+            curl.exe --fail --silent --show-error --location --retry 5 --retry-all-errors --connect-timeout 30 --max-time 300 --output $destination $url
             if ($LASTEXITCODE -ne 0) { throw "Download failed: $url" }
             if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -ne $sha256) {
               throw "SHA256 mismatch: $url"
