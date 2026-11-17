@@ -5,7 +5,7 @@ export function GlassRefraction() {
       <defs>
         <filter id="music-island-glass-rim" x="0%" y="0%" width="100%" height="100%" colorInterpolationFilters="sRGB">
           <feTurbulence type="fractalNoise" baseFrequency=".016 .039" numOctaves="1" seed="11" result="rimNormals" />
-          <feDisplacementMap in="SourceGraphic" in2="rimNormals" scale="13" xChannelSelector="R" yChannelSelector="G" />
+          <feDisplacementMap in="SourceGraphic" in2="rimNormals" scale="8" xChannelSelector="R" yChannelSelector="G" />
           <feGaussianBlur stdDeviation=".55" />
         </filter>
       </defs>

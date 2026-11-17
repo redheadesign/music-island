@@ -31,13 +31,12 @@
     var(--glass-contour);
 }
 
-/* Bend the underlying pixels through the edge. The interior is masked so
-   labels and playback icons always remain rendered as regular DOM content. */
+/* Sample inside the edge so the sharp outer line stays in place. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) and (prefers-reduced-transparency: no-preference) and (forced-colors: none) {
-  [data-interface-theme='glass'] [data-glass-light]:hover:not(:is([data-reduced-transparency='true'] *, [data-reduced-motion='true'] *, .reduced-motion *))::after {
+  [data-interface-theme='glass'] [data-glass-light]:hover:not(.dark-select-option, :focus-visible, [data-reduced-transparency='true'] *, [data-reduced-motion='true'] *, .reduced-motion *)::after {
     content: '';
     position: absolute;
-    inset: 0;
+    inset: var(--space-half);
     padding: var(--space-half);
     border-radius: inherit;
     pointer-events: none;

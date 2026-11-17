@@ -245,6 +245,7 @@ export const GlassPlayback: StoryObj<typeof meta> = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const button = await canvas.findByRole('button', { name: 'Pause' })
+    await waitFor(() => expect(button).toBeVisible())
     const artwork = canvasElement.querySelector('.artwork-shell')!
     const buttonRect = button.getBoundingClientRect()
     const artworkRect = artwork.getBoundingClientRect()
@@ -254,9 +255,9 @@ export const GlassPlayback: StoryObj<typeof meta> = {
     await expect(center.y).toBeCloseTo(artworkRect.top + artworkRect.height / 2, 0)
     await expect(button.contains(canvasElement.ownerDocument.elementFromPoint(center.x, center.y))).toBe(true)
     await userEvent.click(button)
-    await expect(canvas.getByRole('button', { name: 'Play' })).toBeVisible()
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Play' })).toBeVisible())
     await userEvent.keyboard(' ')
-    await expect(canvas.getByRole('button', { name: 'Pause' })).toBeVisible()
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Pause' })).toBeVisible())
   },
 }
 export const AssistantLimits: StoryObj<typeof meta> = { name: 'Лимиты Codex рядом с островком', args: { assistantLimits: true } }
