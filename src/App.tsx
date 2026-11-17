@@ -12,8 +12,7 @@ import { SettingsPanel } from './features/settings/SettingsPanel'
 import { TaskbarPlayer } from './features/taskbar/TaskbarPlayer'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
 import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme } from './shared/lib/uiPrefs'
-import { Button, Notice } from './shared/ui/SettingsControls'
-import { SettingsWindow } from './features/settings/SettingsWindow'
+import { SettingsReadError, SettingsWindow } from './features/settings/SettingsWindow'
 import { useGlassPointerLight } from './shared/ui/useGlassPointerLight'
 import './App.css'
 
@@ -81,9 +80,7 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
         onClose={() => void runWindowAction('hide')}
       >
         {!app.configLoaded ? <p role="status">{t('settings.loading')}</p> : app.configLoadFailed ? (
-          <Notice tone="danger" action={<Button onClick={app.retryConfigLoad}>{t('settings.retryRead')}</Button>}>
-            {t('settings.readFailed')}
-          </Notice>
+          <SettingsReadError locale={locale} onRetry={app.retryConfigLoad} />
         ) : <SettingsPanel
             usage={usage}
             config={app.config}

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useMemo, useState, type ComponentProps, type CSSProperties } from 'react'
 import { useGlobals } from 'storybook/preview-api'
 import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
-import { SettingsWindow } from '../../features/settings/SettingsWindow'
+import { SettingsReadError, SettingsWindow } from '../../features/settings/SettingsWindow'
 import { SettingsPanel } from '../../features/settings/SettingsPanel'
 import { getDefaultConfig } from '../../app/tauriApi'
 import type { AppConfig, Locale } from '../../shared/lib/types'
@@ -133,6 +133,26 @@ const meta = {
 } satisfies Meta<typeof SettingsPanel>
 export default meta
 type Story = StoryObj<typeof meta>
+
+const rereadProfile = fn()
+export const UnreadableProfile: Story = {
+  name: 'Ошибка чтения файла настроек',
+  parameters: { workshop: { width: 620, height: 480 } },
+  render: (_args, { globals }) => <div style={{ height: 480 }}>
+    <SettingsWindow locale={globals.locale} interfaceTheme={normalizeInterfaceTheme(globals.interfaceTheme)}>
+      <SettingsReadError locale={globals.locale} onRetry={rereadProfile} />
+    </SettingsWindow>
+  </div>,
+  play: async ({ canvas, globals }) => {
+    const alert = canvas.getByRole('alert')
+    const bounds = alert.getBoundingClientRect()
+    const scroll = alert.parentElement!.getBoundingClientRect()
+    await expect(bounds.height).toBeLessThan(scroll.height / 2)
+    await expect(bounds.right).toBeLessThan(scroll.right)
+    await userEvent.click(canvas.getByRole('button', { name: globals.locale === 'ru' ? 'Прочитать снова' : 'Read again' }))
+    await expect(rereadProfile).toHaveBeenCalled()
+  },
+}
 export const Default: Story = { name: 'Настройки приложения' }
 export const Classic: Story = { name: 'Классическая · тёмное оформление', globals: { interfaceTheme: 'classic' } }
 export const ClassicLight: Story = { ...Classic, name: 'Классическая · светлое оформление', parameters: { settingsColorScheme: 'light' } }

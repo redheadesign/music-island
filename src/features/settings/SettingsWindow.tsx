@@ -3,8 +3,18 @@ import type { InterfacePaletteId } from '../../shared/lib/interfacePalette'
 import { DEFAULT_INTERFACE_THEME, type InterfaceScene, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import type { SettingsColorScheme } from '../../shared/lib/uiPrefs'
 import { Minus, X } from '../../shared/ui/SettingsIcons'
+import { createTranslator } from '../../shared/i18n/messages'
+import type { Locale } from '../../shared/lib/types'
+import { Button, Notice } from '../../shared/ui/SettingsControls'
 import { IconButton } from '../../shared/ui/IconButton'
 import './settings.css'
+
+export function SettingsReadError({ locale, onRetry }: { locale: Locale; onRetry: () => void }) {
+  const t = createTranslator(locale)
+  return <Notice tone="danger" className="settings-read-error" action={<Button onClick={onRetry}>{t('settings.retryRead')}</Button>}>
+    {t('settings.readFailed')}
+  </Notice>
+}
 
 /** The native window and Storybook use exactly the same viewport/scroll tree. */
 export function SettingsWindow({ children, locale = 'ru', colorScheme = 'dark', interfaceTheme = DEFAULT_INTERFACE_THEME, interfaceScene, interfacePalette, paletteStyle, reducedTransparency, reducedMotion, onMinimize, onClose }: {

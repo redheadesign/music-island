@@ -995,6 +995,7 @@
 
 /* One scroll owner per scope. Header and navigation never move with content. */
 .settings-window-root .settings-scroll { display: flex; flex: 1 1 0; min-height: 0; height: auto; overflow: hidden; padding: 0 0 0 var(--space-7); scrollbar-gutter: auto; }
+.settings-window-root .settings-read-error { align-self: flex-start; flex: 1; align-items: center; margin-inline-end: var(--space-7); }
 .settings-window-root .settings-panel { display: flex; flex-direction: column; min-height: 0; height: 100%; gap: 0; max-width: none; }
 .settings-panel .settings-hero { flex: 0 0 auto; padding: var(--space-2) var(--space-7) var(--space-6) 0; border: 0; }
 .settings-panel .settings-layout { flex: 1 1 0; min-height: 0; overflow: hidden; align-items: stretch; grid-template-columns: 164px minmax(0,1fr); }
