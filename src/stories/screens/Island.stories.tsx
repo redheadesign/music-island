@@ -192,16 +192,18 @@ export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный ост
 export const GlassCoolCover: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · частицы и прогресс в цветах обложки', args: { artwork: 'cool' },
   play: async ({ canvasElement }) => {
-    const island = canvasElement.querySelector('.island-root')!
-    const progress = canvasElement.querySelector('.progress-fill')!
-    await waitFor(() => expect(island).toHaveAttribute('data-cover-art', 'true'))
+    await waitFor(() => expect(canvasElement.querySelector('.island-root')).toHaveAttribute('data-cover-art', 'true'))
+    await waitFor(async () => {
+      const progress = canvasElement.querySelector('.progress-fill')
+      await expect(progress).toBeInTheDocument()
+      await expect(getComputedStyle(progress!).backgroundImage).toContain('linear-gradient')
+    })
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
       const particles = [...canvasElement.querySelectorAll('.island-particles > i')]
       await expect(particles.length).toBeGreaterThan(2)
       await expect(new Set(particles.map(particle => getComputedStyle(particle).animationDelay)).size).toBe(particles.length)
       await expect(getComputedStyle(particles[0]).animationName).toBe('island-particle-fall')
     }
-    await expect(getComputedStyle(progress).backgroundImage).toContain('linear-gradient')
   },
 }
 export const GlassWithoutCover: StoryObj<typeof meta> = { ...Glass, name: 'Стекло · нейтральный прогресс без обложки', args: { artwork: 'missing' } }
