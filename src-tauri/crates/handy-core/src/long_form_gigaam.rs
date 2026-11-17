@@ -13,6 +13,37 @@ const SEARCH_STEP: usize = SAMPLES_PER_SECOND * 20 / 1000;
 const QUIET_RMS: f32 = 0.008;
 const MIN_DROP_IN_POWER: f32 = 64.0;
 
+/// Search only complete windows. Anything returned here is the same first cut
+/// as the offline planner for every possible continuation of this recording.
+#[derive(Default)]
+pub(crate) struct SealedPause {
+    searched: usize,
+}
+
+impl SealedPause {
+    pub(crate) fn next(&mut self, pending: &[f32]) -> Option<usize> {
+        loop {
+            let (start, end, target) = if self.searched == 0 {
+                (MIN_CHUNK, MAX_CHUNK, TARGET_CHUNK - MIN_CHUNK)
+            } else {
+                (
+                    self.searched - PAUSE_SAMPLES,
+                    self.searched + MAX_CHUNK - MIN_CHUNK,
+                    0,
+                )
+            };
+            if pending.len() < end + MIN_TAIL {
+                return None;
+            }
+            self.searched = end;
+            if let Some(offset) = find_pause(&pending[start..end], target) {
+                self.searched = 0;
+                return Some(start + offset);
+            }
+        }
+    }
+}
+
 /// Prefer the trained utterance window. Keep a longer continuous passage intact
 /// until a real pause, preserving adjacent short utterances and every sample.
 pub(crate) fn pause_ranges(audio: &[f32]) -> Option<Vec<Range<usize>>> {
@@ -93,6 +124,26 @@ mod tests {
     fn short_and_exact_window_keep_one_model_call() {
         assert!(pause_ranges(&[0.0; 40]).is_none());
         assert!(pause_ranges(&vec![0.0; MAX_CHUNK]).is_none());
+    }
+
+    #[test]
+    fn live_cuts_match_offline_for_every_stop_and_never_guess_the_tail() {
+        let mut audio = vec![0.2; 95 * SECOND];
+        for at in [16, 59, 76] {
+            pause(&mut audio, at);
+        }
+        let mut planner = SealedPause::default();
+        let mut sealed = Vec::new();
+        let mut start = 0;
+        for end in (SECOND..audio.len()).step_by(SECOND / 2 + 7) {
+            while let Some(length) = planner.next(&audio[start..end]) {
+                sealed.push(start..start + length);
+                start += length;
+            }
+            let offline = pause_ranges(&audio[..end]).unwrap_or_default();
+            assert!(offline.starts_with(&sealed), "unstable cut at {end}");
+        }
+        assert_eq!(sealed.len(), 3);
     }
 
     #[test]

@@ -13,6 +13,7 @@ mod helpers;
 mod input;
 mod llm_client;
 mod long_form_gigaam;
+mod gigaam_predecode;
 mod managers;
 mod memory;
 mod overlay;
@@ -203,7 +204,9 @@ fn update_custom_filler_words(app: AppHandle, words: Vec<String>) {
 
 #[tauri::command]
 fn get_status() -> status::Snapshot {
-    status::snapshot()
+    let mut status = status::snapshot();
+    status.capture_constraint = status::capture_constraint();
+    status
 }
 
 #[tauri::command]

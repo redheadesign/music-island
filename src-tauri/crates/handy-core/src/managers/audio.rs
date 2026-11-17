@@ -20,6 +20,28 @@ const STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 const SILERO_VAD_THRESHOLD: f32 = 0.3;
 const EARSHOT_VAD_THRESHOLD: f32 = 0.5;
 
+fn required_input<T>(devices: impl Iterator<Item = (String, T)>, required: &str) -> anyhow::Result<T> {
+    anyhow::ensure!(!required.is_empty(), "The required dictation input name is empty");
+    let mut matches = devices.filter(|(name, _)| name == required);
+    let (_, selected) = matches.next().ok_or_else(|| anyhow::anyhow!("Required dictation input unavailable: {required}"))?;
+    anyhow::ensure!(matches.next().is_none(), "Required dictation input name is ambiguous: {required}");
+    Ok(selected)
+}
+
+#[cfg(test)]
+mod required_input_tests {
+    use super::required_input;
+
+    #[test]
+    fn only_a_unique_exact_input_match_can_open() {
+        let inputs = || [("Default".to_owned(), 1), ("Cable".to_owned(), 2)].into_iter();
+        assert_eq!(required_input(inputs(), "Cable").unwrap(), 2);
+        assert!(required_input(inputs(), "").is_err());
+        assert!(required_input(inputs(), "cable").is_err());
+        assert!(required_input(inputs().chain(inputs()), "Cable").is_err());
+    }
+}
+
 fn set_mute(mute: bool) {
     // Expected behavior:
     // - Windows: works on most systems using standard audio drivers.
@@ -468,6 +490,17 @@ impl AudioRecordingManager {
         *self.cached_device.lock().unwrap() = None;
     }
 
+    fn resolve_for_capture(&self, settings: &AppSettings) -> anyhow::Result<MicrophoneResolution> {
+        if let Some(required) = std::env::var_os("MUSIC_ISLAND_DICTATION_REQUIRED_INPUT") {
+            let required = required.to_str()
+                .ok_or_else(|| anyhow::anyhow!("The required dictation input name is invalid"))?;
+            let devices = list_input_devices().map_err(|e| anyhow::anyhow!("Cannot enumerate required input: {e}"))?;
+            let device = required_input(devices.into_iter().map(|input| (input.name, input.device)), required)?;
+            return Ok(MicrophoneResolution { device: Some(device), unavailable_selected_microphone: None });
+        }
+        Ok(self.resolve_microphone_device(settings))
+    }
+
     fn resolve_microphone_device(&self, settings: &AppSettings) -> MicrophoneResolution {
         let desired = self.desired_microphone(settings);
         let (device_name, selected_microphone) = match desired {
@@ -695,7 +728,7 @@ impl AudioRecordingManager {
         // "No input device found" error this used to check for.
         let settings = get_settings(&self.app_handle);
         let resolve_started = Instant::now();
-        let mut resolution = self.resolve_microphone_device(&settings);
+        let mut resolution = self.resolve_for_capture(&settings)?;
         let resolve_elapsed = resolve_started.elapsed();
 
         // Ensure VAD is loaded if it wasn't for whatever reason
@@ -712,7 +745,7 @@ impl AudioRecordingManager {
                 // retry once before surfacing the error.
                 warn!("Recorder open failed ({first_err}); re-resolving device and retrying once");
                 self.invalidate_device_cache();
-                resolution = self.resolve_microphone_device(&settings);
+                resolution = self.resolve_for_capture(&settings)?;
                 rec.open(resolution.device.clone())
                     .map_err(|e| anyhow::anyhow!("Failed to open recorder: {}", e))?;
             }

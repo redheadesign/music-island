@@ -103,6 +103,7 @@ struct FinalizedStreamText {
 /// directly, so a frame with no stream pending costs a single relaxed atomic
 /// load — no Tauri state lookup, no mutex lock.
 pub struct StreamRouter {
+    predecode: crate::gigaam_predecode::Router,
     /// Command channel to the active streaming worker, present from
     /// `start_stream` until `finalize_stream`/`cancel_stream`.
     tx: Mutex<Option<mpsc::Sender<StreamCmd>>>,
@@ -114,6 +115,7 @@ pub struct StreamRouter {
 impl StreamRouter {
     fn new() -> Self {
         Self {
+            predecode: Default::default(),
             tx: Mutex::new(None),
             open: Arc::new(AtomicBool::new(false)),
         }
@@ -147,6 +149,7 @@ impl StreamRouter {
     /// single relaxed atomic load) when no stream is pending.
     pub fn feed(&self, frame: &[f32]) {
         if !self.open.load(Ordering::Relaxed) {
+            self.predecode.feed(frame);
             return;
         }
         if let Some(tx) = self.tx.lock().unwrap().as_ref() {
@@ -225,6 +228,7 @@ impl Drop for StreamWorkerGuard {
 #[derive(Clone)]
 pub struct TranscriptionManager {
     engine: Arc<Mutex<Option<LoadedEngine>>>,
+    predecode_backend: Arc<Mutex<Option<String>>>,
     model_manager: Arc<ModelManager>,
     app_handle: AppHandle,
     current_model_id: Arc<Mutex<Option<String>>>,
@@ -261,6 +265,7 @@ impl TranscriptionManager {
     pub fn new(app_handle: &AppHandle, model_manager: Arc<ModelManager>) -> Result<Self> {
         let manager = Self {
             engine: Arc::new(Mutex::new(None)),
+            predecode_backend: Default::default(),
             model_manager,
             app_handle: app_handle.clone(),
             current_model_id: Arc::new(Mutex::new(None)),
@@ -353,6 +358,7 @@ impl TranscriptionManager {
 
     /// Lock the engine mutex, recovering from poison if a previous transcription panicked.
     pub fn stop_idle_watcher(&self) {
+        self.router.predecode.cancel();
         self.shutdown_signal.store(true, Ordering::Release);
         let handle = self.watcher_handle.lock().unwrap_or_else(|e| e.into_inner()).take();
         if let Some(handle) = handle {
@@ -373,6 +379,10 @@ impl TranscriptionManager {
     pub fn is_model_loaded(&self) -> bool {
         // The engine may be leased out to the streaming worker (taken out of
         // the mutex). It's still loaded, just in use, so report true.
+        let busy = self.predecode_backend.lock().unwrap();
+        if busy.is_some() {
+            return true;
+        }
         self.lock_engine().is_some() || self.active_engine_lease.load(Ordering::Acquire) != 0
     }
 
@@ -655,6 +665,10 @@ impl TranscriptionManager {
     /// The bound GGML/GGUF backend or "onnx" when an ONNX model is loaded.
     /// The engine can be temporarily leased by the transcription worker.
     pub fn current_backend(&self) -> Option<String> {
+        let busy = self.predecode_backend.lock().unwrap();
+        if busy.is_some() {
+            return busy.clone();
+        }
         self.lock_engine()
             .as_ref()
             .map(|engine| engine.capabilities.backend.clone())
@@ -669,6 +683,52 @@ impl TranscriptionManager {
     /// real-time frames without going through Tauri state on every frame.
     pub fn stream_router(&self) -> Arc<StreamRouter> {
         Arc::clone(&self.router)
+    }
+
+    pub(crate) fn start_gigaam_predecode(&self, settings: &AppSettings, operation: u64) {
+        if !crate::gigaam_predecode::enabled() { return; }
+        let manager = self.clone();
+        let model = settings.selected_model.clone();
+        let language = effective_language_for_model(settings, self.model_manager.as_ref(), &model);
+        let translate = settings.translate_to_english;
+        self.router.predecode.start(operation, move |pcm| {
+            if manager.get_current_model().as_deref() != Some(model.as_str()) ||
+                crate::status::snapshot().operation_id != operation {
+                return None;
+            }
+            // Reserve the metadata and engine in the same order as status
+            // readers. While inference holds the engine they return its
+            // cached backend immediately.
+            let mut busy = manager.predecode_backend.lock().unwrap();
+            let mut slot = manager.lock_engine();
+            let engine = slot.as_mut()?;
+            if engine.kind != "TranscribeCpp" || engine.capabilities.arch != "gigaam" || !engine.is_healthy() {
+                return None;
+            }
+            let caps = &engine.capabilities;
+            let handle = caps.handle;
+            let plan = transcribe_cpp_run_plan(translate, &language, &caps.languages, caps.translate);
+            let options = RunOptions { language: plan.language, target_language: plan.target_language, ..Default::default() };
+            *busy = Some(caps.backend.clone());
+            drop(busy);
+            let result = catch_unwind(AssertUnwindSafe(|| engine.run(pcm, options.clone())));
+            let decoded = match result {
+                Ok(Ok(text)) => Some((handle, options, text)),
+                Ok(Err(error)) => {
+                    warn!("GigaAM predecode stopped: {error}");
+                    None
+                }
+                Err(_) => {
+                    *slot = None;
+                    *manager.current_model_id.lock().unwrap() = None;
+                    error!("GigaAM predecode panicked; unloaded engine");
+                    None
+                }
+            };
+            drop(slot);
+            *manager.predecode_backend.lock().unwrap() = None;
+            decoded
+        });
     }
 
     /// Begin a live streaming transcription on the held engine's session.
@@ -995,6 +1055,7 @@ impl TranscriptionManager {
 
     /// Abandon any active stream without producing text (e.g. on cancel).
     pub fn cancel_stream(&self) {
+        self.router.predecode.cancel();
         if let Some(tx) = self.router.take() {
             let _ = tx.send(StreamCmd::Cancel);
         }
@@ -1039,6 +1100,7 @@ impl TranscriptionManager {
         operation: Option<u64>,
         is_cancelled: impl Fn() -> bool,
     ) -> Result<String> {
+        let mut cached = operation.map(|id| self.router.predecode.finish(id)).unwrap_or_default();
         #[cfg(debug_assertions)]
         if std::env::var("HANDY_FORCE_TRANSCRIPTION_FAILURE").is_ok() {
             return Err(anyhow::anyhow!(
@@ -1193,13 +1255,21 @@ impl TranscriptionManager {
                 if engine.kind == "TranscribeCpp" && engine.capabilities.arch == "gigaam" {
                     if let Some(ranges) = crate::long_form_gigaam::pause_ranges(audio) {
                         let mut full = String::new();
+                        let total_chunks = ranges.len();
+                        let mut reused = 0;
                         if let Some(id) = operation {
                             crate::status::audio_progress(&self.app_handle, id, 0, audio.len());
                         }
                         for range in ranges {
                             anyhow::ensure!(!is_cancelled(), "Transcription cancelled");
                             let completed = range.end;
-                            let result = engine.run(&audio[range], options.clone())?;
+                            let pcm = &audio[range.clone()];
+                            let result = if let Some(result) = cached.take(&range, pcm, engine.capabilities.handle, &options) {
+                                reused += 1;
+                                result
+                            } else {
+                                engine.run(pcm, options.clone())?
+                            };
                             anyhow::ensure!(!is_cancelled(), "Transcription cancelled");
                             if let Some(id) = operation {
                                 crate::status::audio_progress(&self.app_handle, id, completed, audio.len());
@@ -1214,6 +1284,9 @@ impl TranscriptionManager {
                                 }
                                 full.push_str(text);
                             }
+                        }
+                        if let Some(operation) = operation {
+                            crate::diagnostics::event(&format!("predecode operation={operation} reused_chunks={reused} total_chunks={total_chunks}"));
                         }
                         return Ok(full);
                     }

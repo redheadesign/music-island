@@ -56,7 +56,7 @@ pub enum Request {
         handle: u64,
     },
 }
-#[derive(Default, Serialize, Deserialize, Clone, Debug)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct RunOptions {
     pub language: Option<String>,
     pub target_language: Option<String>,

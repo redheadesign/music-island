@@ -20,8 +20,24 @@ pub struct Snapshot {
     pub model_loading: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub progress: Option<AudioProgress>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capture_constraint: Option<CaptureConstraint>,
     #[serde(skip)]
     streaming: bool,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CaptureConstraint {
+    required_input: String,
+    predecode: bool,
+}
+
+pub fn capture_constraint() -> Option<CaptureConstraint> {
+    std::env::var("MUSIC_ISLAND_DICTATION_REQUIRED_INPUT").ok().map(|required_input| CaptureConstraint {
+        required_input,
+        predecode: crate::gigaam_predecode::enabled(),
+    })
 }
 static STATUS: OnceLock<Mutex<Snapshot>> = OnceLock::new();
 fn state() -> &'static Mutex<Snapshot> {
