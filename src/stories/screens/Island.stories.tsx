@@ -192,11 +192,18 @@ export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный ост
 export const GlassCoolCover: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · рябь и прогресс в цветах обложки', args: { artwork: 'cool' },
   play: async ({ canvasElement }) => {
+    const forcedColors = matchMedia('(forced-colors: active)').matches
     await waitFor(() => expect(canvasElement.querySelector('.island-root')).toHaveAttribute('data-cover-art', 'true'))
     await waitFor(async () => {
       const progress = canvasElement.querySelector('.progress-fill')
       await expect(progress).toBeInTheDocument()
-      await expect(getComputedStyle(progress!).backgroundImage).toContain('linear-gradient')
+      const style = getComputedStyle(progress!)
+      if (forcedColors) {
+        await expect(style.backgroundImage).toBe('none')
+        await expect(style.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+      } else {
+        await expect(style.backgroundImage).toContain('linear-gradient')
+      }
     })
     const title = canvasElement.querySelector('.progress-content--track .marquee')!
     const fill = canvasElement.querySelector('.progress-fill')!
@@ -207,7 +214,7 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
     if (!matchMedia('(prefers-reduced-transparency: reduce)').matches) {
       await expect(getComputedStyle(backdrop, '::before').backgroundImage).toContain('repeating-radial-gradient')
     }
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
+    if (!forcedColors && !matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
       const particles = [...canvasElement.querySelectorAll('.island-particles > i')]
       await expect(particles.length).toBeGreaterThan(2)
       await expect(new Set(particles.map(particle => getComputedStyle(particle).animationDelay)).size).toBe(particles.length)
