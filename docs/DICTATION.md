@@ -108,7 +108,11 @@ single warm engine, releasing only the first safe fragment after observing
 27 s of its input. Across the replay all fragment boundaries and text matched
 the offline pass. Stop to final output was 1.953 s in the replay and 9.000 s
 when the entire input was processed after Stop. This one experiment used WAV
-playback and excludes live VAD, capture-ring contention and paste. Production
+playback. A second replay used the full 408.57 s clean reading and all 24
+fragment boundaries and texts matched. Stop to final output was 2.601 s
+with early fragment recognition and 68.980 s on the offline pass (67.082 s of
+inference). Other workstation load was allowed during this trial. Both replays
+exclude live VAD, capture-ring contention and paste. Production
 GigaAM continues to recognize after Stop. To qualify a live change, measure the
 native coordinator from the physical Stop shortcut through delivery to a real
 Windows editor. Time recognition, first visible insertion and clipboard restore
