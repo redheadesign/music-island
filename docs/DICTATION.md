@@ -146,6 +146,20 @@ retry enforce the constraint. Before issuing a shortcut, check that
 and `captureConstraint.predecode`, and verify the intended editor is foreground.
 An older build without these fields is unsuitable for this test.
 
+The [Windows editor harness](../scripts/dictation-editor-bench/run.ps1)
+holds and releases F24 through Windows input, addresses its own native EDIT
+window via the configured ExternalScript output, and records the first
+`EN_CHANGE` with the same performance counter as key-up. For paired entries
+with matching source WAVs and UTF-8 references in a local manifest, run
+`python scripts/dictation-editor-bench/score.py cases.json path/to/runs --output scores.json`.
+The scorer checks source, reference and portable hashes, verifies the capture
+constraint and experiment mode, then reports paired WER, word-level
+differences, median latency and the nearest-rank 95th percentile. Missing
+trials are listed and excluded from paired statistics. Identical normalized
+words rule out new boundary omissions or duplications for that pair. Inspect
+any differing words alongside that trial's saved WAV before attributing a
+change to a boundary.
+
 For a real paste measurement, use a disposable interactive Windows VM with
 host clipboard, microphone and network redirection disabled. Map the fixture
 and weights read-only. Feed the WAV to a guest-local virtual microphone.
