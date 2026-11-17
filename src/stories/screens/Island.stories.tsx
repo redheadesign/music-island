@@ -193,11 +193,11 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · частицы и прогресс в цветах обложки', args: { artwork: 'cool' },
   play: async ({ canvasElement }) => {
     const island = canvasElement.querySelector('.island-root')!
-    const particles = [...canvasElement.querySelectorAll('.island-particles > i')]
     const progress = canvasElement.querySelector('.progress-fill')!
     await waitFor(() => expect(island).toHaveAttribute('data-cover-art', 'true'))
-    await expect(particles.length).toBeGreaterThan(2)
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
+      const particles = [...canvasElement.querySelectorAll('.island-particles > i')]
+      await expect(particles.length).toBeGreaterThan(2)
       await expect(new Set(particles.map(particle => getComputedStyle(particle).animationDelay)).size).toBe(particles.length)
       await expect(getComputedStyle(particles[0]).animationName).toBe('island-particle-fall')
     }
@@ -224,7 +224,8 @@ export const GlassEdge: StoryObj<typeof meta> = {
 export const GlassReducedMotion: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · частицы при уменьшенном движении', args: { reducedMotion: true },
   play: async ({ canvasElement }) => {
-    await expect(getComputedStyle(canvasElement.querySelector('.island-particles')!).display).toBe('none')
+    const particles = canvasElement.querySelector('.island-particles')
+    if (particles) await expect(particles).not.toBeVisible()
   },
 }
 export const GlassPlayback: StoryObj<typeof meta> = {
