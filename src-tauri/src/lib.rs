@@ -35,10 +35,57 @@ async fn get_config(app: tauri::AppHandle, state: State<'_, ConfigState>) -> Res
             config::MediaProtocol::YandexDirect => media::MediaProvider::YandexDirect,
         });
         tray::set_locale(&app, config.appearance.locale);
-        usage::sync_config(&app, app.state::<usage::UsageState>().inner(), &config);
+        resume_configured_services(&app, &config, false);
+        window::monitors::invalidate();
+        if let Err(error) = window::reset_overlay_position(&app) {
+            log::warn!("Could not restore the monitor after reloading settings: {error}");
+        }
         let _ = app.emit("config:changed", config.clone());
     }
     Ok(config)
+}
+
+fn resume_configured_services(handle: &tauri::AppHandle, config: &AppConfig, at_startup: bool) {
+    if config.plugins.enabled.iter().any(|id| id == "dictation") {
+        let dictation_app = handle.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(error) = handy_core::resume(dictation_app).await {
+                log::warn!("Could not initialize dictation: {error}");
+            }
+        });
+    }
+    usage::sync_config(handle, handle.state::<usage::UsageState>().inner(), config);
+    if at_startup || config.behavior.launch_at_startup {
+        emit_autostart_sync(handle, config.behavior.launch_at_startup);
+    }
+    let direct_app = handle.clone();
+    let config_state = handle.state::<ConfigState>().inner().clone();
+    tauri::async_runtime::spawn(async move {
+        let _operation = yandex::lifecycle_lock().lock().await;
+        let Ok(current) = config_state.load() else { return; };
+        let direct = matches!(current.media.protocol, config::MediaProtocol::YandexDirect)
+            && current.media.direct_yandex_consent;
+        if !direct && !at_startup { return; }
+        if let Err(error) = yandex::reconcile_launch(direct).await {
+            logging::append_event(&format!("Yandex launch settings reconciliation failed: {error:#}"));
+            let _ = direct_app.emit("direct:status", yandex::status());
+            return;
+        }
+        if !direct { return; }
+        let direct_port = current.media.direct_yandex_port;
+        match yandex::reattach(direct_port).await {
+            Ok(status) if status.port != direct_port => {
+                if let Ok(saved) = config_state.update_media(|media| media.direct_yandex_port = status.port) {
+                    let _ = direct_app.emit("config:changed", saved);
+                }
+            }
+            Ok(_) => {}
+            Err(error) => logging::append_event(&format!(
+                "direct Yandex startup reattach unavailable: {error}"
+            )),
+        }
+        let _ = direct_app.emit("direct:status", yandex::status());
+    });
 }
 
 #[tauri::command]
@@ -517,54 +564,12 @@ pub fn run() {
                 Err(error) => logging::append_event(&format!("tray setup failed: {error}")),
             }
             if let Ok(config) = app.state::<ConfigState>().load() {
-                if config.plugins.enabled.iter().any(|id| id == "dictation") {
-                    let dictation_app = handle.clone();
-                    tauri::async_runtime::spawn(async move {
-                        if let Err(error) = handy_core::resume(dictation_app).await {
-                            log::warn!("Could not initialize dictation: {error}");
-                        }
-                    });
-                }
-                usage::sync_config(&handle, app.state::<usage::UsageState>().inner(), &config);
-                emit_autostart_sync(&handle, config.behavior.launch_at_startup);
+                resume_configured_services(&handle, &config, true);
                 media::set_preferred_source(config.media.preferred_source_app_id.clone());
                 media::set_active_provider(match config.media.protocol {
                     config::MediaProtocol::Smtc => media::MediaProvider::Smtc,
                     config::MediaProtocol::YandexDirect => media::MediaProvider::YandexDirect,
                 });
-                // Pin keeps the island open; click-through is driven by the cursor
-                // hit-band watcher (fullscreen HWND), not forced off for the whole monitor.
-                {
-                    let direct_app = handle.clone();
-                    let config_state = app.state::<ConfigState>().inner().clone();
-                    tauri::async_runtime::spawn(async move {
-                        let _operation = yandex::lifecycle_lock().lock().await;
-                        let Ok(current) = config_state.load() else { return; };
-                        let direct = matches!(current.media.protocol, config::MediaProtocol::YandexDirect)
-                            && current.media.direct_yandex_consent;
-                        if let Err(error) = yandex::reconcile_launch(direct).await {
-                            logging::append_event(&format!("Yandex launch settings reconciliation failed: {error:#}"));
-                            let _ = direct_app.emit("direct:status", yandex::status());
-                            return;
-                        }
-                        if !direct { return; }
-                        let direct_port = current.media.direct_yandex_port;
-                        match yandex::reattach(direct_port).await {
-                            Ok(status) if status.port != direct_port => {
-                                {
-                                    if let Ok(saved) = config_state.update_media(|media| media.direct_yandex_port = status.port) {
-                                        let _ = direct_app.emit("config:changed", saved);
-                                    }
-                                }
-                            }
-                            Ok(_) => {}
-                            Err(error) => logging::append_event(&format!(
-                                "direct Yandex startup reattach unavailable: {error}"
-                            )),
-                        }
-                        let _ = direct_app.emit("direct:status", yandex::status());
-                    });
-                }
             }
             media::start_watcher(handle.clone());
             window::start_gesture_watcher(app.handle().clone());

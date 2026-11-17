@@ -322,7 +322,11 @@ impl ConfigState {
         let needs_recovery = self.require_loaded().is_err();
         if needs_recovery {
             let mut recovered = read_config_at(path)?;
-            recovered.plugins.apply_glass_default_once();
+            if recovered.plugins.apply_glass_default_once() {
+                if let Err(error) = handy_core::embedded_assets::atomic_write(path, &serde_json::to_vec_pretty(&recovered)?) {
+                    log::warn!("Could not persist the Glass preference after recovering settings: {error}");
+                }
+            }
             *current = recovered;
             self.read_failed.store(false, std::sync::atomic::Ordering::Release);
         }
@@ -514,9 +518,12 @@ mod tests {
         assert_eq!(fs::read_to_string(&path).unwrap(), "{broken");
         let mut repaired = AppConfig::default();
         repaired.behavior.hover_delay_ms = 678;
+        repaired.plugins.ui_preferences_mut().remove(GLASS_DEFAULT_MARKER);
         fs::write(&path, serde_json::to_vec(&repaired).unwrap()).unwrap();
         assert_eq!(state.retry_at(&path).unwrap().0.behavior.hover_delay_ms, 678);
         assert_eq!(state.load().unwrap().behavior.hover_delay_ms, 678);
+        assert!(read_config_at(&path).unwrap().plugins.glass_default_applied());
+        assert!(!state.retry_at(&path).unwrap().1);
     }
 
     #[test]
