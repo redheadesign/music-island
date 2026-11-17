@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::collections::HashSet;
 use std::error::Error as StdError;
 use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
 #[derive(Debug, Serialize)]
 struct ChatMessage {
@@ -155,11 +156,10 @@ fn build_headers(provider: &PostProcessProvider, api_key: &str) -> Result<Header
     // Provider-specific auth headers
     if !api_key.is_empty() {
         if provider.id == "anthropic" {
-            headers.insert(
-                "x-api-key",
-                HeaderValue::from_str(api_key)
-                    .map_err(|e| format!("Invalid API key header value: {}", e))?,
-            );
+            let mut key = HeaderValue::from_str(api_key)
+                .map_err(|e| format!("Invalid API key header value: {}", e))?;
+            key.set_sensitive(true);
+            headers.insert("x-api-key", key);
             headers.insert("anthropic-version", HeaderValue::from_static("2023-06-01"));
         } else {
             headers.insert(
@@ -178,6 +178,9 @@ fn http_client() -> Result<&'static reqwest::Client, String> {
     static CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
     CLIENT.get_or_try_init(|| {
         reqwest::Client::builder()
+            .pool_idle_timeout(Duration::from_secs(30))
+            .tcp_keepalive(Duration::from_secs(15))
+            .connect_timeout(Duration::from_secs(10))
             .build()
             .map_err(|e| report_reqwest_error("Failed to build HTTP client", &e))
     })
@@ -631,14 +634,28 @@ mod tests {
             }
         });
 
-        tokio::time::timeout(std::time::Duration::from_secs(5), async {
-            for token in ["first-key", "second-key"] {
-                assert_eq!(fetch_models(&request_target, token.to_owned()).await.unwrap(), ["test-model"]);
+        tokio::time::timeout(Duration::from_secs(5), async {
+            for (index, token) in ["first-key", "second-key"].into_iter().enumerate() {
+                if index > 0 {
+                    // Let Hyper's connection task return the drained socket to the pool.
+                    tokio::time::sleep(Duration::from_millis(200)).await;
+                }
+                assert_eq!(
+                    fetch_models(&request_target, token.to_owned()).await.unwrap(),
+                    ["test-model"]
+                );
             }
             server.await.unwrap();
         })
         .await
         .expect("both requests should reuse one loopback connection");
+    }
+
+    #[test]
+    fn pooled_anthropic_key_is_marked_sensitive() {
+        let headers =
+            build_headers(&provider("anthropic", "https://provider.invalid"), "key").unwrap();
+        assert!(headers["x-api-key"].is_sensitive());
     }
 
     #[test]

@@ -54,9 +54,11 @@ Music Island boundaries.
   recognized text available for insertion and history. [Handy #2290](https://github.com/cjpais/Handy/pull/2290)
 - Punctuation-only text is discarded after recognition cleanup, before AI
   processing or paste. Text with letters or digits keeps its punctuation.
+  Music Island retains the audio in history when recording history is enabled.
   [Handy #2434](https://github.com/cjpais/Handy/pull/2434)
 - AI processing and model-list requests share a connection pool. The chosen
-  provider and its current credentials are assigned per request.
+  provider and its current credentials are assigned per request. Short idle
+  and connect timeouts limit stale connections after sleep or network changes.
   [Handy #2344](https://github.com/cjpais/Handy/pull/2344)
 - Enter during IME composition confirms the composed characters without
   submitting the single-line dictation field.
