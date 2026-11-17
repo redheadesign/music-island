@@ -52,7 +52,7 @@ export function useGlassPointerLight(enabled: boolean) {
       if (event.pointerType === 'touch' || systemQuiet.matches || document.hidden) return reset()
       const control = event.target instanceof Element ? event.target.closest<HTMLElement>(controlSelector) : null
       const theme = control?.closest('[data-interface-theme]')?.getAttribute('data-interface-theme')
-      if (!control || !isInterfaceThemeId(theme) || !getInterfaceThemeDefinition(theme).translucent
+      if (!control || !isInterfaceThemeId(theme) || getInterfaceThemeDefinition(theme).material !== 'glass'
         || control.matches(':disabled, [aria-disabled="true"]') || control.closest(quietSelector)) return reset()
 
       pending = { control, x: event.clientX, y: event.clientY }

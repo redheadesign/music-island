@@ -1,6 +1,8 @@
 import type { StorybookConfig } from '@storybook/react-vite'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { interfaceThemeCss } from '../scripts/interface-theme-css.ts'
+import { workshopThemes } from './themeFixture.ts'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const previewMocks = new Map(
@@ -33,6 +35,7 @@ const config: StorybookConfig = {
   core: { disableTelemetry: true },
   typescript: { reactDocgen: 'react-docgen-typescript' },
   async viteFinal(config) {
+    config.css = { ...config.css, postcss: { plugins: [interfaceThemeCss(workshopThemes)] } }
     // Only the component workshop substitutes native adapters.
     // The application's Vite/Tauri build continues to use the real modules.
     config.plugins = [

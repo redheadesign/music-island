@@ -1,8 +1,6 @@
 /* Theme-level roles. Components use their usual semantic tokens; a theme does
    not own component markup, desktop geometry, or user-selected accent colors. */
 [data-interface-theme='glass'] {
-  --font-sans: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --radius-unit: 6px;
   --glass-control-radius: var(--radius-pill);
   --glass-panel-radius: calc(var(--radius-unit) * 4);
   --glass-island-radius: calc(var(--radius-unit) * 6);
@@ -125,6 +123,9 @@
   --window-titlebar: rgb(var(--glass-ink) / .05);
   --shadow-control: var(--glass-control-rim);
 }
+
+/* Resolve registry roles after both base schemes and before accessibility rules. */
+@interface-theme-roles;
 
 [data-interface-theme='glass'][data-reduced-transparency='true'] {
   --glass-opacity: 100%;

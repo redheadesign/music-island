@@ -96,6 +96,7 @@
 /* Recompute the aliases on each theme root. Inherited custom properties are
    already resolved, so overriding a unit alone would not change the scale. */
 :root, [data-interface-theme] {
+  font-family: var(--font-sans);
   --space-half: calc(var(--space-unit) / 2);
   --space-1: var(--space-unit);
   --space-1-5: calc(var(--space-unit) * 1.5);

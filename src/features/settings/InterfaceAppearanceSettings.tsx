@@ -77,7 +77,7 @@ export function InterfaceAppearanceSettings({ config, locale, onChange, onOpenSo
         />
       </SettingRow>
     </> : null}
-    {definition.translucent ? (
+    {definition.material === 'glass' ? (
       <Switch
         label={t('settings.reducedTransparency')}
         checked={getReducedTransparency(config)}
