@@ -57,9 +57,20 @@ below −42 dB were shortened to 70 ms. Word error rate uses the normalized
 | Natural pauses, 408.57 s | 127.67 / 100.72 | 82.65 / 109.57 | 5.98% |
 | Shortened pauses, 304.28 s | 72.65 / 91.28 | 69.65 / 78.11 | 6.36% |
 
-All four transcripts per input were byte-identical. The natural-pause input
-was slower on 0.4.2 in the reversed comparison, so the bundled engine stays
-at 0.2.4 with the existing ONNX path.
+The first pass varied considerably with run order and workstation load.
+Four additional engine runs used the same input hashes, Vulkan device and
+chunk boundaries. Both versions warmed up on the same eight-second clip.
+Median whole-host CPU load during the four runs was 44.6–45.6%, including
+the benchmark.
+
+| Input | 0.2.4 retest, seconds | 0.4.2 retest, seconds | Median change in time |
+| --- | ---: | ---: | ---: |
+| Natural pauses | 45.059 / 44.620 | 45.195 / 44.923 | +0.49% |
+| Shortened pauses | 38.625 / 38.839 | 38.925 / 39.342 | +1.04% |
+
+All transcripts per input were byte-identical across both rounds. The
+retest found no speed gain. The bundled engine stays at 0.2.4 with the
+existing ONNX path.
 
 The optional microphone can be placed in the island layout editor. It is absent
 from the default composition. The bottom overlay does not take keyboard focus.
