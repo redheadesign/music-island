@@ -105,11 +105,12 @@
 }
 @media (hover: hover) {
   [data-interface-theme='glass'] .ui-button--primary:enabled:hover {
-    background-color: color-mix(in srgb, var(--glass-action), white 14%);
+    box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
   }
 }
 [data-interface-theme='glass'] .ui-button--primary:enabled:active {
-  background-color: color-mix(in srgb, var(--glass-action), black 12%);
+  background-color: var(--glass-action);
+  box-shadow: inset 0 1px 4px rgb(0 0 0 / .38);
 }
 .ui-notice__copy pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-small); }
 .ui-notice summary { cursor: pointer; margin-block: var(--space-2); }
