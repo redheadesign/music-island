@@ -98,7 +98,7 @@ export const FoxError: Story = {
 export const FoxCopyError: Story = {
   ...FoxError,
   name: 'Лиса · не удалось скопировать текст',
-  args: { ...FoxError.args, copy: fn(async () => { throw new Error('Clipboard unavailable') }) },
+  args: { ...FoxError.args, copy: fn(async () => { throw new globalThis.Error('Clipboard unavailable') }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Скопировать текст' }))
