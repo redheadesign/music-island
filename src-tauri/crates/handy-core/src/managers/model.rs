@@ -77,6 +77,8 @@ pub struct ModelInfo {
     pub supported_languages: Vec<String>, // Languages this model can transcribe
     pub supports_language_selection: bool, // Whether the user can explicitly pick a language
     pub is_custom: bool,            // Whether this is a user-provided custom model
+    #[serde(default)]
+    pub supports_background_recognition: bool,
     pub supports_streaming: bool, // Whether this model supports live streaming preview (transcribe-cpp)
     pub supports_language_detection: bool, // Whether the model can auto-detect language (gates the "Auto" option)
 }
@@ -252,6 +254,9 @@ impl ModelDescriptor {
             // Catalog models are always HF-sourced downloads, never user-dropped
             // custom files (those bypass the descriptor and set this directly).
             is_custom: false,
+            supports_background_recognition: crate::gigaam_predecode::supported(
+                self.caps.architecture.as_deref(), self.caps.supports_streaming.unwrap_or(false),
+            ),
             supports_streaming: self.caps.supports_streaming.unwrap_or(false),
             supports_language_detection: self.caps.supports_language_detect.unwrap_or(false),
         }
@@ -583,6 +588,7 @@ impl ModelManager {
                 supported_languages: whisper_languages.clone(),
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -616,6 +622,7 @@ impl ModelManager {
                 supported_languages: whisper_languages.clone(),
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -648,6 +655,7 @@ impl ModelManager {
                 supported_languages: whisper_languages.clone(),
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -680,6 +688,7 @@ impl ModelManager {
                 supported_languages: whisper_languages.clone(),
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -713,6 +722,7 @@ impl ModelManager {
                 supported_languages: whisper_languages,
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -746,6 +756,7 @@ impl ModelManager {
                 supported_languages: vec!["en".to_string()],
                 supports_language_selection: false,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -788,6 +799,7 @@ impl ModelManager {
                 supported_languages: parakeet_v3_languages,
                 supports_language_selection: false,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -820,6 +832,7 @@ impl ModelManager {
                 supported_languages: vec!["en".to_string()],
                 supports_language_selection: false,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -853,6 +866,7 @@ impl ModelManager {
                 supported_languages: vec!["en".to_string()],
                 supports_language_selection: false,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -886,6 +900,7 @@ impl ModelManager {
                 supported_languages: vec!["en".to_string()],
                 supports_language_selection: false,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -919,6 +934,7 @@ impl ModelManager {
                 supported_languages: vec!["en".to_string()],
                 supports_language_selection: false,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -958,6 +974,7 @@ impl ModelManager {
                 supported_languages: sense_voice_languages,
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -993,6 +1010,7 @@ impl ModelManager {
                 supported_languages: gigaam_languages,
                 supports_language_selection: false,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -1032,6 +1050,7 @@ impl ModelManager {
                 supported_languages: canary_flash_languages,
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 // Canary (NeMo) requires an explicit source language — no auto-detect.
                 supports_language_detection: false,
@@ -1075,6 +1094,7 @@ impl ModelManager {
                 supported_languages: canary_1b_languages,
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 // Canary (NeMo) requires an explicit source language — no auto-detect.
                 supports_language_detection: false,
@@ -1115,6 +1135,7 @@ impl ModelManager {
                 supported_languages: cohere_languages,
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 supports_language_detection: true,
             },
@@ -1281,20 +1302,14 @@ impl ModelManager {
     /// header would otherwise coerce an "auto" intent to a forced language for good.
     /// Translate is reconciled too for badge accuracy, though run paths re-read it
     /// live regardless.
-    pub fn set_runtime_capabilities(
-        &self,
-        model_id: &str,
-        supports_streaming: bool,
-        supports_translation: bool,
-        supports_language_detection: bool,
-        supported_languages: Vec<String>,
-    ) {
-        let supported_languages = canonicalize_supported_languages(supported_languages);
+    pub fn set_runtime_capabilities(&self, model_id: &str, caps: &music_island_dictation_protocol::Capabilities) {
+        let supported_languages = canonicalize_supported_languages(caps.languages.clone());
         let mut models = self.available_models.lock().unwrap();
         if let Some(model) = models.get_mut(model_id) {
-            model.supports_streaming = supports_streaming;
-            model.supports_translation = supports_translation;
-            model.supports_language_detection = supports_language_detection;
+            model.supports_streaming = caps.streaming;
+            model.supports_background_recognition = crate::gigaam_predecode::supported(Some(&caps.arch), caps.streaming);
+            model.supports_translation = caps.translate;
+            model.supports_language_detection = caps.language_detection;
             // An empty set means the model is language-agnostic — but it is also
             // what a failed capability read leaves behind, so keep the probed /
             // catalog list rather than blanking a known one to nothing.
@@ -1720,6 +1735,9 @@ impl ModelManager {
                     supported_languages: caps.supported_languages,
                     supports_language_selection: caps.supports_language_selection,
                     is_custom: true,
+                    supports_background_recognition: crate::gigaam_predecode::supported(
+                        probe.architecture.as_deref(), caps.supports_streaming,
+                    ),
                     supports_streaming: caps.supports_streaming,
                     supports_language_detection: caps.supports_language_detection,
                 },
@@ -1864,6 +1882,9 @@ impl ModelManager {
                         supported_languages: caps.supported_languages,
                         supports_language_selection: caps.supports_language_selection,
                         is_custom: false,
+                        supports_background_recognition: crate::gigaam_predecode::supported(
+                            probe.architecture.as_deref(), caps.supports_streaming,
+                        ),
                         supports_streaming: caps.supports_streaming,
                         supports_language_detection: caps.supports_language_detection,
                     },
@@ -2824,6 +2845,7 @@ mod tests {
                 supported_languages: vec!["en".to_string()],
                 supports_language_selection: true,
                 is_custom: false,
+                supports_background_recognition: false,
                 supports_streaming: false,
                 // Legacy entry: preserve the historical "Auto offered" behavior.
                 // (Catalog GGUFs and on-disk probes derive this from metadata.)
@@ -3040,6 +3062,18 @@ mod tests {
             push_gguf_str(&mut out, l);
         }
         fs::write(path, out).unwrap();
+    }
+
+    #[test]
+    fn background_recognition_requires_gigaam_architecture_even_for_renamed_files() {
+        let dir = TempDir::new().unwrap();
+        write_synthetic_gguf(&dir.path().join("my-recording-model.gguf"), "gigaam", &["ru"]);
+        write_synthetic_gguf(&dir.path().join("gigaam-impostor.gguf"), "whisper", &["ru"]);
+        let mut models = HashMap::new();
+        ModelManager::discover_custom_transcribe_models(dir.path(), &mut models).unwrap();
+        assert!(models["my-recording-model"].supports_background_recognition);
+        assert!(!models["gigaam-impostor"].supports_background_recognition);
+        assert!(!crate::gigaam_predecode::supported(Some("gigaam"), true));
     }
 
     #[test]

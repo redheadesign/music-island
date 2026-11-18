@@ -1258,6 +1258,14 @@ pub fn change_filler_word_removal_enabled_setting(
     Ok(())
 }
 
+#[tauri::command]
+#[specta::specta]
+pub fn change_gigaam_background_recognition(app: AppHandle, enabled: bool) {
+    let mut settings = settings::get_settings(&app);
+    settings.gigaam_background_recognition = enabled;
+    settings::write_settings(&app, settings);
+}
+
 /// Save accelerator settings and make the next model use reload with them.
 /// The currently running transcription, if any, keeps its existing engine.
 fn save_accelerator_and_reload_next_use(app: &AppHandle, s: settings::AppSettings) {

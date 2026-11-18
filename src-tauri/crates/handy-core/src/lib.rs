@@ -203,9 +203,9 @@ fn update_custom_filler_words(app: AppHandle, words: Vec<String>) {
 }
 
 #[tauri::command]
-fn get_status() -> status::Snapshot {
+fn get_status(app: AppHandle) -> status::Snapshot {
     let mut status = status::snapshot();
-    status.capture_constraint = status::capture_constraint();
+    status.capture_constraint = status::capture_constraint(&app);
     status
 }
 
@@ -314,6 +314,7 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             shortcut::change_keyboard_implementation_setting,
             shortcut::get_keyboard_implementation,
             shortcut::change_transcribe_accelerator_setting,
+            shortcut::change_gigaam_background_recognition,
             shortcut::change_ort_accelerator_setting,
             shortcut::change_transcribe_gpu_device,
             shortcut::get_available_accelerators,

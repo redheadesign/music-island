@@ -39,6 +39,7 @@ commands.allow = [
   "change_shortcut_activation_setting",
   "change_sound_theme_setting",
   "change_transcribe_accelerator_setting",
+  "change_gigaam_background_recognition",
   "change_transcribe_gpu_device",
   "change_translate_to_english_setting",
   "change_typing_tool_setting",

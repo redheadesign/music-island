@@ -33,10 +33,10 @@ pub struct CaptureConstraint {
     predecode: bool,
 }
 
-pub fn capture_constraint() -> Option<CaptureConstraint> {
+pub fn capture_constraint(app: &AppHandle) -> Option<CaptureConstraint> {
     std::env::var("MUSIC_ISLAND_DICTATION_REQUIRED_INPUT").ok().map(|required_input| CaptureConstraint {
         required_input,
-        predecode: crate::gigaam_predecode::enabled(),
+        predecode: crate::gigaam_predecode::enabled(crate::settings::get_settings(app).gigaam_background_recognition),
     })
 }
 static STATUS: OnceLock<Mutex<Snapshot>> = OnceLock::new();

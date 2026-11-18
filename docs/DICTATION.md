@@ -26,7 +26,14 @@ GPU is detected and can use a specific graphics card. A change takes effect on
 the next recording. If Vulkan cannot initialize the model, dictation retries on
 CPU and shows the backend that loaded. ONNX models use CPU.
 
-GigaAM GGUF models recognize the recording after you stop. For recordings over
+By default GigaAM GGUF models recognize the recording after you stop. To process
+completed phrases while recording, select a GigaAM GGUF model and enable **GigaAM
+background recognition** under **Dictation → Advanced → Compute**. This preference
+applies to the next recording, persists when switching models or restarting the app,
+and leaves text delivery at Stop. The switch is available for both catalog and local
+GigaAM GGUF files. Other models retain their normal recognition path.
+
+For recordings over
 25 seconds, the app looks for quiet pauses near 17 seconds, within the
 [GigaAM utterance window](https://github.com/handy-computer/transcribe.cpp/blob/main/docs/models/gigaam.md).
 If a continuous passage exceeds 25 seconds, it stays intact until the next
@@ -113,8 +120,10 @@ fragment boundaries and texts matched. Stop to final output was 2.601 s
 with early fragment recognition and 68.980 s on the offline pass (67.082 s of
 inference). Other workstation load was allowed during this trial. Both replays
 exclude live VAD, capture-ring contention and paste. By default GigaAM continues
-to recognize after Stop. A per-process opt-in, `MUSIC_ISLAND_GIGAAM_PREDECODE=1`,
-lets GigaAM GGUF recognize completed fragments of post-VAD audio while recording.
+to recognize after Stop. For benchmarks, setting the process environment variable
+`MUSIC_ISLAND_GIGAAM_PREDECODE` to `1` or `0` overrides the saved preference for that
+process. With background recognition enabled, GigaAM GGUF recognizes completed
+fragments of post-VAD audio while recording.
 The short-recording path and the original recording buffer are preserved. An
 ordinary cut is sealed only after its full 25 s search window and 2 s tail have
 arrived. A continuous passage waits for a complete extended search window.

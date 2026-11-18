@@ -554,7 +554,7 @@ impl ShortcutAction for TranscribeAction {
         };
         if model_supports_streaming {
             tm.start_stream();
-        } else if selected_model_info.as_ref().is_some_and(|info| matches!(info.engine_type, crate::managers::model::EngineType::TranscribeCpp)) {
+        } else if selected_model_info.as_ref().is_some_and(|info| info.supports_background_recognition) {
             tm.start_gigaam_predecode(&settings, crate::status::snapshot().operation_id);
         }
         let plan_elapsed = plan_started.elapsed();

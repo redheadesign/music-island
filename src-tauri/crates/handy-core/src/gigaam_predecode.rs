@@ -14,8 +14,20 @@ use std::{
     thread,
 };
 
-pub fn enabled() -> bool {
-    std::env::var_os("MUSIC_ISLAND_GIGAAM_PREDECODE").as_deref() == Some(std::ffi::OsStr::new("1"))
+pub(crate) fn enabled(preference: bool) -> bool {
+    resolve_preference(preference, std::env::var("MUSIC_ISLAND_GIGAAM_PREDECODE").ok().as_deref())
+}
+
+fn resolve_preference(preference: bool, process_override: Option<&str>) -> bool {
+    match process_override {
+        Some("1") => true,
+        Some("0") => false,
+        _ => preference,
+    }
+}
+
+pub(crate) fn supported(architecture: Option<&str>, streaming: bool) -> bool {
+    architecture == Some("gigaam") && !streaming
 }
 
 // A 30 ms VAD frame is typical. Bound both the queued frames and the PCM
@@ -192,6 +204,25 @@ impl Router {
 mod tests {
     use super::*;
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn persisted_preference_survives_reload_and_benchmark_can_override_either_way() {
+        use crate::settings::{get_default_settings, AppSettings};
+
+        let mut profile = serde_json::to_value(get_default_settings()).unwrap();
+        assert_eq!(profile["gigaam_background_recognition"], false);
+        profile.as_object_mut().unwrap().remove("gigaam_background_recognition");
+        let mut settings: AppSettings = serde_json::from_value(profile).unwrap();
+        assert!(!resolve_preference(settings.gigaam_background_recognition, None));
+
+        settings.gigaam_background_recognition = true;
+        let saved = serde_json::to_vec(&settings).unwrap();
+        let restored: AppSettings = serde_json::from_slice(&saved).unwrap();
+        assert!(resolve_preference(restored.gigaam_background_recognition, None));
+        assert!(!resolve_preference(restored.gigaam_background_recognition, Some("0")));
+        assert!(resolve_preference(false, Some("1")));
+        assert!(resolve_preference(true, Some("invalid")));
+    }
 
     fn fixture() -> Vec<f32> {
         let mut audio = vec![0.2; 28 * 16_000];

@@ -64,6 +64,7 @@ export const dictationApi = {
   changeFillerWordRemovalEnabledSetting: (enabled: boolean) => invoke<null>('plugin:dictation|change_filler_word_removal_enabled_setting', { enabled }),
   changeKeyboardImplementationSetting: (implementation: string) => invoke<ImplementationChangeResult>('plugin:dictation|change_keyboard_implementation_setting', { implementation }),
   getKeyboardImplementation: () => invoke<string>('plugin:dictation|get_keyboard_implementation'),
+  changeGigaamBackgroundRecognition: (enabled: boolean) => invoke<null>('plugin:dictation|change_gigaam_background_recognition', { enabled }),
   changeTranscribeAcceleratorSetting: (accelerator: TranscribeAcceleratorSetting) => invoke<null>('plugin:dictation|change_transcribe_accelerator_setting', { accelerator }),
   changeOrtAcceleratorSetting: (accelerator: OrtAcceleratorSetting) => invoke<null>('plugin:dictation|change_ort_accelerator_setting', { accelerator }),
   changeTranscribeGpuDevice: (device: string | null) => invoke<null>('plugin:dictation|change_transcribe_gpu_device', { device }),

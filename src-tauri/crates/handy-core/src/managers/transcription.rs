@@ -584,13 +584,7 @@ impl TranscriptionManager {
             {
                 warn!("Dictation: Vulkan unavailable, using {}", caps.backend);
             }
-            self.model_manager.set_runtime_capabilities(
-                model_id,
-                caps.streaming,
-                caps.translate,
-                caps.language_detection,
-                caps.languages.clone(),
-            );
+            self.model_manager.set_runtime_capabilities(model_id, caps);
         }
 
         // Update the current engine and model ID
@@ -686,7 +680,7 @@ impl TranscriptionManager {
     }
 
     pub(crate) fn start_gigaam_predecode(&self, settings: &AppSettings, operation: u64) {
-        if !crate::gigaam_predecode::enabled() { return; }
+        if !crate::gigaam_predecode::enabled(settings.gigaam_background_recognition) { return; }
         let manager = self.clone();
         let model = settings.selected_model.clone();
         let language = effective_language_for_model(settings, self.model_manager.as_ref(), &model);
@@ -702,7 +696,9 @@ impl TranscriptionManager {
             let mut busy = manager.predecode_backend.lock().unwrap();
             let mut slot = manager.lock_engine();
             let engine = slot.as_mut()?;
-            if engine.kind != "TranscribeCpp" || engine.capabilities.arch != "gigaam" || !engine.is_healthy() {
+            if engine.kind != "TranscribeCpp" || !engine.is_healthy()
+                || !crate::gigaam_predecode::supported(Some(&engine.capabilities.arch), engine.capabilities.streaming)
+            {
                 return None;
             }
             let caps = &engine.capabilities;

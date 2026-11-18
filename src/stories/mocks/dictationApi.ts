@@ -14,6 +14,10 @@ const preview = {
     settings = { ...settings, transcribe_accelerator: accelerator }
     return null
   },
+  changeGigaamBackgroundRecognition: async (enabled: boolean) => {
+    settings = { ...settings, gigaam_background_recognition: enabled }
+    return null
+  },
   changeTranscribeGpuDevice: async (device: string | null) => {
     settings = { ...settings, transcribe_gpu_device: device }
     return null

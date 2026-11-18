@@ -33,6 +33,7 @@ export function DictationAdvanced({ controller: c, locale }: { controller: Dicta
   const backend = s.transcribe_accelerator === 'gpu' ? 'vulkan' : s.transcribe_accelerator ?? 'auto'
   const gpuDevices = compute?.gpu_devices ?? []
   const selectedGpu = gpuDevices.find((device) => device.id === s.transcribe_gpu_device)?.id ?? ''
+  const selectedModel = data.models.find(model => model.id === s.selected_model)
   const loadedBackend = data.modelStatus?.backend
   const activeBackend = loadedBackend?.toLowerCase().startsWith('vulkan')
     ? 'Vulkan'
@@ -70,6 +71,12 @@ export function DictationAdvanced({ controller: c, locale }: { controller: Dicta
         ['', backendLabels.auto],
         ...gpuDevices.map((device): [string, string] => [device.id, `${device.name} · ${device.total_vram_mb.toLocaleString(locale)} ${t('МБ', 'MB')}`]),
       ], (value) => api.changeTranscribeGpuDevice(value || null)) : null}
+      {selectedModel?.supports_background_recognition && toggle(
+        t('Фоновое распознавание GigaAM', 'GigaAM background recognition'), 'gigaam_background_recognition',
+        api.changeGigaamBackgroundRecognition,
+        t('В паузах GigaAM обрабатывает уже записанную речь. Текст появится после остановки записи.',
+          'During pauses, GigaAM processes speech already recorded. Text appears after you stop recording.'),
+      )}
       {data.modelStatus?.is_loaded && activeBackend ? (
         <DictationField label={t('Движок в работе', 'Active engine')}><span>{activeBackend}</span></DictationField>
       ) : null}

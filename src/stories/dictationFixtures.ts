@@ -289,6 +289,7 @@ export const dictationModels: ModelInfo[] = [
     "supports_language_detection": true
   },
   {
+    "supports_background_recognition": true,
     "id": "handy-computer/gigaam-v3-ctc-gguf/gigaam-v3-ctc-Q8_0.gguf",
     "name": "GigaAM v3 CTC",
     "description": "Russian speech-to-text with token-level timestamps.",
@@ -320,6 +321,7 @@ export const dictationModels: ModelInfo[] = [
 ]
 
 export const gigaamRnnt: ModelInfo = {
+  "supports_background_recognition": true,
   "id": "handy-computer/gigaam-v3-e2e-rnnt-gguf/gigaam-v3-e2e-rnnt-Q8_0.gguf",
   "name": "GigaAM v3 E2E-RNN-T",
   "description": "Russian speech-to-text with token-level timestamps.",
