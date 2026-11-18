@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.2.1 — 2026-11-18
 
 - Glass and Classic change the top-edge island. Settings, Better Voice and Dictation use their regular dark surfaces, spacing and controls.
 - In Appearance, start with the layout editor. The two island materials, color palettes, playback background, monitor and opening delay are directly below the draggable controls.
