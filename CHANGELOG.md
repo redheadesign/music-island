@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.2.0
+## 3.2.0 — 2026-11-18
 
 - Glass becomes the default interface. Choose a separate color palette for controls, or switch back to Classic in Appearance. The island picks up the artwork colors in its progress bar and background.
 - Move controls between player rows by dragging or with the keyboard. An empty second row collapses. The island catalog includes ten-second seek buttons and system volume.
