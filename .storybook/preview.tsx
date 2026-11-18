@@ -8,6 +8,7 @@ import { resetVoiceSession } from '../src/stories/mocks/voiceSession'
 import { resetNativePreview } from '../src/stories/mocks/tauriApi'
 import '../src/index.css'
 import '../src/App.css'
+import '../src/features/settings/settings.css'
 import '../src/stories/workshop.css'
 
 const preview: Preview = {

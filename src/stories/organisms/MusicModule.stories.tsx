@@ -194,6 +194,9 @@ export const SystemVolume: Story = {
     await userEvent.keyboard('{Escape}')
     await expect(button).toHaveFocus()
     await expect(slider).not.toBeInTheDocument()
+    await userEvent.unhover(button)
+    await userEvent.hover(button)
+    await expect(await canvas.findByRole('slider', { name: /System volume|Системная громкость/i })).toBeVisible()
   },
 }
 export const Playing: Story = { name: 'Воспроизведение' }
