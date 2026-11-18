@@ -69,9 +69,11 @@ pub async fn delete_model(
     model_manager: State<'_, Arc<ModelManager>>,
     model_id: String,
 ) -> Result<(), String> {
-    // If deleting the active model, unload it and clear the setting
+    // Serialize the selection check with a new capture and competing model changes.
+    let _selection = crate::status::lock_model_selection()?;
     let settings = get_settings(&app_handle);
     if settings.selected_model == model_id {
+        ensure_model_is_free()?;
         if let Some(manager) = app_handle.try_state::<Arc<TranscriptionManager>>() {
             manager.unload_model().map_err(|e| format!("Failed to unload model: {}", e))?;
         }
@@ -86,6 +88,13 @@ pub async fn delete_model(
         .map_err(|e| e.to_string())
 }
 
+fn ensure_model_is_free() -> Result<(), String> {
+    if crate::status::snapshot().uses_recognition_model() {
+        return Err("Finish the current recording and recognition before changing its model".into());
+    }
+    Ok(())
+}
+
 /// Shared logic for switching the active model, used by both the Tauri command
 /// and the tray menu handler.
 ///
@@ -93,6 +102,8 @@ pub async fn delete_model(
 /// unless the unload timeout is set to "Immediately" (in which case the model
 /// will be loaded on-demand during the next transcription).
 pub fn switch_active_model(app: &AppHandle, model_id: &str) -> Result<(), String> {
+    let _selection = crate::status::lock_model_selection()?;
+    ensure_model_is_free()?;
     let model_manager = app.state::<Arc<ModelManager>>();
     let transcription_manager = app.try_state::<Arc<TranscriptionManager>>();
 
@@ -147,9 +158,15 @@ pub fn switch_active_model(app: &AppHandle, model_id: &str) -> Result<(), String
     // Load the model. On failure, revert the persisted selection.
     if let Err(e) = transcription_manager.load_model(model_id) {
         let mut settings = get_settings(app);
-        settings.selected_model = old_model;
+        settings.selected_model = old_model.clone();
         settings.onboarding_completed = old_onboarding_completed;
         write_settings(app, settings);
+        let _ = app.emit("model-state-changed", ModelStateEvent {
+            event_type: "selection_changed".into(),
+            model_id: Some(old_model),
+            model_name: None,
+            error: None,
+        });
         return Err(e.to_string());
     }
 

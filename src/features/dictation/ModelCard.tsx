@@ -9,6 +9,7 @@ export interface ModelCardProps {
   model: ModelInfo
   locale: 'ru' | 'en'
   selected?: boolean
+  recognitionActive?: boolean
   loaded?: boolean
   downloading?: boolean
   busy?: boolean
@@ -21,7 +22,7 @@ export interface ModelCardProps {
 }
 
 /** The same content hierarchy for catalog, installed and imported models. */
-export function ModelCard({ model, locale, selected, loaded, downloading = model.is_downloading, busy, progress = 0, error, onDownload, onSelect, onCancel, onDelete }: ModelCardProps) {
+export function ModelCard({ model, locale, selected, recognitionActive, loaded, downloading = model.is_downloading, busy, progress = 0, error, onDownload, onSelect, onCancel, onDelete }: ModelCardProps) {
   const ru = locale === 'ru'
   const recommendedLanguage = russianModelRank(model) ? 'ru' : 'en'
   const rank = recommendationRank(model, recommendedLanguage)
@@ -41,8 +42,8 @@ export function ModelCard({ model, locale, selected, loaded, downloading = model
         </div> : null}
       </div>
       <div className="dictation-model__actions">
-      {downloading ? <div className="dictation-model__download"><progress value={progress} max={100} aria-label={ru ? 'Загрузка модели' : 'Model download'} /><span>{Math.round(progress)}%</span><Button size="compact" variant="ghost" onClick={onCancel}>{ru ? 'Отменить' : 'Cancel'}</Button></div> : !model.is_downloaded ? <Button variant="primary" disabled={busy} onClick={onDownload}><Download size={16} />{error ? ru ? 'Повторить' : 'Retry' : model.partial_size ? ru ? 'Продолжить' : 'Resume' : ru ? 'Скачать' : 'Download'}</Button> : !selected ? <Button disabled={busy} onClick={onSelect}>{ru ? 'Использовать' : 'Use model'}</Button> : null}
-      {model.is_downloaded && !downloading ? <SettingsIconButton className="dictation-model__delete" size="compact" variant="danger" label={`${ru ? 'Удалить модель' : 'Delete model'} ${model.name}`} disabled={busy} onClick={onDelete}><Trash2 size={17} /></SettingsIconButton> : null}
+      {downloading ? <div className="dictation-model__download"><progress value={progress} max={100} aria-label={ru ? 'Загрузка модели' : 'Model download'} /><span>{Math.round(progress)}%</span><Button size="compact" variant="ghost" onClick={onCancel}>{ru ? 'Отменить' : 'Cancel'}</Button></div> : !model.is_downloaded ? <Button variant="primary" disabled={busy} onClick={onDownload}><Download size={16} />{error ? ru ? 'Повторить' : 'Retry' : model.partial_size ? ru ? 'Продолжить' : 'Resume' : ru ? 'Скачать' : 'Download'}</Button> : !selected ? <Button disabled={busy || recognitionActive} title={recognitionActive ? ru ? 'Доступно после распознавания' : 'Available after recognition' : undefined} onClick={onSelect}>{ru ? 'Использовать' : 'Use model'}</Button> : null}
+      {model.is_downloaded && !downloading ? <SettingsIconButton className="dictation-model__delete" size="compact" variant="danger" label={`${ru ? 'Удалить модель' : 'Delete model'} ${model.name}`} disabled={busy || (selected && recognitionActive)} onClick={onDelete}><Trash2 size={17} /></SettingsIconButton> : null}
       </div>
     </footer>
   </article>

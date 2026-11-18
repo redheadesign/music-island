@@ -74,8 +74,8 @@ export function DictationAdvanced({ controller: c, locale }: { controller: Dicta
       {selectedModel?.supports_background_recognition && toggle(
         t('Фоновое распознавание GigaAM', 'GigaAM background recognition'), 'gigaam_background_recognition',
         api.changeGigaamBackgroundRecognition,
-        t('В паузах GigaAM обрабатывает уже записанную речь. Текст появится после остановки записи.',
-          'During pauses, GigaAM processes speech already recorded. Text appears after you stop recording.'),
+        t('Со следующей записи GigaAM начнёт разбирать речь в паузах. Текст появится после остановки.',
+          'Starting with the next recording, GigaAM processes speech during pauses. Text appears after you stop.'),
       )}
       {data.modelStatus?.is_loaded && activeBackend ? (
         <DictationField label={t('Движок в работе', 'Active engine')}><span>{activeBackend}</span></DictationField>

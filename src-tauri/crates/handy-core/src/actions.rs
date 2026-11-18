@@ -492,7 +492,7 @@ pub(crate) async fn process_transcription_output(
 impl ShortcutAction for TranscribeAction {
     fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
         crate::focus_target::capture();
-        crate::status::begin(app);
+        if !crate::status::begin(app) { return; }
         let start_time = Instant::now();
         debug!("TranscribeAction::start called for binding: {}", binding_id);
 
@@ -520,6 +520,7 @@ impl ShortcutAction for TranscribeAction {
                 .get_model_path(&selected_model)
             {
                 warn!("Not starting recording: no model can transcribe it ({})", e);
+                crate::status::result(app, String::new(), Some(e.to_string()));
                 return;
             }
         }
@@ -647,6 +648,7 @@ impl ShortcutAction for TranscribeAction {
             utils::hide_recording_overlay(app);
             set_tray_state(app, TrayIconState::Idle);
             if let Some(err) = recording_error {
+                crate::status::result(app, String::new(), Some(err.to_string()));
                 let error_type = if is_microphone_access_denied(&err) {
                     "microphone_permission_denied"
                 } else if is_no_input_device_error(&err) {
@@ -747,6 +749,7 @@ impl ShortcutAction for TranscribeAction {
 
                 if samples.is_empty() {
                     debug!("Recording produced no audio samples; skipping persistence");
+                    crate::status::result(&ah, String::new(), None);
                     // Tear down any streaming worker so its channel doesn't leak
                     // and block the next start_stream.
                     tm.cancel_stream();
@@ -970,6 +973,9 @@ impl ShortcutAction for TranscribeAction {
                 }
             } else {
                 debug!("No samples retrieved from recording stop");
+                if !rm.was_cancelled_since(cancel_generation) {
+                    crate::status::result(&ah, String::new(), None);
+                }
                 // Tear down any streaming worker so its channel doesn't leak.
                 tm.cancel_stream();
                 utils::hide_recording_overlay(&ah);

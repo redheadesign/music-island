@@ -15,7 +15,11 @@ const api = vi.hoisted(() => ({
   getStatus: vi.fn(async () => ({ revision: 0, operationId: 0, phase: 'idle', ready: false, text: '', error: null })),
 }))
 vi.mock('./dictationApi', () => ({ dictationApi: api }))
-vi.mock('./dictationEvents', () => ({ listenDictationEvent: vi.fn(async () => () => {}) }))
+const events = vi.hoisted(() => new Map<string, (event: { payload: unknown }) => void>())
+vi.mock('./dictationEvents', () => ({ listenDictationEvent: async (name: string, handler: (event: { payload: unknown }) => void) => {
+  events.set(name, handler)
+  return () => events.delete(name)
+} }))
 let root: Root
 let controller: ReturnType<typeof useDictationController>
 function Probe() { controller = useDictationController(true); return null }
@@ -86,4 +90,16 @@ it('keeps read-only actions local and refreshes only settings after a preference
   expect(api.getAvailableModels).not.toHaveBeenCalled()
   expect(api.getAvailableMicrophones).not.toHaveBeenCalled()
   expect(api.getHistoryEntries).not.toHaveBeenCalled()
+})
+
+it('reloads model capabilities and selected preferences after a load or selection rollback', async () => {
+  const onModelState = events.get('model-state-changed')!
+  for (const event_type of ['loading_completed', 'selection_changed']) {
+    vi.clearAllMocks()
+    await act(async () => onModelState({ payload: { event_type } }))
+    expect(api.getAvailableModels).toHaveBeenCalledOnce()
+    expect(api.getAppSettings).toHaveBeenCalledOnce()
+    expect(api.getModelLoadStatus).toHaveBeenCalledOnce()
+    expect(api.getHistoryEntries).not.toHaveBeenCalled()
+  }
 })

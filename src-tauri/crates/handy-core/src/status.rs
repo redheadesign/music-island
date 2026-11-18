@@ -39,6 +39,13 @@ pub fn capture_constraint(app: &AppHandle) -> Option<CaptureConstraint> {
         predecode: crate::gigaam_predecode::enabled(crate::settings::get_settings(app).gigaam_background_recognition),
     })
 }
+// A manual selection may load a model and roll back on failure. A new capture
+// cannot begin between its settings write and that rollback.
+static MODEL_SELECTION: Mutex<()> = Mutex::new(());
+pub(crate) fn lock_model_selection() -> Result<std::sync::MutexGuard<'static, ()>, String> {
+    MODEL_SELECTION.try_lock().map_err(|_| "A model change is already in progress".into())
+}
+
 static STATUS: OnceLock<Mutex<Snapshot>> = OnceLock::new();
 fn state() -> &'static Mutex<Snapshot> {
     STATUS.get_or_init(Default::default)
@@ -65,7 +72,11 @@ fn update(app: &AppHandle, f: impl FnOnce(&mut Snapshot)) {
     ));
     let _ = app.emit("dictation:status", snapshot);
 }
-pub fn begin(app: &AppHandle) {
+pub fn begin(app: &AppHandle) -> bool {
+    let Ok(_selection) = lock_model_selection() else {
+        result(app, String::new(), Some("The selected model is being changed".into()));
+        return false;
+    };
     let activation = crate::settings::get_settings(app).shortcut_activation;
     update(app, |s| {
         s.shortcut_activation = activation;
@@ -76,6 +87,7 @@ pub fn begin(app: &AppHandle) {
         s.text.clear();
         s.error = None;
     });
+    true
 }
 pub fn preparing(app: &AppHandle, streaming: bool) {
     update(app, |s| {
@@ -94,6 +106,10 @@ pub fn model_loading(app: &AppHandle, loading: bool) {
 }
 
 impl Snapshot {
+    pub(crate) fn uses_recognition_model(&self) -> bool {
+        matches!(self.phase.as_str(), "preparing" | "recording" | "streaming" | "transcribing")
+    }
+
     fn set_audio_progress(&mut self, operation: u64, completed: usize, total: usize) -> bool {
         if self.operation_id != operation || self.phase != "transcribing" || total == 0 || completed > total {
             return false;
@@ -177,6 +193,19 @@ pub fn copied(app: &AppHandle, operation_id: u64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_capture_and_recognition_own_the_selected_model() {
+        let mut status = Snapshot::default();
+        for phase in ["preparing", "recording", "streaming", "transcribing"] {
+            status.phase = phase.into();
+            assert!(status.uses_recognition_model(), "{phase}");
+        }
+        for phase in ["idle", "processing", "completed", "cancelled", "error", ""] {
+            status.phase = phase.into();
+            assert!(!status.uses_recognition_model(), "{phase}");
+        }
+    }
 
     #[test]
     fn audio_progress_belongs_to_the_current_transcribing_operation() {

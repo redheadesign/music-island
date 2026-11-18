@@ -131,7 +131,11 @@ export function useDictationController(active: boolean, enabled = false) {
     void Promise.all([
       register('models-updated', modelsChanged), register('model-deleted', modelsChanged),
       register('model-download-cancelled', modelsChanged), register('model-download-failed', modelsChanged),
-      register('model-state-changed', () => { void refresh('runtime').catch(failed) }),
+      register('model-state-changed', payload => {
+        const type = (payload as { event_type?: string } | null)?.event_type
+        if (type === 'loading_completed' || type === 'selection_changed') modelsChanged()
+        else void refresh('runtime').catch(failed)
+      }),
       register('model-download-complete', modelsChanged), register('history-update-payload', historyChanged),
       register('dictation:status', payload => {
         const status = payload as DictationStatus
