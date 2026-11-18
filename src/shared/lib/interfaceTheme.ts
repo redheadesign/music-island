@@ -1,9 +1,6 @@
 export const INTERFACE_SCENES = ['fox', 'manta'] as const
 export type InterfaceScene = typeof INTERFACE_SCENES[number]
 
-export const PLAYBACK_VISUALS = ['wave', 'flow', 'rays', 'mercury'] as const
-export type PlaybackVisual = typeof PLAYBACK_VISUALS[number]
-
 type ThemeRole = `--${'surface' | 'fg' | 'control' | 'font' | 'space' | 'radius' | 'text' | 'leading' | 'weight' | 'shadow' | 'status' | 'focus' | 'hit' | 'motion' | 'glass'}-${string}`
 export type ThemeRoles = Partial<Record<ThemeRole, string>>
 
@@ -12,7 +9,7 @@ export type ThemeDefinition = {
   material: 'classic' | 'glass'
   roles?: ThemeRoles
   schemes?: Partial<Record<'dark' | 'light', ThemeRoles>>
-  playback?: { fallback: PlaybackVisual; options: readonly PlaybackVisual[] }
+  playbackWave?: boolean
   scene?: { fallback: InterfaceScene; options: readonly InterfaceScene[] }
 }
 
@@ -25,7 +22,7 @@ export const INTERFACE_THEMES = {
       '--font-sans': '"Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif',
       '--radius-unit': '6px',
     },
-    playback: { fallback: 'wave', options: PLAYBACK_VISUALS },
+    playbackWave: true,
     scene: { fallback: 'fox', options: INTERFACE_SCENES },
   },
 } satisfies Record<string, ThemeDefinition>

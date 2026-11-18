@@ -17,6 +17,7 @@ import {
   type CollapsedGestureState,
 } from '../../app/tauriApi'
 import { MusicModule } from '../music/MusicModule'
+import { IslandSystemVolume } from './IslandSystemVolume'
 import { DictationMicrophone } from '../dictation/DictationMicrophone'
 import { ActiveSelectionChip } from '../music/wave/ActiveSelectionChip'
 import { useAppUpdater } from '../settings/useAppUpdater'
@@ -42,7 +43,8 @@ import {
   getInterfaceScene,
   getInterfaceTheme,
   getLocalServersWidgetScale,
-  getPlaybackVisual,
+  getPlaybackWaveEnabled,
+  usesGlassMaterial,
   getReducedTransparency,
   getUiPrefs,
   getUsageWidgetCompact,
@@ -150,9 +152,9 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const transitionRef = useRef(transition)
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
-  const playbackVisual = getPlaybackVisual(config)
-  const hasPlaybackVisual = Boolean(playbackVisual && media?.hasSession)
-  const playbackMotion = hasPlaybackVisual && media?.playbackStatus === 'playing'
+  const hasSession = media?.hasSession === true
+  const hasPlaybackWave = hasSession && getPlaybackWaveEnabled(config)
+  const playbackMotion = hasSession && media?.playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -163,15 +165,15 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     }
     if (!bassEffect.current?.layer.isConnected) {
       bassEffect.current?.dispose()
-      const layer = bass > 0 ? overlay.current?.querySelector<HTMLElement>('.island-card .island-feedback__ambient[data-playback-motion="playing"]') : null
+      const layer = bass > 0 ? overlay.current?.querySelector<HTMLElement>('.island-card .island-feedback__ambient[data-playback-wave][data-playback-motion="playing"]') : null
       bassEffect.current = layer ? createIslandBassEffect(layer) : null
     }
     bassEffect.current?.update(bass)
   }, [])
   usePlaybackBass(
-    expandedVisible && playbackMotion && uiPrefs.playbackReactiveWave === true
+    expandedVisible && hasPlaybackWave && playbackMotion
       && !reducedMotion && !getReducedTransparency(config)
-      && config.media.protocol === 'yandex-direct' && media?.provider === 'yandex-direct',
+      && config.media.protocol === 'yandex-direct' && config.media.directYandexConsent && media?.provider === 'yandex-direct',
     applyBassLevel,
   )
   const localServersEnabled = islandLayout.zones.bottom.includes('localServers')
@@ -567,7 +569,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       return undefined
     }
 
-    const artworkColors = artworkCssColors(artworkPalette, Boolean(playbackVisual))
+    const artworkColors = artworkCssColors(artworkPalette, usesGlassMaterial(config))
     return {
       '--island-opacity': config.appearance.opacity,
       '--island-radius': `${config.appearance.cornerRadius}px`,
@@ -583,7 +585,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--artwork-primary': artworkColors.primary,
       '--artwork-secondary': artworkColors.secondary,
     } as CSSProperties
-  }, [artworkPalette, config, islandLayout.zones.actions.length, playbackVisual, progressColor])
+  }, [artworkPalette, config, islandLayout.zones.actions.length, progressColor])
 
   const clearCloseTimer = () => {
     if (closeTimerRef.current) {
@@ -970,11 +972,12 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
             <div className="island-scale-layer">
             <IslandFeedback
               className="island-card island-surface"
-              particles={hasPlaybackVisual}
-              playbackMotion={hasPlaybackVisual ? playbackMotion : undefined}
-              playbackVisual={playbackVisual}
+              particles={hasSession && usesGlassMaterial(config)}
+              playbackWave={hasPlaybackWave}
+              playbackMotion={playbackMotion}
             >
               <MusicModule
+                systemVolume={<IslandSystemVolume locale={locale} />}
                 layout={islandLayout}
                 media={media}
                 progressMs={progressMs}

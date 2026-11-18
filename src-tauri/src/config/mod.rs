@@ -12,6 +12,7 @@ const UI_PREFS_KEY: &str = "ui";
 const INTERFACE_THEME_KEY: &str = "interfaceTheme";
 const GLASS_DEFAULT_MARKER: &str = "interfaceThemeGlassDefaultApplied";
 const DEFAULT_INTERFACE_THEME: &str = "glass";
+const PLAYBACK_WAVE_KEY: &str = "playbackWaveEnabled";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -231,10 +232,41 @@ pub enum LayoutPreset {
     FocusMode,
 }
 
+impl AppConfig {
+    fn migrate_interface_preferences(&mut self) -> bool {
+        let mut changed = self.plugins.apply_glass_default_once();
+        let ui = self.plugins.ui_preferences_mut();
+        let old_bass = ui.remove("playbackReactiveWave");
+        let old_visual = ui.remove("playbackVisual");
+        changed |= old_bass.is_some() || old_visual.is_some();
+        if ui.get(PLAYBACK_WAVE_KEY).and_then(Value::as_bool).is_none() {
+            // Existing Direct users opted into process audio separately from the connection.
+            let uses_direct = matches!(self.media.protocol, MediaProtocol::YandexDirect);
+            let enabled = !uses_direct || old_bass.and_then(|v| v.as_bool()) == Some(true);
+            ui.insert(PLAYBACK_WAVE_KEY.into(), enabled.into());
+            changed = true;
+        }
+        changed
+    }
+
+    #[cfg(any(windows, test))]
+    fn allows_playback_bass(&self) -> bool {
+        let ui = self.plugins.settings.get(UI_PREFS_KEY);
+        let preference = |key: &str| ui.and_then(|ui| ui.get(key));
+        matches!(self.media.protocol, MediaProtocol::YandexDirect)
+            && self.media.direct_yandex_consent
+            && !self.appearance.reduced_motion
+            && preference("reducedTransparency").and_then(Value::as_bool) != Some(true)
+            && preference(INTERFACE_THEME_KEY).and_then(Value::as_str).unwrap_or(DEFAULT_INTERFACE_THEME) == "glass"
+            && preference(PLAYBACK_WAVE_KEY).and_then(Value::as_bool) == Some(true)
+    }
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         let mut plugins = PluginsConfig::default();
         plugins.apply_glass_default_once();
+        plugins.ui_preferences_mut().insert(PLAYBACK_WAVE_KEY.into(), true.into());
         Self {
             schema_version: 2,
             taskbar: TaskbarConfig::default(),
@@ -286,7 +318,7 @@ impl Default for AppConfig {
 #[derive(Clone)]
 pub struct ConfigState {
     config: Arc<RwLock<AppConfig>>,
-    persist_glass_migration: bool,
+    persist_ui_migration: bool,
     read_failed: Arc<std::sync::atomic::AtomicBool>,
 }
 
@@ -322,9 +354,9 @@ impl ConfigState {
         let needs_recovery = self.require_loaded().is_err();
         if needs_recovery {
             let mut recovered = read_config_at(path)?;
-            if recovered.plugins.apply_glass_default_once() {
+            if recovered.migrate_interface_preferences() {
                 if let Err(error) = handy_core::embedded_assets::atomic_write(path, &serde_json::to_vec_pretty(&recovered)?) {
-                    log::warn!("Could not persist the Glass preference after recovering settings: {error}");
+                    log::warn!("Could not persist interface preferences after recovering settings: {error}");
                 }
             }
             *current = recovered;
@@ -334,10 +366,10 @@ impl ConfigState {
     }
 
     fn from_config(mut config: AppConfig) -> Self {
-        let persist_glass_migration = config.plugins.apply_glass_default_once();
+        let persist_ui_migration = config.migrate_interface_preferences();
         Self {
             config: Arc::new(RwLock::new(config)),
-            persist_glass_migration,
+            persist_ui_migration,
             read_failed: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
@@ -349,7 +381,7 @@ impl ConfigState {
 
     fn persist_startup_migration_to(&self, path: &Path) -> anyhow::Result<()> {
         self.require_loaded()?;
-        if self.persist_glass_migration {
+        if self.persist_ui_migration {
             let current = self.config.read().map_err(|_| anyhow::anyhow!("config lock poisoned"))?;
             handy_core::embedded_assets::atomic_write(path, &serde_json::to_vec_pretty(&*current)?)?;
         }
@@ -372,17 +404,7 @@ impl ConfigState {
 
     #[cfg(windows)]
     pub(crate) fn playback_bass_enabled(&self) -> bool {
-        let Ok(config) = self.config.read() else {
-            return false;
-        };
-        let ui = config.plugins.settings.get(UI_PREFS_KEY);
-        let preference = |key: &str| ui.and_then(|ui| ui.get(key));
-        matches!(config.media.protocol, MediaProtocol::YandexDirect)
-            && config.media.direct_yandex_consent
-            && !config.appearance.reduced_motion
-            && preference("reducedTransparency").and_then(Value::as_bool) != Some(true)
-            && preference(INTERFACE_THEME_KEY).and_then(Value::as_str).unwrap_or(DEFAULT_INTERFACE_THEME) == "glass"
-            && preference("playbackReactiveWave").and_then(Value::as_bool) == Some(true)
+        self.config.read().is_ok_and(|config| config.allows_playback_bass())
     }
 
     pub fn save(&self, config: AppConfig) -> anyhow::Result<AppConfig> {
@@ -418,6 +440,12 @@ impl ConfigState {
             Some(base) => merge_edits(base, &config, &current)?,
             None => config,
         };
+        // Keep the user's audio choice if a stale webview omits the new field.
+        if normalized.plugins.ui_preferences_mut().get(PLAYBACK_WAVE_KEY).and_then(Value::as_bool).is_none() {
+            if let Some(wave) = current.plugins.settings.get(UI_PREFS_KEY).and_then(|ui| ui.get(PLAYBACK_WAVE_KEY)) {
+                normalized.plugins.ui_preferences_mut().insert(PLAYBACK_WAVE_KEY.into(), wave.clone());
+            }
+        }
         normalized.schema_version = 2;
         normalized.layout.width = normalized.layout.width.clamp(80, 125);
         normalized.layout.scale = normalized.layout.scale.clamp(70, 120);
@@ -427,6 +455,7 @@ impl ConfigState {
         if current.plugins.glass_default_applied() {
             normalized.plugins.ui_preferences_mut().insert(GLASS_DEFAULT_MARKER.into(), true.into());
         }
+        normalized.migrate_interface_preferences();
         handy_core::embedded_assets::atomic_write(path, &serde_json::to_vec_pretty(&normalized)?)?;
         *current = normalized.clone();
         Ok(normalized)
@@ -488,11 +517,36 @@ mod tests {
     use super::*;
 
     #[test]
+    fn migrating_playback_preserves_process_audio_consent() {
+        for (protocol, old_bass, expected) in [
+            (MediaProtocol::Smtc, None, true),
+            (MediaProtocol::YandexDirect, None, false),
+            (MediaProtocol::YandexDirect, Some(false), false),
+            (MediaProtocol::YandexDirect, Some(true), true),
+        ] {
+            let mut config = AppConfig::default();
+            let direct = matches!(protocol, MediaProtocol::YandexDirect);
+            config.media.protocol = protocol;
+            config.media.direct_yandex_consent = direct;
+            let ui = config.plugins.ui_preferences_mut();
+            ui.remove(PLAYBACK_WAVE_KEY);
+            ui.insert("playbackVisual".into(), "flow".into());
+            if let Some(bass) = old_bass { ui.insert("playbackReactiveWave".into(), Value::Bool(bass)); }
+            assert!(config.migrate_interface_preferences());
+            assert_eq!(config.plugins.settings[UI_PREFS_KEY][PLAYBACK_WAVE_KEY], expected);
+            assert_eq!(config.allows_playback_bass(), direct && expected);
+            assert!(!config.migrate_interface_preferences());
+            config.media.direct_yandex_consent = false;
+            assert!(!config.allows_playback_bass());
+        }
+    }
+
+    #[test]
     fn settings_edits_preserve_concurrent_provider_and_plugin_changes() {
         let base = AppConfig::default();
         let mut edited = base.clone();
         edited.appearance.locale = Locale::En;
-        edited.plugins.ui_preferences_mut().insert("playbackVisual".into(), "rays".into());
+        edited.plugins.ui_preferences_mut().insert(PLAYBACK_WAVE_KEY.into(), false.into());
         let mut current = base.clone();
         current.media.protocol = MediaProtocol::YandexDirect;
         current.media.direct_yandex_consent = true;
@@ -501,7 +555,7 @@ mod tests {
         assert_eq!(merged.appearance.locale, Locale::En);
         assert_eq!(merged.media, current.media);
         assert_eq!(merged.plugins.settings[UI_PREFS_KEY]["usageWidgetCompact"], true);
-        assert_eq!(merged.plugins.settings[UI_PREFS_KEY]["playbackVisual"], "rays");
+        assert_eq!(merged.plugins.settings[UI_PREFS_KEY][PLAYBACK_WAVE_KEY], false);
     }
 
     #[test]
@@ -574,7 +628,7 @@ mod tests {
         state.save_to(migrated, &path).unwrap();
         let reopened = ConfigState::from_config(read_disk());
         assert_eq!(reopened.load().unwrap().plugins.settings[UI_PREFS_KEY][INTERFACE_THEME_KEY], "classic");
-        assert!(!reopened.persist_glass_migration);
+        assert!(!reopened.persist_ui_migration);
     }
 
     #[test]

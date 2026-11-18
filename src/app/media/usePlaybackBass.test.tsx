@@ -77,6 +77,7 @@ it('suspends capture on system accessibility changes and ignores the old request
   vi.spyOn(window, 'matchMedia').mockReturnValue(systemQuiet)
   await act(async () => root.render(<BassCapture enabled />))
   expect(api.setPlaybackBass).not.toHaveBeenCalled()
+  expect(api.onPlaybackBass).not.toHaveBeenCalled()
 
   const setQuiet = async (enabled: boolean) => {
     matches.mockReturnValue(enabled)
@@ -95,4 +96,21 @@ it('suspends capture on system accessibility changes and ignores the old request
   expect(second).not.toBe(first)
   sample({ request: first, bass: .9 })
   expect(apply).not.toHaveBeenCalledWith(.9)
+})
+
+it('drops a pending subscription if the window hides before native events are attached', async () => {
+  const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+  const release = vi.fn()
+  let finish!: (remove: () => void) => void
+  vi.mocked(api.onPlaybackBass).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  await act(async () => root.render(<BassCapture enabled />))
+  hidden.mockReturnValue(true)
+  await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+  await act(async () => { finish(release) })
+  expect(release).toHaveBeenCalledTimes(1)
+  expect(api.setPlaybackBass).not.toHaveBeenCalled()
+
+  hidden.mockReturnValue(false)
+  await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+  expect(api.setPlaybackBass).toHaveBeenCalledTimes(1)
 })

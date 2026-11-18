@@ -1,7 +1,7 @@
 import type { AppConfig } from './types'
 import type { TaskbarLayoutV1 } from './taskbarLayout'
 import type { DictationAppearance } from './dictationAppearance'
-import { getInterfaceThemeDefinition, normalizeInterfaceTheme, type InterfaceScene, type InterfaceThemeId, type PlaybackVisual } from './interfaceTheme'
+import { getInterfaceThemeDefinition, normalizeInterfaceTheme, type InterfaceScene, type InterfaceThemeId } from './interfaceTheme'
 import { DEFAULT_ACCENT } from './accentTheme'
 import { buildInterfacePaletteStyle, normalizeInterfacePalette, type InterfacePaletteId } from './interfacePalette'
 
@@ -28,9 +28,7 @@ export interface UiPrefs {
   settingsColorScheme?: SettingsColorScheme
   interfaceTheme?: InterfaceThemeId
   interfacePalette?: InterfacePaletteId
-  /** Use only the selected Direct player's local audio for the Glass playback background. */
-  playbackReactiveWave?: boolean
-  playbackVisual?: PlaybackVisual
+  playbackWaveEnabled?: boolean
   interfaceScenes?: Partial<Record<InterfaceThemeId, InterfaceScene>>
   reducedTransparency?: boolean
   /** Settings update banner dismissed for this latest version */
@@ -87,10 +85,13 @@ export function getReducedTransparency(config: AppConfig | null | undefined): bo
   return getUiPrefs(config).reducedTransparency === true
 }
 
-export function getPlaybackVisual(config: AppConfig | null | undefined): PlaybackVisual | undefined {
-  const capability = getInterfaceThemeDefinition(getInterfaceTheme(config)).playback
-  const saved = getUiPrefs(config).playbackVisual
-  return capability?.options.find(value => value === saved) ?? capability?.fallback
+export function usesGlassMaterial(config: AppConfig | null | undefined): boolean {
+  return getInterfaceThemeDefinition(getInterfaceTheme(config)).material === 'glass'
+}
+
+export function getPlaybackWaveEnabled(config: AppConfig | null | undefined): boolean {
+  return getInterfaceThemeDefinition(getInterfaceTheme(config)).playbackWave === true
+    && getUiPrefs(config).playbackWaveEnabled !== false
 }
 
 export function normalizeUsageWidgetScale(value: unknown): number {

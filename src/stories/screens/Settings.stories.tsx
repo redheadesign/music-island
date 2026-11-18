@@ -22,7 +22,6 @@ function SettingsPreview({
   reducedMotion = false,
   colorScheme,
   preferredSourceAppId,
-  directPreview,
   scrollViewportHeight,
   interfaceTheme,
   reducedTransparency,
@@ -34,7 +33,6 @@ function SettingsPreview({
   reducedMotion?: boolean
   colorScheme?: SettingsColorScheme
   preferredSourceAppId?: string
-  directPreview?: boolean
   scrollViewportHeight?: number
   interfaceTheme: InterfaceThemeId
   reducedTransparency?: boolean
@@ -48,9 +46,7 @@ function SettingsPreview({
   }), [config, selectedColorScheme, reducedTransparency])
   const configuredPreview = preferredSourceAppId
     ? { ...previewConfig, media: { ...previewConfig.media, protocol: 'smtc' as const, preferredSourceAppId } }
-    : directPreview
-      ? { ...previewConfig, media: { ...previewConfig.media, protocol: 'yandex-direct' as const } }
-      : previewConfig
+    : previewConfig
   const panel = <SettingsPanel
         {...args}
         usage={usage}
@@ -114,7 +110,6 @@ const meta = {
         interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)}
         colorScheme={context.parameters.settingsColorScheme as SettingsColorScheme | undefined}
         preferredSourceAppId={context.parameters.preferredSourceAppId as string | undefined}
-        directPreview={context.parameters.directPreview === true}
         scrollViewportHeight={context.parameters.scrollViewportHeight as number | undefined}
         onPreviewChange={(next) => {
           if (
@@ -173,50 +168,23 @@ export const MaterialAtMinimumSize: Story = {
     })
   },
 }
-export const BassSourceShortcut: Story = {
-  ...Glass, name: 'Реакция на бас · переход к источнику',
+export const GlassPlaybackBackground: Story = {
+  ...Glass, name: 'Стекло · отключение и включение фона',
   globals: { interfaceTheme: 'glass', locale: 'ru' },
-  parameters: { a11y: { test: 'error' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Better Voice keeps its navigation mounted when the user returns to the island.
-    await userEvent.click(canvas.getByRole('button', { name: /^Better Voice/ }))
-    await userEvent.click(canvas.getByRole('button', { name: /^Music Island$/ }))
-    await userEvent.click(within(canvasElement).getByText('Фон и поведение'))
-    await expect(canvas.getByRole('switch', { name: 'Реакция фона на бас' })).toBeDisabled()
-    await userEvent.click(canvas.getByRole('button', { name: 'Настроить источник' }))
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Источник музыки' })).toBeVisible(), { timeout: 5000 })
-    await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument()
-    await waitFor(() => expect(canvas.getByRole('button', { name: 'Источник музыки' })).toHaveFocus())
-  },
-}
-export const GlassReactiveWave: Story = {
-  ...Glass,
-  name: 'Стекло · реакция фона на бас',
-  globals: { interfaceTheme: 'glass', locale: 'ru' },
-  parameters: { directPreview: true },
-  play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByText('Фон и поведение'))
-    const setting = within(canvasElement).getByRole('switch', { name: 'Реакция фона на бас' })
-    await expect(setting).not.toBeChecked()
-    await userEvent.click(setting)
-    await expect(setting).toBeChecked()
-  },
-}
-export const GlassPlaybackBackground: Story = {
-  ...Glass,
-  name: 'Стекло · выбор фона при воспроизведении',
-  globals: { interfaceTheme: 'glass', locale: 'ru' },
-  play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByText('Фон и поведение'))
-    const trigger = within(canvasElement).getByRole('button', { name: 'Фон при воспроизведении' })
-    for (const [from, to] of [['Классическая волна', 'Живая волна'], ['Живая волна', 'Северное сияние'], ['Северное сияние', 'Отражения']]) {
-      await userEvent.click(trigger)
-      const menu = await within(canvasElement.ownerDocument.body).findByRole('listbox')
-      await expect(within(menu).getByRole('option', { name: from })).toHaveAttribute('aria-selected', 'true')
-      await userEvent.click(within(menu).getByRole('option', { name: to }))
-      await expect(trigger).toHaveTextContent(to)
-    }
+    await userEvent.click(canvas.getByText('Фон и поведение'))
+    const toggle = canvas.getByRole('switch', { name: 'Фон при воспроизведении' })
+    await expect(toggle).toBeChecked()
+    const previewWave = () => canvasElement.querySelector('.island-preview__body [data-playback-wave]')
+    await expect(previewWave()).toBeInTheDocument()
+    await userEvent.click(toggle)
+    await expect(toggle).not.toBeChecked()
+    await waitFor(() => expect(previewWave()).toBeNull())
+    await expect(canvasElement.querySelector('.island-preview__body .island-particles')).toBeInTheDocument()
+    await userEvent.click(toggle)
+    await expect(toggle).toBeChecked()
+    await waitFor(() => expect(previewWave()).toBeInTheDocument())
   },
 }
 export const GlassOptics: Story = {

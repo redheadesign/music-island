@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { AppConfig } from './types'
 import {
   getInterfacePalette,
-  getPlaybackVisual,
+  getPlaybackWaveEnabled,
   getInterfacePaletteStyle,
   getInterfaceScene,
   getInterfaceTheme,
@@ -31,13 +31,13 @@ describe('interface theme preferences', () => {
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'manta' } }))).toBe('manta')
   })
 
-  it.each(['wave', 'flow', 'rays', 'mercury'])('restores %s after switching materials', visual => {
-    const base = configWithUi({ interfaceTheme: 'glass', playbackVisual: visual })
-    expect(getPlaybackVisual(base)).toBe(visual)
-    const classic = withUiPrefs(base, { interfaceTheme: 'classic' })
-    expect(getPlaybackVisual(classic)).toBeUndefined()
-    expect(getPlaybackVisual(withUiPrefs(classic, { interfaceTheme: 'glass' }))).toBe(visual)
-    expect(getPlaybackVisual(configWithUi({ playbackVisual: 'removed' }))).toBe('wave')
+  it('enables the wave in Glass by default and remembers the switch across themes', () => {
+    const glass = configWithUi({ interfaceTheme: 'glass' })
+    expect(getPlaybackWaveEnabled(glass)).toBe(true)
+    expect(getPlaybackWaveEnabled(withUiPrefs(glass, { interfaceTheme: 'classic' }))).toBe(false)
+    const disabled = withUiPrefs(glass, { playbackWaveEnabled: false })
+    const classic = withUiPrefs(disabled, { interfaceTheme: 'classic' })
+    expect(getPlaybackWaveEnabled(withUiPrefs(classic, { interfaceTheme: 'glass' }))).toBe(false)
   })
 
   it('remembers the selected Glass scene when switching back from Classic', () => {

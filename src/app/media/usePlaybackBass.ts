@@ -24,7 +24,8 @@ export function usePlaybackBass(enabled: boolean, applyLevel: (bass?: number) =>
     let startTimer: number | undefined
     let staleTimer: number | undefined
     let unlisten: (() => void) | undefined
-    let disposed = false
+    let subscriptionGeneration = 0
+    let subscribing = false
     let hasSample = false
     const systemQuiet = window.matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)')
     const unavailable = () => document.hidden || systemQuiet.matches
@@ -52,35 +53,49 @@ export function usePlaybackBass(enabled: boolean, applyLevel: (bass?: number) =>
       })
     }
 
-    const syncAvailability = () => {
-      if (unavailable()) stop()
-      else if (unlisten && request === undefined) start(true)
+    const unsubscribe = () => {
+      subscriptionGeneration++
+      subscribing = false
+      unlisten?.()
+      unlisten = undefined
+      stop()
     }
 
-    document.addEventListener('visibilitychange', syncAvailability)
-    systemQuiet.addEventListener('change', syncAvailability)
-    void onPlaybackBass(({ request: sampleRequest, bass }) => {
-      if (sampleRequest !== request || unavailable() || !Number.isFinite(bass)) return
-      hasSample = true
-      window.clearTimeout(startTimer)
-      applyLevel(Math.max(0, Math.min(1, bass)))
-      window.clearTimeout(staleTimer)
-      staleTimer = window.setTimeout(() => applyLevel(), SIGNAL_TIMEOUT_MS)
-    }).then((remove) => {
-      if (disposed) {
-        remove()
+    const subscribe = () => {
+      if (unavailable()) {
+        unsubscribe()
         return
       }
-      unlisten = remove
-      syncAvailability()
-    }).catch(() => undefined)
+      if (subscribing || unlisten) return
+      subscribing = true
+      const generation = ++subscriptionGeneration
+      void onPlaybackBass(({ request: sampleRequest, bass }) => {
+        if (sampleRequest !== request || unavailable() || !Number.isFinite(bass)) return
+        hasSample = true
+        window.clearTimeout(startTimer)
+        applyLevel(Math.max(0, Math.min(1, bass)))
+        window.clearTimeout(staleTimer)
+        staleTimer = window.setTimeout(() => applyLevel(), SIGNAL_TIMEOUT_MS)
+      }).then(remove => {
+        if (generation !== subscriptionGeneration) {
+          remove()
+          return
+        }
+        subscribing = false
+        unlisten = remove
+        start(true)
+      }).catch(() => {
+        if (generation === subscriptionGeneration) subscribing = false
+      })
+    }
 
+    document.addEventListener('visibilitychange', subscribe)
+    systemQuiet.addEventListener('change', subscribe)
+    subscribe()
     return () => {
-      disposed = true
-      stop()
-      unlisten?.()
-      document.removeEventListener('visibilitychange', syncAvailability)
-      systemQuiet.removeEventListener('change', syncAvailability)
+      unsubscribe()
+      document.removeEventListener('visibilitychange', subscribe)
+      systemQuiet.removeEventListener('change', subscribe)
     }
   }, [enabled, applyLevel])
 }

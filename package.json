@@ -32,7 +32,6 @@
     "media:encode": "node scripts/encode-release-media.mjs"
   },
   "dependencies": {
-    "@paper-design/shaders": "^0.0.78",
     "@paper-design/shaders-react": "^0.0.78",
     "@phosphor-icons/react": "^2.1.10",
     "@tauri-apps/api": "^2.11.1",

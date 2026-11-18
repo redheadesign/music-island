@@ -1,6 +1,4 @@
 import { createContext, useContext, useEffect, useRef, type ButtonHTMLAttributes, type HTMLAttributes } from 'react'
-import type { PlaybackVisual } from '../lib/interfaceTheme'
-import { LiveWave } from './LiveWave'
 import { IslandParticles } from './IslandParticles'
 import './PressFeedback.css'
 export type RippleDirection = 'outward' | 'inward'
@@ -15,11 +13,11 @@ function rippleFrames(direction: RippleDirection): Keyframe[] {
 type IslandFeedbackProps = HTMLAttributes<HTMLElement> & {
   particles?: boolean
   playbackMotion?: boolean
-  playbackVisual?: PlaybackVisual
+  playbackWave?: boolean
 }
 
 /** The ripple belongs to the surface, never to a moving button. */
-export function IslandFeedback({ children, className = '', particles = false, playbackMotion, playbackVisual = 'wave', ...props }: IslandFeedbackProps) {
+export function IslandFeedback({ children, className = '', particles = false, playbackMotion, playbackWave = false, ...props }: IslandFeedbackProps) {
   const surface = useRef<HTMLElement>(null)
   const layer = useRef<HTMLSpanElement>(null)
   const animations = useRef<Animation[]>([])
@@ -54,13 +52,12 @@ export function IslandFeedback({ children, className = '', particles = false, pl
   return <Feedback.Provider value={ripple}>
     <section {...props} ref={surface} className={`island-feedback ${className}`}>
       <span ref={layer} className="island-feedback__layer" aria-hidden="true">
-        {particles || playbackMotion !== undefined ? (
+        {particles || playbackWave ? (
           <span
             className="island-feedback__ambient"
+            data-playback-wave={playbackWave || undefined}
             data-playback-motion={playbackMotion === false ? 'paused' : 'playing'}
-            data-playback-visual={playbackVisual}
           >
-            {playbackVisual === 'flow' && <LiveWave />}
             {particles ? <IslandParticles /> : null}
           </span>
         ) : null}

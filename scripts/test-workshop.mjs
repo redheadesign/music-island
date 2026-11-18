@@ -5,7 +5,7 @@ import { preview } from 'vite'
 
 const criticalStories = [
   'foundations-interfacetheme--third-theme', 'screens-settings--retry-failed-save', 'screens-settings--unreadable-profile',
-  'screens-settings--material-at-minimum-size', 'screens-settings--bass-source-shortcut', 'screens-settings--glass-playback-background',
+  'screens-settings--material-at-minimum-size', 'screens-settings--glass-playback-background',
   'screens-settings--theme-switch', 'screens-settings--classic-light',
   'screens-settings--taskbar', 'screens-settings--autostart-error',
   'screens-settings--about', 'screens-settings--voice-developer-mode',
@@ -18,14 +18,15 @@ const criticalStories = [
   'screens-dictation--history-delete-confirmation', 'screens-dictation--custom-model-file',
   'screens-dictationcompute--background-recognition', 'screens-dictationcompute--other-engine',
   'screens-dictation--catalog-cards-light', 'molecules-modelcard--glass-failed', 'molecules-modelcard--downloading',
-  'screens-island--glass-live-wave', 'screens-dictation--floating-catalog', 'atoms-playbackfeedback--local-heart', 'molecules-dictationoverlay--fox-progress',
+  'organisms-musicmodule--system-volume', 'screens-dictation--floating-catalog', 'atoms-playbackfeedback--local-heart', 'molecules-dictationoverlay--fox-progress',
   'organisms-islandlayouteditor--inline-layout', 'organisms-islandlayouteditor--full-inline-layout',
   'molecules-dictationoverlay--long-transcription', 'screens-onboarding--custom-shortcut',
   'organisms-usagesettingssection--stale-limit',
   'screens-onboarding--save-error', 'screens-installnotice--running', 'screens-installnotice--open-failed',
-  'screens-island--glass-edge-gesture', 'screens-island--glass-bass-burst', 'screens-island--glass-playback',
+  'screens-island--glass-edge-gesture', 'screens-island--glass-reactive-wave', 'screens-island--glass-playback',
   'screens-island--glass-cool-cover', 'screens-island--glass-without-cover',
-  'screens-island--glass-rays', 'screens-island--glass-mercury', 'screens-island--glass-widget-panels',
+  'screens-island--glass-background-off', 'screens-island--glass-widget-panels',
+  'organisms-taskbarlayouteditor--glass-catalog', 'screens-bettervoice--glass-signal-route', 'screens-bettervoice--glass-signal-route-narrow',
   'organisms-taskbarplayer--source-unavailable', 'organisms-directconnectiondialog--glass-error-narrow',
 ]
 const ids = process.argv.length > 2 ? process.argv.slice(2) : criticalStories
@@ -60,17 +61,6 @@ try {
       if (phase !== 'finished') throw new Error('Render ended in ' + phase)
       if (!await page.locator('#storybook-root > *').count()) throw new Error('Empty story')
       await page.evaluate(() => document.fonts.ready)
-      if (id === 'screens-island--glass-live-wave' && await page.locator('.island-live-wave[data-rendering="webgl"]').count()) {
-        const card = page.locator('.island-card:visible').first()
-        const frames = path.join(output, 'live-wave')
-        await mkdir(frames, { recursive: true })
-        const started = performance.now()
-        for (let index = 0; index < 20; index++) {
-          const delay = started + index * 100 - performance.now()
-          if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay))
-          await card.screenshot({ path: path.join(frames, `frame-${String(index).padStart(2, '0')}.png`), timeout: 5000 })
-        }
-      }
     } catch (error) {
       errors.push(error.message)
     } finally {

@@ -1,4 +1,3 @@
-import type { PaperShaderElement } from '@paper-design/shaders'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useEffect, useState } from 'react'
 import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
@@ -6,7 +5,7 @@ import { OverlayShell } from '../../features/overlay/OverlayShell'
 import type { IslandAppState, OverlayMode } from '../../app/useIslandApp'
 import type { MediaSnapshot } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
-import { normalizeInterfaceTheme, type InterfaceThemeId, type PlaybackVisual } from '../../shared/lib/interfaceTheme'
+import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { getUiPrefs } from '../../shared/lib/uiPrefs'
 import { media, health } from '../fixtures'
 import { emitPreviewPlaybackBass, getPreviewPlaybackBassRequest } from '../mocks/tauriApi'
@@ -33,8 +32,7 @@ function IslandPreview({
   reducedMotion = false,
   reducedTransparency,
   startCollapsed = false,
-  playbackReactiveWave = false,
-  playbackVisual = 'wave',
+  playbackWaveEnabled = true,
 }: {
   locale: 'ru' | 'en'
   accent: string
@@ -55,8 +53,7 @@ function IslandPreview({
   reducedMotion?: boolean
   reducedTransparency?: boolean
   startCollapsed?: boolean
-  playbackReactiveWave?: boolean
-  playbackVisual?: PlaybackVisual
+  playbackWaveEnabled?: boolean
 }) {
   const [config, setConfig] = useWorkshopConfig(locale, accent, !startCollapsed && localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed', interfaceTheme)
   const [localServers, setLocalServers] = useState(() => {
@@ -79,13 +76,13 @@ function IslandPreview({
       ...config,
       appearance: { ...config.appearance, reducedMotion },
       layout: { ...config.layout, width, scale },
-      media: { ...config.media, protocol: unavailable ? 'smtc' : 'yandex-direct' },
+      media: { ...config.media, protocol: unavailable ? 'smtc' : 'yandex-direct', directYandexConsent: !unavailable },
       plugins: {
         ...config.plugins,
         enabled: latestMessageMode ? ['dictation'] : config.plugins.enabled,
         settings: {
           ...config.plugins.settings,
-          ui: { ...ui, reducedTransparency: reducedTransparency ?? ui.reducedTransparency, playbackReactiveWave, playbackVisual, localServersEnabled: ui.localServersEnabled ?? Boolean(localServersMode), localServersWidgetScale, showLatestDictationMessage: Boolean(latestMessageMode), forceIslandUpdateBanner: update && !ui.islandUpdateSnoozedUntil },
+          ui: { ...ui, reducedTransparency: reducedTransparency ?? ui.reducedTransparency, playbackWaveEnabled, localServersEnabled: ui.localServersEnabled ?? Boolean(localServersMode), localServersWidgetScale, showLatestDictationMessage: Boolean(latestMessageMode), forceIslandUpdateBanner: update && !ui.islandUpdateSnoozedUntil },
           usage: { codexEnabled: assistantLimits, claudeEnabled: false },
         },
       },
@@ -319,8 +316,8 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
   },
 }
 export const GlassWithoutCover: StoryObj<typeof meta> = { ...Glass, name: 'Стекло · нейтральный прогресс без обложки', args: { artwork: 'missing' } }
-export const GlassBassBurst: StoryObj<typeof meta> = {
-  ...Glass, name: 'Стекло · звёзды на ударах баса', args: { artwork: 'cool', playbackReactiveWave: true },
+export const GlassReactiveWave: StoryObj<typeof meta> = {
+  ...Glass, name: 'Стекло · волна реагирует на бас', args: { artwork: 'cool' },
   globals: { ...Glass.globals, locale: 'en' },
   play: async ({ canvasElement }) => {
     if (matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches) return
@@ -334,35 +331,33 @@ export const GlassBassBurst: StoryObj<typeof meta> = {
       expect(request).toBeDefined()
       return request!
     })
-    const particles = () => [...layer.querySelectorAll('.island-bass-particle')]
-    emitPreviewPlaybackBass(.018)
-    emitPreviewPlaybackBass(.04)
-    await expect(particles()).toHaveLength(0)
-    // The native meter reports about .13 for an 80 Hz hit at 8% of full scale.
+    const originalNodes = [...layer.querySelectorAll('*')]
     emitPreviewPlaybackBass(.13)
-    const first = particles()
-    await expect(first.length).toBeGreaterThanOrEqual(5)
     await expect(Number(layer.style.getPropertyValue('--island-bass'))).toBeGreaterThan(.6)
-    await expect(getComputedStyle(first[0]).clipPath).toContain('polygon')
-    await expect(first[0].getAnimations()[0]?.effect?.getTiming().duration).toBeLessThan(420)
-    emitPreviewPlaybackBass(.14)
-    await expect(particles()).toEqual(first)
     await waitFor(() => expect(Number(getComputedStyle(layer, '::before').scale)).toBeGreaterThan(1.10), { interval: 16 })
-    await waitFor(() => expect(particles()).toHaveLength(0), { timeout: 800 })
-    await expect(layer.style.getPropertyValue('--island-bass')).toBe('')
-    emitPreviewPlaybackBass(.02)
-    emitPreviewPlaybackBass(.93)
-    await expect(particles().length).toBeGreaterThan(first.length)
+    await expect([...layer.querySelectorAll('*')]).toEqual(originalNodes)
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ }))
     await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeUndefined())
-    await expect(particles()).toHaveLength(0)
+    await expect(layer.style.getPropertyValue('--island-bass')).toBe('')
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ }))
     await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeDefined())
     emitPreviewPlaybackBass(.93, initialRequest)
-    await expect(particles()).toHaveLength(0)
-    emitPreviewPlaybackBass(.13)
-    await expect(particles().length).toBeGreaterThanOrEqual(5)
+    await expect(layer.style.getPropertyValue('--island-bass')).toBe('')
+    emitPreviewPlaybackBass(.8)
+    await expect(Number(layer.style.getPropertyValue('--island-bass'))).toBe(1)
+  },
+}
+export const GlassBackgroundOff: StoryObj<typeof meta> = {
+  ...Glass, name: 'Стекло · фон отключён', args: { artwork: 'cool', playbackWaveEnabled: false },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(canvasElement.querySelector('.island-card')).toBeVisible())
+    const ambient = canvasElement.querySelector<HTMLElement>('.island-feedback__ambient')!
+    await expect(ambient).not.toHaveAttribute('data-playback-wave')
+    await expect(getComputedStyle(ambient, '::before').content).toBe('none')
+    await expect(ambient.querySelector('.island-particles')).toBeInTheDocument()
+    await expect(getPreviewPlaybackBassRequest()).toBeUndefined()
+    await waitFor(() => expect(canvasElement.querySelector('.island-root')).toHaveAttribute('data-cover-art', 'true'))
   },
 }
 export const GlassEdge: StoryObj<typeof meta> = {
@@ -468,99 +463,6 @@ export const GlassPlayback: StoryObj<typeof meta> = {
   },
 }
 export const AssistantLimits: StoryObj<typeof meta> = { name: 'Лимиты Codex рядом с островком', args: { assistantLimits: true } }
-export const GlassLiveWave: StoryObj<typeof meta> = {
-  ...Glass,
-  name: 'Стекло · живая волна, бас и пауза',
-  args: { artwork: 'mixed', playbackVisual: 'flow', playbackReactiveWave: true },
-  play: async ({ canvasElement }) => {
-    const field = await waitFor(() => {
-      const node = canvasElement.querySelector<PaperShaderElement>('.island-live-wave')
-      expect(node).toBeInTheDocument()
-      return node!
-    })
-    const layer = field.parentElement!
-    await expect(layer).toHaveAttribute('data-playback-visual', 'flow')
-    if (matchMedia('(prefers-reduced-motion: reduce), (forced-colors: active), (prefers-reduced-transparency: reduce)').matches) {
-      await expect(field).not.toBeVisible()
-      return
-    }
-    await waitFor(() => expect(field.dataset.rendering).toBeDefined())
-    if (field.dataset.rendering === 'fallback') {
-      const gl = document.createElement('canvas').getContext('webgl2')
-      gl?.getExtension('WEBGL_lose_context')?.loseContext()
-      await expect(gl).toBeNull()
-      await expect(getComputedStyle(layer, '::before').backgroundImage).toContain('radial-gradient')
-      return
-    }
-    const shader = field.paperShaderMount!
-    const gl = shader.canvasElement.getContext('webgl2')!
-    await waitFor(() => expect(gl.drawingBufferWidth).toBeGreaterThan(20))
-    const renderAlpha = (frame: number) => {
-      shader.setFrame(frame)
-      const pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4)
-      gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
-      return pixels.filter((_, i) => i % 4 === 3)
-    }
-    const first = renderAlpha(1000)
-    const next = renderAlpha(2700)
-    await expect(next.filter((alpha, i) => Math.abs(alpha - first[i]) > 12).length).toBeGreaterThan(first.length * .1)
-    await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeDefined())
-    emitPreviewPlaybackBass(.8)
-    const program = gl.getParameter(gl.CURRENT_PROGRAM) as WebGLProgram
-    const bass = gl.getUniformLocation(program, 'u_bass')!
-    await waitFor(() => expect(gl.getUniform(program, bass)).toBeGreaterThan(.7), { interval: 10 })
-    const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ }))
-    await waitFor(() => expect(getComputedStyle(layer).display).toBe('none'))
-    const stopped = shader.getCurrentFrame()
-    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-    await expect(shader.getCurrentFrame()).toBe(stopped)
-    await userEvent.click(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ }))
-    await waitFor(() => expect(shader.getCurrentFrame()).toBeGreaterThan(stopped))
-  },
-}
-export const GlassRays: StoryObj<typeof meta> = {
-  ...Glass,
-  name: 'Стекло · северное сияние и контрастная обложка',
-  args: { artwork: 'mixed', playbackVisual: 'rays', playbackReactiveWave: true },
-  play: async ({ canvasElement }) => {
-    const ambient = await waitFor(() => {
-      const node = canvasElement.querySelector<HTMLElement>('.island-feedback__ambient')
-      expect(node).toHaveAttribute('data-playback-visual', 'rays')
-      return node!
-    })
-    if (matchMedia('(forced-colors: active), (prefers-reduced-transparency: reduce)').matches) return
-    await expect(getComputedStyle(ambient, '::before').backgroundImage).toContain('radial-gradient')
-    const island = canvasElement.querySelector('.island-root')
-    await waitFor(() => expect(island).toHaveAttribute('data-cover-art', 'true'))
-    const color = (island as HTMLElement).style.getPropertyValue('--artwork-progress-color')
-    await expect(color).toMatch(/^#[a-f0-9]{6}$/)
-    const fill = canvasElement.querySelector('.progress-fill')!
-    await expect(getComputedStyle(fill).backgroundImage).toContain('linear-gradient')
-  },
-}
-export const GlassMercury: StoryObj<typeof meta> = {
-  ...Glass,
-  name: 'Стекло · отражения',
-  args: { artwork: 'cool', playbackVisual: 'mercury', playbackReactiveWave: true },
-  play: async ({ canvasElement }) => {
-    const ambient = await waitFor(() => {
-      const node = canvasElement.querySelector<HTMLElement>('.island-feedback__ambient')
-      expect(node).toHaveAttribute('data-playback-visual', 'mercury')
-      return node!
-    })
-    if (matchMedia('(forced-colors: active), (prefers-reduced-transparency: reduce)').matches) return
-    await expect(getComputedStyle(ambient, '::before').backgroundImage).toContain('radial-gradient')
-    const workshop = canvasElement.querySelector('.island-root')!.parentElement!
-    workshop.setAttribute('data-reduced-motion', 'true')
-    try {
-      await expect(getComputedStyle(ambient, '::before').animationName).toBe('none')
-      await expect(getComputedStyle(ambient, '::after').animationName).toBe('none')
-    } finally {
-      workshop.removeAttribute('data-reduced-motion')
-    }
-  },
-}
 export const LocalServersExpanded: StoryObj<typeof meta> = {
   name: 'Локальные серверы под раскрытым островком',
   args: { localServersMode: 'stoppable', width: 100, scale: 90, localServersWidgetScale: 110 },

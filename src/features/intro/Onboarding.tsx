@@ -8,7 +8,7 @@ import { IslandLayoutEditor } from '../settings/IslandLayoutEditor'
 import { MusicModule } from '../music/MusicModule'
 import { APPEARANCE_PREVIEW_ARTWORK_THEME, APPEARANCE_PREVIEW_MEDIA } from '../settings/previewMedia'
 import { DictationOverlayView } from '../dictation/DictationOverlay'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getPlaybackVisual, getReducedTransparency, getSettingsColorScheme } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getPlaybackWaveEnabled, usesGlassMaterial, getReducedTransparency, getSettingsColorScheme } from '../../shared/lib/uiPrefs'
 import type { AppConfig } from '../../shared/lib/types'
 import { AppLogo } from '../../shared/ui/AppLogo'
 import './Onboarding.css'
@@ -35,14 +35,15 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
   const colorScheme = getSettingsColorScheme(config)
   const interfaceTheme = getInterfaceTheme(config)
   const scene = getInterfaceScene(config)
-  const playbackVisual = getPlaybackVisual(demoConfig)
+  const playbackWave = getPlaybackWaveEnabled(demoConfig)
   const material = {
     'data-interface-theme': interfaceTheme,
     'data-interface-scene': scene,
     'data-interface-palette': getInterfacePalette(config),
     'data-reduced-transparency': getReducedTransparency(config) || undefined,
   }
-  const islandStyle = playbackVisual ? getInterfacePaletteStyle(config, 'dark') : undefined
+  const glass = usesGlassMaterial(config)
+  const islandStyle = glass ? getInterfacePaletteStyle(config, 'dark') : undefined
   const autostart = config.behavior.launchAtStartup
   const titles = ru ? ['Музыка', 'Настройка островка', 'Диктовка', 'Запуск вместе с Windows'] : ['Music', 'Customize the island', 'Dictation', 'Launch with Windows']
   const [binding, activation] = dictationShortcut ?? ['Ctrl+Space', 'hold_or_toggle']
@@ -71,10 +72,10 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
               <div
                 className="onboarding__music island-root"
                 {...material}
-                data-cover-art={Boolean(playbackVisual) || undefined}
-                style={playbackVisual ? { ...islandStyle, ...APPEARANCE_PREVIEW_ARTWORK_THEME } as CSSProperties : undefined}
+                data-cover-art={glass || undefined}
+                style={glass ? { ...islandStyle, ...APPEARANCE_PREVIEW_ARTWORK_THEME } as CSSProperties : undefined}
               >
-                <IslandFeedback className="island-card island-surface" particles={Boolean(playbackVisual)} playbackMotion={playbackVisual ? playing : undefined} playbackVisual={playbackVisual}>
+                <IslandFeedback className="island-card island-surface" particles={glass} playbackWave={playbackWave} playbackMotion={playing}>
                   <MusicModule media={{ ...APPEARANCE_PREVIEW_MEDIA, playbackStatus: playing ? 'playing' : 'paused' }} progressMs={APPEARANCE_PREVIEW_MEDIA.positionMs} progressPercent={34} density="balanced" showArtwork showTitle showArtist showProgress showSource={false} showPreviousNext locale={locale} reducedMotion={reduced} onCommand={command => setPlaying(command === 'play-pause' ? !playing : true)} />
                 </IslandFeedback>
               </div>

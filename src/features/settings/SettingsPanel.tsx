@@ -641,10 +641,7 @@ export function SettingsPanel({
         <IslandLayoutEditor config={draft} onChange={previewAndSave} onReset={resetIslandSettings} usage={usage?.snapshot ?? null} showHeading={false} active={settingsVisible && settingsPage === 'appearance'} />
 
         <SettingsDisclosure title={locale === 'ru' ? 'Фон и поведение' : 'Background and behavior'}>
-          <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} onOpenSource={() => {
-            setSettingsPage('source')
-            requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('.settings-layout:not([hidden]) > .settings-navigation [aria-current="page"]')?.focus())
-          }} />
+          <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} />
 
           <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
 

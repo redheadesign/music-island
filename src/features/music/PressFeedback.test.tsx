@@ -44,14 +44,14 @@ it('uses a recent regular beat from this card and forgets it on pause', () => {
   card.append(layer, button)
   const clock = vi.spyOn(performance, 'now')
   const effect = createIslandBassEffect(layer)
-  // Keep this test independent of the browser particle animation API.
-  Object.defineProperty(layer, 'animate', { value: undefined })
   try {
     for (const time of [1000, 1500, 2000]) {
       clock.mockReturnValue(time)
       effect.update(0)
       effect.update(.2)
     }
+    expect(layer.childElementCount).toBe(0)
+    expect(Number(layer.style.getPropertyValue('--island-bass'))).toBeGreaterThan(.6)
     expect(localHeartDuration(button, 2150)).toBe(Math.round(350 / .49))
     expect(localHeartDuration(button, 3400)).toBeUndefined()
     expect(localHeartDuration(document.createElement('button'), 2150)).toBeUndefined()

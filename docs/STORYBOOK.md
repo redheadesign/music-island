@@ -225,6 +225,6 @@ alternate artwork. ClassicHold checks both 9px label gaps and 14px outer insets.
 
 ## Проверка сценариев в Edge
 
-Соберите каталог через `npm run build-storybook`, затем запустите `npm run test:workshop`. Раннер открывает компоненты приложения в установленном Edge, выполняет взаимодействия историй и записывает результаты и снимки в `.local/workshop-audit/`. Для повторной проверки отдельного маршрута передайте его ID, например `npm run test:workshop -- screens-settings--bass-source-shortcut`. Используется локальный сервер Vite.
+Соберите каталог через `npm run build-storybook`, затем запустите `npm run test:workshop`. Раннер открывает компоненты приложения в установленном Edge, выполняет взаимодействия историй и записывает результаты и снимки в `.local/workshop-audit/`. Для повторной проверки отдельного маршрута передайте его ID, например `npm run test:workshop -- screens-settings--glass-playback-background`. Используется локальный сервер Vite.
 
 В официальной Windows-сборке этот же набор проверяет ошибки и повтор операций, переключение темы, клавиатурный фокус, первый запуск, диктовку и плеер. Снимки доступны в артефакте `workshop-results`. Поведение окна на рабочем столе, медиасессии и вставку диктовки проверяйте в собранном EXE по [методике Windows QA](QA.md).

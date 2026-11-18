@@ -7,7 +7,7 @@ import type { AppConfig } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
 import { islandArrangement, getIslandLayout, inlineActionsWidth, type IslandLayoutElement, type IslandLayoutZone } from '../../shared/lib/islandLayout'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getLocalServersWidgetScale, getPlaybackVisual, getReducedTransparency, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getLocalServersWidgetScale, getPlaybackWaveEnabled, usesGlassMaterial, getReducedTransparency, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
 import { createTranslator } from '../../shared/i18n/messages'
 import { MusicModule } from '../music/MusicModule'
 import { LocalServersPanel } from '../overlay/LocalServersPanel'
@@ -154,7 +154,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
       'data-resize-active': (dimensions !== null && gesture.current?.dimension === dimension && gesture.current.direction === direction) || undefined,
     }
   }
-  const playbackVisual = getPlaybackVisual(config)
+  const playbackWave = getPlaybackWaveEnabled(config)
   const paletteStyle = getInterfacePaletteStyle(config, 'dark')
   const style: CSSProperties & Record<`--${string}`, string | number | undefined> = {
     ...paletteStyle,
@@ -166,7 +166,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     '--island-scale': 1,
     '--actions-scale': 1,
     '--inline-actions-width': `${actionWidth}px`,
-    ...(playbackVisual ? APPEARANCE_PREVIEW_ARTWORK_THEME : {
+    ...(usesGlassMaterial(config) ? APPEARANCE_PREVIEW_ARTWORK_THEME : {
       '--artwork-progress-color': PREVIEW_COVER_PROGRESS,
       '--artwork-primary': '168, 98, 55', '--artwork-secondary': '87, 63, 49',
     }),
@@ -180,7 +180,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-island-arrangement={arrangement} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={getReducedTransparency(config) || undefined} style={style}>
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
-        <IslandFeedback className="island-card island-surface" particles={active && Boolean(playbackVisual)} playbackVisual={playbackVisual}>
+        <IslandFeedback className="island-card island-surface" particles={active && usesGlassMaterial(config)} playbackWave={active && playbackWave}>
           <MusicModule media={media} layout={layout} progressMs={media.positionMs} progressPercent={34} density={config.layout.density} showArtwork={config.layout.showArtwork} showTitle={config.layout.showTitle} showArtist={config.layout.showArtist} showProgress={config.layout.showProgress} showSource={config.layout.showSource} showPreviousNext={config.layout.showPreviousNext} locale={config.appearance.locale} reducedMotion onCommand={() => undefined} renderElement={renderElement} renderZone={renderZone} />
         </IslandFeedback>
         <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => <Fragment key={element}>{renderElement(element, <button type="button" className={`icon-button${element === 'settings' ? ' island-settings-button' : ''}`} aria-label={element === 'settings' ? 'Open settings' : element === 'microphone' ? 'Dictation' : 'Pin island'}>{element === 'settings' ? <SettingsFilled weight="fill" size={16} /> : element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>)}</Fragment>))}</header>
