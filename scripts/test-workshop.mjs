@@ -60,6 +60,17 @@ try {
       if (phase !== 'finished') throw new Error('Render ended in ' + phase)
       if (!await page.locator('#storybook-root > *').count()) throw new Error('Empty story')
       await page.evaluate(() => document.fonts.ready)
+      if (id === 'screens-island--glass-live-wave' && await page.locator('.island-live-wave[data-rendering="webgl"]').count()) {
+        const card = page.locator('.island-card:visible').first()
+        const frames = path.join(output, 'live-wave')
+        await mkdir(frames, { recursive: true })
+        const started = performance.now()
+        for (let index = 0; index < 20; index++) {
+          const delay = started + index * 100 - performance.now()
+          if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay))
+          await card.screenshot({ path: path.join(frames, `frame-${String(index).padStart(2, '0')}.png`), timeout: 5000 })
+        }
+      }
     } catch (error) {
       errors.push(error.message)
     } finally {
