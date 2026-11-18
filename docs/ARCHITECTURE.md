@@ -39,6 +39,7 @@ flowchart LR
 
 - `src-tauri/src/autostart`: portable Windows Run-key helper with quoted paths and single-entry refresh.
 - `src-tauri/src/media`: provider arbitration, Windows `GlobalSystemMediaTransportControlsSessionManager`, health/backoff state and normalized snapshots/commands.
+- `src-tauri/src/system_volume.rs` controls the default Windows render endpoint through Core Audio. The optional speaker in the expanded island reads the level and mute state independently of the media provider. Slider writes identify the endpoint the user saw, so a disconnected headset cannot redirect a pending adjustment to the speakers.
 - `src-tauri/src/yandex`: explicit opt-in CDP discovery, renderer validation and a fixed command/state adapter for the installed desktop client.
 - `src-tauri/src/config`: schema-versioned JSON config in `%APPDATA%\Music Island`.
 - `src-tauri/src/window`: top-center bounds, native cursor gesture watcher, click-through state, settings / intro / already-running window lifecycle.

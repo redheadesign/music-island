@@ -2,7 +2,7 @@
 
 Control music from the top edge of your Windows desktop and type with your voice in the app you are using
 
-**3.1.1** · Windows 10/11 · [GPL-3.0-or-later](LICENSE) · local-first · no telemetry
+**3.2.0 release candidate** · Windows 10/11 · [GPL-3.0-or-later](LICENSE) · local-first · no telemetry
 
 [**Download the latest published version**](https://github.com/redheadesign/music-island/releases/latest) · [Website](https://music-island.space/) · [What's new](CHANGELOG.md) · [Component workshop](docs/STORYBOOK.md)
 
@@ -24,7 +24,7 @@ Dictation is adapted from [Handy v0.9.7](https://github.com/cjpais/Handy/tree/v0
 
 ![Music Island's live layout editor with a media player, assistant quota and a component tray](docs/media/v3/01-island.webp)
 
-Drag real controls into the preview: artwork, transport, progress, reactions and assistant widgets. Put both reactions on either side. Pull an edge to change width or a corner to change scale. Settings and play/pause always remain accessible.
+Drag artwork, playback controls and the progress bar between the two player rows. An empty row collapses, so you can fit everything on one line. Add System volume from the catalog to mute the default Windows output or adjust its level. Pull an edge to change the island’s width or a corner to change its scale.
 
 Choose the island's display in Appearance. Position follows display rotation and
 resolution changes; reconnecting a preferred monitor restores the island there.

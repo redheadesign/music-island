@@ -2,6 +2,10 @@
 
 Music Island ships as a **portable** `music-island.exe` under GPL-3.0-or-later. That remains the forever distribution model: users download or auto-update the same single file from GitHub Releases. There is no installer requirement.
 
+## 3.2.0 release candidate
+
+[Release notes for GitHub](releases/3.2.0-release-notes.md). The previous public version is 3.1.1. After testing the candidate on Windows, publish the exact approved workflow artifact and tag its source commit.
+
 ## 3.1.0 release
 
 Release tag
@@ -62,7 +66,7 @@ Reuse the approved executable without rebuilding unless compiled inputs change.
 
 ## Manual release checklist
 
-1. Bump versions in `package.json` / `package-lock.json`, `src-tauri/Cargo.toml` / `Cargo.lock`, `src-tauri/tauri.conf.json`, `APP_VERSION` in `src/features/settings/SettingsPanel.tsx`, and the updater `USER_AGENT` in `src-tauri/src/updater/mod.rs`.
+1. Bump versions in `package.json` / `package-lock.json`, `src-tauri/Cargo.toml` / `Cargo.lock`, `src-tauri/tauri.conf.json`, and `APP_VERSION` in `src/features/settings/SettingsPanel.tsx`. The updater reads the Cargo package version at compile time.
 2. Refresh `CHANGELOG.md` and the public `README.md` status line.
 3. Run the frontend and native checks:
 

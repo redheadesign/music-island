@@ -43,10 +43,6 @@ export function VoiceSignalFlow({
       role="group"
       aria-label={processingLabel}
     >
-      <div className="voice-signal-flow__route" aria-hidden="true">
-        <span className="voice-signal-flow__pulse" />
-      </div>
-
       <SignalEndpoint
         kind="input"
         icon={<Mic2 size={17} aria-hidden />}
@@ -55,6 +51,7 @@ export function VoiceSignalFlow({
         active={meterActive}
         hot={meterActive && stats.input_clipping}
       />
+      <SignalConnector />
 
       <div className="voice-signal-node voice-signal-node--processing" aria-label={running ? runningLabel : stoppedLabel} data-running={running}>
         <div className="voice-signal-node__header">
@@ -70,6 +67,7 @@ export function VoiceSignalFlow({
         />
       </div>
 
+      <SignalConnector />
       <SignalEndpoint
         kind="output"
         icon={<Volume2 size={17} aria-hidden />}
@@ -79,6 +77,10 @@ export function VoiceSignalFlow({
       />
     </div>
   )
+}
+
+function SignalConnector() {
+  return <div className="voice-signal-flow__route" aria-hidden="true"><span className="voice-signal-flow__pulse" /></div>
 }
 
 function SignalEndpoint({

@@ -83,6 +83,34 @@ export const ClassicRunning: Story = {
   globals: { interfaceTheme: 'classic' },
   parameters: { ...Running.parameters, a11y: { test: 'error' } },
 }
+
+async function checkSignalRoute(root: HTMLElement, vertical: boolean) {
+  const flow = root.querySelector<HTMLElement>('.voice-signal-flow')!
+  flow.scrollIntoView({ block: 'center', behavior: 'instant' })
+  const nodes = [...flow.querySelectorAll('.voice-signal-node')].map(node => node.getBoundingClientRect())
+  const links = [...flow.querySelectorAll('.voice-signal-flow__route')]
+  await expect(links).toHaveLength(2)
+  for (const [i, element] of links.entries()) {
+    const line = element.getBoundingClientRect()
+    await expect(line[vertical ? 'height' : 'width']).toBeGreaterThan(0)
+    await expect(line[vertical ? 'top' : 'left']).toBeCloseTo(nodes[i][vertical ? 'bottom' : 'right'], 0)
+    await expect(line[vertical ? 'bottom' : 'right']).toBeCloseTo(nodes[i + 1][vertical ? 'top' : 'left'], 0)
+  }
+}
+
+export const GlassSignalRoute: Story = {
+  name: 'Стекло · соединения между устройствами',
+  globals: { interfaceTheme: 'glass' },
+  parameters: Running.parameters,
+  play: async ({ canvasElement }) => { await checkSignalRoute(canvasElement, false) },
+}
+
+export const GlassSignalRouteNarrow: Story = {
+  ...GlassSignalRoute,
+  name: 'Стекло · вертикальное соединение устройств',
+  parameters: { voicePreview: { running: true }, workshop: { width: 420 } },
+  play: async ({ canvasElement }) => { await checkSignalRoute(canvasElement, true) },
+}
 export const ReducedMotion: Story = {
   name: 'Обработка · без движения',
   args: { reducedMotion: true },

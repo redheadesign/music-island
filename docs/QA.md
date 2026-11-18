@@ -29,6 +29,13 @@
   keyboard focus or drag. The value follows the gesture; cancel restores it.
 - Accent color changes UI chrome.
 
+## System volume and playback background
+
+- In Appearance drag System volume from the catalog to either player row. Check the same layout with the media player closed.
+- Compare the speaker button with Windows Quick Settings. Click twice to toggle mute and restore the previous level. Hover the button and drag the slider, then change the level in Windows and check that the island follows. Repeat with Tab, arrow keys and Escape.
+- Switch the default output between a speaker and headphones with the slider open. A drag started on the old device must never change the replacement device. Close the island and reopen it to check the new endpoint.
+- In Glass disable and re-enable the background wave. With a connected Direct player, check a bass-heavy passage, pause and resume. The wave fades on pause and pulses on bass during playback. The ordinary top-down particles keep their own cadence.
+
 ## Local servers widget
 
 - In Island → Appearance, drag **Local servers** from the external widget tray to the space under the preview. Start a disposable HTTP server and expand the island. The server panel should align with the player width and disappear on collapse.

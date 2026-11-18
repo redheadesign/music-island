@@ -1,21 +1,15 @@
 .voice-signal-flow {
-  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(160px, .78fr) minmax(0, 1fr);
-  align-items: stretch;
-  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr) var(--space-6) 154px var(--space-6) minmax(0, 1fr);
+  align-items: center;
   min-width: 0;
 }
 
 .voice-signal-flow__route {
-  position: absolute;
-  top: 50%;
-  right: 12%;
-  left: 12%;
+  position: relative;
   height: 2px;
   overflow: hidden;
   background: var(--control-track);
-  transform: translateY(-50%);
 }
 
 .voice-signal-flow__pulse {
@@ -169,17 +163,14 @@
 @container (max-width: 560px) {
   .voice-signal-flow {
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-3);
+    grid-template-rows: auto var(--space-5) auto var(--space-5) auto;
   }
 
   .voice-signal-flow__route {
-    top: 12%;
-    right: auto;
-    bottom: 12%;
-    left: 50%;
+    justify-self: center;
+    align-self: stretch;
     width: 2px;
     height: auto;
-    transform: translateX(-50%);
   }
 
   .voice-signal-flow__pulse {
@@ -197,10 +188,6 @@
   .voice-signal-node {
     min-height: 0;
   }
-
-  .voice-signal-node--processing {
-    min-height: 112px;
-  }
 }
 
 @keyframes voice-signal-pulse-y {
@@ -214,12 +201,10 @@
 }
 
 .voice-devices-flow { width: 100%; min-width: 0; }
-.voice-signal-flow { align-items: center; grid-template-columns: minmax(0, 1fr) 154px minmax(0, 1fr); gap: var(--space-6); }
 .voice-signal-node--processing { align-self: center; min-height: 0; padding: calc(var(--space-unit) * 4.25) var(--space-6); gap: var(--space-2-5); border-radius: var(--radius-pill); overflow: hidden; box-sizing: border-box; }
 .voice-signal-node--processing .voice-signal-node__icon { display: none; }
 .voice-signal-node--processing .spectrum-canvas { height: 24px; }
 .voice-signal-node--processing .voice-signal-status { min-height: 18px; padding: 0; border: 0; background: transparent; font-size: calc(var(--type-unit) * 10); font-weight: var(--weight-medium); }
 @container (max-width: 560px) {
-  .voice-signal-flow { grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
   .voice-signal-node--processing { justify-self: center; width: 154px; box-sizing: border-box; }
 }

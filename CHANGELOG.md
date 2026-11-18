@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.2.0
+
+- Glass becomes the default interface. Choose a separate color palette for controls, or switch back to Classic in Appearance. The island picks up the artwork colors in its progress bar and background.
+- Move controls between player rows by dragging or with the keyboard. An empty second row collapses. The island catalog includes ten-second seek buttons and system volume.
+- Click the speaker to mute the default Windows output. Hover or focus the speaker to adjust its volume. It also works while the music player is closed.
+- The optional classic wave reacts to bass from the connected Direct Yandex Music player. The falling particles move independently of beats. Like feedback stays inside the heart button.
+- Long GigaAM dictations can reuse work done during pauses. Background recognition is opt-in for supported GGUF models. Model cards group downloads and errors with the model they apply to.
+- Glass layout editors show one surface per control. Better Voice now draws the audio connections between the microphone, processor and output in both wide and narrow windows.
+
 ## 3.1.1
 
 - Widgets below the expanded island fade to 50% opacity when idle. Hover over a widget or focus one of its controls with the keyboard to bring it back to full opacity.

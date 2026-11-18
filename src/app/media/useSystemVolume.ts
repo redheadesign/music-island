@@ -1,93 +1,101 @@
-import { useEffect, useRef, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import type { SystemVolumeAction, SystemVolumeSnapshot } from '../../shared/lib/systemVolume'
 import { controlSystemVolume } from '../tauriApi'
 
 type WriteAction = Exclude<SystemVolumeAction, { kind: 'read' }>
 
-export function useSystemVolume(enabled: boolean) {
-  const [snapshot, setSnapshot] = useState<SystemVolumeSnapshot | null>(null)
-  const controls = useRef<{ toggleMute(): void; setVolume(value: number): void } | null>(null)
+// The expanded island unmounts when it closes. Keep already-issued gestures in order
+// across a close/reopen, and share one poll if the same control has multiple subscribers.
+const listeners = new Set<() => void>()
+const pending: WriteAction[] = []
+let snapshot: SystemVolumeSnapshot | null = null
+let busy = false
+let timer: number | undefined
 
-  useEffect(() => {
-    if (!enabled) return
-    let current: SystemVolumeSnapshot | null = null
-    let active = true
-    let busy = false
-    let timer: number | undefined
-    const pending: WriteAction[] = []
+function publish(next: SystemVolumeSnapshot | null) {
+  if (!listeners.size || (snapshot?.endpointId === next?.endpointId
+    && snapshot?.volume === next?.volume && snapshot?.muted === next?.muted)) return
+  snapshot = next
+  listeners.forEach(listener => listener())
+}
 
-    function publish(next: SystemVolumeSnapshot | null) {
-      if (!active) return
-      current = next
-      setSnapshot(prev => prev?.endpointId === next?.endpointId && prev?.volume === next?.volume
-        && prev?.muted === next?.muted ? prev : next)
+async function run(first: SystemVolumeAction) {
+  busy = true
+  try {
+    let result = await controlSystemVolume(first)
+    while (pending.length) {
+      const action = pending.shift()!
+      if (action.endpointId === result?.endpointId) result = await controlSystemVolume(action)
     }
+    publish(result)
+  } catch {
+    pending.length = 0
+    publish(null)
+  } finally {
+    busy = false
+  }
+}
 
-    async function run(first: SystemVolumeAction) {
-      busy = true
-      try {
-        let result = await controlSystemVolume(first)
-        while (pending.length) {
-          const action = pending.shift()!
-          if (action.endpointId === result?.endpointId) result = await controlSystemVolume(action)
-        }
-        publish(result)
-      } catch {
-        pending.length = 0
-        publish(null)
-      } finally {
-        busy = false
-      }
-    }
+function write(action: WriteAction) {
+  if (!snapshot || snapshot.endpointId !== action.endpointId) return
+  publish(action.kind === 'toggleMute'
+    ? { ...snapshot, muted: !snapshot.muted }
+    : { ...snapshot, volume: action.volume })
+  if (!busy) {
+    void run(action)
+    return
+  }
+  // A drag can deliver samples faster than Windows can acknowledge an update.
+  if (action.kind === 'setVolume' && pending.at(-1)?.kind === 'setVolume') pending.pop()
+  pending.push(action)
+}
 
-    function write(action: WriteAction) {
-      if (!current) return
-      publish(action.kind === 'toggleMute'
-        ? { ...current, muted: !current.muted }
-        : { ...current, volume: action.volume })
-      if (!busy) {
-        void run(action)
-        return
-      }
-      // While one IPC is in flight, keep only the last consecutive slider position.
-      if (action.kind === 'setVolume' && pending.at(-1)?.kind === 'setVolume') pending.pop()
-      pending.push(action)
-    }
+function refresh() {
+  if (!busy) void run({ kind: 'read' })
+}
 
-    controls.current = {
-      toggleMute() {
-        if (current) write({ kind: 'toggleMute', endpointId: current.endpointId })
-      },
-      setVolume(value) {
-        if (!current || !Number.isFinite(value)) return
-        const volume = Math.max(0, Math.min(100, Math.round(value)))
-        if (volume !== current.volume) write({ kind: 'setVolume', endpointId: current.endpointId, volume })
-      },
-    }
+function syncVisibility() {
+  window.clearInterval(timer)
+  if (document.hidden) return
+  refresh()
+  timer = window.setInterval(refresh, 1000)
+}
 
-    const refresh = () => { if (!busy) void run({ kind: 'read' }) }
-    function syncVisibility() {
-      window.clearInterval(timer)
-      if (document.hidden) return
-      refresh()
-      timer = window.setInterval(refresh, 1000)
-    }
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  if (listeners.size === 1) {
     document.addEventListener('visibilitychange', syncVisibility)
     syncVisibility()
-    return () => {
-      active = false
-      controls.current = null
-      setSnapshot(null)
-      document.removeEventListener('visibilitychange', syncVisibility)
-      window.clearInterval(timer)
-    }
-  }, [enabled])
+  }
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size) return
+    window.clearInterval(timer)
+    document.removeEventListener('visibilitychange', syncVisibility)
+    snapshot = null
+  }
+}
 
+const getSnapshot = () => snapshot
+const getUnavailable = () => null
+const noop = () => {}
+const subscribeDisabled = () => noop
+
+export function useSystemVolume(enabled: boolean) {
+  const current = useSyncExternalStore(enabled ? subscribe : subscribeDisabled,
+    enabled ? getSnapshot : getUnavailable, getUnavailable)
   return {
-    volume: enabled ? snapshot?.volume ?? 0 : 0,
-    muted: enabled && (snapshot?.muted ?? false),
-    available: enabled && snapshot !== null,
-    toggleMute: () => controls.current?.toggleMute(),
-    setVolume: (value: number) => controls.current?.setVolume(value),
+    endpointId: current?.endpointId ?? null,
+    volume: current?.volume ?? 0,
+    muted: current?.muted ?? false,
+    available: current !== null,
+    toggleMute() {
+      if (current) write({ kind: 'toggleMute', endpointId: current.endpointId })
+    },
+    setVolume(value: number) {
+      if (!current || !Number.isFinite(value)) return
+      const volume = Math.max(0, Math.min(100, Math.round(value)))
+      if (volume !== snapshot?.volume) write({ kind: 'setVolume', endpointId: current.endpointId, volume })
+    },
   }
 }

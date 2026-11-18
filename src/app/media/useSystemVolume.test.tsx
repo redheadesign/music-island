@@ -69,6 +69,36 @@ it('drops queued writes targeting the replaced device', async () => {
   expect(command).toHaveBeenCalledTimes(2)
 })
 
+it('ignores the old pointer gesture even after the control has rendered the replacement output', async () => {
+  await act(async () => root.render(<Probe />))
+  const oldControls = current
+  command.mockResolvedValue(headphones)
+  await act(async () => vi.advanceTimersByTimeAsync(1000))
+  expect(current.endpointId).toBe('phones')
+  act(() => { oldControls.setVolume(98); oldControls.toggleMute() })
+  expect(command).toHaveBeenCalledTimes(2)
+  await act(async () => current.setVolume(35))
+  expect(command).toHaveBeenLastCalledWith({ kind: 'setVolume', endpointId: 'phones', volume: 35 })
+})
+
+it('finishes the previous drag before accepting a new gesture after reopening the island', async () => {
+  await act(async () => root.render(<Probe />))
+  let finish!: (value: SystemVolumeSnapshot) => void
+  command.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    .mockImplementation(async action => ({ ...speakers, volume: action.kind === 'setVolume' ? action.volume : speakers.volume }))
+  act(() => { current.setVolume(20); current.setVolume(30) })
+  await act(async () => root.render(null))
+  await act(async () => root.render(<Probe />))
+  expect(current.available).toBe(false)
+  expect(command).toHaveBeenCalledTimes(2)
+  await act(async () => finish({ ...speakers, volume: 20 }))
+  expect(current.volume).toBe(30)
+  await act(async () => current.setVolume(75))
+  expect(command.mock.calls.slice(1).map(([action]) => action.kind === 'setVolume' && action.volume))
+    .toEqual([20, 30, 75])
+  expect(current.volume).toBe(75)
+})
+
 it('stops polling when disabled or hidden and reads immediately on return', async () => {
   await act(async () => root.render(<Probe enabled={false} />))
   expect(command).not.toHaveBeenCalled()

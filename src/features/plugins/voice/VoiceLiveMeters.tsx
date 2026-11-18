@@ -59,20 +59,21 @@ export function VoiceLiveMeters({
       return
     }
     let cancelled = false
+    let timer: number | undefined
     const tick = async () => {
       try {
         const next = await voicePluginApi.getAudioStats()
-        if (cancelled) return
-        setStats(next)
+        if (!cancelled) setStats(next)
       } catch {
-        /* ignore */
+        // The engine can briefly be unavailable during an output change.
+      } finally {
+        if (!cancelled) timer = window.setTimeout(tick, 250)
       }
     }
     void tick()
-    const id = window.setInterval(() => void tick(), 250)
     return () => {
       cancelled = true
-      window.clearInterval(id)
+      window.clearTimeout(timer)
     }
   }, [running, meterActive])
 

@@ -83,6 +83,25 @@ export const Default: Story = {
   },
 }
 
+export const GlassCatalog: Story = {
+  name: 'Светлое стекло · кнопки в каталоге',
+  globals: { interfaceTheme: 'glass' },
+  parameters: { settingsColorScheme: 'light' },
+  play: async ({ canvasElement }) => {
+    const shuffle = element(canvasElement, 'shuffle', 'catalog')
+    const material = getComputedStyle(shuffle)
+    await expect(material.backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    await expect(material.boxShadow).toBe('none')
+    const icon = shuffle.querySelector('button')!
+    await expect(getComputedStyle(icon).color).toBe(getComputedStyle(canvasElement.querySelector('.settings-window-root')!).color)
+    shuffle.focus()
+    await userEvent.keyboard(' ')
+    await expect(shuffle).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect(shuffle).toHaveFocus()
+  },
+}
+
 export const PointerGrabGeometry: Story = {
   name: 'Точка захвата · масштаб, прокрутка, Escape',
   play: async ({ canvasElement }) => {
