@@ -2,8 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useEffect, useState } from 'react'
 import type { ComponentProps } from 'react'
 import { useArgs } from 'storybook/preview-api'
-import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
 import { MusicModule } from '../../features/music/MusicModule'
+import { SystemVolumeControl } from '../../features/music/SystemVolumeControl'
+import { normalizeIslandLayout } from '../../shared/lib/islandLayout'
 import { media } from '../fixtures'
 
 type PlayerArgs = ComponentProps<typeof MusicModule> & {
@@ -160,6 +162,40 @@ const meta = {
 } satisfies Meta<PlayerArgs>
 export default meta
 type Story = StoryObj<typeof meta>
+export const SystemVolume: Story = {
+  name: 'Системная громкость в компактном ряду',
+  render: function VolumePreview(args, { globals }) {
+    const [volume, setVolume] = useState(63)
+    const [muted, setMuted] = useState(false)
+    const locale = globals.locale === 'en' ? 'en' : 'ru'
+    const layout = normalizeIslandLayout({ version: 4, zones: { player: ['transport', 'progress', 'volume'] } })
+    return <div className="island-root" data-interface-theme={globals.interfaceTheme ?? 'glass'}>
+      <div className="island-card island-surface" style={{ width: '100%' }}>
+        <MusicModule {...args} locale={locale} layout={layout} systemVolume={<SystemVolumeControl locale={locale}
+          audio={{ volume, muted, available: true, setVolume, toggleMute: () => setMuted(value => !value) }} />} />
+      </div>
+    </div>
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const button = canvas.getByRole('button', { name: /Mute system sound|Выключить системный звук/i })
+    await userEvent.hover(button)
+    const slider = await canvas.findByRole('slider', { name: /System volume|Системная громкость/i })
+    const bounds = canvasElement.querySelector('.music-module')!.getBoundingClientRect()
+    const rect = slider.getBoundingClientRect()
+    await expect(rect.left).toBeGreaterThanOrEqual(bounds.left - 1)
+    await expect(rect.right).toBeLessThanOrEqual(bounds.right + 1)
+    await fireEvent.change(slider, { target: { value: '81' } })
+    await expect(slider).toHaveValue('81')
+    await userEvent.click(button)
+    await expect(button).toHaveAccessibleName(/Unmute system sound|Включить системный звук/i)
+    await userEvent.tab()
+    await expect(slider).toHaveFocus()
+    await userEvent.keyboard('{Escape}')
+    await expect(button).toHaveFocus()
+    await expect(slider).not.toBeInTheDocument()
+  },
+}
 export const Playing: Story = { name: 'Воспроизведение' }
 export const Paused: Story = {
   name: 'Пауза',

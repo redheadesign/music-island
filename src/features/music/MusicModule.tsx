@@ -10,10 +10,12 @@ import { SeekStepButton } from './SeekStepButton'
 import { ProgressStrip } from './ProgressStrip'
 import { progressTrackKey, type ProgressNavigation } from './progressTransition'
 import { Button } from '../../shared/ui/SettingsControls'
+import { SystemVolumeControl } from './SystemVolumeControl'
 import './MusicModule.css'
 
 interface MusicModuleProps {
   layout?: IslandLayout
+  systemVolume?: ReactNode
   renderElement?: (element: IslandLayoutElement, node: ReactNode) => ReactNode
   renderZone?: (zone: IslandLayoutZone, node: ReactNode) => ReactNode
   media: MediaSnapshot | null
@@ -47,6 +49,7 @@ function collapseRepeatedTitle(value: string): string {
 
 export function MusicModule({
   layout,
+  systemVolume,
   renderElement = (_element, node) => node,
   renderZone = (_zone, node) => node,
   media,
@@ -73,6 +76,9 @@ export function MusicModule({
   const seekSentRef = useRef(false)
   const seekTrackRef = useRef<string | null>(null)
   const t = useMemo(() => createTranslator(normalizeLocale(locale)), [locale])
+  const volumeControl = systemVolume ?? <SystemVolumeControl locale={locale} />
+  const offlineVolume = layout && [...layout.zones.player, ...layout.zones.playerLower].includes('volume')
+    ? volumeControl : null
 
   if (media?.provider === 'smtc' && media.smtcHealth === 'unavailable') {
     return (
@@ -82,6 +88,7 @@ export function MusicModule({
           <strong>{t('music.smtcUnavailable')}</strong>
           <span>{t('music.smtcUnavailableHint')}</span>
         </div>
+        {offlineVolume}
       </section>
     )
   }
@@ -108,6 +115,7 @@ export function MusicModule({
             {directReloadBusy ? t('music.reloading') : t('music.quickReload')}
           </Button>
         ) : null}
+        {offlineVolume}
       </section>
     )
   }
@@ -228,6 +236,7 @@ export function MusicModule({
   const lower: IslandMusicElement[] = layout?.zones.playerLower ?? (media.provider === 'yandex-direct' ? ['dislike', 'progress', 'like'] : ['progress'])
   const hasArtwork = showArtwork && !isButtonsOnly && (player.includes('artwork') || lower.includes('artwork'))
   const control = (element: IslandMusicElement) => {
+    if (element === 'volume') return volumeControl
     if (element === 'previous' || element === 'next') {
       return showPreviousNext ? <NavigationButton locale={locale} direction={element} onClick={() => navigate(element)} disabled={element === 'previous' ? !media.canGoPrevious : !media.canGoNext} /> : null
     }

@@ -8,7 +8,7 @@ export function inlineActionsWidth(count: number): number {
 export const ISLAND_LAYOUT_VERSION = 4 as const
 
 export type IslandProviderElement = 'codex' | 'claude'
-export type IslandPlayerElement = 'previous' | 'artwork' | 'transport' | 'next' | 'progress' | 'seekBack' | 'seekForward'
+export type IslandPlayerElement = 'previous' | 'artwork' | 'transport' | 'next' | 'progress' | 'seekBack' | 'seekForward' | 'volume'
 export type IslandArrangement = 'stacked' | 'inline'
 export type IslandReactionElement = 'like' | 'dislike' | 'shuffle' | 'repeat'
 export type IslandMusicElement = IslandPlayerElement | IslandReactionElement
@@ -35,7 +35,7 @@ export type IslandLayoutV1 = IslandLayout
 
 const PROVIDERS: readonly IslandProviderElement[] = ['codex', 'claude']
 export const DEFAULT_ISLAND_PLAYER_ORDER: readonly IslandPlayerElement[] = ['previous', 'artwork', 'transport', 'next', 'progress']
-const PLAYER_ELEMENTS: readonly IslandPlayerElement[] = [...DEFAULT_ISLAND_PLAYER_ORDER, 'seekBack', 'seekForward']
+const PLAYER_ELEMENTS: readonly IslandPlayerElement[] = [...DEFAULT_ISLAND_PLAYER_ORDER, 'seekBack', 'seekForward', 'volume']
 const REACTIONS: readonly IslandReactionElement[] = ['shuffle', 'dislike', 'like', 'repeat']
 const MUSIC_ELEMENTS: readonly IslandMusicElement[] = [...PLAYER_ELEMENTS, ...REACTIONS]
 const ACTIONS: readonly IslandActionElement[] = ['settings', 'pin', 'microphone']

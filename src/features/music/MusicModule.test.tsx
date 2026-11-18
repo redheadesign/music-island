@@ -99,6 +99,13 @@ describe('MusicModule progress characterization', () => {
 })
 
 describe('MusicModule saved layout behavior', () => {
+  it('keeps the configured system speaker available without a music session', () => {
+    const layout = normalizeIslandLayout({ version: 4, zones: { playerLower: ['volume'] } })
+    for (const media of [null, { ...snapshot, smtcHealth: 'unavailable' as const }, { ...snapshot, provider: 'yandex-direct' as const, hasSession: false }]) {
+      expect(renderPlayer({ media, layout, systemVolume: <button>System mute</button> })).toContain('System mute')
+      expect(renderPlayer({ media })).not.toContain('system-volume')
+    }
+  })
   it('restores an edited buttons-only profile with exactly the controls added to its rows', () => {
     const base = getDefaultConfig()
     const v3 = { version: 3, arrangement: 'stacked', zones: {

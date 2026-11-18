@@ -27,6 +27,18 @@ function config(): AppConfig {
 }
 
 describe('island layout policy', () => {
+  it('keeps system volume optional, unique and movable between saved rows', () => {
+    const base = config()
+    const original = getIslandLayout(base)
+    expect(original.zones.player).not.toContain('volume')
+    expect(original.zones.playerLower).not.toContain('volume')
+    const top = moveIslandElement(original, 'volume', 'player', 0)
+    expect(top.zones.player[0]).toBe('volume')
+    const lower = getIslandLayout(withIslandLayout(base, moveIslandElement(top, 'volume', 'playerLower', 0)))
+    expect(lower.zones.playerLower[0]).toBe('volume')
+    expect(lower.zones.player).not.toContain('volume')
+    expect(removeIslandElement(lower, 'volume').zones.playerLower).not.toContain('volume')
+  })
   it('normalizes corrupt values and preserves required safe-zone controls', () => {
     expect(normalizeIslandLayout({ version: 2, zones: {
       left: ['codex', 'codex', 'unknown'],

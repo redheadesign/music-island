@@ -8,13 +8,13 @@ import type { AppConfig, Locale } from '../../shared/lib/types'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
 import { islandArrangement, ISLAND_LAYOUT_ELEMENTS, canPlaceIslandElement, getIslandLayout, getLegacyIslandLayout, isIslandCatalog, isIslandWidget, moveIslandElement, withIslandLayout, type IslandLayoutDropTarget, type IslandLayoutElement, type IslandLayout, type IslandLayoutZone } from '../../shared/lib/islandLayout'
 import { createTranslator } from '../../shared/i18n/messages'
-import { withUiPrefs } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfaceTheme, getReducedTransparency, withUiPrefs } from '../../shared/lib/uiPrefs'
 import { IslandElementSample, IslandPreview } from './IslandPreview'
 import './IslandLayoutEditor.css'
 
 const names: Record<Locale, Record<Exclude<IslandLayoutElement, 'localServers'>, string>> = {
-  ru: { codex: 'Codex', claude: 'Claude', artwork: 'Обложка', previous: 'Предыдущий трек', next: 'Следующий трек', transport: 'Пуск и пауза', progress: 'Прогресс', seekBack: 'Назад на 10 секунд', seekForward: 'Вперёд на 10 секунд', like: 'Нравится', dislike: 'Не нравится', shuffle: 'Перемешать', repeat: 'Повтор', settings: 'Настройки', pin: 'Закрепить', microphone: 'Диктовка' },
-  en: { codex: 'Codex', claude: 'Claude', artwork: 'Artwork', previous: 'Previous track', next: 'Next track', transport: 'Play and pause', progress: 'Progress', seekBack: 'Back 10 seconds', seekForward: 'Forward 10 seconds', like: 'Like', dislike: 'Dislike', shuffle: 'Shuffle', repeat: 'Repeat', settings: 'Settings', pin: 'Pin', microphone: 'Dictation' },
+  ru: { codex: 'Codex', claude: 'Claude', artwork: 'Обложка', previous: 'Предыдущий трек', next: 'Следующий трек', transport: 'Пуск и пауза', progress: 'Прогресс', seekBack: 'Назад на 10 секунд', seekForward: 'Вперёд на 10 секунд', volume: 'Системная громкость', like: 'Нравится', dislike: 'Не нравится', shuffle: 'Перемешать', repeat: 'Повтор', settings: 'Настройки', pin: 'Закрепить', microphone: 'Диктовка' },
+  en: { codex: 'Codex', claude: 'Claude', artwork: 'Artwork', previous: 'Previous track', next: 'Next track', transport: 'Play and pause', progress: 'Progress', seekBack: 'Back 10 seconds', seekForward: 'Forward 10 seconds', volume: 'System volume', like: 'Like', dislike: 'Dislike', shuffle: 'Shuffle', repeat: 'Repeat', settings: 'Settings', pin: 'Pin', microphone: 'Dictation' },
 }
 const zoneNames = {
   ru: { left: 'Слева от островка', right: 'Справа от островка', player: 'Верхний ряд', playerLower: 'Нижний ряд', actions: 'Действия', bottom: 'Под островком', catalog: 'Элементы островка', widgetCatalog: 'Внешние виджеты' },
@@ -155,7 +155,8 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
     if (!elements.length && !(dragging && canPlaceIslandElement(layout, dragging, zone))) return null
     return <div className="island-layout-catalog" role="group" aria-label={zones[zone]} data-layout-target={zone}
       data-ready={Boolean(dragging && canPlaceIslandElement(layout, dragging, zone)) || undefined} data-over={over?.zone === zone || undefined}>
-      <div className="island-layout-catalog__items island-root">
+      <div className="island-layout-catalog__items island-root" data-interface-theme={getInterfaceTheme(config)}
+        data-interface-palette={getInterfacePalette(config)} data-reduced-transparency={getReducedTransparency(config) || undefined}>
         {elements.map((element) => elementView(element, <IslandElementSample element={element} usage={usage} locale={locale} />, true))}
       </div>
     </div>
