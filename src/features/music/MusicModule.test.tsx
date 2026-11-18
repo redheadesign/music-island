@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import type { ComponentProps } from 'react'
-import type { IslandLayout, IslandPlayerElement, IslandReactionElement } from '../../shared/lib/islandLayout'
+import { normalizeIslandLayout, type IslandLayout, type IslandPlayerElement, type IslandReactionElement } from '../../shared/lib/islandLayout'
 import type { MediaSnapshot } from '../../shared/lib/types'
 import { MusicModule } from './MusicModule'
 
@@ -35,10 +35,7 @@ function islandLayout(
   reactionLeft: IslandReactionElement[] = ['dislike'],
   reactionRight: IslandReactionElement[] = ['like'],
 ): IslandLayout {
-  return {
-    version: 3, arrangement: 'stacked',
-    zones: { left: [], player, right: [], reactionLeft, reactionRight, actions: ['settings'], bottom: [] },
-  }
+  return normalizeIslandLayout({ version: 3, zones: { player, reactionLeft, reactionRight, actions: ['settings'] } })
 }
 
 async function mountPlayer(overrides: Partial<ComponentProps<typeof MusicModule>> = {}) {
@@ -131,10 +128,9 @@ describe('MusicModule saved layout behavior', () => {
       layout: islandLayout(['artwork', 'transport', 'progress'], ['like', 'dislike'], []),
       renderZone,
     })
-    const sameSideButtons = together.querySelectorAll('[data-zone="reactionLeft"] button')
-    expect(sameSideButtons).toHaveLength(2)
-    expect([...sameSideButtons].map((button) => button.getAttribute('aria-label'))).toEqual(['Добавить в любимое', 'Не нравится'])
-    expect(together.querySelector('[data-zone="reactionRight"] button')).toBeNull()
+    const sameSideButtons = together.querySelectorAll('[data-zone="playerLower"] button')
+    expect(sameSideButtons).toHaveLength(3)
+    expect([...sameSideButtons].map((button) => button.getAttribute('aria-label'))).toEqual(['Добавить в любимое', 'Не нравится', 'Позиция трека'])
 
     const removed = document.createElement('div')
     removed.innerHTML = renderPlayer({
@@ -142,9 +138,8 @@ describe('MusicModule saved layout behavior', () => {
       layout: islandLayout(['artwork', 'transport', 'progress'], ['dislike'], []),
       renderZone,
     })
-    expect(removed.querySelector('[data-zone="reactionLeft"] [aria-label="Добавить в любимое"]')).toBeNull()
-    expect(removed.querySelector('[data-zone="reactionLeft"] [aria-label="Не нравится"]')).not.toBeNull()
-    expect(removed.querySelector('[data-zone="reactionRight"] button')).toBeNull()
+    expect(removed.querySelector('[data-zone="playerLower"] [aria-label="Добавить в любимое"]')).toBeNull()
+    expect(removed.querySelector('[data-zone="playerLower"] [aria-label="Не нравится"]')).not.toBeNull()
   })
 
   it('routes navigation, protected playback, and reaction commands unchanged', async () => {
@@ -195,7 +190,7 @@ describe('MusicModule saved layout behavior', () => {
   it('renders inline progress at its saved position using the same production controls', () => {
     for (const order of [['progress', 'transport', 'next'], ['next', 'transport', 'progress']] as const) {
       const root = document.createElement('div')
-      const layout = { ...islandLayout([...order], [], []), arrangement: 'inline' as const }
+      const layout = normalizeIslandLayout({ version: 4, zones: { player: order } })
       root.innerHTML = renderPlayer({ layout, showArtwork: false, renderElement: (id, node) => node && <div data-control={id}>{node}</div> })
       expect([...root.querySelectorAll('.media-controls [data-control]')].map(node => node.getAttribute('data-control'))).toEqual(order)
       expect(root.querySelectorAll('[role="slider"]')).toHaveLength(1)

@@ -13,7 +13,7 @@ export const InlineLayout: Story = {
   play: async ({ canvasElement }) => {
     const card = canvasElement.querySelector<HTMLElement>('.island-preview__body > .island-card')!
     const stackedHeight = card.getBoundingClientRect().height
-    await userEvent.click(within(canvasElement).getByRole('button', { name: /^(В одну строку|One row)$/ }))
+    await joinPlayerRows(canvasElement)
     const player = zone(canvasElement, 'player')
     const previous = element(player, 'previous')
     const progress = element(player, 'progress')
@@ -30,6 +30,16 @@ export const InlineLayout: Story = {
     await waitFor(() => expect(document.activeElement).toBe(element(player, 'seekBack')))
     await expect(element(zone(canvasElement, 'actions'), 'settings').getBoundingClientRect().right).toBeLessThan(element(zone(canvasElement, 'actions'), 'pin').getBoundingClientRect().left)
   },
+}
+
+async function joinPlayerRows(root: HTMLElement) {
+  const lower = zone(root, 'playerLower')
+  const upper = zone(root, 'player')
+  for (const [index, id] of elements(lower).entries()) {
+    const last = upper.getBoundingClientRect().right - 1
+    await pointerDrag(element(lower, id), upper, 70 + index, last)
+    await expect(element(upper, id)).toBeInTheDocument()
+  }
 }
 
 function zone(root: HTMLElement, name: string): HTMLElement {
@@ -180,7 +190,7 @@ export const KeyboardControls: Story = {
     const artwork = element(zone(canvasElement, 'player'), 'artwork')
     artwork.focus()
     await userEvent.keyboard(' ')
-    await userEvent.keyboard('{ArrowLeft}{Enter}')
+    await userEvent.keyboard('{ArrowUp}{Enter}')
     await expect(element(zone(canvasElement, 'catalog'), 'artwork')).toBeInTheDocument()
     const catalogArtwork = element(zone(canvasElement, 'catalog'), 'artwork')
     catalogArtwork.focus()
@@ -205,14 +215,12 @@ export const ProviderNativeFallback: Story = {
 export const ReactionSwapAndCatalog: Story = {
   name: 'Реакции: вместе и каталог',
   play: async ({ canvasElement }) => {
-    const left = zone(canvasElement, 'reactionLeft')
-    const right = zone(canvasElement, 'reactionRight')
-    await pointerDrag(element(right, 'like'), left, 51, left.getBoundingClientRect().right - 1)
-    await expect(elements(left)).toEqual(['dislike', 'like'])
-    await expect(elements(right)).toEqual([])
-    await pointerDrag(element(left, 'like'), zone(canvasElement, 'catalog'), 52)
-    await expect(left.querySelector('[data-layout-element="like"]')).toBeNull()
-    await expect(elements(left)).toEqual(['dislike'])
+    const row = zone(canvasElement, 'playerLower')
+    const before = element(row, 'dislike').getBoundingClientRect().left + 1
+    await pointerDrag(element(row, 'like'), row, 51, before)
+    await expect(elements(row)).toEqual(['like', 'dislike', 'progress'])
+    await pointerDrag(element(row, 'like'), zone(canvasElement, 'catalog'), 52)
+    await expect(elements(row)).toEqual(['dislike', 'progress'])
     await expect(element(zone(canvasElement, 'catalog'), 'like')).toBeInTheDocument()
   },
 }
@@ -381,17 +389,19 @@ export const FullInlineLayout: Story = {
   name: 'Одна строка · все кнопки при минимальной ширине',
   globals: { interfaceTheme: 'glass' },
   play: async ({ canvasElement }) => {
-    const segments = within(canvasElement).getByRole('group', { name: /^(Расположение плеера|Player layout)$/ })
-    const oneRow = within(segments).getByRole('button', { name: /^(В одну строку|One row)$/ })
-    const twoRows = within(segments).getByRole('button', { name: /^(В две строки|Two rows)$/ })
-    await expect(getComputedStyle(segments).display).toMatch(/grid$/)
-    await expect(getComputedStyle(oneRow).appearance).toBe('none')
-    await expect(parseFloat(getComputedStyle(oneRow).minHeight)).toBeGreaterThanOrEqual(32)
-    await expect(parseFloat(getComputedStyle(oneRow).borderRadius)).toBeGreaterThan(0)
-    await userEvent.click(oneRow)
-    await expect(oneRow).toHaveAttribute('aria-pressed', 'true')
-    await waitFor(() => expect(getComputedStyle(oneRow).boxShadow).not.toBe('none'))
-    await expect(getComputedStyle(oneRow).backgroundColor).not.toBe(getComputedStyle(twoRows).backgroundColor)
+    await expect(within(canvasElement).queryByRole('button', { name: /^(В одну строку|One row)$/ })).toBeNull()
+    await joinPlayerRows(canvasElement)
+    const lower = zone(canvasElement, 'playerLower')
+    await expect(lower).not.toBeVisible()
+    const next = element(zone(canvasElement, 'player'), 'next')
+    next.focus()
+    await userEvent.keyboard(' {ArrowDown}')
+    await expect(lower).toBeVisible()
+    await userEvent.keyboard('{Enter}')
+    await expect(element(lower, 'next')).toHaveFocus()
+    await userEvent.keyboard(' {ArrowUp}{Enter}')
+    await expect(element(zone(canvasElement, 'player'), 'next')).toHaveFocus()
+    await expect(lower).not.toBeVisible()
     const catalog = zone(canvasElement, 'catalog')
     await expect(getComputedStyle(catalog).backgroundColor).toBe('rgba(0, 0, 0, 0)')
     await expect(getComputedStyle(zone(canvasElement, 'widgetCatalog')).backgroundColor).toBe('rgba(0, 0, 0, 0)')

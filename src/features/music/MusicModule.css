@@ -103,7 +103,7 @@
   box-shadow: none;
 }
 
-.music-reactions { display: flex; align-items: center; gap: var(--space-2-5); flex: 0 0 auto; }
+
 .progress-row:empty { display: none; }
 .progress-row:not(:has(.progress-track)) { justify-content: center; }
 .playback-mode-button { position: relative; }
@@ -111,36 +111,34 @@
 
 .seek-step-button { position: relative; }
 .seek-step-button span { position: absolute; font-size: calc(var(--type-unit) * 8); font-weight: var(--weight-bold); line-height: var(--leading-tight); }
-.music-module[data-arrangement='inline'] { display: block; container: inline-player / inline-size; }
-.music-module[data-arrangement='inline'] .media-controls--island {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
+/* Row order comes from the persisted canvas and stays the same in the editor. */
+.music-module[data-arrangement] { container: island-player / inline-size; }
+.music-module .player-row {
   width: 100%;
   min-width: 0;
+  order: initial;
+  justify-content: center;
 }
+.music-module .player-row.progress-row { gap: var(--space-2-5); }
+.music-module[data-arrangement='inline'] { display: block; }
 .island-card:has(.music-module[data-arrangement='inline']) { padding: var(--space-2) var(--space-3); }
-.music-module[data-arrangement='inline'] :is(.media-button, .play-button, .reaction-button) {
+.music-module[data-arrangement='inline'] .player-row,
+.music-module .player-row[data-compact] { gap: var(--space-1); }
+.music-module :is([data-compact], [data-arrangement='inline'] .player-row) :is(.media-button, .play-button, .reaction-button) {
   width: 32px;
   height: 32px;
   flex: 0 0 32px;
 }
-.music-module[data-arrangement='inline'] :is(.artwork-shell, .artwork-placeholder) { width: 40px; height: 40px; border-radius: var(--radius-md); }
-.music-module[data-arrangement='inline'] .progress-row {
-  order: 0;
-  flex: 1 1 0;
-  width: auto;
-  min-width: 0;
-  gap: var(--space-1);
+.music-module :is([data-compact], [data-arrangement='inline'] .player-row) :is(.artwork-shell, .artwork-placeholder) {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
 }
-.music-module[data-arrangement='inline'] .progress-row:not(:has(.progress-track, .island-editor-progress-slot, [data-ready])) { flex: 0 0 auto; }
-.music-module[data-arrangement='inline'] .music-reactions { gap: var(--space-1); }
-.music-module[data-arrangement='inline'] .progress-track { height: 36px; }
-.music-module[data-arrangement='inline'] .progress-content { inset-inline: var(--space-2); font-size: var(--text-label); }
+.music-module :is([data-compact], [data-arrangement='inline'] .player-row) .progress-track { height: 36px; }
+.music-module :is([data-compact], [data-arrangement='inline'] .player-row) .progress-content { inset-inline: var(--space-2); font-size: var(--text-label); }
 .music-module[data-arrangement='inline'] .direct-reload-banner { margin-bottom: var(--space-2); }
-@container inline-player (max-width: 390px) {
-  .music-module[data-arrangement='inline'] :is(.media-controls--island, .music-reactions, .progress-row) { gap: var(--space-half); }
+@container island-player (max-width: 390px) {
+  .music-module[data-arrangement='inline'] .player-row, .music-module .player-row[data-compact] { gap: var(--space-half); }
 }
 
 .island-root[data-island-arrangement='inline'] .island-actions {

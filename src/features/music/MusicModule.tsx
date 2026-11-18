@@ -1,7 +1,7 @@
 import { Music2, RotateCw, Unplug } from 'lucide-react'
 import { Fragment, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'react'
-import { DEFAULT_ISLAND_PLAYER_ORDER, type IslandLayout, type IslandLayoutElement, type IslandLayoutZone, type IslandReactionElement } from '../../shared/lib/islandLayout'
+import { islandArrangement, type IslandMusicElement, type IslandLayout, type IslandLayoutElement, type IslandLayoutZone } from '../../shared/lib/islandLayout'
 import { MediaArtwork, NavigationButton, PlaybackButton, ReactionButton, PlaybackModeButton } from './MusicControls'
 import type { Locale, MediaCommand, MediaSnapshot } from '../../shared/lib/types'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
@@ -223,9 +223,10 @@ export function MusicModule({
     onCommand({ seek: { positionMs: Math.min(duration, Math.max(0, target)) } })
   }
 
-  const controlOrder = layout?.zones.player ?? DEFAULT_ISLAND_PLAYER_ORDER
-  const hasArtwork = showArtwork && !isButtonsOnly && controlOrder.includes('artwork')
-  const control = (element: IslandLayoutElement) => {
+  const player: IslandMusicElement[] = layout?.zones.player ?? ['previous', 'artwork', 'transport', 'next']
+  const lower: IslandMusicElement[] = layout?.zones.playerLower ?? (media.provider === 'yandex-direct' ? ['dislike', 'progress', 'like'] : ['progress'])
+  const hasArtwork = showArtwork && !isButtonsOnly && (player.includes('artwork') || lower.includes('artwork'))
+  const control = (element: IslandMusicElement) => {
     if (element === 'previous' || element === 'next') {
       return showPreviousNext ? <NavigationButton locale={locale} direction={element} onClick={() => navigate(element)} disabled={element === 'previous' ? !media.canGoPrevious : !media.canGoNext} /> : null
     }
@@ -238,57 +239,46 @@ export function MusicModule({
     }
     if (element === 'artwork') return hasArtwork ? <MediaArtwork locale={locale} reducedMotion={reducedMotion} src={media.thumbnailDataUrl} title={title} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} /> : null
     if (element === 'transport') return hasArtwork ? null : <PlaybackButton locale={locale} reducedMotion={reducedMotion} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} />
-    return null
+    if (isButtonsOnly) return null
+    if (element === 'shuffle' || element === 'repeat') return <PlaybackModeButton kind={element} active={media.isShuffleActive} repeatMode={media.repeatMode} disabled={element === 'shuffle' ? !media.canShuffle : !media.canRepeat} locale={locale} onClick={() => onCommand(element === 'shuffle' ? 'toggle-shuffle' : 'cycle-repeat')} />
+    if (element === 'like' || element === 'dislike') return <ReactionButton key={trackKey} locale={locale} reducedMotion={reducedMotion} kind={element} active={element === 'like' ? media.isLiked : media.isDisliked} disabled={element === 'like' ? !media.canLike : !media.canDislike} onClick={() => onCommand(element)} />
+    if (element !== 'progress' || !showProgress || (!canShowSeek && media.provider !== 'yandex-direct')) return null
+    return <button
+      type="button"
+      className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
+      role="slider"
+      aria-label={t('music.seek')}
+      aria-valuemin={0}
+      aria-valuemax={(media.durationMs ?? 0) / 1000}
+      aria-valuenow={Math.max(0, Math.min(activeProgressMs ?? 0, media.durationMs ?? 0)) / 1000}
+      aria-valuetext={t('music.seekTime').replace('{position}', formatTime(activeProgressMs)).replace('{duration}', formatTime(media.durationMs))}
+      onKeyDown={handleSeekKey}
+      onPointerDown={handleSeekPointerDown}
+      onPointerMove={handleSeekPointerMove}
+      onPointerUp={handleSeekPointerUp}
+      onPointerCancel={handleSeekPointerCancel}
+      onClick={(event) => event.preventDefault()}
+      disabled={!media.canSeek || !media.durationMs}
+      style={{ '--progress': activeRatio } as CSSProperties}
+    >
+      <ProgressStrip frame={{ trackKey, ratio: activeRatio, positionMs: activeProgressMs, durationMs: media.durationMs, label: trackLabel }} navigation={navigation} reducedMotion={reducedMotion} scrubbing={scrubRatio != null} />
+    </button>
   }
-  const reactions = (side: 'reactionLeft' | 'reactionRight') => {
-    const elements: IslandReactionElement[] = layout?.zones[side] ?? (media.provider === 'yandex-direct' ? side === 'reactionLeft' ? ['dislike'] : ['like'] : [])
-    return renderZone(side, !isButtonsOnly && elements.length ? <div className="music-reactions">{elements.map((kind) => <Fragment key={kind}>{renderElement(kind,
-      kind === 'shuffle' || kind === 'repeat'
-        ? <PlaybackModeButton kind={kind} active={media.isShuffleActive} repeatMode={media.repeatMode} disabled={kind === 'shuffle' ? !media.canShuffle : !media.canRepeat} locale={locale} onClick={() => onCommand(kind === 'shuffle' ? 'toggle-shuffle' : 'cycle-repeat')} />
-        : <ReactionButton key={trackKey} locale={locale} reducedMotion={reducedMotion} kind={kind} active={kind === 'like' ? media.isLiked : media.isDisliked} disabled={kind === 'like' ? !media.canLike : !media.canDislike} onClick={() => onCommand(kind)} />
-    )}</Fragment>)}</div> : null)
+  const renderRow = (zone: 'player' | 'playerLower', order: readonly IslandMusicElement[]) => {
+    const contents = order.flatMap(element => {
+      const node = control(element)
+      return node ? [<Fragment key={element}>{renderElement(element, node)}</Fragment>] : []
+    })
+    const row = contents.length ? <div className={`media-controls media-controls--island player-row${order.includes('progress') ? ' progress-row' : ''}`}
+      data-compact={contents.length > 5 || undefined} aria-label={t('music.controls')}>{contents}</div> : null
+    return renderZone(zone, row)
   }
 
-  const progressRow = !isButtonsOnly ? <div className="progress-row">
-        {reactions('reactionLeft')}
-        {showProgress && controlOrder.includes('progress') && (canShowSeek || media.provider === 'yandex-direct') ? renderElement('progress', <button
-          type="button"
-          className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
-          role="slider"
-          aria-label={t('music.seek')}
-          aria-valuemin={0}
-          aria-valuemax={(media.durationMs ?? 0) / 1000}
-          aria-valuenow={Math.max(0, Math.min(activeProgressMs ?? 0, media.durationMs ?? 0)) / 1000}
-          aria-valuetext={t('music.seekTime').replace('{position}', formatTime(activeProgressMs)).replace('{duration}', formatTime(media.durationMs))}
-          onKeyDown={handleSeekKey}
-          onPointerDown={handleSeekPointerDown}
-          onPointerMove={handleSeekPointerMove}
-          onPointerUp={handleSeekPointerUp}
-          onPointerCancel={handleSeekPointerCancel}
-          onClick={(event) => event.preventDefault()}
-          disabled={!media.canSeek || !media.durationMs}
-          style={{ '--progress': activeRatio } as CSSProperties}
-        >
-          <ProgressStrip frame={{ trackKey, ratio: activeRatio, positionMs: activeProgressMs, durationMs: media.durationMs, label: trackLabel }} navigation={navigation} reducedMotion={reducedMotion} scrubbing={scrubRatio != null} />
-        </button>) : renderElement('progress', null)}
-        {reactions('reactionRight')}
-      </div> : null
-
-  const inline = layout?.arrangement === 'inline'
-  // Keep reactions available when the progress strip is removed. On inline layouts
-  // the strip and its adjacent reactions move together at the saved position.
-  const ordered = inline && !controlOrder.includes('progress') ? [...controlOrder, 'progress'] as const : controlOrder
   return (
-    <section className={`music-module music-module--${density}`} data-arrangement={inline ? 'inline' : 'stacked'} aria-label={t('music.nowPlaying')}>
+    <section className={`music-module music-module--${density}`} data-arrangement={layout ? islandArrangement(layout) : 'stacked'} aria-label={t('music.nowPlaying')}>
       {recoveryBanner}
-      {renderZone('player', <div className="media-controls media-controls--island" aria-label={t('music.controls')}>
-        {ordered.map((element) => {
-          if (element === 'progress') return inline ? <Fragment key={element}>{progressRow}</Fragment> : null
-          const node = control(element)
-          return node ? <Fragment key={element}>{renderElement(element, node)}</Fragment> : null
-        })}
-      </div>)}
-      {!inline && progressRow}
+      {renderRow('player', player)}
+      {renderRow('playerLower', lower)}
     </section>
   )
 }

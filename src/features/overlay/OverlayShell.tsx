@@ -6,7 +6,7 @@ import type { CSSProperties, PointerEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Pin, PinOff } from 'lucide-react'
 import { useLatestDictationMessage, useLocalServersController, usePlaybackBass, type IslandAppState, type LatestDictationMessageController, type LocalServersController, type UsageController } from '../../app/useIslandApp'
-import { getIslandLayout, inlineActionsWidth } from '../../shared/lib/islandLayout'
+import { islandArrangement, getIslandLayout, inlineActionsWidth } from '../../shared/lib/islandLayout'
 import {
   getCollapsedGestureState,
   onCollapsedGestureState,
@@ -86,6 +86,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const usageScale = getUsageWidgetScale(config)
   const usageCompact = getUsageWidgetCompact(config)
   const islandLayout = useMemo(() => getIslandLayout(config), [config])
+  const arrangement = islandArrangement(islandLayout)
   const systemReducedMotion = useReducedMotion()
   const reducedMotion = config.appearance.reducedMotion || Boolean(systemReducedMotion)
   const hasUsage = islandLayout.zones.left.length + islandLayout.zones.right.length > 0
@@ -327,7 +328,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
 
   useEffect(() => {
     let cancelled = false
-    const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: false, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) }, islandLayout.arrangement, islandLayout.zones.actions.length)
+    const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: false, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) }, arrangement, islandLayout.zones.actions.length)
     const phase = windowPhase
     const generation = transitionRef.current.generation
     void syncOverlayWindow(phase, bounds).then(async (applied) => {
@@ -355,7 +356,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     return () => {
       cancelled = true
     }
-  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, islandLayout.arrangement, islandLayout.zones.actions.length, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
+  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, arrangement, islandLayout.zones.actions.length, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
 
   useEffect(() => {
     if ((!showLocalServers && !showLatestMessage) || !isTauriRuntime()) return
@@ -906,7 +907,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
         expandedVisible ? 'island-root--expanded' : '',
         reducedMotion ? 'reduced-motion' : '',
       ].join(' ')}
-      data-island-arrangement={islandLayout.arrangement}
+      data-island-arrangement={arrangement}
       data-interface-theme={getInterfaceTheme(config)}
       data-interface-scene={getInterfaceScene(config)}
       data-interface-palette={getInterfacePalette(config)}

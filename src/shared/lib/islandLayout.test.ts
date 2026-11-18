@@ -3,6 +3,7 @@ import type { AppConfig } from './types'
 import {
   canPlaceIslandElement,
   getIslandLayout,
+  islandArrangement,
   getLegacyIslandLayout,
   moveIslandElement,
   normalizeIslandLayout,
@@ -35,13 +36,12 @@ describe('island layout policy', () => {
       reactionRight: ['like', 'repeat', 'shuffle'],
       actions: ['pin', 'pin'],
     } })).toEqual({
-      version: 3, arrangement: 'stacked',
+      version: 4,
       zones: {
         left: ['codex'],
-        player: ['next', 'progress', 'artwork', 'transport'],
+        player: ['next', 'artwork', 'transport'],
         right: ['claude'],
-        reactionLeft: ['shuffle', 'like', 'dislike'],
-        reactionRight: ['repeat'],
+        playerLower: ['shuffle', 'like', 'dislike', 'progress', 'repeat'],
         actions: ['settings', 'pin'],
         bottom: [],
       },
@@ -52,12 +52,11 @@ describe('island layout policy', () => {
     const migrated = normalizeIslandLayout({ version: 1, zones: {
       left: [], player: ['artwork', 'navigation', 'transport', 'progress'], right: [], actions: ['settings'],
     } })
-    expect(migrated).toEqual({ version: 3, arrangement: 'stacked', zones: {
+    expect(migrated).toEqual({ version: 4, zones: {
       left: [],
-      player: ['previous', 'artwork', 'transport', 'next', 'progress'],
+      player: ['previous', 'artwork', 'transport', 'next'],
       right: [],
-      reactionLeft: ['dislike'],
-      reactionRight: ['like'],
+      playerLower: ['dislike', 'progress', 'like'],
       actions: ['settings'],
       bottom: [],
     } })
@@ -69,8 +68,8 @@ describe('island layout policy', () => {
       player: ['next', 'transport', 'progress'], actions: ['pin', 'settings'],
     } } }
     const migrated = getIslandLayout(base)
-    expect(migrated.arrangement).toBe('stacked')
-    const edited = moveIslandElement({ ...migrated, arrangement: 'inline' }, 'progress', 'player', 0)
+    expect(islandArrangement(migrated)).toBe('stacked')
+    const edited = moveIslandElement(migrated, 'progress', 'player', 0)
     expect(getIslandLayout(withIslandLayout(base, edited))).toEqual(edited)
     expect(edited.zones.player).toEqual(['progress', 'next', 'transport'])
     expect(moveIslandElement(edited, 'settings', 'actions', 0).zones.actions).toEqual(['settings', 'pin'])
@@ -83,8 +82,7 @@ describe('island layout policy', () => {
       left: ['codex'],
       player: ['previous', 'artwork', 'transport', 'next'],
       right: ['claude'],
-      reactionLeft: ['dislike'],
-      reactionRight: ['like'],
+      playerLower: ['dislike', 'like'],
       actions: ['settings', 'pin'],
       bottom: [],
     })
@@ -120,46 +118,44 @@ describe('island layout policy', () => {
     expect(removeIslandElement(value, 'settings')).toEqual(value)
   })
 
-  it('moves reactions between sides by inserting without displacing a neighbor', () => {
-    const value = getLegacyIslandLayout(config())
-    const moved = moveIslandElement(value, 'like', 'reactionLeft')
-    expect(moved.zones.reactionLeft).toEqual(['dislike', 'like'])
-    expect(moved.zones.reactionRight).toEqual([])
-    expect(canPlaceIslandElement(moved, 'like', 'left')).toBe(false)
+  it('lets transport, reactions and progress share either row, then collapses an emptied row', () => {
+    let value = getLegacyIslandLayout(config())
+    value = moveIslandElement(value, 'like', 'player', 0)
+    expect(value.zones.player[0]).toBe('like')
+    expect(value.zones.playerLower).toEqual(['dislike'])
+    value = moveIslandElement(value, 'dislike', 'player')
+    value = moveIslandElement(value, 'progress', 'player')
+    expect(islandArrangement(value)).toBe('inline')
+    expect(value.zones.player.at(-1)).toBe('progress')
+    value = moveIslandElement(value, 'artwork', 'playerLower')
+    value = moveIslandElement(value, 'like', 'playerLower', 0)
+    value = moveIslandElement(value, 'repeat', 'playerLower', 1)
+    expect(value.zones.playerLower).toEqual(['like', 'repeat', 'artwork', 'transport'])
+    expect(value.zones.player).not.toContain('transport')
+    expect(islandArrangement(value)).toBe('stacked')
+    expect(getIslandLayout(withIslandLayout(config(), value))).toEqual(value)
   })
 
-  it('places Like on the left when that reaction slot is empty', () => {
-    const withoutDislike = removeIslandElement(getLegacyIslandLayout(config()), 'dislike')
-    const moved = moveIslandElement(withoutDislike, 'like', 'reactionLeft')
-    expect(moved.zones.reactionLeft).toEqual(['like'])
-    expect(moved.zones.reactionRight).toEqual([])
+  it('restores an inline v3 layout with both reaction sides at the saved progress position', () => {
+    const compact = normalizeIslandLayout({ version: 3, arrangement: 'inline', zones: {
+      player: ['next', 'progress', 'transport'], reactionLeft: ['like', 'repeat'], reactionRight: ['dislike'],
+    } })
+    expect(compact.zones.player).toEqual(['next', 'like', 'repeat', 'progress', 'dislike', 'transport'])
+    expect(compact.zones.playerLower).toEqual([])
+    const moved = moveIslandElement(compact, 'like', 'playerLower')
+    const restored = removeIslandElement(moved, 'like')
+    expect(restored.zones.playerLower).toEqual([])
+    expect(restored.zones.player).not.toContain('like')
   })
 
-  it('removes optional reactions to the catalog without restoring defaults', () => {
-    const value = removeIslandElement(getLegacyIslandLayout(config()), 'like')
-    expect(value.zones.reactionLeft).toEqual(['dislike'])
-    expect(value.zones.reactionRight).toEqual([])
-  })
-
-  it('keeps shuffle and repeat optional, ordered, and unique across reaction sides', () => {
-    const defaults = getLegacyIslandLayout(config())
-    expect(defaults.zones.reactionLeft).toEqual(['dislike'])
-    expect(defaults.zones.reactionRight).toEqual(['like'])
-    expect(zoneForIslandElement('shuffle')).toBe('reactionLeft')
-    expect(zoneForIslandElement('repeat')).toBe('reactionRight')
-    expect(canPlaceIslandElement(defaults, 'shuffle', 'reactionLeft')).toBe(true)
-    expect(canPlaceIslandElement(defaults, 'repeat', 'reactionLeft')).toBe(true)
-    expect(canPlaceIslandElement(defaults, 'shuffle', 'player')).toBe(false)
-
-    let edited = moveIslandElement(defaults, 'shuffle', 'reactionLeft', 0)
-    edited = moveIslandElement(edited, 'repeat', 'reactionRight', 0)
-    expect(edited.zones.reactionLeft).toEqual(['shuffle', 'dislike'])
-    expect(edited.zones.reactionRight).toEqual(['repeat', 'like'])
-
-    edited = moveIslandElement(edited, 'repeat', 'reactionLeft', 1)
-    expect(edited.zones.reactionLeft).toEqual(['shuffle', 'repeat', 'dislike'])
-    expect(edited.zones.reactionRight).toEqual(['like'])
-    expect([...edited.zones.reactionLeft, ...edited.zones.reactionRight].filter((item) => item === 'repeat')).toHaveLength(1)
+  it('rejects incompatible widget destinations and deduplicates controls across rows', () => {
+    const value = normalizeIslandLayout({ version: 4, zones: {
+      player: ['shuffle', 'like'], playerLower: ['shuffle', 'progress', 'like', 'repeat', 'repeat', 'settings'],
+    } })
+    expect(value.zones.playerLower).toEqual(['progress', 'repeat'])
+    expect(canPlaceIslandElement(value, 'like', 'left')).toBe(false)
+    expect(canPlaceIslandElement(value, 'shuffle', 'playerLower')).toBe(true)
+    expect(zoneForIslandElement('like')).toBe('playerLower')
   })
 
   it('round-trips a normalized v2 layout without replacing unrelated ui prefs', () => {
@@ -205,7 +201,7 @@ describe('island layout policy', () => {
       left: ['codex'], player: ['navigation', 'transport'], right: [], actions: ['settings', 'pin'],
     } } }
     expect(getIslandLayout(base).zones).toMatchObject({
-      player: ['previous', 'transport', 'next'], reactionLeft: ['dislike'], reactionRight: ['like'],
+      player: ['previous', 'transport', 'next'], playerLower: ['dislike', 'like'],
     })
   })
 })
