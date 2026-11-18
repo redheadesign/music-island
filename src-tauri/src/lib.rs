@@ -11,6 +11,7 @@ mod playback_bass;
 mod plugins;
 mod process;
 mod shutdown;
+mod system_volume;
 mod tray;
 mod updater;
 mod usage;
@@ -453,6 +454,7 @@ pub fn run() {
             preview_config,
             get_media_snapshot,
             playback_bass::set_playback_bass,
+            system_volume::system_volume,
             get_smtc_health,
             list_media_sessions,
             media_control,

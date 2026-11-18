@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { DEFAULT_INTERFACE_THEME } from '../shared/lib/interfaceTheme'
+import type { SystemVolumeAction, SystemVolumeSnapshot } from '../shared/lib/systemVolume'
 import type {
   AutostartSyncEvent,
   AppConfig,
@@ -23,6 +24,11 @@ import type {
 interface PlaybackBassSample {
   request: number
   bass: number
+}
+
+export async function controlSystemVolume(action: SystemVolumeAction): Promise<SystemVolumeSnapshot | null> {
+  if (!isTauriRuntime()) return null
+  return invoke<SystemVolumeSnapshot>('system_volume', { action })
 }
 
 export async function setPlaybackBass(request: number, enabled: boolean): Promise<boolean> {

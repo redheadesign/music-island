@@ -1,8 +1,21 @@
 import type { DirectYandexStatus, TaskbarStatus, MonitorSnapshot } from '../../shared/lib/types'
+import type { SystemVolumeAction, SystemVolumeSnapshot } from '../../shared/lib/systemVolume'
 import { checkForUpdates as checkBrowserUpdates } from '../../app/tauriApi'
 
 // The Storybook resolver lets this re-export reach the real browser adapter.
 export * from '../../app/tauriApi'
+
+const initialVolume: SystemVolumeSnapshot = { endpointId: 'preview-speakers', volume: 58, muted: false }
+let systemVolume: SystemVolumeSnapshot | null = initialVolume
+export function setSystemVolumePreview(value: SystemVolumeSnapshot | null) { systemVolume = value }
+export async function controlSystemVolume(action: SystemVolumeAction) {
+  if (systemVolume && action.kind !== 'read' && action.endpointId === systemVolume.endpointId) {
+    systemVolume = action.kind === 'toggleMute'
+      ? { ...systemVolume, muted: !systemVolume.muted }
+      : { ...systemVolume, volume: action.volume }
+  }
+  return systemVolume
+}
 
 let installHandoff: { path: string; version: string } | null = null
 let handoffFailure = false
@@ -32,6 +45,7 @@ let playbackBassRequest: number | undefined
 
 export function resetNativePreview(options: { direct?: DirectYandexStatus; taskbar?: TaskbarStatus; monitors?: MonitorSnapshot; monitorLoadError?: boolean; updateCheckError?: string } = {}) {
   setInstallPreview(null)
+  setSystemVolumePreview(initialVolume)
   monitors = options.monitors ?? defaultMonitors
   monitorLoadError = options.monitorLoadError ?? false
   updateCheckError = options.updateCheckError
