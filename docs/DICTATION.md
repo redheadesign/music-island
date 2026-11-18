@@ -160,6 +160,47 @@ words rule out new boundary omissions or duplications for that pair. Inspect
 any differing words alongside that trial's saved WAV before attributing a
 change to a boundary.
 
+#### November 18 Windows editor trials
+
+The same portable executable and warm GigaAM v3 E2E RNN-T Q8_0 model ran on
+Vulkan0 in both modes. The source was the LibriVox reading above, with a
+786-word reference. Each row below represents one pair of independent
+captures through the dedicated stereo virtual cable and Silero VAD. The
+latency is measured from injected F24 release to the first text change in the
+native editor, using ExternalScript delivery.
+
+| Input | Baseline → background | Reduction | Word errors, baseline → background | Chunks reused |
+| --- | ---: | ---: | ---: | ---: |
+| Natural pauses, 408.57 s | 66.852 → 3.219 s | 95.19% | 44 → 43 (5.60% → 5.47%) | 22/23 |
+| Shortened pauses, 304.28 s | 45.945 → 3.813 s | 91.70% | 50 → 56 (6.36% → 7.12%) | 17/18 |
+| No acoustic cuts, 304.28 s | No text in either mode | — | — | — |
+
+All four runs reported zero capture-ring drops. The post-VAD lengths differed
+between independent captures: 392.52 / 392.76 s with natural pauses and
+304.83 / 308.19 s with shortened pauses, in baseline / background order.
+The shortened-pause pair exceeded the 0.3 percentage-point WER threshold.
+For example, the background transcript omitted «мамаша» after «спросила».
+The eight-second smoke produced the same 13 normalized words with both modes
+and took 4.935 / 5.197 s. One short pair cannot establish p95.
+
+The same portable also decoded both saved **background-mode History WAVs**
+with the normal offline planner on Vulkan0. This replay retains the actual
+post-VAD signal at PCM16 precision. The live engine consumed float samples.
+The ordinary replay reproduced the missing «а» and «у-у» on the natural
+recording, and «мамаша», «и» and «в» on the shortened one. These omissions
+therefore also occur when the full captured recording is recognized after Stop.
+Natural speech had 43 errors in each path, with differences in three word
+groups. Shortened speech differed only at «заливая» / «заливаясь» and had
+56 live errors versus 55 on replay. Both replays produced the live number
+of segments, 23 and 18 respectively.
+
+The no-cut control added a continuous 125 Hz sine with peak 975 signed PCM16
+units to the shortened-pause fixture. The planner found one range. Both
+captures completed and saved their WAVs. Vulkan GigaAM returned backend
+status 8 in both runs. Recognition time up to the error was 20.952 s for
+baseline and 17.295 s for background. Neither editor received any text, so
+the release-to-insertion metric is undefined. The experiment remains opt-in.
+
 For a real paste measurement, use a disposable interactive Windows VM with
 host clipboard, microphone and network redirection disabled. Map the fixture
 and weights read-only. Feed the WAV to a guest-local virtual microphone.
