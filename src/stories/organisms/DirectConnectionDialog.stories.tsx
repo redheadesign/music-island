@@ -18,7 +18,7 @@ const meta = {
     },
     controls: { exclude: ['ref', 'locale'] },
   },
-  render: (args, context) => <div className="auxiliary-ui" data-interface-theme={context.globals.interfaceTheme} data-color-scheme={context.parameters.settingsColorScheme ?? 'dark'}>
+  render: (args, context) => <div className="auxiliary-ui">
     <DirectConnectionDialog {...args} locale={context.globals.locale} />
   </div>,
 } satisfies Meta<typeof DirectConnectionDialog>
@@ -75,12 +75,12 @@ export const ErrorNarrow: Story = {
   },
   parameters: { workshop: { width: 320 } },
 }
-export const GlassError: Story = { ...Error, name: 'Стекло · ошибка подключения', globals: { interfaceTheme: 'glass' } }
+export const GlassError: Story = { ...Error, name: 'ошибка подключения', globals: { interfaceTheme: 'glass' } }
 export const GlassErrorNarrow: Story = {
   ...ErrorNarrow,
-  name: 'Стекло · длинная ошибка подключения',
+  name: 'длинная ошибка подключения',
   globals: { interfaceTheme: 'glass' },
-  parameters: { ...ErrorNarrow.parameters, settingsColorScheme: 'light' },
+  parameters: ErrorNarrow.parameters,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await waitFor(() => expect(canvas.getByRole('alert')).toBeVisible())

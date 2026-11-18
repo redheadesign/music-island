@@ -1,4 +1,13 @@
 :root {
+  --accent: #f76100;
+  --accent-soft: #ff9a55;
+  --accent-strong: #c74e00;
+  --accent-rgb: 247, 97, 0;
+  --accent-soft-rgb: 255, 154, 85;
+  --accent-glow: rgba(247, 97, 0, 0.34);
+  --accent-muted: rgba(247, 97, 0, 0.18);
+  --accent-ink: #1a1410;
+
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --font-relative-unit: 1em;
@@ -136,52 +145,6 @@
   --shadow-control: none;
   --window-titlebar: #1e1e1e;
 }
-/* Color changes are scoped to Settings. Spacing, type and motion stay shared. */
-.auxiliary-ui[data-color-scheme='light'],
-.settings-window-root[data-color-scheme='light'],
-.settings-panel[data-color-scheme='light'],
-.onboarding[data-color-scheme='light'],
-[data-color-scheme='light'].direct-connection-backdrop {
-  color-scheme: light;
-  --surface-canvas: #f3f3f5;
-  --surface-panel: #ffffff;
-  --surface-raised: #e9e9ed;
-  --surface-glass: rgba(255, 255, 255, 0.78);
-  --surface-glass-subtle: rgba(24, 24, 27, 0.035);
-  --surface-hover: rgba(24, 24, 27, 0.06);
-  --surface-selected: rgba(24, 24, 27, 0.09);
-  --surface-selected-subtle: rgba(24, 24, 27, 0.035);
-  --surface-sunken: #e2e2e7;
-  --fg-primary: #1d1d1f;
-  --fg-secondary: #5e5e66;
-  --fg-muted: #686872;
-  --fg-on-solid: #ffffff;
-  --fg-on-glass: #2e2e32;
-  --fg-on-glass-secondary: #5e5e66;
-  --status-success: #176b43;
-  --status-warning: #865700;
-  --status-danger: #a52635;
-  --status-success-surface: rgba(23, 107, 67, 0.1);
-  --status-warning-surface: rgba(134, 87, 0, 0.1);
-  --status-danger-surface: rgba(165, 38, 53, 0.09);
-  --control-track: #c5c5cc;
-  --control-off: #b9bac1;
-  --control-thumb: #ffffff;
-  --control-surface: rgba(24, 24, 27, 0.07);
-  --control-surface-hover: rgba(24, 24, 27, 0.12);
-  --control-primary-hover: #343438;
-  --overlay-scrim: rgba(32, 32, 36, 0.3);
-  --overlay-scrim-strong: rgba(32, 32, 36, 0.72);
-  --window-titlebar: rgba(255, 255, 255, 0.5);
-  --window-danger-hover: rgba(197, 45, 64, 0.84);
-  --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.12);
-  --shadow-panel: 0 24px 80px rgba(28, 28, 32, 0.16);
-  --shadow-popover: 0 6px 20px rgba(28, 28, 32, 0.12);
-  --badge-accent-surface: #e4dafa;
-  --badge-accent-text: #483466;
-  --focus-ring: 2px solid var(--accent, #f76100);
-}
-
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-unit: 0ms;
@@ -198,7 +161,7 @@
   --motion-slow: 0ms;
 }
 
-/* Resolve these roles again at the palette scope, including select portals. */
+/* Resolve these roles again at the palette scope, including island previews. */
 :where(:root, [data-interface-theme], [data-interface-palette]) {
   --control-value: var(--accent, #f76100);
   --control-value-ink: var(--accent-ink, #101113);
@@ -206,7 +169,7 @@
   --surface-current: var(--surface-selected);
 }
 
-/* Real preview components always keep the island material, including light Settings. */
+/* Real preview components always keep the island material, inside settings. */
 .island-root {
   --surface-canvas: #101113;
   --surface-panel: #18191c;

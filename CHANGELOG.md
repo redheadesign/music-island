@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-- The playback wave briefly accelerates on bass attacks and settles between beats on loud tracks.
-- Glass settings use a neutral tint in both color schemes. Better Voice groups devices, microphone settings and effects on distinct cards.
-- Glass previews use foxes. Reduced transparency follows Windows and applies immediately when the system setting changes.
+- Glass and Classic change the top-edge island. Settings, Better Voice and Dictation use their regular dark surfaces, spacing and controls.
+- In Appearance, start with the layout editor. The two island materials, color palettes, playback background, monitor and opening delay are directly below the draggable controls.
+- Both materials use foxes in the preview backgrounds. The procedural warp and the manta variant have been removed.
+- The playback wave keeps its brightness steady while bass gently changes its motion. It recovers after track changes, seeking and pause/resume while the island stays open.
 
 ## 3.2.0 — 2026-11-18
 

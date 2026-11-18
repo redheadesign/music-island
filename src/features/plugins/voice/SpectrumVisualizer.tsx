@@ -59,15 +59,9 @@ export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true, red
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    let inputColor = ''
-    let outputColor = ''
-    const readThemeColors = () => {
-      const styles = getComputedStyle(canvas)
-      inputColor = styles.getPropertyValue('--fg-secondary').trim() || styles.color
-      outputColor = styles.getPropertyValue('--status-success').trim() || styles.color
-      drawRef.current?.(false)
-    }
-    readThemeColors()
+    const styles = getComputedStyle(canvas)
+    const inputColor = styles.getPropertyValue('--fg-secondary').trim() || styles.color
+    const outputColor = styles.getPropertyValue('--status-success').trim() || styles.color
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1
@@ -82,9 +76,6 @@ export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true, red
     resize()
     const ro = new ResizeObserver(resize)
     ro.observe(canvas)
-    const settingsRoot = canvas.closest('.settings-panel, .settings-window-root')
-    const themeObserver = settingsRoot ? new MutationObserver(readThemeColors) : null
-    themeObserver?.observe(settingsRoot!, { attributes: true, attributeFilter: ['data-color-scheme', 'data-interface-theme', 'data-interface-palette'] })
 
     drawRef.current = (smooth) => {
       const width = canvas.clientWidth
@@ -127,7 +118,6 @@ export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true, red
 
     return () => {
       ro.disconnect()
-      themeObserver?.disconnect()
       drawRef.current = null
     }
   }, [])

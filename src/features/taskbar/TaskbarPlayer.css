@@ -96,9 +96,3 @@
 .taskbar-player .taskbar-player__button:hover:not(:disabled) { color: #ebebef; background: rgba(255,255,255,.06); }
 .taskbar-player .taskbar-player__button[aria-pressed='true'] { color: #dcb5a1; }
 .taskbar-player__active-dot { position: absolute; bottom: 2px; width: 2px; height: 2px; border-radius: var(--radius-round); background: currentColor; }
-
-:is([data-interface-theme='glass'] .taskbar-player, .taskbar-player[data-interface-theme='glass']) {
-  background-color: var(--glass-island-fill);
-  background-image: var(--glass-sheen);
-  box-shadow: var(--glass-panel-rim);
-}

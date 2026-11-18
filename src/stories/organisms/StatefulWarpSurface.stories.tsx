@@ -4,19 +4,16 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { StatefulWarpSurface } from '../../shared/ui/StatefulWarpSurface'
 import { WarpSurfaceProvider } from '../../shared/ui/WarpSurface'
 import { Button } from '../../shared/ui/SettingsControls'
-import type { InterfaceScene } from '../../shared/lib/interfaceTheme'
 
-function MaterialState({ light = false, reducedMotion = false, scene, sceneHeight = 256 }: {
-  light?: boolean
+function MaterialState({ initiallyRunning = true, reducedMotion = false, sceneHeight = 256 }: {
+  initiallyRunning?: boolean
   reducedMotion?: boolean
-  scene?: InterfaceScene
   sceneHeight?: number
 }) {
-  const [running, setRunning] = useState(true)
-  const colorScheme = light ? 'light' : 'dark'
-  return <div className="settings-panel" data-color-scheme={colorScheme} data-interface-theme={scene ? 'glass' : 'classic'} data-reduced-motion={reducedMotion || undefined} style={{ padding: 24, background: 'var(--surface-canvas)' }}>
+  const [running, setRunning] = useState(initiallyRunning)
+  return <div className="settings-panel" data-reduced-motion={reducedMotion || undefined} style={{ padding: 24, background: 'var(--surface-canvas)' }}>
     <Button aria-pressed={running} onClick={() => setRunning(value => !value)}>Включено</Button>
-    <WarpSurfaceProvider scene={scene} colorScheme={colorScheme}><div style={{ position: 'relative', height: sceneHeight, marginTop: 16, borderRadius: 24, overflow: 'hidden' }}>
+    <WarpSurfaceProvider><div style={{ position: 'relative', height: sceneHeight, marginTop: 16, borderRadius: 24, overflow: 'hidden' }}>
       <StatefulWarpSurface running={running} reducedMotion={reducedMotion} />
     </div></WarpSurfaceProvider>
   </div>
@@ -40,31 +37,38 @@ export const Toggle: Story = { name: 'Полный цвет → приглуше
   await expect(speed()).toBe('1.1625')
   await expect(canvasElement.querySelector('canvas')).toBe(renderer)
 } }
-export const Light: Story = { ...Toggle, name: 'Светлая тема · те же состояния', args: { light: true } }
+export const Light: Story = {
+  name: 'Покой · приглушённые лисы',
+  args: { initiallyRunning: false },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => paintedScene(canvasElement))
+    await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0.225')
+  },
+}
 export const ReducedMotion: Story = { name: 'Без движения · цвет сохранён', args: { reducedMotion: true }, play: async ({ canvasElement }) => {
   await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0')
   await expect(getComputedStyle(canvasElement.querySelector('.stateful-warp-surface__shader')!).opacity).toBe('1')
 } }
-export const GlassFoxMoving: Story = { name: 'Стекло · лисы в движении', args: { scene: 'fox' }, play: async ({ canvasElement }) => {
+export const GlassFoxMoving: Story = { name: 'Лисы в движении', play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
-  const renderer = await waitFor(() => paintedScene(canvasElement, 'fox'))
+  const renderer = await waitFor(() => paintedScene(canvasElement))
   await userEvent.click(canvas.getByRole('button', { name: 'Включено' }))
   await expect(canvasElement.querySelector('[data-ascii-scene="fox"]')).toBe(renderer)
   await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0.225')
 } }
-export const GlassFox: Story = { name: 'Стекло · лисы без движения', args: { scene: 'fox', light: true, reducedMotion: true }, play: async ({ canvasElement }) => {
-  await waitFor(() => paintedScene(canvasElement, 'fox'))
+export const GlassFox: Story = { name: 'Статичный кадр с лисами', args: { reducedMotion: true }, play: async ({ canvasElement }) => {
+  await waitFor(() => paintedScene(canvasElement))
   await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0')
 } }
 export const GlassFoxCompact: Story = {
-  name: 'Стекло · лисы в компактном превью',
-  args: { scene: 'fox', sceneHeight: 160 },
+  name: 'Лисы в компактном превью',
+  args: { sceneHeight: 160 },
   parameters: { workshop: { width: 416 } },
-  play: async ({ canvasElement }) => { await waitFor(() => paintedScene(canvasElement, 'fox')) },
+  play: async ({ canvasElement }) => { await waitFor(() => paintedScene(canvasElement)) },
 }
 
-function paintedScene(canvasElement: HTMLElement, scene: InterfaceScene) {
-  const canvas = canvasElement.querySelector<HTMLCanvasElement>(`canvas[data-ascii-scene="${scene}"]`)
+function paintedScene(canvasElement: HTMLElement) {
+  const canvas = canvasElement.querySelector<HTMLCanvasElement>('canvas[data-ascii-scene="fox"]')
   const pixels = canvas?.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data
   expect(pixels?.some((value, index) => index % 4 === 3 && value > 0)).toBe(true)
   return canvas

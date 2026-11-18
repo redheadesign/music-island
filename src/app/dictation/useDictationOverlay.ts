@@ -5,8 +5,6 @@ import { getConfig, onConfigChanged } from '../tauriApi'
 import type { DictationStatus } from '../../shared/lib/dictationTypes'
 import type { AppConfig } from '../../shared/lib/types'
 import { defaultDictationAppearance, getDictationAppearance } from '../../shared/lib/dictationAppearance'
-import { applyAccentTheme } from '../../shared/lib/accentTheme'
-import { getInterfaceTheme } from '../../shared/lib/uiPrefs'
 export function useDictationOverlay() {
   const [status, setStatus] = useState<DictationStatus>({ revision: 0, operationId: 0, phase: 'idle', ready: false, text: '', error: null })
   const [visible, setVisible] = useState(false)
@@ -15,7 +13,7 @@ export function useDictationOverlay() {
   const [levels, setLevels] = useState<number[]>([])
   const [text, setText] = useState({ committed: '', tentative: '' })
   const [preferences, setPreferences] = useState({
-    locale: 'ru' as 'ru' | 'en', reducedMotion: false, appearance: defaultDictationAppearance, interfaceTheme: getInterfaceTheme(undefined),
+    locale: 'ru' as 'ru' | 'en', reducedMotion: false, appearance: defaultDictationAppearance,
   })
   useEffect(() => {
     let alive = true
@@ -43,10 +41,9 @@ export function useDictationOverlay() {
     let changed = false
     const applyPreferences = (config: AppConfig) => {
       if (!alive) return
-      applyAccentTheme(config.appearance.accentColor)
       setPreferences({
         locale: config.appearance.locale, reducedMotion: config.appearance.reducedMotion,
-        appearance: getDictationAppearance(config), interfaceTheme: getInterfaceTheme(config),
+        appearance: getDictationAppearance(config),
       })
     }
     // Subscribe before reading the store, so a theme changed during window startup

@@ -1,7 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
-import type { InterfacePaletteId } from '../../shared/lib/interfacePalette'
-import { DEFAULT_INTERFACE_THEME, type InterfaceScene, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
-import type { SettingsColorScheme } from '../../shared/lib/uiPrefs'
+import type { ReactNode } from 'react'
 import { Minus, X } from '../../shared/ui/SettingsIcons'
 import { createTranslator } from '../../shared/i18n/messages'
 import type { Locale } from '../../shared/lib/types'
@@ -17,28 +14,18 @@ export function SettingsReadError({ locale, onRetry }: { locale: Locale; onRetry
 }
 
 /** The native window and Storybook use exactly the same viewport/scroll tree. */
-export function SettingsWindow({ children, locale = 'ru', colorScheme = 'dark', interfaceTheme = DEFAULT_INTERFACE_THEME, interfaceScene, interfacePalette, paletteStyle, reducedTransparency, reducedMotion, onMinimize, onClose }: {
+export function SettingsWindow({ children, locale = 'ru', reducedMotion, onMinimize, onClose }: {
   children: ReactNode
   locale?: 'ru' | 'en'
-  colorScheme?: SettingsColorScheme
-  interfaceTheme?: InterfaceThemeId
-  interfaceScene?: InterfaceScene
-  interfacePalette?: InterfacePaletteId
-  paletteStyle?: CSSProperties
-  reducedTransparency?: boolean
   reducedMotion?: boolean
   onMinimize?: () => void
   onClose?: () => void
 }) {
   return <main
     className="settings-window-root"
-    data-color-scheme={colorScheme}
-    data-interface-theme={interfaceTheme}
-    data-interface-scene={interfaceScene}
-    data-interface-palette={interfacePalette}
-    data-reduced-transparency={reducedTransparency || undefined}
+    data-color-scheme="dark"
+    data-interface-theme="classic"
     data-reduced-motion={reducedMotion || undefined}
-    style={paletteStyle}
   >
     <header className="settings-titlebar" data-tauri-drag-region>
       <strong className="settings-titlebar-drag">{locale === 'ru' ? 'Настройки' : 'Settings'}</strong>

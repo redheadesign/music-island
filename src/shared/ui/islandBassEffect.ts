@@ -18,13 +18,19 @@ export function localHeartDuration(button: HTMLElement, now = performance.now())
 /** Drive the two wave fronts and remember regular attacks for the local heart gesture. */
 export function createIslandBassEffect(layer: HTMLElement) {
   let previous = 0
+  let drive = 0
+  let lastSampleAt: number | undefined
+  let appliedDrive = 0
   let fronts: Animation[] = []
   const card = layer.closest<HTMLElement>('.island-card')
   let lastInterval = 0
   let lastBeatAt = -Infinity
 
   function clear() {
-    layer.style.removeProperty('--island-bass')
+    layer.style.removeProperty('--island-wave-drive')
+    drive = 0
+    appliedDrive = 0
+    lastSampleAt = undefined
     previous = 0
     for (const front of fronts) front.playbackRate = 1
     fronts = []
@@ -38,21 +44,30 @@ export function createIslandBassEffect(layer: HTMLElement) {
       clear()
       return
     }
-    const rise = level - previous
-    if (rise === 0) return
-    if (level > 0) layer.style.setProperty('--island-bass', String(level))
-    else layer.style.removeProperty('--island-bass')
-    // Change playback rate without restarting or shrinking the outward-moving fronts.
-    // System motion preferences and the pause fade own the CSS animations' lifetimes.
-    if (!fronts.length && level > 0) {
-      fronts = (layer.getAnimations?.({ subtree: true }) ?? []).filter(
-        animation => 'animationName' in animation && animation.animationName === 'island-glass-wave-out',
-      )
+    const now = performance.now()
+    const seconds = lastSampleAt === undefined ? .05 : Math.min(.1, Math.max(0, now - lastSampleAt) / 1000)
+    lastSampleAt = now
+    // Butterchurn AudioLevels (MIT): use different attack and release rates,
+    // corrected for elapsed time rather than assuming a fixed frame cadence.
+    const retention = (level > drive ? .85 : .93) ** (30 * seconds)
+    drive = drive * retention + level * (1 - retention)
+    const next = Math.round(drive * 500) / 500
+    const needsFronts = next > 0 && (!fronts.length || fronts.some(front => front.playState === 'idle'))
+    if (next !== appliedDrive || needsFronts) {
+      if (next > 0) layer.style.setProperty('--island-wave-drive', String(next))
+      else layer.style.removeProperty('--island-wave-drive')
+      if (needsFronts) {
+        fronts = (layer.getAnimations?.({ subtree: true }) ?? []).filter(
+          animation => 'animationName' in animation && animation.animationName === 'island-glass-wave-out',
+        )
+      }
+      // Keep the running phase of each ring, including after CSS recreated its pseudo-elements.
+      for (const front of fronts) front.playbackRate = 1 + next * .14
+      appliedDrive = next
     }
-    for (const front of fronts) front.playbackRate = 1 + level * 3
+    const rise = level - previous
     previous = level
     if (level < BEAT_TRIGGER || rise < MIN_RISE) return
-    const now = performance.now()
     if (now - lastBeatAt < BEAT_COOLDOWN_MS) return
     const interval = now - lastBeatAt
     if (card) {

@@ -35,7 +35,7 @@ npm run storybook
 - [Отступы и размеры](http://127.0.0.1:6006/?path=/story/foundations--spacing): шкала `--space-1` … `--space-9` — 4, 8, 12, 16, 20, 24, 32, 40 и 48 px; скругления и размеры управления.
 - [Материалы и глубина](http://127.0.0.1:6006/?path=/story/foundations--surfaces): матовые панели для содержания и один слой стекла для плавающей навигации.
 - [Движение и обратная связь](http://127.0.0.1:6006/?path=/story/foundations--motion): отклик 120 мс, переключение 200 мс, появление 320 мс; все длительности обнуляются при `prefers-reduced-motion`.
-- Контраст и доступность: расчёт по фактическим цветам [тёмной](http://127.0.0.1:6006/?path=/story/foundations--accessibility) и [светлой](http://127.0.0.1:6006/?path=/story/foundations--accessibility-light) панелей, проверка фокуса и управления с клавиатуры.
+- Контраст и доступность: расчёт по фактическим цветам [тёмной панели](http://127.0.0.1:6006/?path=/story/foundations--accessibility), проверка фокуса и управления с клавиатуры.
 - [Референсы и решения](http://127.0.0.1:6006/?path=/story/foundations-references--curated): рекомендации Apple, Viewport и выбранные кейсы Dprofile с пояснением примененных приемов. Основания редизайна описаны в [DESIGN.md](DESIGN.md).
 
 В настройках используйте семантические переменные вместо новых оттенков и случайных размеров. Стандартный внутренний отступ панели — `--space-6`, строки — `--space-5`, расстояние между разделами — `--space-7`. Это шкала Music Island, выбранная для данного интерфейса; она не выдается за обязательные размеры Apple HIG.
@@ -178,7 +178,7 @@ export details: [MOTION_PRODUCTION.md](MOTION_PRODUCTION.md).
 - `Screens/Dictation/MicrophoneDiagnostic` exercises the microphone permission
   status and expandable technical details using a typed local mock.
 - `Screens/Dictation/GeneralLight` shows the production dictation overlay on
-  Paper Warp, its enable control and separate shortcuts card. The preview is
+  the shared fox backdrop, its enable control and separate shortcuts card. The preview is
   always compact; General demonstrates recording/transcription/done in a loop,
   while GeneralLight uses reduced motion. No preview style selector is shown.
 - `Screens/Dictation/ImportPreview` opens Handy import through the models menu;
@@ -194,10 +194,9 @@ export details: [MOTION_PRODUCTION.md](MOTION_PRODUCTION.md).
   current value at the edge or corner during hover, focus and resize.
 - `Organisms/StatefulWarpSurface` covers full-color enabled, dimmed disabled and
   re-enabled surfaces in both themes, plus reduced motion. Its interaction checks
-  assert opacity 1/.14, speed 1.1625/.225 and persistent canvas identity. The shared
-  palette comes from `Screens/Release3/Dictation` (the README dictation visual).
+  assert opacity 1/.14, speed 1.1625/.225, real painted foxes and persistent canvas identity.
 - `Organisms/WarpNavigation/RemountBaseline` and `Persistent` compare 12 transitions
-  with the same shader and preview sizes. Run both in the same browser without
+  with the same fox field and preview sizes. Run both in the same browser without
   other work. Their two-frame timing is a development diagnostic, not a GPU or
   native Windows benchmark. The hide button checks suspension without disposal.
 

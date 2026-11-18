@@ -201,8 +201,8 @@ pub enum MediaProtocol {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Theme {
+    #[serde(alias = "soft-light")]
     LiquidGlassDark,
-    SoftLight,
     RuFlowInspired,
 }
 
@@ -239,7 +239,7 @@ impl AppConfig {
         let old_bass = ui.remove("playbackReactiveWave");
         let old_visual = ui.remove("playbackVisual");
         changed |= old_bass.is_some() || old_visual.is_some();
-        for retired in ["reducedTransparency", "interfaceScenes"] {
+        for retired in ["reducedTransparency", "interfaceScenes", "settingsColorScheme"] {
             changed |= ui.remove(retired).is_some();
         }
         if ui.get(PLAYBACK_WAVE_KEY).and_then(Value::as_bool).is_none() {
@@ -519,6 +519,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn legacy_light_island_profiles_load_in_dark() {
+        let theme: Theme = serde_json::from_value(serde_json::json!("soft-light")).unwrap();
+        assert_eq!(serde_json::to_value(theme).unwrap(), "liquid-glass-dark");
+    }
+
+    #[test]
     fn retired_glass_controls_clear_on_an_already_migrated_profile() {
         for theme in ["classic", "glass"] {
             let mut config = AppConfig::default();
@@ -637,7 +643,7 @@ mod tests {
         assert_eq!(ui[INTERFACE_THEME_KEY], "glass");
         assert!(ui.get("interfaceScenes").is_none());
         assert_eq!(ui["interfacePalette"], "ocean");
-        assert_eq!(ui["settingsColorScheme"], "light");
+        assert!(ui.get("settingsColorScheme").is_none());
         assert!(ui.get("reducedTransparency").is_none());
         assert_eq!(migrated.behavior.hover_delay_ms, 620);
 

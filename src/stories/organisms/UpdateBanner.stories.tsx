@@ -83,7 +83,7 @@ export const GlassError: Story = {
   ...Error,
   name: 'Стекло · не удалось загрузить обновление',
   globals: { interfaceTheme: 'glass' },
-  decorators: [(Story) => <div className="auxiliary-ui" data-interface-theme="glass" data-color-scheme="light"><Story /></div>],
+  decorators: [(Story) => <div className="auxiliary-ui"><Story /></div>],
 }
 export const Island: Story = {
   name: 'Баннер на островке',

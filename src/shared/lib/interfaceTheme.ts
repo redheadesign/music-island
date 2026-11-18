@@ -1,6 +1,3 @@
-export const INTERFACE_SCENES = ['fox', 'manta'] as const
-export type InterfaceScene = typeof INTERFACE_SCENES[number]
-
 type ThemeRole = `--${'surface' | 'fg' | 'control' | 'font' | 'space' | 'radius' | 'text' | 'leading' | 'weight' | 'shadow' | 'status' | 'focus' | 'hit' | 'motion' | 'glass'}-${string}`
 export type ThemeRoles = Partial<Record<ThemeRole, string>>
 
@@ -8,9 +5,7 @@ export type ThemeDefinition = {
   label: { ru: string; en: string }
   material: 'classic' | 'glass'
   roles?: ThemeRoles
-  schemes?: Partial<Record<'dark' | 'light', ThemeRoles>>
   playbackWave?: boolean
-  scene?: InterfaceScene
 }
 
 export const INTERFACE_THEMES = {
@@ -23,7 +18,6 @@ export const INTERFACE_THEMES = {
       '--radius-unit': '6px',
     },
     playbackWave: true,
-    scene: 'fox',
   },
 } satisfies Record<string, ThemeDefinition>
 

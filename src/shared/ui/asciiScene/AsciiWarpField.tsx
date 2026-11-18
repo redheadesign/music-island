@@ -1,13 +1,10 @@
-import { useEffect, useRef } from 'react'
-import type { InterfaceScene } from '../../lib/interfaceTheme'
-import { paintAnimalScene } from './animalCanvas'
+import { useLayoutEffect, useRef } from 'react'
+import { paintFoxScene } from './animalCanvas'
 
 const FRAME_INTERVAL_MS = 1000 / 24
 const MAX_SCENE_PIXELS = 350_000
 
 interface AsciiWarpFieldProps {
-  scene: InterfaceScene
-  colorScheme: 'light' | 'dark'
   speed: number
   visible: boolean
   frame?: number
@@ -15,11 +12,11 @@ interface AsciiWarpFieldProps {
 }
 
 /** Shares WarpMaterial's visibility policy. The clock survives moving between preview slots. */
-export default function AsciiWarpField({ scene, colorScheme, speed, visible, frame, maxPixelCount }: AsciiWarpFieldProps) {
+export default function AsciiWarpField({ speed, visible, frame, maxPixelCount }: AsciiWarpFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const elapsed = useRef(0)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !visible) return
     const context = canvas.getContext('2d')
@@ -28,8 +25,8 @@ export default function AsciiWarpField({ scene, colorScheme, speed, visible, fra
     let width = 0
     let height = 0
     const draw = () => {
-      if (width && height) paintAnimalScene(context, {
-        sceneId: scene, appearance: colorScheme, time: (frame ?? elapsed.current) / 1000, width, height,
+      if (width && height) paintFoxScene(context, {
+        time: (frame ?? elapsed.current) / 1000, width, height,
       })
     }
     const resize = () => {
@@ -64,7 +61,7 @@ export default function AsciiWarpField({ scene, colorScheme, speed, visible, fra
       observer?.disconnect()
       window.removeEventListener('resize', resize)
     }
-  }, [scene, colorScheme, speed, visible, frame, maxPixelCount])
+  }, [speed, visible, frame, maxPixelCount])
 
-  return <canvas ref={canvasRef} className="warp-material__ascii" data-ascii-scene={scene} aria-hidden="true" />
+  return <canvas ref={canvasRef} className="warp-material__ascii" data-ascii-scene="fox" aria-hidden="true" />
 }

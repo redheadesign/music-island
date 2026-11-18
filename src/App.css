@@ -1,12 +1,5 @@
 .island-root {
   --island-player-width: calc(500px * var(--island-width, 1));
-  --accent: #f76100;
-  --accent-soft: #ff9a55;
-  --accent-strong: #c74e00;
-  --accent-rgb: 247, 97, 0;
-  --accent-glow: rgba(247, 97, 0, 0.34);
-  --accent-muted: rgba(247, 97, 0, 0.18);
-  --accent-ink: #1a1410;
   --panel-bg: rgba(10, 11, 15, 0.58);
   --text-primary: rgba(255, 255, 255, 0.96);
   --text-secondary: rgba(238, 243, 255, 0.62);
@@ -37,16 +30,6 @@
   background: rgba(12, 14, 22, 0.92);
   color: var(--text-secondary);
   font-size: var(--text-label);
-}
-
-.theme-soft-light {
-  --panel-bg: rgba(250, 251, 255, 0.8);
-  --panel-border: rgba(30, 42, 68, 0.12);
-  --text-primary: rgba(24, 31, 45, 0.96);
-  --text-secondary: rgba(47, 58, 79, 0.66);
-  --text-muted: rgba(47, 58, 79, 0.42);
-  --control-bg: rgba(37, 56, 92, 0.08);
-  --control-bg-hover: rgba(37, 56, 92, 0.14);
 }
 
 .theme-ru-flow-inspired {

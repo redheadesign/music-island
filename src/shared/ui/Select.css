@@ -29,34 +29,8 @@
   from { opacity: .7; transform: translateY(var(--select-enter-offset)); }
 }
 
-.dark-select-menu[data-interface-theme='glass'] {
-  border-radius: var(--glass-panel-radius);
-  background-color: var(--surface-glass);
-  background-image: var(--glass-sheen);
-  backdrop-filter: var(--glass-filter);
-  box-shadow: var(--glass-control-rim), var(--shadow-popover);
-}
-.dark-select-menu[data-interface-theme='glass'] .dark-select-option--active {
-  background-color: var(--glass-selection-fill);
-  color: var(--glass-selection-ink);
-  background-image: var(--glass-selection-sheen);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .dark-select-menu[data-interface-theme='glass'][data-enter] {
-    animation: glass-select-expand var(--motion-normal) var(--ease-enter);
-  }
-  .dark-select-menu[data-interface-theme='glass'][data-enter='below'] { transform-origin: center top; }
-  .dark-select-menu[data-interface-theme='glass'][data-enter='above'] { transform-origin: center bottom; }
-}
-
-@keyframes glass-select-expand {
-  from { opacity: .6; transform: translateY(var(--select-enter-offset)) scale(.96); }
-  to { opacity: 1; transform: none; }
-}
-
 @media (forced-colors: active) {
-  .dark-select-menu[data-interface-theme='glass'] {
+  .dark-select-menu {
     border: 1px solid CanvasText;
     background: Canvas;
     backdrop-filter: none;

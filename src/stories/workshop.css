@@ -101,6 +101,11 @@ a {
 .workshop .island-root {
   min-height: 260px;
 }
+.workshop-content.island-root {
+  min-height: 0;
+  height: auto;
+  pointer-events: auto;
+}
 .sample-row {
   display: flex;
   align-items: center;

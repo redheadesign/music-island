@@ -28,14 +28,8 @@ export function interfaceThemeCss(themes: Record<string, ThemeDefinition> = INTE
             }
             marker.before(rule)
           }
-          // Match the specificity of the two-attribute light-scheme material.
           const scope = selector(id) + '[data-interface-theme]'
           write(scope, { ...base.roles, ...theme.roles })
-          for (const scheme of ['dark', 'light'] as const) {
-            // Playback windows have no scheme attribute and keep the dark material.
-            const schemeSelector = scheme === 'dark' ? ":not([data-color-scheme='light'])" : "[data-color-scheme='light']"
-            write(selector(id) + schemeSelector, { ...base.schemes?.[scheme], ...theme.schemes?.[scheme] })
-          }
         }
         marker.remove()
       })

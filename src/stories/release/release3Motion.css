@@ -54,8 +54,8 @@
 .motion-theme-layer { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
 .motion-theme-comparison .motion-settings { transform: none; border-radius: 0; }
 .motion-theme-label { position: absolute; top: -50px; padding: 8px 16px; border-radius: 24px; font-size: 17px; font-weight: 600; }
-.motion-theme-label--light { left: 24px; color: #272727; background: #f5f5f5; }
-.motion-theme-label--dark { right: 24px; color: #f5f5f5; background: #272727; }
+.motion-theme-label--glass { left: 24px; color: #272727; background: #f5f5f5; }
+.motion-theme-label--classic { right: 24px; color: #f5f5f5; background: #272727; }
 .motion-theme-divider { position: absolute; top: 0; bottom: 0; width: 2px; background: #b6a2eb; transform: translateX(-50%); }
 .motion-theme-divider > span { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; background: #eee7ff; color: #372558; box-shadow: 0 2px 12px #0003; }
 .motion-theme-pointer { position: absolute; left: 10px; top: calc(50% + 12px); }

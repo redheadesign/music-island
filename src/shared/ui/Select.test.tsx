@@ -24,22 +24,20 @@ it('keeps the trigger typography when its menu is portaled outside the page',asy
   } finally { await act(async()=>root.unmount()); container.remove() }
 })
 
-it('keeps the Glass palette and accessibility preferences in a detached menu', async () => {
+it('respects reduced motion in a detached menu', async () => {
   const container = document.createElement('div')
   document.body.append(container)
   const root = createRoot(container)
   try {
     await act(async () => root.render(
-      <section data-color-scheme="light" data-interface-theme="glass" data-interface-scene="fox" data-interface-palette="ocean" data-reduced-transparency="true" data-reduced-motion="true">
+      <section data-reduced-motion="true">
         <Select value="usb" options={[{ value: 'usb', label: 'USB' }]} onChange={vi.fn()} ariaLabel="Device" />
       </section>,
     ))
     const trigger = container.querySelector('button')!
-    trigger.style.setProperty('--palette-primary', '#2672af')
     await act(async () => trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })))
     const menu = document.querySelector<HTMLElement>('[role="listbox"]')!
-    expect(menu.dataset).toMatchObject({ colorScheme: 'light', interfaceTheme: 'glass', interfaceScene: 'fox', interfacePalette: 'ocean', reducedTransparency: 'true' })
-    expect(menu.style.getPropertyValue('--palette-primary')).toBe('#2672af')
+    expect(menu.dataset.reducedMotion).toBe('true')
     expect(menu.hasAttribute('data-enter')).toBe(false)
   } finally {
     await act(async () => root.unmount())

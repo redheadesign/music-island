@@ -7,9 +7,9 @@ import { WarpMaterial } from '../../shared/ui/WarpMaterial'
 import { ArrowLeft, ArrowRight, Mouse } from '../../shared/ui/SettingsIcons'
 import { IslandLayoutEditor } from '../settings/IslandLayoutEditor'
 import { MusicModule } from '../music/MusicModule'
-import { APPEARANCE_PREVIEW_ARTWORK_THEME, APPEARANCE_PREVIEW_MEDIA } from '../settings/previewMedia'
+import { getPreviewArtworkStyle, APPEARANCE_PREVIEW_MEDIA } from '../settings/previewMedia'
 import { DictationOverlayView } from '../dictation/DictationOverlay'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getPlaybackWaveEnabled, usesGlassMaterial, getSettingsColorScheme } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, getPlaybackWaveEnabled, usesGlassMaterial } from '../../shared/lib/uiPrefs'
 import type { AppConfig } from '../../shared/lib/types'
 import { AppLogo } from '../../shared/ui/AppLogo'
 import './Onboarding.css'
@@ -34,18 +34,15 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
   const systemReduced = useReducedMotion()
   const reduced = Boolean(config.appearance.reducedMotion || systemReduced)
   const reducedTransparency = useSystemReducedTransparency()
-  const colorScheme = getSettingsColorScheme(config)
   const interfaceTheme = getInterfaceTheme(config)
-  const scene = getInterfaceScene(config)
   const playbackWave = getPlaybackWaveEnabled(demoConfig)
   const material = {
     'data-interface-theme': interfaceTheme,
-    'data-interface-scene': scene,
     'data-interface-palette': getInterfacePalette(config),
     'data-reduced-transparency': reducedTransparency || undefined,
   }
   const glass = usesGlassMaterial(config)
-  const islandStyle = glass ? getInterfacePaletteStyle(config, 'dark') : undefined
+  const islandStyle = getInterfacePaletteStyle(config)
   const autostart = config.behavior.launchAtStartup
   const titles = ru ? ['Музыка', 'Настройка островка', 'Диктовка', 'Запуск вместе с Windows'] : ['Music', 'Customize the island', 'Dictation', 'Launch with Windows']
   const [binding, activation] = dictationShortcut ?? ['Ctrl+Space', 'hold_or_toggle']
@@ -63,19 +60,19 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
     setBusy(true); setError(false)
     try { await onFinish(enableAutostart) } catch { setError(true); setBusy(false) }
   }
-  return <main className="onboarding" {...material} data-color-scheme={colorScheme} data-reduced-motion={reduced || undefined} style={getInterfacePaletteStyle(config, colorScheme) as CSSProperties}>
+  return <main className="onboarding" data-color-scheme="dark" data-interface-theme="classic" data-reduced-motion={reduced || undefined}>
     <section className="onboarding__card" aria-label={ru ? 'Знакомство с Music Island' : 'Meet Music Island'} aria-busy={busy}>
       <header className="onboarding__header"><span><AppLogo size={24} />Music Island</span>{step < 3 ? <Button variant="ghost" size="compact" disabled={busy} onClick={() => setStep(3)}>{ru ? 'Пропустить' : 'Skip'}</Button> : <span />}</header>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={step} className="onboarding__page" initial={{ opacity: 0, y: reduced ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .18 }}>
           <div className={`onboarding__visual onboarding__visual--${step}`}>
-            {!scene || step < 2 ? <WarpMaterial variant="onboarding" scene={scene} colorScheme={colorScheme} reducedMotion={reduced} /> : null}
+            {step < 2 ? <WarpMaterial reducedMotion={reduced} /> : null}
             {step === 0 ? <>
               <div
                 className="onboarding__music island-root"
                 {...material}
-                data-cover-art={glass || undefined}
-                style={glass ? { ...islandStyle, ...APPEARANCE_PREVIEW_ARTWORK_THEME } as CSSProperties : undefined}
+                data-cover-art="true"
+                style={{ ...islandStyle, ...getPreviewArtworkStyle(glass) } as CSSProperties}
               >
                 <IslandFeedback className="island-card island-surface" particles={glass} playbackWave={playbackWave} playbackMotion={playing}>
                   <MusicModule media={{ ...APPEARANCE_PREVIEW_MEDIA, playbackStatus: playing ? 'playing' : 'paused' }} progressMs={APPEARANCE_PREVIEW_MEDIA.positionMs} progressPercent={34} density="balanced" showArtwork showTitle showArtist showProgress showSource={false} showPreviousNext locale={locale} reducedMotion={reduced} onCommand={command => setPlaying(command === 'play-pause' ? !playing : true)} />
@@ -83,7 +80,7 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
               </div>
               <Mouse className="onboarding__mouse" size={27} aria-hidden="true" />
             </> : null}
-            {step === 1 ? <div className="onboarding__layout settings-panel" {...material} style={islandStyle as CSSProperties | undefined}><IslandLayoutEditor config={demoConfig} onChange={setDemoConfig} active={false} showHeading={false} /></div> : null}
+            {step === 1 ? <div className="onboarding__layout settings-panel"><IslandLayoutEditor config={demoConfig} onChange={setDemoConfig} active={false} showHeading={false} /></div> : null}
             {step === 2 ? <div className="onboarding__dictation"><div className="onboarding__note"><span>{ru ? 'Новая заметка' : 'New note'}</span><p>{ru ? 'Встреча в четверг в десять.' : 'Meeting on Thursday at ten.'}</p></div><div inert aria-hidden="true"><DictationOverlayView status={{ revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null, shortcutActivation: activation === 'push_to_talk' || activation === 'toggle' ? activation : 'hold_or_toggle' }} visible levels={[.2,.6,.4,.8,.9,.5,.35,.65]} text={{ committed: '', tentative: '' }} locale={locale} reducedMotion={reduced} cancel={async () => {}} copy={async () => {}} /></div>{binding ? <kbd>{binding.split('+').join(' + ')}</kbd> : null}</div> : null}
             {step === 3 ? <div className="onboarding__startup"><AppLogo size={112} alt="Music Island" /></div> : null}
           </div>

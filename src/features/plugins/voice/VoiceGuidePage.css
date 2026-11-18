@@ -93,10 +93,10 @@
   display: grid;
   gap: var(--space-2);
   margin: var(--space-1) 0 0;
-  padding: var(--space-4) var(--settings-group-gutter, var(--space-4));
+  padding: var(--space-4);
   border: 0;
   border-radius: var(--radius-md);
-  background: var(--settings-group-fill, var(--surface-panel));
+  background: var(--surface-panel);
 }
 
 .voice-setup-guide__device dt {
@@ -190,22 +190,6 @@
 .voice-setup-guide__disclosure summary svg { flex-shrink: 0; color: var(--fg-muted); }
 .voice-setup-guide__disclosure[open] summary svg { transform: rotate(180deg); }
 .voice-setup-guide__disclosure p { padding-bottom: var(--space-4); }
-
-[data-interface-theme='glass'] .voice-setup-guide :is(.voice-setup-guide__steps, .voice-setup-guide__help) {
-  padding: var(--space-5);
-  border-radius: var(--radius-lg);
-  background: var(--surface-panel);
-}
-[data-interface-theme='glass'] .voice-setup-guide__step:first-child { padding-top: 0; }
-[data-interface-theme='glass'] .voice-setup-guide__step:last-child { padding-bottom: 0; }
-[data-interface-theme='glass'] .voice-setup-guide__step .voice-setup-guide__device {
-  background: transparent;
-  padding-inline: 0;
-}
-[data-interface-theme='glass'] .voice-setup-guide .voice-setup-guide__return {
-  background: var(--control-value);
-  color: var(--control-value-ink);
-}
 
 @container (max-width: 420px) {
   .voice-setup-guide__intro h1 { font-size: calc(var(--type-unit) * 22); }

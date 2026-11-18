@@ -1,13 +1,11 @@
 import type { AppConfig } from './types'
 import type { TaskbarLayoutV1 } from './taskbarLayout'
 import type { DictationAppearance } from './dictationAppearance'
-import { getInterfaceThemeDefinition, normalizeInterfaceTheme, type InterfaceScene, type InterfaceThemeId } from './interfaceTheme'
+import { getInterfaceThemeDefinition, normalizeInterfaceTheme, type InterfaceThemeId } from './interfaceTheme'
 import { DEFAULT_ACCENT } from './accentTheme'
 import { buildInterfacePaletteStyle, normalizeInterfacePalette, type InterfacePaletteId } from './interfacePalette'
 
 export const UI_PREFS_KEY = 'ui'
-
-export type SettingsColorScheme = 'dark' | 'light'
 
 export interface UiPrefs {
   /** Recorder artwork only; native capture and overlay visibility remain independent. */
@@ -24,8 +22,6 @@ export interface UiPrefs {
   localServersEnabled?: boolean
   /** Visual size of local server rows, as a percentage. */
   localServersWidgetScale?: number
-  /** Explicit Settings window color scheme. Missing values keep the established dark theme. */
-  settingsColorScheme?: SettingsColorScheme
   interfaceTheme?: InterfaceThemeId
   interfacePalette?: InterfacePaletteId
   playbackWaveEnabled?: boolean
@@ -52,14 +48,6 @@ export interface UiPrefs {
   hoverCoachCompleted?: boolean
 }
 
-export function normalizeSettingsColorScheme(value: unknown): SettingsColorScheme {
-  return value === 'light' ? 'light' : 'dark'
-}
-
-export function getSettingsColorScheme(config: AppConfig | null | undefined): SettingsColorScheme {
-  return normalizeSettingsColorScheme(getUiPrefs(config).settingsColorScheme)
-}
-
 export function getInterfaceTheme(config: AppConfig | null | undefined): InterfaceThemeId {
   return normalizeInterfaceTheme(getUiPrefs(config).interfaceTheme)
 }
@@ -68,12 +56,8 @@ export function getInterfacePalette(config: AppConfig | null | undefined): Inter
   return normalizeInterfacePalette(getUiPrefs(config).interfacePalette)
 }
 
-export function getInterfacePaletteStyle(config: AppConfig | null | undefined, scheme: SettingsColorScheme) {
-  return buildInterfacePaletteStyle(getInterfacePalette(config), scheme, config?.appearance?.accentColor ?? DEFAULT_ACCENT)
-}
-
-export function getInterfaceScene(config: AppConfig | null | undefined): InterfaceScene | undefined {
-  return getInterfaceThemeDefinition(getInterfaceTheme(config)).scene
+export function getInterfacePaletteStyle(config: AppConfig | null | undefined) {
+  return buildInterfacePaletteStyle(getInterfacePalette(config), config?.appearance?.accentColor ?? DEFAULT_ACCENT)
 }
 
 export function usesGlassMaterial(config: AppConfig | null | undefined): boolean {

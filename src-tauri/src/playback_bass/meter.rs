@@ -77,7 +77,7 @@ impl BassMeter {
         self.samples += frames * 2;
     }
 
-    pub(super) fn reset_filters(&mut self) {
+    fn reset_filters(&mut self) {
         for channel in &mut self.channels {
             channel.low = 0.0;
             channel.high = 0.0;

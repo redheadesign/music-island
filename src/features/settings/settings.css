@@ -150,19 +150,11 @@
 }
 
 .settings-window-root {
-  --accent: #f76100;
-  --accent-soft: #ff9a55;
-  --accent-strong: #c74e00;
-  --accent-rgb: 247, 97, 0;
-  --accent-glow: rgba(247, 97, 0, 0.34);
-  --accent-muted: rgba(247, 97, 0, 0.18);
-  --accent-ink: #1a1410;
   --text-primary: var(--fg-primary);
   --text-secondary: var(--fg-secondary);
   --text-muted: var(--fg-muted);
   --control-bg: var(--surface-raised);
   --control-bg-hover: var(--surface-hover);
-  --settings-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   width: 100vw;
@@ -171,7 +163,7 @@
   padding: 0;
   overflow: hidden;
   border: 0;
-  border-radius: var(--settings-radius);
+  border-radius: 0;
   color: var(--text-primary);
   background: var(--surface-canvas);
   box-shadow: none;
@@ -556,12 +548,6 @@
 }
 
 @media (max-width: 720px) {
-  .settings-window-root {
-    border-radius: calc(var(--radius-unit) * 5.5);
-  }
-}
-
-@media (max-width: 720px) {
 
   .settings-scroll {
     padding: 0 var(--space-4-5) var(--space-4-5);
@@ -582,9 +568,6 @@
     align-items: flex-start;
     flex-direction: column;
   }
-}
-
-@media (max-width: 720px) {
 }
 /* Settings presentation. Shared tokens also document the component workshop.
    Scope overrides to the settings window to preserve the media island. */
@@ -629,9 +612,7 @@
   padding: var(--space-1);
   border: 0;
   border-radius: var(--radius-md);
-  background: var(--surface-glass);
-  box-shadow:  var(--shadow-control);
-  backdrop-filter: blur(var(--glass-blur));
+  background: var(--surface-raised);
 }
 .settings-panel .settings-scope-switch { flex: 0 1 340px; }
 .settings-panel .settings-scope-switch__btn,
@@ -787,9 +768,6 @@
   border-radius: var(--radius-sm);
   font-size: var(--text-caption);
 }
-.settings-window-root[data-color-scheme='light'] .settings-content .settings-control-row select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1.5 1.75L6 6.25L10.5 1.75' stroke='rgba(29,29,31,0.68)' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
 .settings-panel .accent-picker { gap: var(--space-4); margin: 0 0 var(--space-5); }
 
 .settings-panel .protocol-list { margin-top: 0; gap: var(--space-3); }
@@ -923,7 +901,6 @@
 }
 
 
-
 .settings-taskbar-note {
   margin: 0;
   color: var(--fg-secondary);
@@ -931,19 +908,14 @@
   line-height: var(--leading-body);
   max-width: 52ch;
 }
-@container settings (max-width: 430px) { }
 .settings-taskbar-note { padding-top: var(--space-3); }
-/* Header utilities remain together in either settings theme. */
 .settings-hero-tools { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
-.settings-theme-toggle { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: var(--radius-round); background: transparent; color: var(--fg-secondary); cursor: pointer; }
-.settings-theme-toggle > span { display: grid; place-items: center; }
-.settings-theme-toggle:hover { color: var(--fg-primary); background: var(--surface-hover); }
 .settings-panel .protocol-row--selected { border-color: transparent; background: color-mix(in srgb,var(--status-success) 5%,var(--surface-panel)); box-shadow: inset 3px 0 0 color-mix(in srgb,var(--status-success) 72%,transparent); }
 .settings-panel .protocol-row:not(.protocol-row--selected) .status-pill { color: var(--fg-muted); background: transparent; border-color: transparent; }
 .settings-panel .protocol-row--selected .protocol-icon { background: transparent; box-shadow: none; }
 .settings-panel .protocol-row--unavailable { border-color: transparent; background: color-mix(in srgb,var(--status-warning) 4%,var(--surface-panel)); box-shadow: inset 3px 0 0 color-mix(in srgb,var(--status-warning) 72%,transparent); }
 .settings-usage-page { display: grid; gap: var(--space-6); }
-.usage-widget-preview { position: relative; isolation: isolate; display: flex; align-items: flex-start; justify-content: center; gap: var(--space-4); padding: calc(var(--space-unit) * 7.5) var(--space-4-5); min-height: 180px; border-radius: var(--radius-lg); background: #171412; overflow: hidden; }
+.usage-widget-preview { position: relative; isolation: isolate; display: flex; align-items: flex-start; justify-content: center; gap: var(--space-4); padding: calc(var(--space-unit) * 7.5) var(--space-4-5); min-height: 180px; border-radius: var(--radius-lg); background: var(--surface-panel); overflow: hidden; }
 .about-identity { display: grid; grid-template-columns: auto auto; align-items: baseline; justify-content: center; justify-items: center; column-gap: var(--space-2-5); padding: var(--space-5) 0 var(--space-6-5); }
 .about-identity h3 { margin: 0; font-size: calc(var(--type-unit) * 24); font-weight: var(--weight-semibold); letter-spacing: calc(var(--type-unit) * -0.7); }
 .about-identity__version { color: var(--fg-muted); font-size: var(--text-caption); }
@@ -1008,109 +980,10 @@
 .settings-section--plain .about-identity { padding: 0 0 var(--space-4); }
 .voice-notice-actions { display: flex; align-items: center; gap: var(--space-2); }
 
-.settings-appearance .settings-material-picker {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, min(50%, 216px));
-  gap: var(--space-3);
-  padding: 0;
-  min-height: var(--control-height);
-}
-
-.settings-material-picker .dark-select { width: 100%; }
-
-/* Glass uses the window as a continuous canvas. Local controls and groups
-   provide depth, so layout wrappers never introduce a separate frame. */
-.settings-window-root[data-interface-theme='glass'] { --settings-radius: 0; }
-.settings-window-root[data-interface-theme='glass'] .settings-titlebar { background: transparent; }
-.settings-panel[data-interface-theme='glass'] .settings-page-heading { letter-spacing: 0; }
-:where(.settings-window-root[data-interface-theme='glass'], .settings-panel[data-interface-theme='glass'])
-  :where(button, a[href], summary, [role='button']):not(:where(.island-root *, [inert] *)) {
-  position: relative;
-}
-:where(.settings-window-root[data-interface-theme='glass'], .settings-panel[data-interface-theme='glass'])
-  :where(a[href], summary, [role='button']):focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-:is(.settings-window-root, .settings-panel)[data-interface-theme='glass'] :is(
-  .settings-window-actions > button, .settings-theme-toggle, .ui-button,
-  .voice-segment-switch > button, .voice-chip, .voice-effect-toggle,
-  .voice-control-card__primary, .voice-control-card__monitor, .primary-button, .secondary-button,
-  .voice-setup-guide__action, .voice-setup-guide__return, .accent-picker__done, .about-social
-) {
-  box-shadow: var(--glass-control-rim);
-  backdrop-filter: var(--glass-frost-filter);
-}
-.settings-panel[data-interface-theme='glass'] :is(.ui-button--secondary, .secondary-button, .about-social) {
-  --control-surface: var(--glass-button-fill);
-  --control-surface-hover: var(--glass-button-hover-fill);
-  background-color: var(--control-surface);
-}
-.settings-panel[data-interface-theme='glass'] :is(.ui-button--secondary, .secondary-button, .about-social):hover:not(:disabled, [aria-pressed='true']) {
-  background-color: var(--control-surface-hover);
-}
-.settings-panel[data-interface-theme='glass'] :is(.primary-button, .accent-picker__done) {
-  background-color: var(--glass-action);
-  color: var(--glass-action-ink);
-}
-.settings-window-root[data-interface-theme='glass'] .settings-window-actions > button:not(:hover) {
-  background-color: var(--glass-button-fill);
-}
-.settings-panel[data-interface-theme='glass'] .fox-dev-preview__select {
-  border-radius: var(--glass-control-radius);
-  color: var(--fg-primary);
-  background: var(--control-surface);
-  box-shadow: var(--glass-control-rim);
-  backdrop-filter: var(--glass-frost-filter);
-}
-.settings-panel[data-interface-theme='glass'] .dark-select:not(.dark-select--actions) { backdrop-filter: var(--glass-frost-filter); }
-@media (forced-colors: active) {
-  :is(.settings-window-root, .settings-panel)[data-interface-theme='glass'] { --glass-frost-filter: none; }
-}
-.settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch, .locale-switch) {
-  border-radius: var(--glass-control-radius);
-  background: var(--glass-field-fill);
-  box-shadow: inset 0 1px rgb(0 0 0 / .13);
-}
-.settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn, .settings-theme-toggle) {
-  border-radius: var(--glass-control-radius);
-}
-.settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn, .settings-nav-item) .settings-selection-marker {
-  background: var(--glass-selection-sheen) var(--glass-selection-fill);
-  box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
-}
-.settings-panel[data-interface-theme='glass'] .settings-nav-item { border-radius: var(--radius-md); }
-.settings-panel[data-interface-theme='glass'][data-color-scheme='light'] :is(.settings-scope-switch__btn--active, .locale-switch__btn--active, .settings-nav-item--active) {
-  color: var(--glass-selection-ink);
-  /* Switch ink with its solid face, including when the palette changes in place. */
-  transition-property: transform;
-}
-.settings-panel[data-interface-theme='glass'][data-color-scheme='light'] .settings-scope-switch__btn--active .settings-scope-badge {
-  color: inherit;
-  background: transparent;
-}
-.settings-panel[data-interface-theme='glass'][data-color-scheme='light'] .settings-nav-item--active svg { color: currentColor; }
-:is(.settings-window-root, .settings-panel)[data-interface-theme='glass'] :is(
-  .settings-control-group, .settings-taskbar > .settings-control-row, .settings-source-picker,
-  .settings-section:not(.settings-appearance, .settings-section--plain, .settings-taskbar),
-  .about-update--elevated
-) {
-  padding-inline: var(--settings-group-gutter);
-  background: var(--settings-group-fill);
-  box-shadow: none;
-}
-.settings-panel[data-interface-theme='glass'] .settings-content .settings-section--plain .protocol-row {
-  padding-inline: var(--settings-group-gutter);
-  background: var(--settings-group-fill);
-  box-shadow: none;
-}
-@media (hover: hover) {
-  .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn):not([aria-pressed='true']):hover { background: var(--surface-hover); }
-}
 @container settings (max-width: 480px) {
-  .settings-panel[data-interface-theme='glass'] .settings-layout { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); }
-  .settings-panel[data-interface-theme='glass'] .settings-navigation { grid-template-columns: repeat(3, minmax(0,1fr)); }
-  .settings-panel[data-interface-theme='glass'] .settings-nav-item { flex-direction: column; text-align: center; }
-  .settings-panel[data-interface-theme='glass'] .settings-scope-switch { flex-basis: 100%; width: 100%; justify-content: space-between; }
-  .settings-panel[data-interface-theme='glass'] .settings-scope-switch__btn { min-width: 0; padding-inline: var(--space-2); }
+  .settings-panel .settings-layout { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); }
+  .settings-panel .settings-navigation { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .settings-panel .settings-nav-item { flex-direction: column; text-align: center; }
+  .settings-panel .settings-scope-switch { flex-basis: 100%; width: 100%; justify-content: space-between; }
+  .settings-panel .settings-scope-switch__btn { min-width: 0; padding-inline: var(--space-2); }
 }

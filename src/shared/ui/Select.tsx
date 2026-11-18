@@ -6,13 +6,6 @@ import './Select.css'
 type Option = { value: string; label: string; danger?: boolean; checked?: boolean }
 
 const PORTAL_THEME_PROPERTIES = [
-  '--accent',
-  '--accent-ink',
-  '--control-value',
-  '--control-value-ink',
-  '--palette-primary',
-  '--palette-secondary',
-  '--palette-on-primary',
   '--focus-ring',
   '--shadow-popover',
   '--status-danger',
@@ -20,12 +13,11 @@ const PORTAL_THEME_PROPERTIES = [
   '--control-surface-hover',
   '--control-height',
   '--fg-primary',
+  '--fg-on-solid',
   '--fg-secondary',
   '--fg-muted',
-  '--surface-glass',
   '--surface-hover',
   '--surface-raised',
-  '--glass-blur',
   '--space-1',
   '--space-2',
   '--space-3',
@@ -38,8 +30,6 @@ const PORTAL_THEME_PROPERTIES = [
   '--motion-distance-small',
   '--ease-enter',
 ] as const
-
-const PORTAL_SCOPE_ATTRIBUTES = ['data-color-scheme', 'data-interface-theme', 'data-interface-scene', 'data-interface-palette', 'data-reduced-transparency', 'data-reduced-motion']
 
 interface SelectProps {
   value: string
@@ -181,11 +171,10 @@ function Menu({
     const syncPortalTheme = () => setPortalTheme(readPortalTheme(trigger))
     syncPortalTheme()
 
-    const scopes = new Set(PORTAL_SCOPE_ATTRIBUTES.map(attribute => trigger.closest(`[${attribute}]`)))
+    const scope = trigger.closest('.settings-panel, .settings-window-root, [data-reduced-motion]')
+    if (!scope) return
     const observer = new MutationObserver(syncPortalTheme)
-    for (const scope of scopes) {
-      if (scope) observer.observe(scope, { attributes: true, attributeFilter: [...PORTAL_SCOPE_ATTRIBUTES, 'style'] })
-    }
+    observer.observe(scope, { attributes: true, attributeFilter: ['data-reduced-motion'] })
     return () => observer.disconnect()
   }, [open])
 
@@ -244,12 +233,7 @@ function Menu({
               ref={menuRef}
               id={`${id}-menu`}
               className="dark-select-menu"
-              data-color-scheme={portalTheme?.colorScheme}
-              data-interface-theme={portalTheme?.interfaceTheme}
-              data-interface-scene={portalTheme?.interfaceScene}
-              data-interface-palette={portalTheme?.interfacePalette}
               data-reduced-motion={portalTheme?.reducedMotion || undefined}
-              data-reduced-transparency={portalTheme?.reducedTransparency}
               data-enter={opening === 'pointer' && pos.width > 0 && !portalTheme?.reducedMotion ? (pos.above ? 'above' : 'below') : undefined}
               role={actions ? 'menu' : 'listbox'}
               aria-labelledby={id}
@@ -299,7 +283,6 @@ function Menu({
 
 function readPortalTheme(trigger: HTMLElement) {
   const computed = getComputedStyle(trigger)
-  const themeRoot = trigger.closest('[data-interface-theme]')
   const style = { colorScheme: computed.colorScheme, fontFamily: computed.fontFamily,
     fontSize: computed.fontSize, fontWeight: computed.fontWeight, lineHeight: computed.lineHeight } as CSSProperties & Record<string, string>
   for (const property of PORTAL_THEME_PROPERTIES) {
@@ -307,11 +290,6 @@ function readPortalTheme(trigger: HTMLElement) {
   }
   return {
     style,
-    colorScheme: trigger.closest('[data-color-scheme]')?.getAttribute('data-color-scheme'),
-    interfaceTheme: themeRoot?.getAttribute('data-interface-theme'),
-    interfaceScene: themeRoot?.getAttribute('data-interface-scene'),
-    interfacePalette: trigger.closest('[data-interface-palette]')?.getAttribute('data-interface-palette'),
-    reducedTransparency: trigger.closest('[data-reduced-transparency="true"]') ? true : undefined,
     reducedMotion: Boolean(trigger.closest('.reduced-motion, [data-reduced-motion="true"]')),
   }
 }

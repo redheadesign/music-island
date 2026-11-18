@@ -113,6 +113,10 @@ function IslandPreview({
             playbackStatus:
               value.playbackStatus === 'playing' ? 'paused' : 'playing',
           }
+        if (command === 'next' || command === 'previous') {
+          const second = value.trackId === media.trackId
+          return { ...value, trackId: second ? 'workshop-track-two' : media.trackId, title: second ? 'Night Walk' : media.title, positionMs: 0 }
+        }
         if (command === 'like') return { ...value, isLiked: !value.isLiked }
         if (command === 'dislike') return { ...value, isDisliked: !value.isDisliked }
         if (typeof command === 'object' && 'seek' in command)
@@ -325,35 +329,52 @@ export const GlassReactiveWave: StoryObj<typeof meta> = {
       expect(node).toBeInTheDocument()
       return node!
     })
-    const initialRequest = await waitFor(() => {
+    const nextRequest = (previous?: number) => waitFor(() => {
       const request = getPreviewPlaybackBassRequest()
       expect(request).toBeDefined()
+      expect(request).not.toBe(previous)
       return request!
-    })
-    const originalNodes = [...layer.querySelectorAll('*')]
+    }, { timeout: 4000 })
+    const initial = await nextRequest()
+    const canvas = within(canvasElement)
     const fronts = () => layer.getAnimations({ subtree: true }).filter(
       animation => animation instanceof CSSAnimation && animation.animationName === 'island-glass-wave-out',
     )
-    const tracked = await waitFor(() => { const waves = fronts(); expect(waves).toHaveLength(2); return waves })
-    // Already normalized by the native onset detector. A strong attack decays between beats.
-    emitPreviewPlaybackBass(.8)
-    await expect(layer.style.getPropertyValue('--island-bass')).toBe('0.8')
-    await waitFor(() => expect(tracked.every(wave => wave.playbackRate > 3)).toBe(true))
-    emitPreviewPlaybackBass(.09)
-    await waitFor(() => expect(tracked.every(wave => wave.playbackRate < 1.3)).toBe(true))
-    emitPreviewPlaybackBass(0)
-    await waitFor(() => expect(tracked.every(wave => wave.playbackRate === 1)).toBe(true))
-    await expect([...layer.querySelectorAll('*')]).toEqual(originalNodes)
-    const canvas = within(canvasElement)
+    async function checkMotion(request: number) {
+      const waves = await waitFor(() => { const items = fronts(); expect(items).toHaveLength(2); return items })
+      const opacity = () => waves.map(wave => (wave.effect as KeyframeEffect).getKeyframes().map(frame => frame.opacity))
+      const baseOpacity = opacity()
+      emitPreviewPlaybackBass(1, request)
+      await expect(waves.every(wave => wave.playbackRate > 1 && wave.playbackRate <= 1.141)).toBe(true)
+      await expect(opacity()).toEqual(baseOpacity)
+      await expect(baseOpacity[0]).toContain('0.32')
+    }
+
+    const particles = [...layer.querySelectorAll('.island-particles > i')]
+    await checkMotion(initial)
+    await userEvent.click(canvas.getByRole('button', { name: /^(?:Next|Следующий)$/ }))
+    const skipped = await nextRequest(initial)
+    emitPreviewPlaybackBass(1, initial)
+    await expect(layer.style.getPropertyValue('--island-wave-drive')).toBe('')
+    await checkMotion(skipped)
+
+    const seek = canvas.getByRole('slider', { name: /^(?:Seek track|Позиция трека)$/ })
+    seek.focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(Number(seek.getAttribute('aria-valuenow'))).toBeGreaterThan(0)
+    // The Direct stream briefly ends during seek; the displayed transport remains Playing.
+    const recovered = await nextRequest(skipped)
+    await checkMotion(recovered)
+
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ }))
     await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeUndefined())
-    await expect(layer.style.getPropertyValue('--island-bass')).toBe('')
+    await waitFor(() => expect(getComputedStyle(layer).display).toBe('none'))
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ }))
-    await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeDefined())
-    emitPreviewPlaybackBass(.93, initialRequest)
-    await expect(layer.style.getPropertyValue('--island-bass')).toBe('')
-    emitPreviewPlaybackBass(.8)
-    await expect(Number(layer.style.getPropertyValue('--island-bass'))).toBe(.8)
+    const resumed = await nextRequest(recovered)
+    emitPreviewPlaybackBass(1, recovered)
+    await expect(layer.style.getPropertyValue('--island-wave-drive')).toBe('')
+    await checkMotion(resumed)
+    await expect([...layer.querySelectorAll('.island-particles > i')]).toEqual(particles)
   },
 }
 export const GlassBackgroundOff: StoryObj<typeof meta> = {

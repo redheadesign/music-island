@@ -1,8 +1,4 @@
 /* The same component owns its presentation in Settings, Island and Storybook. */
-[data-interface-theme='glass'] .update-notice.update-banner--settings[data-status='error'] {
-  border-radius: var(--glass-panel-radius);
-  box-shadow: var(--glass-panel-rim);
-}
 
 [data-interface-theme='glass'] .update-banner[data-status='error'] .update-banner__icon {
   color: var(--status-danger);

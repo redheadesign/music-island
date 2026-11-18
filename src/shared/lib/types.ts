@@ -124,7 +124,7 @@ export interface DirectYandexStatus {
   executablePath: string | null
 }
 
-export type Theme = 'liquid-glass-dark' | 'soft-light' | 'ru-flow-inspired'
+export type Theme = 'liquid-glass-dark' | 'ru-flow-inspired'
 export type Locale = 'ru' | 'en'
 export type WidgetSize = 'small' | 'medium' | 'large'
 export type Density = 'buttons-only' | 'minimal' | 'balanced' | 'rich'

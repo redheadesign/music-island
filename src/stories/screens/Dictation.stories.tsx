@@ -6,8 +6,7 @@ import { dictationApi } from '../mocks/dictationApi'
 import { dictationModels, dictationSettings, gigaamRnnt, parakeetEnglish } from '../dictationFixtures'
 import { useState, type ComponentProps } from 'react'
 import { defaultDictationAppearance } from '../../shared/lib/dictationAppearance'
-import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
-function DictationWorkshop({ args, light, interfaceTheme }: { args: ComponentProps<typeof DictationSettings>; light: boolean; interfaceTheme: InterfaceThemeId }) {
+function DictationWorkshop({ args }: { args: ComponentProps<typeof DictationSettings> }) {
   const [appearance, setAppearance] = useState(args.appearance ?? defaultDictationAppearance)
   const [showLatestMessage, setShowLatestMessage] = useState(args.showLatestMessage ?? false)
   const [words, setWords] = useState(args.controller.data?.settings.custom_words ?? [])
@@ -24,7 +23,7 @@ function DictationWorkshop({ args, light, interfaceTheme }: { args: ComponentPro
       changePostProcessEnabledSetting: async (value: boolean) => { setProcessing(value); return null },
     },
   } : c
-  return <div className="settings-panel" data-color-scheme={light ? 'light' : 'dark'} data-interface-theme={interfaceTheme} data-reduced-motion={args.reducedMotion || undefined} style={{ padding: 'var(--space-6-5)', background: 'var(--surface-canvas)' }}><DictationSettings {...args} controller={editable}
+  return <div className="settings-panel" data-reduced-motion={args.reducedMotion || undefined} style={{ padding: 'var(--space-6-5)', background: 'var(--surface-canvas)' }}><DictationSettings {...args} controller={editable}
     appearance={appearance} onAppearanceChange={setAppearance}
     showLatestMessage={showLatestMessage} onShowLatestMessage={args.onShowLatestMessage ? (checked) => { setShowLatestMessage(checked); args.onShowLatestMessage?.(checked) } : undefined} /></div>
 }
@@ -33,14 +32,14 @@ const meta = {
   title: 'Screens/Dictation', component: DictationSettings,
   args: { controller, page: 'models', locale: 'ru', onEnable: fn(async () => {}), onPage: fn() },
   parameters: { settingsPreviewScene: true, workshop: { width: 720, note: 'Каталог Handy 0.9.7. Здесь загрузки и запись заменены локальными примерами.' } },
-  render: (args, context) => <DictationWorkshop key={context.id} args={args} light={Boolean(context.parameters.light)} interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)} />,
+  render: (args, context) => <DictationWorkshop key={context.id} args={args} />,
 } satisfies Meta<typeof DictationSettings>
 export default meta
 type Story = StoryObj<typeof meta>
 export const Models: Story = { name: 'Модели · русский язык' }
 export const FloatingCatalog: Story = {
   ...Models,
-  name: 'Стекло · карточки моделей',
+  name: 'карточки моделей',
   globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
     const models = await within(canvasElement).findAllByRole('article')
@@ -53,28 +52,26 @@ export const FloatingCatalog: Story = {
       await expect(within(card).getAllByRole('button').length).toBeGreaterThan(0)
     }
     const catalog = within(canvasElement).getByRole('region', { name: 'Каталог' })
-    await expect(getComputedStyle(catalog).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    await expect(catalog).toContainElement(models[models.length - 1])
   },
 }
 
-export const CatalogCardsLight: Story = {
+export const CatalogCardsNarrow: Story = {
   ...FloatingCatalog,
-  name: 'Стекло · карточки моделей в светлой теме',
-  parameters: { light: true, workshop: { width: 420 } },
+  name: 'Карточки моделей · узкое окно',
+  parameters: { workshop: { width: 420 } },
 }
 
-export const GlassModelSearch: Story = {
+export const ModelSearch: Story = {
   ...Models,
-  name: 'Стекло · однотонный поиск моделей',
+  name: 'однотонный поиск моделей',
   globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const input = canvas.getByRole('searchbox', { name: 'Найти модель' })
     const field = input.closest('.ui-search')!
     await expect(getComputedStyle(field).backgroundImage).toBe('none')
-    if (!matchMedia('(prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
-      await expect(getComputedStyle(field).backdropFilter).toContain('blur(')
-    }
+    await expect(getComputedStyle(field).backdropFilter).toBe('none')
     await userEvent.type(input, 'Whisper')
     await expect(input).toHaveValue('Whisper')
     await expect(getComputedStyle(field).outlineStyle).toBe('solid')
@@ -104,7 +101,6 @@ export const LanguageFilter: Story = { name: 'Модели · фильтр по 
   await expect(trigger).toHaveFocus()
   await userEvent.click(trigger)
 } }
-export const LanguageFilterLight: Story = { ...LanguageFilter, name: 'Фильтр языков · светлая тема', parameters: { light: true } }
 const readyController: DictationController = {
   ...controller,
   data: { ...controller.data!, models: [{ ...gigaamRnnt, is_downloaded: true }, ...dictationModels],
@@ -116,7 +112,6 @@ export const WaveTheme: Story = { name: 'Тема · волны и оптиче�
 export const WaveWhite: Story = { name: 'Волны · белый цвет', args: { page: 'general', appearance: { ...defaultDictationAppearance, theme: 'wave', palette: 'white' } } }
 export const PixelTheme: Story = { name: 'Лиса · акцент приложения', args: { page: 'general', appearance: { ...defaultDictationAppearance, theme: 'pixels' } } }
 export const FoxTheme: Story = { name: 'Тема · пиксельная лиса', args: { page: 'general', appearance: { ...defaultDictationAppearance, theme: 'pixels', palette: 'ember' } } }
-export const FoxLight: Story = { ...FoxTheme, name: 'Пиксельная лиса · светлая тема', parameters: { light: true } }
 export const FoxWhite: Story = { ...FoxTheme, name: 'Лиса · белый цвет', args: { ...FoxTheme.args, appearance: { ...defaultDictationAppearance, theme: 'pixels', palette: 'white' } } }
 export const HoldPreview: Story = { ...FoxTheme, name: 'Удержание · превью без кнопок', args: { ...FoxTheme.args, controller: { ...controller, data: { ...controller.data!, settings: { ...dictationSettings, shortcut_activation: 'push_to_talk' } } } } }
 export const ThemesNarrow: Story = { ...FoxTheme, name: 'Выбор тем · узкое окно', parameters: { workshop: { width: 420 } } }
@@ -197,23 +192,18 @@ export const HistoryLatestMessage: Story = {
 export const Welcome: Story = { name: 'Первое включение', args: { controller: { ...controller, data: null } } }
 export const Downloading: Story = { name: 'Загрузка · 48%', args: { controller: { ...controller, busy: `download:${dictationModels[0].id}`, progress: { [dictationModels[0].id]: 48 } } } }
 export const DownloadError: Story = { name: 'Загрузка · ошибка сети', args: { controller: { ...controller, error: 'Нет соединения с сервером. Проверьте подключение.' } } }
-export const Light: Story = { name: 'Модели · светлая тема', parameters: { light: true } }
 export const English: Story = { name: 'Models · English', args: { locale: 'en' } }
 export const Dictionary: Story = { name: 'Словарь', args: { page: 'dictionary' } }
-export const GlassDictionary: Story = {
-  ...Dictionary, name: 'Стекло · поля и порог коррекции', globals: { interfaceTheme: 'glass', locale: 'ru' },
+export const DictionaryFields: Story = {
+  ...Dictionary, name: 'поля и порог коррекции', globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const field = canvas.getByRole('textbox', { name: /^Свои слова$/ })
     const fillers = canvas.getByRole('textbox', { name: 'Свои слова-паразиты' })
     const threshold = canvas.getByRole<HTMLInputElement>('slider', { name: 'Порог коррекции' })
-    await expect(getComputedStyle(field).borderTopLeftRadius).toBe('18px')
     await expect(getComputedStyle(field).backgroundImage).toBe('none')
     await expect(getComputedStyle(fillers).backgroundImage).toBe('none')
-    if (!matchMedia('(prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
-      await expect(getComputedStyle(field).backdropFilter).toContain('blur(')
-      await expect(getComputedStyle(fillers).backdropFilter).toBe(getComputedStyle(field).backdropFilter)
-    }
+    await expect(getComputedStyle(field).backdropFilter).toBe('none')
     await expect(threshold).toHaveClass('range-slider')
     await expect(getComputedStyle(threshold).backgroundColor).toBe('rgba(0, 0, 0, 0)')
     threshold.focus()
@@ -222,9 +212,6 @@ export const GlassDictionary: Story = {
     await expect(threshold.valueAsNumber).toBe(0.05)
     await expect(getComputedStyle(threshold).getPropertyValue('--range-fill')).toBe('5%')
   },
-}
-export const GlassDictionaryLight: Story = {
-  ...GlassDictionary, name: 'Стекло · поля словаря в светлой теме', parameters: { light: true },
 }
 export const DictionaryAddWord: Story = {
   name: 'Словарь · редактирование списка',
@@ -366,17 +353,15 @@ export const ImportedRnnt: Story = { name: 'Импортирована GigaAM ·
   await expect(installed).not.toHaveTextContent('В памяти')
 } }
 export const Disabled: Story = { name: 'Диктовка выключена · настройки доступны', args: { page: 'general', controller: { ...controller, enabled: false } } }
-export const DisabledLight: Story = { ...Disabled, name: 'Диктовка выключена · светлая тема', parameters: { light: true } }
 export const Recording: Story = { name: 'Идёт запись', args: { page: 'general', controller: { ...readyController, data: { ...readyController.data!, status: { revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null } } } } }
-export const AdvancedLight: Story = { name: 'Дополнительно · светлая тема', args: { page: 'advanced' }, parameters: { light: true } }
 export const AdvancedEnglish: Story = { name: 'Дополнительно · английский', args: { page: 'advanced', locale: 'en' } }
 export const AdvancedNarrow: Story = { name: 'Дополнительно · узкое окно', args: { page: 'advanced' }, parameters: { workshop: { width: 420 } } }
 export const AdvancedLoadError: Story = { name: 'Дополнительно · устройства недоступны', args: { page: 'advanced', controller: { ...controller, api: { ...dictationApi, getAvailableOutputDevices: fn(async () => { throw new Error('Unavailable') }), getAvailableAccelerators: fn(async () => { throw new Error('Unavailable') }) } } } }
-export const GlassAdvancedLoadError: Story = {
+export const AdvancedLoadErrorNarrow: Story = {
   ...AdvancedLoadError,
-  name: 'Стекло · не удалось загрузить устройства',
+  name: 'не удалось загрузить устройства',
   globals: { interfaceTheme: 'glass' },
-  parameters: { light: true, workshop: { width: 420 } },
+  parameters: { workshop: { width: 420 } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Не удалось загрузить устройства.')
@@ -384,7 +369,6 @@ export const GlassAdvancedLoadError: Story = {
   },
 }
 export const AdvancedLoading: Story = { name: 'Дополнительно · загрузка устройств', args: { page: 'advanced', controller: { ...controller, api: { ...dictationApi, getAvailableOutputDevices: fn(async () => { await new Promise(() => {}); return dictationApi.getAvailableOutputDevices() }), getAvailableAccelerators: fn(async () => { await new Promise(() => {}); return dictationApi.getAvailableAccelerators() }) } } } }
-export const GeneralLight: Story = { name: 'Превью диктовки · светлая тема', args: { page: 'general', reducedMotion: true }, parameters: { light: true } }
 export const MicrophoneDiagnostic: Story = { name: 'Диагностика · микрофон доступен', args: { page: 'advanced' }, play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
   await userEvent.click(canvas.getByRole('button', { name: 'Проверить микрофон' }))

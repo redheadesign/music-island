@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useMemo, useState, type ComponentProps, type CSSProperties } from 'react'
+import type { ComponentProps } from 'react'
 import { useGlobals } from 'storybook/preview-api'
 import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
 import { SettingsReadError, SettingsWindow } from '../../features/settings/SettingsWindow'
 import { SettingsPanel } from '../../features/settings/SettingsPanel'
+import { artworkCssColors, readArtworkPalette } from '../../features/overlay/artworkPalette'
+import { APPEARANCE_PREVIEW_MEDIA } from '../../features/settings/previewMedia'
 import { getDefaultConfig } from '../../app/tauriApi'
 import type { AppConfig, Locale } from '../../shared/lib/types'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getSettingsColorScheme, withUiPrefs, type SettingsColorScheme } from '../../shared/lib/uiPrefs'
-import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { previewReducedTransparency } from '../mocks/reducedTransparency'
 import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { health } from '../fixtures'
@@ -22,7 +22,6 @@ function SettingsPreview({
   accent,
   onPreviewChange,
   reducedMotion = false,
-  colorScheme,
   preferredSourceAppId,
   scrollViewportHeight,
   interfaceTheme,
@@ -32,37 +31,27 @@ function SettingsPreview({
   accent: string
   onPreviewChange: (config: AppConfig) => void
   reducedMotion?: boolean
-  colorScheme?: SettingsColorScheme
   preferredSourceAppId?: string
   scrollViewportHeight?: number
   interfaceTheme: InterfaceThemeId
 }) {
   const [config, setConfig] = useWorkshopConfig(locale, accent, false, interfaceTheme)
-  const reducedTransparency = useSystemReducedTransparency()
   const usage = useUsageController()
-  const [selectedColorScheme, setSelectedColorScheme] = useState(colorScheme)
-  const previewConfig = useMemo(() => withUiPrefs(config, {
-    ...(selectedColorScheme && { settingsColorScheme: selectedColorScheme }),
-  }), [config, selectedColorScheme])
   const configuredPreview = preferredSourceAppId
-    ? { ...previewConfig, media: { ...previewConfig.media, protocol: 'smtc' as const, preferredSourceAppId } }
-    : previewConfig
+    ? { ...config, media: { ...config.media, protocol: 'smtc' as const, preferredSourceAppId } }
+    : config
   const panel = <SettingsPanel
         {...args}
         usage={usage}
         config={reducedMotion ? { ...configuredPreview, appearance: { ...configuredPreview.appearance, reducedMotion: true } } : configuredPreview}
         onChange={async (next) => {
           await args.onChange(next)
-          setSelectedColorScheme(getSettingsColorScheme(next))
           setConfig(next)
           onPreviewChange(next)
         }}
       />
   return <div style={{ height: scrollViewportHeight ?? 754 }}>
-    <SettingsWindow locale={locale} colorScheme={getSettingsColorScheme(configuredPreview)}
-      interfaceTheme={getInterfaceTheme(configuredPreview)} interfaceScene={getInterfaceScene(configuredPreview)}
-      interfacePalette={getInterfacePalette(configuredPreview)} paletteStyle={getInterfacePaletteStyle(configuredPreview, getSettingsColorScheme(configuredPreview)) as CSSProperties}
-      reducedTransparency={reducedTransparency} reducedMotion={reducedMotion || configuredPreview.appearance.reducedMotion}>
+    <SettingsWindow locale={locale} reducedMotion={reducedMotion || configuredPreview.appearance.reducedMotion}>
       {panel}
     </SettingsWindow>
   </div>
@@ -107,7 +96,6 @@ const meta = {
         accent={context.globals.accent}
         reducedMotion={context.parameters.reducedMotion === true}
         interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)}
-        colorScheme={context.parameters.settingsColorScheme as SettingsColorScheme | undefined}
         preferredSourceAppId={context.parameters.preferredSourceAppId as string | undefined}
         scrollViewportHeight={context.parameters.scrollViewportHeight as number | undefined}
         onPreviewChange={(next) => {
@@ -133,7 +121,7 @@ export const UnreadableProfile: Story = {
   name: 'Ошибка чтения файла настроек',
   parameters: { workshop: { width: 620, height: 480 } },
   render: (_args, { globals }) => <div style={{ height: 480 }}>
-    <SettingsWindow locale={globals.locale} interfaceTheme={normalizeInterfaceTheme(globals.interfaceTheme)}>
+    <SettingsWindow locale={globals.locale}>
       <SettingsReadError locale={globals.locale} onRetry={rereadProfile} />
     </SettingsWindow>
   </div>,
@@ -149,22 +137,21 @@ export const UnreadableProfile: Story = {
 }
 export const Default: Story = { name: 'Настройки приложения' }
 export const Classic: Story = { name: 'Классическая · тёмное оформление', globals: { interfaceTheme: 'classic' } }
-export const ClassicLight: Story = { ...Classic, name: 'Классическая · светлое оформление', parameters: { settingsColorScheme: 'light' } }
 export const Glass: Story = { name: 'Стекло · тёмное оформление', globals: { interfaceTheme: 'glass' } }
 export const MaterialAtMinimumSize: Story = {
   name: 'Выбор темы · минимальное окно Windows',
   globals: { interfaceTheme: 'glass', locale: 'ru' },
   parameters: { scrollViewportHeight: 480, workshop: { width: 620 }, a11y: { test: 'error' } },
   play: async ({ canvasElement }) => {
-    const theme = within(canvasElement).getByRole('button', { name: 'Тема интерфейса' })
-    const palette = within(canvasElement).getByRole('button', { name: 'Цветовая палитра' })
-    const advanced = within(canvasElement).getByText('Фон и поведение').closest('details')!
-    await expect(advanced).not.toHaveAttribute('open')
-    const viewport = theme.closest('[data-settings-scroll]')!
-    await waitFor(() => {
-      expect(theme.getBoundingClientRect().top).toBeGreaterThanOrEqual(viewport.getBoundingClientRect().top)
-      expect(palette.getBoundingClientRect().bottom).toBeLessThanOrEqual(viewport.getBoundingClientRect().bottom)
-    })
+    const appearance = canvasElement.querySelector<HTMLElement>('.settings-appearance')!
+    const editor = appearance.querySelector('.island-layout-editor')!
+    const theme = within(appearance).getByRole('group', { name: 'Тема островка' })
+    await expect(editor.compareDocumentPosition(theme) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await expect(editor.getBoundingClientRect().top).toBeLessThan(appearance.closest('[data-settings-scroll]')!.getBoundingClientRect().bottom)
+    theme.scrollIntoView({ block: 'nearest' })
+    await expect(within(theme).getByRole('radio', { name: 'Стекло' })).toBeChecked()
+    await expect(appearance.scrollWidth).toBeLessThanOrEqual(appearance.clientWidth + 1)
+    await expect(appearance.querySelector('details')).toBeNull()
   },
 }
 export const GlassPlaybackBackground: Story = {
@@ -172,7 +159,6 @@ export const GlassPlaybackBackground: Story = {
   globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByText('Фон и поведение'))
     const toggle = canvas.getByRole('switch', { name: 'Фон при воспроизведении' })
     await expect(toggle).toBeChecked()
     const previewWave = () => canvasElement.querySelector('.island-preview__body [data-playback-wave]')
@@ -186,59 +172,12 @@ export const GlassPlaybackBackground: Story = {
     await waitFor(() => expect(previewWave()).toBeInTheDocument())
   },
 }
-export const GlassOptics: Story = {
-  ...Glass,
-  name: 'Стекло · блик на кромке',
-  globals: { interfaceTheme: 'glass', locale: 'ru' },
-  play: async ({ canvasElement }) => {
-    if (matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches) return
-    const trigger = within(canvasElement).getByRole('button', { name: 'Тема интерфейса' })
-    const { left, top, width } = trigger.getBoundingClientRect()
-    fireEvent.pointerMove(trigger, { pointerType: 'mouse', clientX: left + width * 0.2, clientY: top + 4 })
-    await waitFor(() => expect(trigger).toHaveAttribute('data-glass-light'))
-    const initial = trigger.style.getPropertyValue('--glass-light-x')
-    fireEvent.pointerMove(trigger, { pointerType: 'mouse', clientX: left + width * 0.8, clientY: top + 4 })
-    await waitFor(() => expect(trigger.style.getPropertyValue('--glass-light-x')).not.toBe(initial))
-    fireEvent.pointerOut(trigger, { pointerType: 'mouse', relatedTarget: canvasElement })
-    await waitFor(() => expect(trigger).not.toHaveAttribute('data-glass-light'))
-  },
-}
-export const GlassLegacyActions: Story = {
-  ...Glass,
-  name: 'Стекло · кнопки окна и выбор плеера',
-  globals: { interfaceTheme: 'glass', locale: 'ru' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const minimize = canvas.getByRole('button', { name: 'Свернуть' })
-    const shell = minimize.closest('.settings-window-root')!
-    await expect(getComputedStyle(shell).borderTopLeftRadius).toBe('0px')
-    if (!matchMedia('(prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
-      await expect(getComputedStyle(minimize).backdropFilter).toContain('blur(')
-    }
-    if (!matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
-      const { left, top, width } = minimize.getBoundingClientRect()
-      fireEvent.pointerMove(minimize, { pointerType: 'mouse', clientX: left + width / 2, clientY: top + 4 })
-      await waitFor(() => expect(minimize).toHaveAttribute('data-glass-light'))
-    }
-    await userEvent.click(canvas.getByRole('button', { name: 'Источник музыки' }))
-    const player = canvas.getByRole('button', { name: 'Плеер' })
-    player.focus()
-    await userEvent.keyboard('{ArrowDown}')
-    const menu = await within(document.body).findByRole('listbox')
-    await expect(menu).toHaveAttribute('data-interface-theme', 'glass')
-    await expect(within(menu).getByRole('option', { name: 'Автоматически' })).toHaveAttribute('aria-selected', 'true')
-    await userEvent.keyboard('{Escape}')
-    await expect(player).toHaveFocus()
-  },
-}
 export const GlassScopes: Story = {
   ...Glass,
   name: 'Стекло · состояния верхнего меню',
   globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const appearance = canvasElement.querySelector('.settings-appearance')!
-    await expect(getComputedStyle(appearance).boxShadow).toBe('none')
     const voice = canvas.getByRole('button', { name: /Better Voice/ })
     voice.focus()
     await userEvent.keyboard('{Enter}')
@@ -251,72 +190,54 @@ export const GlassScopes: Story = {
     await expect(dictation).toHaveAttribute('aria-pressed', 'true')
   },
 }
-export const GlassLight: Story = { name: 'Стекло · светлое оформление', globals: { interfaceTheme: 'glass' }, parameters: { settingsColorScheme: 'light' } }
-export const GlassLightPalette: Story = {
-  ...GlassLight,
-  name: 'Светлое стекло · палитра кнопок и выпадающего меню',
-  globals: { interfaceTheme: 'glass', locale: 'ru' },
-  play: async ({ canvas, canvasElement }) => {
-    const palette = canvas.getByRole('button', { name: 'Цветовая палитра' })
-    const theme = canvas.getByRole('button', { name: 'Тема интерфейса' })
-    const resting = getComputedStyle(theme).backgroundColor
-    await userEvent.click(palette)
-    await userEvent.click(canvas.getByRole('button', { name: 'Роща' }))
-    await waitFor(() => expect(theme.closest('[data-interface-palette]')).toHaveAttribute('data-interface-palette', 'grove'))
-    await userEvent.unhover(theme)
-    await expect(getComputedStyle(theme).backgroundColor).toBe(resting)
-    await expect(getComputedStyle(theme).backgroundImage).toBe('none')
-    await waitFor(() => {
-      const current = canvasElement.querySelector('.settings-scope-switch__btn--active')!
-      const marker = current.querySelector('.settings-selection-marker')!
-      expect(getComputedStyle(current).color, 'Active scope text on ' + getComputedStyle(marker).backgroundColor).toBe('rgb(255, 255, 255)')
-      expect(getComputedStyle(marker).backgroundColor, 'Active scope fill').toBe('rgb(27, 125, 80)')
-      expect(getComputedStyle(marker).backgroundImage).toBe('none')
-    })
-    await userEvent.click(canvas.getByRole('button', { name: 'Тема интерфейса' }))
-    const menu = await within(document.body).findByRole('listbox')
-    await waitFor(() => {
-      const option = getComputedStyle(within(menu).getByRole('option', { selected: true }))
-      expect(option.color, 'Selected option text').toBe('rgb(255, 255, 255)')
-      expect(option.backgroundColor, 'Selected option fill').toBe('rgb(27, 125, 80)')
-      expect(option.backgroundImage).toBe('none')
-    })
-    await userEvent.keyboard('{Escape}')
-    await expect(theme).toHaveFocus()
-  },
-}
 export const GlassAccessible: Story = {
   name: 'Стекло · узкое окно без прозрачности и анимации',
   globals: { interfaceTheme: 'glass', locale: 'en' },
-  parameters: { settingsColorScheme: 'light', reducedMotion: true, workshop: { width: 360 } },
+  parameters: { reducedMotion: true, workshop: { width: 360 } },
   beforeEach: previewReducedTransparency,
 }
 export const ThemeSwitch: Story = {
-  name: 'Смена темы и встроенного фона',
+  name: 'Тема и палитра меняют только островок',
   globals: { interfaceTheme: 'classic', locale: 'ru' },
-  play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement)
-    const canvasDocument = within(canvasElement.ownerDocument.body)
-    const window = canvasElement.querySelector('.settings-window-root')
-    const theme = canvas.getByRole('button', { name: 'Тема интерфейса' })
-    await userEvent.click(theme)
-    await userEvent.click(canvasDocument.getByRole('option', { name: 'Стекло' }))
-    await expect(canvasElement.querySelector('.settings-panel')).toHaveAttribute('data-interface-theme', 'glass')
-    await waitFor(() => expect(window).toHaveAttribute('data-interface-theme', 'glass'))
-    await expect(window).toHaveAttribute('data-interface-scene', 'fox')
-    await userEvent.click(within(canvasElement).getByText('Фон и поведение'))
-    await expect(canvas.queryByText('Фон превью')).not.toBeInTheDocument()
-    await expect(canvas.queryByText('Уменьшить прозрачность')).not.toBeInTheDocument()
-    await expect(canvas.getByText('Фон при воспроизведении')).toBeVisible()
-    await userEvent.click(theme)
-    await userEvent.click(canvasDocument.getByRole('option', { name: 'Классическая' }))
-    await waitFor(() => expect(window).toHaveAttribute('data-interface-theme', 'classic'))
-    await expect(window).not.toHaveAttribute('data-interface-scene')
-    await expect(args.onChange).toHaveBeenLastCalledWith(expect.objectContaining({
+  play: async ({ canvas, canvasElement, args }) => {
+    const windowRoot = canvasElement.querySelector('.settings-window-root')!
+    const sidebar = canvasElement.querySelector('.settings-navigation')!
+    const panel = canvasElement.querySelector('.island-appearance-options')!
+    const shellStyle = () => [getComputedStyle(windowRoot).backgroundColor, getComputedStyle(panel).padding,
+      getComputedStyle(panel).backgroundColor, getComputedStyle(sidebar).fontFamily, getComputedStyle(sidebar).color]
+    const before = shellStyle()
+    const island = () => canvasElement.querySelector('.island-preview .island-root')!
+    const backdrop = canvasElement.querySelector('.island-preview')!
+    const foxes = await waitFor(() => {
+      const foxes = backdrop.querySelector('canvas[data-ascii-scene="fox"]')
+      expect(foxes).toBeInTheDocument()
+      return foxes
+    })
+    const cover = await readArtworkPalette(APPEARANCE_PREVIEW_MEDIA.thumbnailDataUrl!)
+    expect(cover).not.toBeNull()
+    const classic = canvas.getByRole('radio', { name: 'Классическая' })
+    const glass = canvas.getByRole('radio', { name: 'Стекло' })
+    await expect(classic).toBeChecked()
+    await expect(island()).toHaveStyle({ '--artwork-primary': artworkCssColors(cover, false).primary })
+    classic.focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(glass).toBeChecked()
+    await expect(island()).toHaveAttribute('data-interface-theme', 'glass')
+    await expect(island()).toHaveStyle({ '--artwork-primary': artworkCssColors(cover, true).primary })
+    await expect(backdrop.querySelector('canvas')).toBe(foxes)
+    await expect(canvas.getByRole('switch', { name: 'Фон при воспроизведении' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('radio', { name: 'Океан' }))
+    await waitFor(() => expect(island()).toHaveAttribute('data-interface-palette', 'ocean'))
+    await expect(shellStyle()).toEqual(before)
+    await userEvent.click(classic)
+    await expect(island()).toHaveAttribute('data-interface-theme', 'classic')
+    await expect(canvas.queryByRole('switch', { name: 'Фон при воспроизведении' })).toBeNull()
+    await expect(canvas.getByRole('slider', { name: 'Задержка открытия' })).toBeVisible()
+    await waitFor(() => expect(args.onChange).toHaveBeenLastCalledWith(expect.objectContaining({
       plugins: expect.objectContaining({ settings: expect.objectContaining({
-        ui: expect.objectContaining({ interfaceTheme: 'classic' }),
+        ui: expect.objectContaining({ interfaceTheme: 'classic', interfacePalette: 'ocean' }),
       }) }),
-    }))
+    })))
   },
 }
 export const PreviewReadouts: Story = { name: 'Превью · контраст ширины и масштаба', play: async ({ canvasElement }) => {
@@ -335,8 +256,7 @@ export const PreviewReadouts: Story = { name: 'Превью · контраст 
     await expect(getComputedStyle(grip, '::before').backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
   }
 } }
-export const PreviewReadoutsLight: Story = { ...PreviewReadouts, name: 'Превью · контраст в светлой теме', parameters: { settingsColorScheme: 'light' } }
-export const PreviewReadoutsNarrow: Story = { ...PreviewReadouts, name: 'Превью · подписи в узком окне', parameters: { settingsColorScheme: 'light', workshop: { width: 420 } } }
+export const PreviewReadoutsNarrow: Story = { ...PreviewReadouts, name: 'Превью · подписи в узком окне', parameters: { workshop: { width: 420 } } }
 export const ShaderRetention: Story = { name: 'Навигация · один canvas', play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
   await waitFor(() => expect(canvasElement.querySelector('.warp-shared-host canvas')).not.toBeNull())
@@ -395,7 +315,6 @@ export const AssistantLimits: Story = {
 }
 export const AppearanceDark: Story = {
   name: 'Внешний вид · тёмное оформление',
-  parameters: { settingsColorScheme: 'dark' },
 }
 export const LocalServersToggle: Story = {
   name: 'Добавление и удаление виджета локальных серверов',
@@ -432,25 +351,17 @@ export const ResetKeepsConnectedLimits: Story = {
     await expect(codex()).toBeInTheDocument()
   },
 }
-export const AppearanceLight: Story = {
-  name: 'Внешний вид · светлое оформление',
-  parameters: { settingsColorScheme: 'light' },
-}
 export const HeaderDark: Story = {
   name: 'Шапка · тёмное оформление',
-  parameters: { settingsColorScheme: 'dark', workshop: { width: 860, height: 360 } },
-}
-export const HeaderLight: Story = {
-  name: 'Шапка · светлое оформление',
-  parameters: { settingsColorScheme: 'light', workshop: { width: 860, height: 360 } },
+  parameters: { workshop: { width: 860, height: 360 } },
 }
 export const AppearanceNarrow: Story = {
   name: 'Внешний вид · узкое окно',
-  parameters: { settingsColorScheme: 'light', workshop: { width: 420 } },
+  parameters: { workshop: { width: 420 } },
 }
 export const AppearanceInteraction: Story = {
   name: 'Внешний вид · живой предпросмотр',
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const preview = canvasElement.querySelector<HTMLElement>('.island-preview')!
     const scene = preview.querySelector<HTMLElement>('.island-preview__frame')!
@@ -460,16 +371,6 @@ export const AppearanceInteraction: Story = {
     await expect(preview).toBeInTheDocument()
     await expect(island).toBeInTheDocument()
     await expect(canvas.getByRole('heading', { level: 2, name: /^(Внешний вид|Appearance)$/ })).toBeVisible()
-
-    await userEvent.click(canvas.getByRole('button', { name: /^(Включить светлую тему|Switch to light theme)$/ }))
-    await waitFor(() => expect(canvasElement.querySelector('.settings-window-root')).toHaveAttribute('data-color-scheme', 'light'))
-    await waitFor(() => expect(args.onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        plugins: expect.objectContaining({
-          settings: expect.objectContaining({ ui: expect.objectContaining({ settingsColorScheme: 'light' }) }),
-        }),
-      }),
-    ))
 
     width.focus()
     await userEvent.keyboard('{Home}{ArrowRight}')
@@ -540,11 +441,6 @@ export const Taskbar: Story = {
     await waitFor(() => expect(toggle()).not.toBeChecked())
   },
 }
-export const TaskbarLight: Story = {
-  ...Taskbar,
-  name: 'Панель задач · светлое оформление',
-  parameters: { settingsColorScheme: 'light' },
-}
 export const TaskbarReducedMotion: Story = {
   ...Taskbar,
   name: 'Панель задач · без движения',
@@ -581,7 +477,7 @@ export const GlassTaskbarError: Story = {
 export const GlassUpdateCheckError: Story = {
   name: 'Стекло · проверка обновлений недоступна',
   globals: { interfaceTheme: 'glass', locale: 'ru' },
-  parameters: { nativePreview: { updateCheckError: 'Сервер обновлений недоступен. Повторите позже.' }, settingsColorScheme: 'light' },
+  parameters: { nativePreview: { updateCheckError: 'Сервер обновлений недоступен. Повторите позже.' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'О программе' }))
@@ -724,12 +620,6 @@ export const About: Story = {
     await userEvent.click(within(canvasElement).getByRole('button', { name: /^(О программе|About)$/ }))
   },
 }
-export const ClassicLightAbout: Story = {
-  ...About,
-  name: 'О программе · читаемость ссылки в светлой теме',
-  globals: { interfaceTheme: 'classic' },
-  parameters: { settingsColorScheme: 'light', a11y: { test: 'error' } },
-}
 export const LanguageSwitch: Story = {
   name: 'Смена языка после перехода',
   play: async ({ canvasElement, args }) => {
@@ -854,7 +744,6 @@ export const VoiceDeveloperMode: Story = {
 export const VoiceDeveloperEnglish: Story = {
   name: 'Better Voice · светлое окно и тёмная сцена',
   globals: { locale: 'en', interfaceTheme: 'glass' },
-  parameters: { settingsColorScheme: 'light' },
   play: VoiceDeveloperMode.play,
 }
 
@@ -885,16 +774,15 @@ export const RetryFailedSave: Story = {
   args: { onChange: fn(async () => {}) },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const popup = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Тема интерфейса' }))
+    const classic = canvas.getByRole('radio', { name: 'Классическая' })
     const save = args.onChange as ReturnType<typeof fn>
     save.mockRejectedValueOnce(new Error('Disk full'))
-    await userEvent.click(popup.getByRole('option', { name: 'Классическая' }))
+    await userEvent.click(classic)
     const retry = await canvas.findByRole('button', { name: 'Сохранить снова' })
-    await expect(canvasElement.querySelector('.settings-panel')).toHaveAttribute('data-interface-theme', 'classic')
-    await expect(canvasElement.querySelector('.settings-window-root')).toHaveAttribute('data-interface-theme', 'glass')
+    await expect(classic).toBeChecked()
+    await expect(canvasElement.querySelector('.island-preview .island-root')).toHaveAttribute('data-interface-theme', 'classic')
     await userEvent.click(retry)
-    await waitFor(() => expect(canvasElement.querySelector('.settings-window-root')).toHaveAttribute('data-interface-theme', 'classic'))
-    await expect(canvas.queryByRole('button', { name: 'Сохранить снова' })).toBeNull()
+    await waitFor(() => expect(canvas.queryByRole('button', { name: 'Сохранить снова' })).toBeNull())
+    await expect(save).toHaveBeenCalledTimes(2)
   },
 }

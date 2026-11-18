@@ -1,7 +1,7 @@
 import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { RotateCcw } from '../../shared/ui/SettingsIcons'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
+import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import { dragPosition } from './dragGeometry'
 import { LayoutDragGhost } from './LayoutDragGhost'
 import { captureLayoutDrag, type LayoutDragCapture, type LayoutDragFrame } from './dragGeometry'
@@ -9,7 +9,7 @@ import type { AppConfig, Locale } from '../../shared/lib/types'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
 import { islandArrangement, ISLAND_LAYOUT_ELEMENTS, canPlaceIslandElement, getIslandLayout, getLegacyIslandLayout, isIslandCatalog, isIslandWidget, moveIslandElement, withIslandLayout, type IslandLayoutDropTarget, type IslandLayoutElement, type IslandLayout, type IslandLayoutZone } from '../../shared/lib/islandLayout'
 import { createTranslator } from '../../shared/i18n/messages'
-import { getInterfacePalette, getInterfaceTheme, withUiPrefs } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, withUiPrefs } from '../../shared/lib/uiPrefs'
 import { IslandElementSample, IslandPreview } from './IslandPreview'
 import './IslandLayoutEditor.css'
 
@@ -37,6 +37,7 @@ export interface IslandLayoutEditorProps {
 
 export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeading = true, active = true }: IslandLayoutEditorProps) {
   const reducedTransparency = useSystemReducedTransparency()
+  const paletteStyle = getInterfacePaletteStyle(config)
   const locale: Locale = config.appearance.locale === 'en' ? 'en' : 'ru'
   const labels = { ...names[locale], localServers: createTranslator(locale)('localServers.title') }
   const zones = zoneNames[locale]
@@ -158,12 +159,12 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
     return <div className="island-layout-catalog" role="group" aria-label={zones[zone]} data-layout-target={zone}
       data-ready={Boolean(dragging && canPlaceIslandElement(layout, dragging, zone)) || undefined} data-over={over?.zone === zone || undefined}>
       <div className="island-layout-catalog__items island-root" data-interface-theme={getInterfaceTheme(config)}
-        data-interface-palette={getInterfacePalette(config)} data-reduced-transparency={reducedTransparency || undefined}>
+        style={paletteStyle as CSSProperties} data-interface-palette={getInterfacePalette(config)} data-reduced-transparency={reducedTransparency || undefined}>
         {elements.map((element) => elementView(element, <IslandElementSample element={element} usage={usage} locale={locale} />, true))}
       </div>
     </div>
   }
-  return <section ref={editorRef} style={{ '--drag-indicator': config.appearance.accentColor } as import('react').CSSProperties} className="island-layout-editor" data-dragging={Boolean(dragging) || undefined}>
+  return <section ref={editorRef} style={{ '--drag-indicator': paletteStyle['--accent'] } as CSSProperties} className="island-layout-editor" data-dragging={Boolean(dragging) || undefined}>
     <header className="island-layout-editor__header"><div>{showHeading ? <h3>{locale === 'ru' ? 'Ваш островок' : 'Your island'}</h3> : null}<p>{locale === 'ru' ? 'Перетаскивайте элементы между рядами. Край меняет ширину, угол — масштаб.' : 'Drag controls between rows. Pull an edge to change width or a corner to scale.'}</p></div><button type="button" className="island-layout-editor__reset" aria-label={locale === 'ru' ? 'Сбросить настройки островка' : 'Reset island settings'} title={locale === 'ru' ? 'Сбросить расположение, размер, цвет и задержку' : 'Reset layout, size, color and opening delay'} onClick={onReset ?? reset}><RotateCcw size={15} /></button></header>
     <IslandPreview active={active} config={config} label={locale === 'ru' ? 'Редактируемый островок' : 'Editable island'} usage={usage} renderElement={elementView} renderZone={zoneView} onResize={(dimensions) => onChange({ ...config, layout: { ...config.layout, ...dimensions, size: 'medium' } })} onLocalServersResize={(localServersWidgetScale) => onChange(withUiPrefs(config, { localServersWidgetScale }))} />
     <div className="island-layout-editor__catalogs">

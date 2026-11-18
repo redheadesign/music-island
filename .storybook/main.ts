@@ -2,6 +2,7 @@ import type { StorybookConfig } from '@storybook/react-vite'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { interfaceThemeCss } from '../scripts/interface-theme-css.ts'
+import { ignoredWatchPaths } from '../scripts/watch-directories.ts'
 import { workshopThemes } from './themeFixture.ts'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
@@ -59,7 +60,7 @@ const config: StorybookConfig = {
     config.server = {
       ...config.server,
       host: '127.0.0.1',
-      watch: { ...config.server?.watch, ignored: ['**/.local/**', '**/src-tauri/**', `${path.resolve(root, 'release').replaceAll('\\', '/')}/**`, '**/storybook-static/**'] },
+      watch: { ...config.server?.watch, ignored: ignoredWatchPaths },
     }
     return config
   },

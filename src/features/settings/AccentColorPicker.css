@@ -62,11 +62,6 @@
   box-shadow: var(--shadow-panel);
 }
 
-[data-interface-theme='glass'] .accent-picker__panel {
-  background: var(--surface-glass);
-  backdrop-filter: var(--glass-filter);
-}
-
 .accent-picker .accent-picker__hex {
   color: var(--fg-secondary);
   font-size: var(--text-caption);

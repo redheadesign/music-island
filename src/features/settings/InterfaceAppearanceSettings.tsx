@@ -2,8 +2,8 @@ import { createTranslator } from '../../shared/i18n/messages'
 import { getInterfaceThemeDefinition, INTERFACE_THEME_IDS, INTERFACE_THEMES } from '../../shared/lib/interfaceTheme'
 import type { AppConfig, Locale } from '../../shared/lib/types'
 import { getInterfaceTheme, getPlaybackWaveEnabled, withUiPrefs } from '../../shared/lib/uiPrefs'
-import { Select } from '../../shared/ui/Select'
-import { SettingRow, Switch } from '../../shared/ui/SettingsControls'
+import { AppearanceChoices } from './AppearanceChoices'
+import { Switch } from '../../shared/ui/SettingsControls'
 
 type AppearanceProps = {
   config: AppConfig
@@ -14,18 +14,16 @@ type AppearanceProps = {
 export function InterfaceThemePicker({ config, locale, onChange }: AppearanceProps) {
   const t = createTranslator(locale)
   const theme = getInterfaceTheme(config)
-  const themeLabel = t('settings.interfaceTheme')
-  return <SettingRow className="settings-material-picker" label={themeLabel}>
-    <Select
-      ariaLabel={themeLabel}
-      value={theme}
-      options={INTERFACE_THEME_IDS.map(value => ({ value, label: INTERFACE_THEMES[value].label[locale] }))}
-      onChange={value => {
-        const interfaceTheme = INTERFACE_THEME_IDS.find(id => id === value)
-        if (interfaceTheme && interfaceTheme !== theme) onChange(withUiPrefs(config, { interfaceTheme }))
-      }}
-    />
-  </SettingRow>
+  return <AppearanceChoices
+    label={t('settings.interfaceTheme')}
+    value={theme}
+    options={INTERFACE_THEME_IDS.map(id => ({
+      value: id,
+      label: INTERFACE_THEMES[id].label[locale],
+      swatch: <span aria-hidden="true" className="appearance-choices__swatch appearance-choices__material" data-interface-theme={id} />,
+    }))}
+    onChange={interfaceTheme => onChange(withUiPrefs(config, { interfaceTheme }))}
+  />
 }
 
 export function InterfaceAppearanceSettings({ config, locale, onChange }: AppearanceProps) {

@@ -1,5 +1,6 @@
 import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
+import { progressTrackKey } from '../music/progressTransition'
 import { createIslandBassEffect } from '../../shared/ui/islandBassEffect'
 import { SettingsFilled } from '../../shared/ui/SettingsIcons'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -41,7 +42,6 @@ import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import {
   getInterfacePalette,
   getInterfacePaletteStyle,
-  getInterfaceScene,
   getInterfaceTheme,
   getLocalServersWidgetScale,
   getPlaybackWaveEnabled,
@@ -157,18 +157,16 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const hasPlaybackWave = hasSession && getPlaybackWaveEnabled(config)
   const playbackMotion = hasSession && media?.playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
+  const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
-    if (bass === undefined) {
+    const layer = ambientRef.current
+    if (bass === undefined || bassEffect.current?.layer !== layer) {
       bassEffect.current?.dispose()
       bassEffect.current = null
-      return
     }
-    if (!bassEffect.current?.layer.isConnected) {
-      bassEffect.current?.dispose()
-      const layer = bass > 0 ? overlay.current?.querySelector<HTMLElement>('.island-card .island-feedback__ambient[data-playback-wave][data-playback-motion="playing"]') : null
-      bassEffect.current = layer ? createIslandBassEffect(layer) : null
-    }
+    if (bass === undefined || !layer) return
+    if (!bassEffect.current && bass > 0) bassEffect.current = createIslandBassEffect(layer)
     bassEffect.current?.update(bass)
   }, [])
   usePlaybackBass(
@@ -176,6 +174,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       && !reducedMotion && !reducedTransparency
       && config.media.protocol === 'yandex-direct' && config.media.directYandexConsent && media?.provider === 'yandex-direct',
     applyBassLevel,
+    media ? `${media.generation ?? 0}:${progressTrackKey(media)}` : '',
   )
   const localServersEnabled = islandLayout.zones.bottom.includes('localServers')
   const discoveredServers = useLocalServersController(localServersEnabled && expandedVisible && !localServers)
@@ -581,7 +580,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--island-width': config.layout.width / 100,
       '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,
       '--island-hit-width': `${(500 * (config.layout.width / 100) + 112) * (config.layout.scale / 100)}px`,
-      ...getInterfacePaletteStyle(config, 'dark'),
+      ...getInterfacePaletteStyle(config),
       '--artwork-progress-color': progressColor,
       '--artwork-primary': artworkColors.primary,
       '--artwork-secondary': artworkColors.secondary,
@@ -912,7 +911,6 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       ].join(' ')}
       data-island-arrangement={arrangement}
       data-interface-theme={getInterfaceTheme(config)}
-      data-interface-scene={getInterfaceScene(config)}
       data-interface-palette={getInterfacePalette(config)}
       data-cover-art={artworkPalette !== null || undefined}
       data-reduced-transparency={reducedTransparency || undefined}
@@ -974,6 +972,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
             <IslandFeedback
               className="island-card island-surface"
               particles={hasSession && usesGlassMaterial(config)}
+              ambientRef={ambientRef}
               playbackWave={hasPlaybackWave}
               playbackMotion={playbackMotion}
             >

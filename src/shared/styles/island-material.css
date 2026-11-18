@@ -72,7 +72,7 @@
   --island-wave-trough: color-mix(in srgb, var(--island-cover-secondary) 21%, transparent);
 }
 
-@property --island-bass {
+@property --island-wave-drive {
   syntax: '<number>';
   inherits: true;
   initial-value: 0;
@@ -91,7 +91,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .island-feedback__ambient {
-    transition: opacity var(--motion-slow) ease, display var(--motion-slow) allow-discrete, --island-bass calc(var(--motion-unit) * 5) ease-out;
+    transition: opacity var(--motion-slow) ease, display var(--motion-slow) allow-discrete, --island-wave-drive calc(var(--motion-unit) * 8) linear;
   }
   @starting-style {
     .island-feedback__ambient[data-playback-motion='playing'] { opacity: 0; }
@@ -129,7 +129,7 @@
   .island-feedback__ambient[data-playback-wave]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before,
   .island-feedback__ambient[data-playback-wave]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::after {
     content: '';
-    --island-wave-opacity: calc(.28 + var(--island-bass, 0) * .68);
+    scale: 1 calc(1 + var(--island-wave-drive, 0) * .015);
     animation: island-glass-wave-out var(--island-wave-duration) var(--island-front-delay, 0s) linear infinite;
   }
   .island-feedback__ambient[data-playback-wave]::after {
@@ -141,7 +141,7 @@
 }
 @keyframes island-glass-wave-out {
   from { opacity: 0; transform: scale(0); }
-  21%, 57% { opacity: var(--island-wave-opacity); }
+  21%, 57% { opacity: .32; }
   94% { opacity: 0; }
   to { opacity: 0; transform: scale(2.68); }
 }

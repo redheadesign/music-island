@@ -1,12 +1,9 @@
-import { Warp } from '@paper-design/shaders-react'
 import { useReducedMotion } from 'framer-motion'
-import { lazy, memo, Suspense, useEffect, useRef, useState } from 'react'
-import type { HTMLAttributes, ReactNode } from 'react'
-import type { InterfaceScene } from '../lib/interfaceTheme'
-import { PAPER_WARP_PRESET, WARP_SPEED } from './warpPreset'
+import { memo, useEffect, useRef, useState } from 'react'
+import type { HTMLAttributes } from 'react'
+import { WARP_SPEED } from './warpPreset'
+import AsciiWarpField from './asciiScene/AsciiWarpField'
 import './WarpMaterial.css'
-
-const AsciiWarpField = lazy(() => import('./asciiScene/AsciiWarpField'))
 
 export type WarpMaterialProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   speed?: number
@@ -15,17 +12,12 @@ export type WarpMaterialProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'>
   className?: string
   /** Lets an established wrapper keep its field hook while sharing this renderer. */
   fieldClassName?: string
-  variant?: 'default' | 'onboarding'
-  scene?: InterfaceScene
-  colorScheme?: 'light' | 'dark'
-  /** Deterministic shader time in milliseconds for stills and motion exports. */
+  /** Deterministic scene time in milliseconds for stills and motion exports. */
   frame?: number
-  /** Soft-field raster budget; does not change its logical layout or preset. */
+  /** Raster budget independent of the logical size of the foxes. */
   maxPixelCount?: number
   /** Prewarm a below-the-fold field near the viewport, then retain its canvas. */
   deferUntilNearViewport?: boolean
-  /** Custom field keeps the same visibility and reduced-motion lifecycle. */
-  renderField?: (props: { speed: number; frame?: number; maxPixelCount: number }) => ReactNode
 }
 
 /** Decorative preview material with a shared visibility and motion policy. */
@@ -35,13 +27,9 @@ export const WarpMaterial = memo(function WarpMaterial({
   reducedMotion = false,
   className,
   fieldClassName,
-  variant = 'default',
-  scene,
-  colorScheme = 'dark',
   frame,
   maxPixelCount = 3_000_000,
   deferUntilNearViewport = false,
-  renderField,
   ...attributes
 }: WarpMaterialProps) {
   const root = useRef<HTMLDivElement>(null)
@@ -100,21 +88,7 @@ export const WarpMaterial = memo(function WarpMaterial({
       aria-hidden="true"
     >
       <div className={['warp-material__field', fieldClassName].filter(Boolean).join(' ')}>
-        {prepared && (renderField ? renderField({ speed: effectiveSpeed, frame, maxPixelCount }) : scene ? (
-          <Suspense fallback={null}>
-            <AsciiWarpField scene={scene} colorScheme={colorScheme}
-              speed={effectiveSpeed} visible={visible || frame != null} frame={frame} maxPixelCount={maxPixelCount} />
-          </Suspense>
-        ) : <Warp
-          {...PAPER_WARP_PRESET}
-          {...(variant === 'onboarding' ? { distortion: .28, softness: .85 } : {})}
-          width="100%"
-          height="100%"
-          speed={effectiveSpeed}
-          frame={frame}
-          minPixelRatio={2}
-          maxPixelCount={maxPixelCount}
-        />)}
+        {prepared && <AsciiWarpField speed={effectiveSpeed} visible={visible || frame != null} frame={frame} maxPixelCount={maxPixelCount} />}
       </div>
     </div>
   )

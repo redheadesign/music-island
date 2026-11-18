@@ -16,23 +16,6 @@
   background: var(--surface-panel);
   box-shadow: inset 0 1px 0 #ffffff03;
 }
-
-/* The Paper Warp hero is a self-contained dark stage, including inside the
-   light Settings shell. Keep its approved graphite material and contrast. */
-.settings-window-root[data-color-scheme='light'] .voice-control-card {
-  color-scheme: dark;
-  --surface-canvas: #101113;
-  --surface-panel: #18191c;
-  --surface-raised: #222326;
-  --surface-hover: rgba(255, 255, 255, 0.08);
-
-  --fg-primary: #f5f5f7;
-  --fg-secondary: #d6d6db;
-  --fg-muted: #85858f;
-  --status-success: #9fe1bd;
-  --status-danger: #ffb1b1;
-  --focus-ring: 2px solid var(--fg-primary);
-}
 .voice-control-card > :not(.voice-atmosphere) { position: relative; z-index: 1; }
 /* The stage gets progressively darker beneath the controls. In the stacked
    layout the focus of the graphic stays above the reading area. */
@@ -41,21 +24,6 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(var(--stage-reading-direction, to right), transparent 12%, var(--stage-reading-scrim) 47%);
-}
-[data-interface-theme='glass'] .voice-control-card {
-  --voice-effect-on: var(--control-value);
-  --voice-effect-on-ink: var(--control-value-ink);
-}
-[data-interface-theme='glass'] .voice-control-card :is(.voice-control-card__primary, .voice-control-card__monitor, .voice-effect-toggle) {
-  border-radius: var(--glass-control-radius);
-}
-[data-interface-theme='glass'] .voice-control-card .voice-control-card__actions :is(.voice-control-card__primary, .voice-control-card__monitor[aria-pressed='true']) {
-  background: var(--control-value);
-  color: var(--control-value-ink);
-}
-[data-interface-theme='glass'] .voice-control-card :is(.voice-control-card__monitor, .voice-effect-toggle):not([aria-pressed='true']) {
-  background: var(--surface-hover);
-  color: var(--fg-primary);
 }
 .voice-control-card__fox { align-self: center; justify-self: center; }
 .voice-control-card__controls { display: grid; gap: var(--space-3); min-width: 0; }

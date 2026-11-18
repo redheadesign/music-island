@@ -250,7 +250,9 @@ fn sample(
             let (mut frames, mut flags) = (0, 0);
             unsafe { capture.GetBuffer(&mut data, &mut frames, &mut flags, None, None)? };
             if flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32 != 0 {
-                meter.reset_filters();
+                // A renderer discontinuity starts a new audio segment. Do not carry a
+                // previous track's energy baseline, partial packet or attack into it.
+                meter = BassMeter::new();
             }
             if data.is_null() || flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0 {
                 meter.add_silence(frames);

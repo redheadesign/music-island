@@ -5,12 +5,12 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { PlaybackButton, ReactionButton } from '../../features/music/MusicControls'
 function Feedback({reducedMotion = false}: {reducedMotion?: boolean}) {
   const [playing, setPlaying]=useState(false), [liked,setLiked]=useState(false)
-  return <IslandFeedback className="island-root media-controls island-card island-surface" style={{position:'relative',display:'flex',gap:24,padding:24,width:'max-content',pointerEvents:'auto'}}>
+  return <IslandFeedback className="media-controls island-card island-surface" style={{position:'relative',display:'flex',gap:24,padding:24,width:'max-content',pointerEvents:'auto'}}>
     <PlaybackButton playing={playing} reducedMotion={reducedMotion} onClick={() => setPlaying((value) => !value)} />
     <ReactionButton kind="like" active={liked} reducedMotion={reducedMotion} onClick={() => setLiked((value) => !value)} />
   </IslandFeedback>
 }
-const meta = {title: 'Atoms/PlaybackFeedback',component: Feedback,parameters:{workshop:{width:300,height:140}}} satisfies Meta<typeof Feedback>
+const meta = {title: 'Atoms/PlaybackFeedback',component: Feedback,parameters:{islandComponent:true,workshop:{width:300,height:140}}} satisfies Meta<typeof Feedback>
 export default meta
 type Story = StoryObj<typeof meta>
 export const MouseAndKeyboard: Story = {name:'Нажатия мышью и клавиатурой',play:async ({canvasElement}) => {

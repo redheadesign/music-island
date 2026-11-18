@@ -6,7 +6,7 @@ const meta = {
   title: 'Molecules/ModelCard', component: ModelCard,
   args: { model: gigaamRnnt, locale: 'ru', onDownload: fn(), onSelect: fn(), onCancel: fn(), onDelete: fn() },
   parameters: { workshop: { width: 600 } },
-  render: (args, context) => <div className="auxiliary-ui dictation-page" data-interface-theme={context.globals.interfaceTheme} data-color-scheme={context.parameters.light ? 'light' : 'dark'} style={{ padding: 20, background: 'var(--surface-canvas)' }}><ModelCard {...args} /></div>,
+  render: args => <div className="auxiliary-ui dictation-page" style={{ padding: 20, background: 'var(--surface-canvas)' }}><ModelCard {...args} /></div>,
 } satisfies Meta<typeof ModelCard>
 export default meta
 type Story = StoryObj<typeof meta>
@@ -14,11 +14,9 @@ export const Download: Story = { name: 'Рекомендуемая · скача
   await expect(within(canvasElement).getByText('Рекомендовано для русского')).toBeVisible()
 } }
 export const Selected: Story = { name: 'Выбрана · в памяти', args: { model: { ...gigaamRnnt, is_downloaded: true }, selected: true, loaded: true } }
-export const SelectedLight: Story = { ...Selected, name: 'Выбрана · светлая тема', parameters: { light: true } }
 export const English: Story = { name: 'English · Parakeet', args: { locale: 'en', model: parakeetEnglish }, play: async ({ canvasElement }) => {
   await expect(within(canvasElement).getByText('Recommended for English')).toBeVisible()
 } }
-export const Light: Story = { name: 'Светлая тема', parameters: { light: true } }
 export const EnglishModelRussian: Story = { name: 'Для английского · русский интерфейс', args: { model: parakeetEnglish }, play: async ({ canvasElement }) => {
   await expect(within(canvasElement).getByText('Рекомендовано для английского')).toBeVisible()
 } }
@@ -27,11 +25,11 @@ export const RussianModelEnglish: Story = { name: 'For Russian · English UI', a
 } }
 export const Downloading: Story = { name: 'Загрузка · отмена', args: { downloading: true, progress: 48 }, play: async ({ canvasElement, args }) => { await userEvent.click(within(canvasElement).getByRole('button', { name: 'Отменить' })); await expect(args.onCancel).toHaveBeenCalledOnce() } }
 export const Failed: Story = { name: 'Ошибка сети · повторить', args: { error: 'Нет соединения с сервером.', model: { ...gigaamRnnt, partial_size: 4000 } } }
-export const GlassFailed: Story = {
+export const FailedRetry: Story = {
   ...Failed,
-  name: 'Стекло · не удалось скачать модель',
+  name: 'не удалось скачать модель',
   globals: { interfaceTheme: 'glass' },
-  parameters: { light: true, workshop: { width: 400 } },
+  parameters: { workshop: { width: 400 } },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('alert')).toHaveTextContent('Нет соединения с сервером.')

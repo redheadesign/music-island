@@ -24,12 +24,12 @@ const guidance = [
 
 const references = [
   {
-    title: 'Paper Shaders · Warp',
-    source: 'Готовый React-компонент · проверено 8 сентября 2026',
-    url: 'https://shaders.paper.design/warp#colors=14120f,d2a76a,f0edea&proportion=0.24&softness=1&distortion=0.21&swirl=0.57&swirlIterations=10&shape=edge&shapeScale=0.75&speed=4.2&scale=2&rotation=0',
-    context: 'Живая библиотека материалов',
-    lesson: 'Текучие формы создают спокойный фон с равномерным затемнением.',
-    decision: 'В Better Voice используется одна композиция Warp в тёплой графитовой палитре. Медленнее и темнее в ожидании, быстрее и светлее при обработке. В скрытой вкладке и при уменьшении движения анимация остановлена.',
+    title: 'T3 Code · ASCII-лисы',
+    source: 'Исходная графика T3 Code',
+    url: 'https://github.com/redheadesign/t3code-codex/tree/db54e5ee182d406a0d432205405752c5d6b44a50',
+    context: 'Фон редактора и предпросмотра',
+    lesson: 'Две дорожки сохраняют силуэты лис читаемыми в невысоком окне.',
+    decision: 'В покое лисы замедляются и тускнеют. Система уменьшения движения сохраняет неподвижный кадр.',
   },
   {
     title: 'Apple · What’s new in design',
@@ -37,7 +37,7 @@ const references = [
     url: 'https://developer.apple.com/design/whats-new/',
     context: 'Актуальные материалы и ресурсы Apple',
     lesson: 'Материал поддерживает читаемость и иерархию управления.',
-    decision: 'Это ориентир для нашего интерфейса на Windows; эффект Paper не является нативным Liquid Glass.',
+    decision: 'В плеере блики следуют за указателем. Для текста и действий сохраняем стабильный контраст.',
   },
   {
     title: 'Notification panel',

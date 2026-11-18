@@ -48,7 +48,6 @@ it('uses a recent regular beat from this card and forgets it on pause', () => {
       effect.update(.65)
     }
     expect(layer.childElementCount).toBe(0)
-    expect(Number(layer.style.getPropertyValue('--island-bass'))).toBe(.65)
     expect(localHeartDuration(button, 2150)).toBe(Math.round(350 / .49))
     expect(localHeartDuration(button, 3400)).toBeUndefined()
     expect(localHeartDuration(document.createElement('button'), 2150)).toBeUndefined()
@@ -58,24 +57,38 @@ it('uses a recent regular beat from this card and forgets it on pause', () => {
   } finally { effect.dispose() }
 })
 
-it('accelerates both outward wave fronts without restarting them or moving the particles', () => {
+it('gently modulates the two live fronts and leaves particle speed unchanged', () => {
   const layer = document.createElement('span')
-  const animation = (animationName: string) => ({ animationName, playbackRate: 1 })
-  const front = animation('island-glass-wave-out')
-  const following = animation('island-glass-wave-out')
+  const animation = (animationName: string) => ({ animationName, playbackRate: 1, playState: 'running' })
+  const front = animation('island-glass-wave-out'), following = animation('island-glass-wave-out')
   const particle = animation('island-particle-fall')
   const getAnimations = vi.fn(() => [front, following, particle])
   Object.defineProperty(layer, 'getAnimations', { value: getAnimations })
   const effect = createIslandBassEffect(layer)
-  effect.update(.8)
-  expect(layer.style.getPropertyValue('--island-bass')).toBe('0.8')
-  expect([front.playbackRate, following.playbackRate]).toEqual([3.4, 3.4].map(rate => expect.closeTo(rate)))
+  const clock = vi.spyOn(performance, 'now')
+  for (let sample = 0; sample < 40; sample++) {
+    clock.mockReturnValue(sample * 50)
+    effect.update(1)
+    expect(front.playbackRate).toBeLessThanOrEqual(1.141)
+    if (sample === 0) expect(front.playbackRate).toBeCloseTo(1.030, 3)
+  }
+  expect(front.playbackRate).toBeCloseTo(1.14, 3)
+  expect(following.playbackRate).toBe(front.playbackRate)
   expect(particle.playbackRate).toBe(1)
-  effect.update(.1)
-  expect([front.playbackRate, following.playbackRate]).toEqual([1.3, 1.3])
-  effect.update(0)
-  expect([front.playbackRate, following.playbackRate]).toEqual([1, 1])
   expect(getAnimations).toHaveBeenCalledTimes(1)
-  expect(layer.style.getPropertyValue('--island-bass')).toBe('')
+
+  front.playState = 'idle'
+  const replacement = animation('island-glass-wave-out')
+  getAnimations.mockReturnValue([replacement, following, particle])
+  clock.mockReturnValue(2000)
+  effect.update(0)
+  expect(replacement.playbackRate).toBeGreaterThan(1.1)
+  expect(replacement.playbackRate).toBeLessThan(front.playbackRate)
+  for (let sample = 1; sample <= 75; sample++) {
+    clock.mockReturnValue(2000 + sample * 50)
+    effect.update(0)
+  }
+  expect(replacement.playbackRate).toBe(1)
+  expect(layer.style.getPropertyValue('--island-wave-drive')).toBe('')
   effect.dispose()
 })

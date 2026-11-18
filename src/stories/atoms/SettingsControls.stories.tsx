@@ -4,15 +4,13 @@ import { expect, userEvent, within, waitFor } from 'storybook/test'
 import { Button, FeatureToggle, Input, Notice, SettingsIconButton, SearchField, SettingRow, SettingsNavigation, SettingsSection, Switch } from '../../shared/ui/SettingsControls'
 import { Select } from '../../shared/ui/Select'
 import { Mic, SlidersHorizontal, Volume2, Trash2 } from '../../shared/ui/SettingsIcons'
-import type { InterfaceThemeId } from '../../shared/lib/interfaceTheme'
-import { normalizeInterfaceTheme } from '../../shared/lib/interfaceTheme'
 
-function Controls({ light = false, disabled = false, interfaceTheme }: { light?: boolean; disabled?: boolean; interfaceTheme?: InterfaceThemeId }) {
+function Controls({ disabled = false }: { disabled?: boolean }) {
   const [enabled, setEnabled] = useState(true)
   const [page, setPage] = useState('general')
   const [language, setLanguage] = useState('ru')
   const [query, setQuery] = useState('')
-  return <div className="auxiliary-ui" data-color-scheme={light ? 'light' : 'dark'} data-interface-theme={interfaceTheme} style={{padding:24,display:'grid',gap:24,background:'var(--surface-canvas)',color:'var(--fg-primary)'}}>
+  return <div className="auxiliary-ui" style={{padding:24,display:'grid',gap:24,background:'var(--surface-canvas)',color:'var(--fg-primary)'}}>
     <FeatureToggle label="Диктовка" hint="Готова к записи по сочетанию клавиш." icon={<Mic size={24} weight="fill" />} checked={enabled} onChange={setEnabled} disabled={disabled} />
     <div style={{ display:'grid',gridTemplateColumns:'164px 1fr', gap:24 }}>
       <SettingsNavigation label="Пример навигации" value={page} onChange={setPage} items={[{id:'general',label:'Основное',icon:active=><Mic size={20} weight={active?'fill':'regular'} />},{id:'advanced',label:'Дополнительно',icon:active=><SlidersHorizontal size={20} weight={active?'fill':'regular'} />}]} />
@@ -28,24 +26,20 @@ function Controls({ light = false, disabled = false, interfaceTheme }: { light?:
 }
 const meta = {
   title: 'Atoms/SettingsControls', component: Controls, parameters: { workshop: { width: 850 }, handlesInterfaceTheme: true },
-  render: (args, context) => <Controls {...args} interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)} />,
+  render: args => <Controls {...args} />,
 } satisfies Meta<typeof Controls>
 export default meta
 type Story = StoryObj<typeof meta>
 export const Dark: Story = {name:'Единые контролы · графит'}
-export const Light: Story = {name:'Единые контролы · светлая тема',args:{light:true}}
 export const Disabled: Story = {name:'Недоступные действия',args:{disabled:true}}
-export const Glass: Story = { name: 'Стеклянные поля и кнопки', globals: { interfaceTheme: 'glass' } }
-export const GlassLight: Story = { ...Glass, name: 'Стеклянные контролы · светлая тема', args: { light: true } }
-export const GlassDisabled: Story = { ...Glass, name: 'Стеклянные контролы · недоступные действия', args: { disabled: true } }
 export const Messages: Story = { name: 'Сообщения и кнопки-иконки', render: () => <div className="auxiliary-ui" style={{ display: 'grid', gap: 16, padding: 24, background: 'var(--surface-canvas)' }}>
   <div className="ui-action-row"><SettingsIconButton label="Прослушать сигнал"><Volume2 size={18} /></SettingsIconButton><SettingsIconButton size="compact" label="Удалить модель" variant="danger"><Trash2 size={16} /></SettingsIconButton><SettingsIconButton label="Загрузка устройств" busy /><SettingsIconButton label="Прослушать сигнал · недоступно" disabled><Volume2 size={18} /></SettingsIconButton></div>
   <Notice>Загружаем устройства…</Notice><Notice tone="success">Доступ к микрофону разрешён</Notice><Notice tone="warning" action={<Button size="compact">Проверить микрофон</Button>}>Windows запрещает доступ к микрофону.</Notice><Notice tone="danger" action={<Button size="compact">Повторить</Button>}>Не удалось загрузить список устройств.</Notice>
 </div> }
 
-function EdgeMenu({ light = false, interfaceTheme }: { light?: boolean; interfaceTheme?: InterfaceThemeId }) {
+function EdgeMenu() {
   const [value, setValue] = useState('0')
-  return <div className="auxiliary-ui" data-color-scheme={light ? 'light' : 'dark'} data-interface-theme={interfaceTheme} style={{ height: '100vh', background: 'var(--surface-canvas)', color: 'var(--fg-primary)' }}><div style={{ position: 'fixed', right: 16, bottom: 16, width: 220 }}><Select ariaLabel="Микрофон" value={value} options={Array.from({length: 12}, (_, i) => ({ value: String(i), label: `Микрофон ${i + 1} · USB Audio` }))} onChange={setValue}/></div></div>
+  return <div className="auxiliary-ui" style={{ height: '100vh', background: 'var(--surface-canvas)', color: 'var(--fg-primary)' }}><div style={{ position: 'fixed', right: 16, bottom: 16, width: 220 }}><Select ariaLabel="Микрофон" value={value} options={Array.from({length: 12}, (_, i) => ({ value: String(i), label: `Микрофон ${i + 1} · USB Audio` }))} onChange={setValue}/></div></div>
 }
 const checkEdgeMenu: Story['play'] = async ({ canvasElement }) => {
   const trigger = within(canvasElement).getByRole('button', { name: 'Микрофон' })
@@ -66,22 +60,3 @@ const checkEdgeMenu: Story['play'] = async ({ canvasElement }) => {
   await userEvent.keyboard('{ArrowDown}')
 }
 export const PopoverAtEdge: Story = { name: 'Меню у края · клавиатура', render: () => <EdgeMenu />, parameters: { workshop: { bare: true } }, play: checkEdgeMenu }
-export const PopoverAtEdgeLight: Story = { name: 'Меню у края · светлая тема', render: () => <EdgeMenu light />, parameters: { workshop: { bare: true } }, play: checkEdgeMenu }
-export const GlassPopover: Story = {
-  name: 'Стекло · открытие меню у края',
-  globals: { interfaceTheme: 'glass' },
-  render: () => <EdgeMenu interfaceTheme="glass" />,
-  parameters: { workshop: { bare: true } },
-  play: async ({ canvasElement }) => {
-    const trigger = within(canvasElement).getByRole('button', { name: 'Микрофон' })
-    const body = within(document.body)
-    await userEvent.click(trigger)
-    const menu = await body.findByRole('listbox')
-    await expect(menu).toHaveAttribute('data-interface-theme', 'glass')
-    await waitFor(() => expect(menu).toHaveAttribute('data-enter', 'above'))
-    await userEvent.keyboard('{Escape}')
-    await expect(trigger).toHaveFocus()
-    await userEvent.keyboard('{ArrowDown}')
-    await expect(await body.findByRole('listbox')).not.toHaveAttribute('data-enter')
-  },
-}

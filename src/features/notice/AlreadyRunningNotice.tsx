@@ -1,14 +1,11 @@
-import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getInstallHandoff, openNewerInstall, type InstallHandoff } from '../../app/tauriApi'
 import { createTranslator, normalizeLocale } from '../../shared/i18n/messages'
 import type { AppConfig } from '../../shared/lib/types'
-import { getInterfacePaletteStyle, getInterfaceTheme, getSettingsColorScheme } from '../../shared/lib/uiPrefs'
 import { Button, Notice } from '../../shared/ui/SettingsControls'
 
 export function AlreadyRunningNotice({ config }: { config: AppConfig }) {
-  const reducedTransparency = useSystemReducedTransparency()
   const t = createTranslator(normalizeLocale(config.appearance.locale))
   const [handoff, setHandoff] = useState<InstallHandoff | null>(null)
   const [busy, setBusy] = useState(true)
@@ -33,10 +30,8 @@ export function AlreadyRunningNotice({ config }: { config: AppConfig }) {
       setFailure(action)
     } finally { setBusy(false) }
   }
-  const scheme = getSettingsColorScheme(config)
-  return <main className="notice-window-root auxiliary-ui" data-color-scheme={scheme} data-interface-theme={getInterfaceTheme(config)}
-    data-reduced-motion={config.appearance.reducedMotion || undefined} data-reduced-transparency={reducedTransparency || undefined}
-    style={getInterfacePaletteStyle(config, scheme) as CSSProperties}>
+  return <main className="notice-window-root auxiliary-ui" data-color-scheme="dark" data-interface-theme="classic"
+    data-reduced-motion={config.appearance.reducedMotion || undefined}>
     <section className="notice-card" aria-busy={busy}>
       {busy && !handoff && !failure ? <span role="status">{t('settings.loading')}</span> : <>
         <h1>{t(handoff ? 'notice.newerTitle' : 'notice.alreadyRunningTitle')}</h1>

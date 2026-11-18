@@ -8,7 +8,7 @@ import type { AppConfig } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
 import { islandArrangement, getIslandLayout, inlineActionsWidth, type IslandLayoutElement, type IslandLayoutZone } from '../../shared/lib/islandLayout'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getLocalServersWidgetScale, getPlaybackWaveEnabled, usesGlassMaterial, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, getLocalServersWidgetScale, getPlaybackWaveEnabled, usesGlassMaterial, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
 import { createTranslator } from '../../shared/i18n/messages'
 import { MusicModule } from '../music/MusicModule'
 import { LocalServersPanel } from '../overlay/LocalServersPanel'
@@ -17,7 +17,7 @@ import { UsageStatusChip } from '../usage/UsageStatusChip'
 import { WarpSurface } from '../../shared/ui/WarpSurface'
 import { projectPreviewScale } from '../../shared/lib/previewSizing'
 import { PreviewResizeHandle } from '../../shared/ui/PreviewResizeHandle'
-import { PREVIEW_COVER_PROGRESS, APPEARANCE_PREVIEW_ARTWORK_THEME, APPEARANCE_PREVIEW_MEDIA as media } from './previewMedia'
+import { getPreviewArtworkStyle, APPEARANCE_PREVIEW_MEDIA as media } from './previewMedia'
 import './IslandPreview.css'
 
 type ResizeValues = Pick<AppConfig['layout'], 'width' | 'scale'> & { localServersScale: number }
@@ -157,7 +157,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     }
   }
   const playbackWave = getPlaybackWaveEnabled(config)
-  const paletteStyle = getInterfacePaletteStyle(config, 'dark')
+  const paletteStyle = getInterfacePaletteStyle(config)
   const style: CSSProperties & Record<`--${string}`, string | number | undefined> = {
     ...paletteStyle,
     '--drag-indicator': paletteStyle['--accent'],
@@ -168,10 +168,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     '--island-scale': 1,
     '--actions-scale': 1,
     '--inline-actions-width': `${actionWidth}px`,
-    ...(usesGlassMaterial(config) ? APPEARANCE_PREVIEW_ARTWORK_THEME : {
-      '--artwork-progress-color': PREVIEW_COVER_PROGRESS,
-      '--artwork-primary': '168, 98, 55', '--artwork-secondary': '87, 63, 49',
-    }),
+    ...getPreviewArtworkStyle(usesGlassMaterial(config)),
     '--preview-left': `${sideWidth('left')}px`, '--preview-right': `${sideWidth('right')}px`,
     width: sceneWidth, transform: `scale(${scale})`, transformOrigin: 'top left',
   }
@@ -179,7 +176,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   return <div className="island-preview-section"><div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined} data-reduced-motion={config.appearance.reducedMotion || undefined}>
     {active ? <WarpSurface className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
     <div className="island-preview__camera" style={{ width: sceneWidth * scale, height: frameHeight * scale }}>
-    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-island-arrangement={arrangement} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={reducedTransparency || undefined} style={style}>
+    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-island-arrangement={arrangement} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={reducedTransparency || undefined} style={style}>
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
         <IslandFeedback className="island-card island-surface" particles={active && usesGlassMaterial(config)} playbackWave={active && playbackWave}>

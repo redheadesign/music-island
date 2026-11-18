@@ -2,33 +2,27 @@
 import { act, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { expect, it, vi } from 'vitest'
-import type { InterfaceScene } from '../lib/interfaceTheme'
 import type { WarpMaterialProps } from './WarpMaterial'
 import { WarpSurface, WarpSurfaceProvider } from './WarpSurface'
 const lifecycle = vi.hoisted(() => ({ mounts: 0, unmounts: 0 }))
-vi.mock('./WarpMaterial', () => ({ WarpMaterial: ({ active, scene, colorScheme }: WarpMaterialProps) => {
+vi.mock('./WarpMaterial', () => ({ WarpMaterial: ({ active }: WarpMaterialProps) => {
   useEffect(() => { lifecycle.mounts++; return () => { lifecycle.unmounts++ } }, [])
-  return <canvas data-active={active} data-scene={scene} data-color-scheme={colorScheme} />
+  return <canvas data-active={active} />
 } }))
 it('moves one mounted renderer between slots and parks it paused when no page needs it', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   const container = document.createElement('div'); document.body.append(container)
   const root = createRoot(container)
-  const view = (page: string, scene?: InterfaceScene) => <WarpSurfaceProvider scene={scene} colorScheme="light"><section data-page="a">{page === 'a' && <WarpSurface />}</section><section data-page="b">{page === 'b' && <WarpSurface />}</section></WarpSurfaceProvider>
+  const view = (page: string) => <WarpSurfaceProvider><section data-page="a">{page === 'a' && <WarpSurface />}</section><section data-page="b">{page === 'b' && <WarpSurface />}</section></WarpSurfaceProvider>
   try {
     await act(async () => root.render(view('a')))
     const canvas = container.querySelector('canvas')
     expect(container.querySelector('[data-page="a"] canvas')).toBe(canvas)
-    expect(canvas?.dataset.scene).toBeUndefined()
-    await act(async () => root.render(view('a', 'manta')))
-    expect(canvas?.dataset).toMatchObject({ scene: 'manta', colorScheme: 'light' })
-    await act(async () => root.render(view('b', 'fox')))
+    await act(async () => root.render(view('b')))
     expect(container.querySelector('[data-page="b"] canvas')).toBe(canvas)
-    expect(canvas?.dataset.scene).toBe('fox')
     expect(lifecycle.mounts).toBe(1); expect(lifecycle.unmounts).toBe(0)
-    await act(async () => root.render(view('none', 'fox')))
+    await act(async () => root.render(view('none')))
     expect(canvas?.getAttribute('data-active')).toBe('false')
-    expect(canvas?.dataset.scene).toBe('fox')
   } finally { await act(async () => root.unmount()); container.remove() }
   expect(lifecycle.unmounts).toBe(1)
 })

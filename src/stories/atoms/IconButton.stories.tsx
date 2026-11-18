@@ -19,6 +19,7 @@ const meta = {
     className: { table: { disable: true } },
   },
   parameters: {
+    islandComponent: true,
     workshop: { width: 100 },
     docs: {
       description: {

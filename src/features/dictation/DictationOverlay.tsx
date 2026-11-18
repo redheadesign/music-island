@@ -5,15 +5,13 @@ import { Check, Copy, LoaderCircle, Mic, Stop, X } from '../../shared/ui/Setting
 import { useDictationOverlay } from '../../app/useIslandApp'
 import type { DictationStatus } from '../../shared/lib/dictationTypes'
 import { defaultDictationAppearance, type DictationAppearance } from '../../shared/lib/dictationAppearance'
-import { DEFAULT_INTERFACE_THEME, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { DictationVisual } from './DictationVisual'
 import { DictationCloudSurface } from './DictationCloudSurface'
 import './dictation.css'
 export function DictationOverlay() { return <DictationOverlayView {...useDictationOverlay()} /> }
-export function DictationOverlayView({ status, visible, levels, text, locale = 'ru', reducedMotion, appearance = defaultDictationAppearance, interfaceTheme = DEFAULT_INTERFACE_THEME, active = true, demo = false, finish, cancel, copy }: {
+export function DictationOverlayView({ status, visible, levels, text, locale = 'ru', reducedMotion, appearance = defaultDictationAppearance, active = true, demo = false, finish, cancel, copy }: {
   status: DictationStatus; visible: boolean; levels: number[]; text: { committed: string; tentative: string }; locale?: 'ru' | 'en'; reducedMotion?: boolean; cancel: () => Promise<unknown>; copy: () => Promise<unknown>
   appearance?: DictationAppearance; active?: boolean; demo?: boolean
-  interfaceTheme?: InterfaceThemeId
   finish?: () => Promise<unknown>
 }) {
   const [copyFailure, setCopyFailure] = useState<number | null>(null)
@@ -60,7 +58,7 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
     const end = () => { void finish?.().catch(() => {}) }
     const copyText = () => { setCopyFailure(null); void copy().catch(() => setCopyFailure(status.operationId)) }
     const visual = fox ? <DictationVisual appearance={appearance} phase={status.phase} levels={levels} still={still} active={artworkActive} demo={demo} operationId={status.operationId} /> : <Icon className="dictation-cloud__fallback" size={18} aria-hidden="true" />
-    return <div hidden={!visible} className="dictation-overlay dictation-overlay--cloud" data-theme={appearance.theme} data-phase={status.phase} data-audio-progress={progress ? true : undefined} data-interface-theme={error ? interfaceTheme : undefined} data-recording-control={recordingControl || undefined} data-expanded={expanded || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
+    return <div hidden={!visible} className="dictation-overlay dictation-overlay--cloud" data-theme={appearance.theme} data-phase={status.phase} data-audio-progress={progress ? true : undefined} data-recording-control={recordingControl || undefined} data-expanded={expanded || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
       <DictationCloudSurface appearance={appearance} phase={status.phase} levels={levels} still={still} active={artworkActive && !error} demo={demo} coreRef={core} effectRef={progress ? progressArt : undefined} expanded={expanded} singleControl controlsVisible={recording && recordingControl} />
       {previewText}
       <div className="dictation-cloud__bar">
@@ -80,7 +78,7 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
     </div>
   }
   if (!visible) return null
-  return <div className="dictation-overlay" data-theme={appearance.theme} data-phase={status.phase} data-interface-theme={error ? interfaceTheme : undefined} data-expanded={Boolean(previewText) || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
+  return <div className="dictation-overlay" data-theme={appearance.theme} data-phase={status.phase} data-expanded={Boolean(previewText) || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
     <div className="dictation-overlay__bar">
       <div className="dictation-overlay__art"><DictationVisual key={`${appearance.theme}:${status.operationId}:${status.phase}`} appearance={appearance} phase={status.phase} levels={levels} still={still} active={active} demo={demo} operationId={status.operationId} /></div>
       <span className="dictation-overlay__label"><span role={error ? 'alert' : 'status'}>{message}</span>{progressTime && <> {progressTime}</>}</span>

@@ -16,8 +16,8 @@ let root: ReturnType<typeof createRoot>
 let sample: Parameters<typeof api.onPlaybackBass>[0]
 const apply = vi.fn()
 
-function BassCapture({ enabled }: { enabled: boolean }) {
-  usePlaybackBass(enabled, apply)
+function BassCapture({ enabled, track = 'A' }: { enabled: boolean; track?: string }) {
+  usePlaybackBass(enabled, apply, track)
   return null
 }
 
@@ -57,9 +57,13 @@ it('retries an accepted start once if WASAPI never delivers a sample', async () 
   expect(apply).not.toHaveBeenCalledWith(.7)
   expect(apply).toHaveBeenCalledWith(.13)
 
-  await act(async () => vi.advanceTimersByTimeAsync(5000))
+  // Digital silence is a living stream. It must not re-open WASAPI.
+  for (let i = 0; i < 12; i++) {
+    await act(async () => vi.advanceTimersByTimeAsync(500))
+    sample({ request: second, bass: 0 })
+  }
   expect(api.setPlaybackBass).toHaveBeenCalledTimes(3)
-  expect(apply).toHaveBeenLastCalledWith()
+  expect(apply).toHaveBeenLastCalledWith(0)
 })
 
 it('cancels the pending first-sample retry when the island closes', async () => {
@@ -113,4 +117,65 @@ it('drops a pending subscription if the window hides before native events are at
   hidden.mockReturnValue(false)
   await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
   expect(api.setPlaybackBass).toHaveBeenCalledTimes(1)
+})
+
+
+it('recovers when Direct briefly drops capture during a seek while the UI stays playing', async () => {
+  await act(async () => root.render(<BassCapture enabled />))
+  const first = vi.mocked(api.setPlaybackBass).mock.calls[0][0]
+  sample({ request: first, bass: .8 })
+  await act(async () => vi.advanceTimersByTimeAsync(240))
+  expect(apply).toHaveBeenLastCalledWith()
+  await act(async () => vi.advanceTimersByTimeAsync(1200))
+  const second = vi.mocked(api.setPlaybackBass).mock.calls.at(-1)![0]
+  expect(second).not.toBe(first)
+  apply.mockClear()
+  sample({ request: first, bass: .9 })
+  expect(apply).not.toHaveBeenCalled()
+  sample({ request: second, bass: .35 })
+  expect(apply).toHaveBeenLastCalledWith(.35)
+})
+
+it('opens a new generation on track change and rejects samples from before pause or a skip', async () => {
+  const requests = vi.mocked(api.setPlaybackBass).mock.calls
+  await act(async () => root.render(<BassCapture enabled track="A" />))
+  const first = requests.at(-1)![0]
+  sample({ request: first, bass: .8 })
+  await act(async () => root.render(<BassCapture enabled track="B" />))
+  const second = requests.at(-1)![0]
+  expect(second).not.toBe(first)
+  apply.mockClear()
+  sample({ request: first, bass: 1 })
+  expect(apply).not.toHaveBeenCalled()
+  sample({ request: second, bass: .35 })
+  expect(apply).toHaveBeenLastCalledWith(.35)
+  await act(async () => root.render(<BassCapture enabled={false} track="B" />))
+  await act(async () => vi.advanceTimersByTimeAsync(6000))
+  expect(requests.at(-1)).toEqual([second, false])
+  await act(async () => root.render(<BassCapture enabled track="B" />))
+  const resumed = requests.at(-1)![0]
+  expect(resumed).not.toBe(second)
+  sample({ request: resumed, bass: .1 })
+  expect(apply).toHaveBeenLastCalledWith(.1)
+})
+
+it('backs off during a long renderer interruption and still recovers without closing the island', async () => {
+  const requests = vi.mocked(api.setPlaybackBass).mock.calls
+  await act(async () => root.render(<BassCapture enabled />))
+  sample({ request: requests.at(-1)![0], bass: .5 })
+  vi.mocked(api.setPlaybackBass).mockResolvedValue(false)
+  await act(async () => vi.advanceTimersByTimeAsync(5500))
+  const attempts = requests.filter(([, enabled]) => enabled).length
+  expect(attempts).toBeGreaterThan(3)
+  expect(attempts).toBeLessThan(7)
+  vi.mocked(api.setPlaybackBass).mockResolvedValue(true)
+  await act(async () => vi.advanceTimersByTimeAsync(4500))
+  const recovered = requests.at(-1)!
+  expect(recovered[1]).toBe(true)
+  sample({ request: recovered[0], bass: .6 })
+  expect(apply).toHaveBeenLastCalledWith(.6)
+  await act(async () => root.render(<BassCapture enabled={false} />))
+  const stopped = requests.length
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  expect(requests).toHaveLength(stopped)
 })

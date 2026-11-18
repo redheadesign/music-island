@@ -47,10 +47,10 @@
 .usage-settings__provider {
   box-sizing: border-box;
   min-width: 0;
-  padding: var(--space-5) var(--settings-group-gutter, var(--space-5));
+  padding: var(--space-5);
   border: 0;
   border-radius: var(--radius-xl);
-  background: var(--settings-group-fill, var(--surface-panel));
+  background: var(--surface-panel);
 
 }
 

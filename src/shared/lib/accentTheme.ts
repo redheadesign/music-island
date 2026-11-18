@@ -83,16 +83,3 @@ export function rgbLuminance(red: number, green: number, blue: number) {
   const linear = (value: number) => { const v = value / 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4 }
   return .2126 * linear(red) + .7152 * linear(green) + .0722 * linear(blue)
 }
-
-export function applyAccentTheme(hex: string, target: HTMLElement = document.documentElement) {
-  const tokens = buildAccentTokens(hex)
-  target.style.setProperty('--accent', tokens.accent)
-  target.style.setProperty('--accent-soft', tokens.accentSoft)
-  target.style.setProperty('--accent-strong', tokens.accentStrong)
-  target.style.setProperty('--accent-rgb', tokens.accentRgb)
-  target.style.setProperty('--accent-soft-rgb', tokens.accentSoftRgb)
-  target.style.setProperty('--accent-glow', tokens.accentGlow)
-  target.style.setProperty('--accent-muted', tokens.accentMuted)
-  target.style.setProperty('--accent-ink', tokens.accentInk)
-  return tokens
-}

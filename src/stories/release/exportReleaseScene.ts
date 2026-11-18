@@ -61,12 +61,7 @@ export async function exportReleaseScene(node: HTMLElement, pixelRatio = 1) {
       for (const [property, value] of values) child.style.setProperty(property, value)
       restore.push(() => previous == null ? child.removeAttribute('style') : child.setAttribute('style', previous))
     }
-    // Paper releases its WebGL drawing buffer between frames. Repaint the same
-    // bound fullscreen triangle pair and snapshot synchronously, before cloning.
-    for (const canvas of node.querySelectorAll<HTMLCanvasElement>('.warp-material canvas')) {
-      const gl = canvas.getContext('webgl2')
-      if (!gl) continue
-      gl.drawArrays(gl.TRIANGLES, 0, 6)
+    for (const canvas of node.querySelectorAll<HTMLCanvasElement>('canvas[data-ascii-scene="fox"]')) {
       const data = canvas.toDataURL()
       // Clone a normal image, avoiding html-to-image's per-canvas RAF wait in
       // background tabs. The live canvas is restored before React updates.

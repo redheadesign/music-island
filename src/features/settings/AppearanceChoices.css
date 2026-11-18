@@ -1,0 +1,68 @@
+.appearance-choices {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.appearance-choices legend {
+  padding: 0;
+  color: var(--fg-primary);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+}
+.appearance-choices__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+}
+.appearance-choices__item { position: relative; cursor: pointer; }
+.appearance-choices__item input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.appearance-choices__face {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-compact);
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  color: var(--fg-secondary);
+  background: var(--control-surface);
+  font-size: var(--text-caption);
+}
+.appearance-choices__item:hover .appearance-choices__face { background: var(--control-surface-hover); }
+.appearance-choices__item input:checked + span {
+  border-color: var(--fg-secondary);
+  background: var(--surface-selected);
+  color: var(--fg-primary);
+}
+.appearance-choices__item input:focus-visible + span { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.appearance-choices__swatch {
+  width: var(--space-4);
+  height: var(--space-4);
+  flex-shrink: 0;
+  border-radius: var(--radius-round);
+  box-shadow: inset 0 0 0 1px var(--surface-selected);
+}
+.appearance-choices__material {
+  width: var(--space-6);
+  border-radius: var(--radius-pill);
+  background: var(--glass-control-sheen, none) var(--glass-island-fill, var(--surface-sunken));
+  box-shadow: var(--glass-control-rim, inset 0 0 0 1px var(--surface-selected));
+}
+@media (forced-colors: active) {
+  .appearance-choices__item input:checked + span { border-color: Highlight; }
+  .appearance-choices__item input:focus-visible + span { outline-color: ButtonText; }
+  .appearance-choices__swatch { forced-color-adjust: none; }
+}
+
+.island-appearance-options { display: grid; gap: var(--space-4); }
+.island-appearance-options > :is(.ui-setting-row, .settings-control-row, .accent-picker) { margin: 0; }

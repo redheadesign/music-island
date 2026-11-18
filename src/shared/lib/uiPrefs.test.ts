@@ -4,9 +4,7 @@ import {
   getInterfacePalette,
   getPlaybackWaveEnabled,
   getInterfacePaletteStyle,
-  getInterfaceScene,
   getInterfaceTheme,
-  getSettingsColorScheme,
   getUsageWidgetCompact,
   getUsageWidgetScale,
   normalizeUsageWidgetScale,
@@ -24,10 +22,6 @@ describe('interface theme preferences', () => {
     expect(getInterfaceTheme(configWithUi())).toBe('glass')
     expect(getInterfaceTheme(configWithUi({ interfaceTheme: 'future' }))).toBe('glass')
     expect(getInterfaceTheme(configWithUi({ interfaceTheme: 'constructor' }))).toBe('glass')
-    expect(getInterfaceScene(configWithUi({ interfaceTheme: 'classic', interfaceScenes: { glass: 'fox' } }))).toBeUndefined()
-    expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass' }))).toBe('fox')
-    expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'unknown' } }))).toBe('fox')
-    expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'manta' } }))).toBe('fox')
   })
 
   it('enables the wave in Glass by default and remembers the switch across themes', () => {
@@ -39,38 +33,28 @@ describe('interface theme preferences', () => {
     expect(getPlaybackWaveEnabled(withUiPrefs(classic, { interfaceTheme: 'glass' }))).toBe(false)
   })
 
-  it('uses the Glass scene when returning from Classic with an older profile', () => {
-    const glass = configWithUi({
-      settingsColorScheme: 'light', interfaceTheme: 'glass', interfaceScenes: { glass: 'manta' }, reducedTransparency: true,
-    })
-    const classic = withUiPrefs(glass, { interfaceTheme: 'classic' })
-    const restored = withUiPrefs(classic, { interfaceTheme: 'glass' })
-    expect(getInterfaceScene(classic)).toBeUndefined()
-    expect(getInterfaceScene(restored)).toBe('fox')
-    expect(getSettingsColorScheme(restored)).toBe('light')
-  })
 })
 
 describe('interface color palette', () => {
   it('falls back to the stored custom accent for older profiles and unknown presets', () => {
     const config = { ...configWithUi({ interfacePalette: 'removed-preset' }), appearance: { accentColor: '#ad5242' } } as AppConfig
     expect(getInterfacePalette(config)).toBe('custom')
-    expect(getInterfacePaletteStyle(config, 'light')['--accent']).toBe('#ad5242')
-    expect(getInterfacePaletteStyle(config, 'dark')['--palette-primary']).toBe('initial')
+    expect(getInterfacePaletteStyle(config)['--accent']).toBe('#ad5242')
+    expect(getInterfacePaletteStyle(config)['--palette-primary']).toBe('initial')
   })
 
   it('remembers the palette across materials and restores the custom accent when requested', () => {
     const base = { ...configWithUi(), appearance: { accentColor: '#ad5242' } } as AppConfig
     const config = withUiPrefs(base, { interfaceTheme: 'glass', interfacePalette: 'ocean' })
-    expect(getInterfacePaletteStyle(config, 'dark')).toMatchObject({
+    expect(getInterfacePaletteStyle(config)).toMatchObject({
       '--palette-primary': '#70b9ee',
       '--palette-secondary': '#5bd0d6',
     })
-    const classic = withUiPrefs(config, { interfaceTheme: 'classic', settingsColorScheme: 'light' })
+    const classic = withUiPrefs(config, { interfaceTheme: 'classic' })
     expect(getInterfacePalette(classic)).toBe('ocean')
-    expect(getInterfacePaletteStyle(classic, 'light')['--accent']).toBe('#2672af')
+    expect(getInterfacePaletteStyle(classic)['--accent']).toBe('#70b9ee')
     const restored = withUiPrefs(classic, { interfacePalette: 'custom' })
-    expect(getInterfacePaletteStyle(restored, 'light')['--accent']).toBe('#ad5242')
+    expect(getInterfacePaletteStyle(restored)['--accent']).toBe('#ad5242')
   })
 })
 

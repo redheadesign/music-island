@@ -1,7 +1,7 @@
 .taskbar-layout-editor { display: grid; gap: var(--space-5); min-width: 0; container-type: inline-size; }
 .taskbar-preview .taskbar-preview__header { flex-wrap: nowrap; }
 .taskbar-preview .taskbar-preview__header .ui-setting-row { flex: 1 1 0; }
-.taskbar-preview { position: relative; isolation: isolate; min-height: 216px; overflow: hidden; border-radius: var(--radius-lg); background: #171412; }
+.taskbar-preview { position: relative; isolation: isolate; min-height: 216px; overflow: hidden; border-radius: var(--radius-lg); background: var(--surface-panel); }
 .taskbar-preview__bar { position: relative; display: flex; align-items: center; justify-content: center; padding-inline: var(--space-2); color: #f5f5f7; }
 .taskbar-preview .taskbar-player { --fg-primary: #f5f5f7; --fg-secondary: #aaaab2; --fg-muted: #85858f; --surface-glass: rgba(32,33,36,.78); --surface-raised: #222326;  }
 @media (forced-colors: active) { .taskbar-preview { background: Canvas; border: 1px solid CanvasText; } }
@@ -15,7 +15,5 @@
 .taskbar-editor-element:focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
 .taskbar-editor-element__visual { display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .taskbar-layout-catalog__items { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); min-height: var(--control-height); }
-.taskbar-editor-element--catalog { padding: var(--space-2); background: var(--settings-group-fill, var(--surface-raised)); border-radius: calc(var(--radius-unit) * 3.5); }
+.taskbar-editor-element--catalog { padding: var(--space-2); background: var(--surface-raised); border-radius: calc(var(--radius-unit) * 3.5); }
 .taskbar-control-sample.taskbar-player { width: auto; height: 32px; padding: 0; background: transparent; border: 0; }
-[data-interface-theme='glass'] .taskbar-control-sample.taskbar-player .taskbar-player__button { color: var(--fg-primary); opacity: 1; }
-[data-interface-theme='glass'] .taskbar-control-sample.taskbar-player .taskbar-player__button[aria-pressed='true'] { color: var(--control-value); }

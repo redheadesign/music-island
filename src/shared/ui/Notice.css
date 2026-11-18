@@ -6,24 +6,12 @@
 
 .ui-notice[data-compact='true'] > svg { margin: 0; }
 
-[data-interface-theme='glass'] .ui-notice:is(.ui-notice--danger, .ui-notice--warning) {
-  --notice-signal: var(--status-danger);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--notice-signal) 8%, var(--surface-panel));
-  color: var(--fg-primary);
-  box-shadow: var(--glass-panel-rim), inset 0 0 0 1px color-mix(in srgb, var(--notice-signal) 22%, transparent);
-}
-
-[data-interface-theme='glass'] .ui-notice.ui-notice--warning { --notice-signal: var(--status-warning); }
-[data-interface-theme='glass'] .ui-notice:is(.ui-notice--danger, .ui-notice--warning) > svg { color: var(--notice-signal); }
-[data-interface-theme='glass'] .ui-notice .ui-notice__copy strong { font-weight: var(--weight-semibold); }
-
 @container settings (max-width: 420px) {
   .ui-notice[data-compact='true'] .ui-notice__action { margin-left: var(--space-6); }
 }
 
 @media (forced-colors: active) {
-  [data-interface-theme='glass'] .ui-notice:is(.ui-notice--danger, .ui-notice--warning) {
+  .ui-notice:is(.ui-notice--danger, .ui-notice--warning) {
     border: 1px solid CanvasText;
     box-shadow: none;
   }

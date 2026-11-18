@@ -29,8 +29,8 @@ export async function settleReleaseFrame(node: HTMLElement, layoutChanged = true
     })
   }
   await Promise.all(Array.from(node.querySelectorAll('img')).map(img => img.decode().catch(() => {})))
-  // New scenes need ResizeObserver delivery; subsequent frames already have
-  // stable layout and Paper's explicit setFrame renders synchronously.
+  // New scenes need ResizeObserver delivery. The fox field paints subsequent
+  // requested frames during the React layout effect.
   if (layoutChanged) await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
   else await new Promise<void>(resolve => {
     const channel = new MessageChannel()

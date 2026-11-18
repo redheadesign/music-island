@@ -5,7 +5,7 @@ contains separately licensed third-party components. This notice covers the embe
 
 ## T3 Code ASCII artwork
 
-The fox and manta shapes and character renderer are adapted from the
+The fox artwork and character renderer are adapted from the
 `ascii-scenes` sources in the Music Island maintainer's
 [T3 Code fork](https://github.com/redheadesign/t3code-codex) (reference revision
 `db54e5ee182d406a0d432205405752c5d6b44a50`). The adapted code is in
@@ -16,6 +16,35 @@ theme definitions and `ThemePreviewCircles` component.
 MIT License
 
 Copyright (c) 2026 T3 Tools Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Butterchurn audio envelope
+
+The island's playback-wave motion adapts the elapsed-time correction and
+separate attack/release smoothing from Jordan Berg's Butterchurn visualizer.
+Music Island applies the envelope to the speed and shape of its existing wave.
+[AudioLevels source](https://github.com/jberg/butterchurn/blob/fbac2f6bab62fd9c6a50ebbeb29359c5eb05903e/src/audio/audioLevels.js#L75-L109) · [Upstream license](https://github.com/jberg/butterchurn/blob/fbac2f6bab62fd9c6a50ebbeb29359c5eb05903e/LICENSE)
+
+MIT License
+
+Copyright (c) 2013-2018 Jordan Berg
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

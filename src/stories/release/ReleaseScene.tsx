@@ -29,14 +29,14 @@ const copy = {
     taskbar: { title: <>Управляйте музыкой<br />из панели задач</>, detail: 'Пауза, следующий трек и любимые кнопки рядом с треем Windows' },
     voice: { title: <>Меньше шума<br />в микрофоне</>, detail: 'Включите шумоподавление и проверьте, как звучит ваш голос' },
     usage: { title: <>Сколько осталось<br />до лимита</>, detail: 'Смотрите остаток лимитов Codex и Claude рядом с плеером' },
-    settings: { title: <>Настройте островок<br />под себя</>, detail: 'Выберите кнопки, размер и оформление — светлое или тёмное' },
+    settings: { title: <>Настройте островок<br />под себя</>, detail: 'Выберите кнопки, размер и материал островка' },
   },
   en: {
     island: { title: 'Build your own island', detail: 'Choose your controls and resize them directly in the preview' },
     taskbar: { title: 'Control music from your taskbar', detail: 'Pause, skip and keep your favorite controls beside the Windows tray' },
     voice: { title: 'Less noise from your microphone', detail: 'Turn on noise reduction and listen to how your voice sounds' },
     usage: { title: 'See how much usage is left', detail: 'Check your remaining Codex and Claude limits beside the player' },
-    settings: { title: 'Make your island your own', detail: 'Choose your controls, size and a light or dark theme' },
+    settings: { title: 'Make your island your own', detail: 'Choose your controls, size and the island material' },
   },
 }
 type Feature = keyof typeof copy.en
@@ -83,8 +83,8 @@ export function ReleaseScene({ feature, format, showExport = true }: { feature: 
         <div className="release-quota-details"><UsageStatusChip snapshot={usage} enabledProviders={['codex','claude']} compact={false} locale={locale} /></div>
       </div>}
       {feature === 'settings' && <div className="release-settings-pair">
-        <div className="release-settings-window settings-window-root"><SettingsPanel config={withUiPrefs(config,{settingsColorScheme:'dark'})} smtcHealth={health} mediaSessions={[]} onChange={noop} onCopyDiagnostics={noop} onRefreshSources={noop} /></div>
-        <div className="release-settings-window release-settings-window--light settings-window-root"><SettingsPanel config={withUiPrefs(config,{settingsColorScheme:'light'})} smtcHealth={health} mediaSessions={[]} onChange={noop} onCopyDiagnostics={noop} onRefreshSources={noop} /></div>
+        <div className="release-settings-window settings-window-root"><SettingsPanel config={withUiPrefs(config,{interfaceTheme:'classic'})} smtcHealth={health} mediaSessions={[]} onChange={noop} onCopyDiagnostics={noop} onRefreshSources={noop} /></div>
+        <div className="release-settings-window release-settings-window--glass settings-window-root"><SettingsPanel config={withUiPrefs(config,{interfaceTheme:'glass'})} smtcHealth={health} mediaSessions={[]} onChange={noop} onCopyDiagnostics={noop} onRefreshSources={noop} /></div>
         <div className="release-source-logos"><BrandLogo brand="yandex-music" size={32}/><BrandLogo brand="spotify" size={32}/><BrandLogo brand="windows" size={30}/></div>
       </div>}
     </main>

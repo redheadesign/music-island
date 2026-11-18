@@ -84,6 +84,7 @@ const meta = {
     locale: { table: { disable: true } },
   },
   parameters: {
+    islandComponent: true,
     workshop: {
       width: 480,
       note: 'Настоящий плеер с демонстрационным треком. Воспроизведение, лайк и перемотка меняют только этот пример.',

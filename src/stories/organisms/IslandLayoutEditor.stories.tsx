@@ -86,7 +86,7 @@ async function pointerDrag(source: HTMLElement, target: HTMLElement, pointerId: 
   }
 }
 
-function EditorPreview({ locale, accent, interfaceTheme, light = false }: { locale: Locale; accent: string; interfaceTheme: InterfaceThemeId; light?: boolean }) {
+function EditorPreview({ locale, accent, interfaceTheme }: { locale: Locale; accent: string; interfaceTheme: InterfaceThemeId }) {
   const [config, setConfig] = useWorkshopConfig(locale, accent, false, interfaceTheme)
   const [changeCount, setChangeCount] = useState(0)
   const editorConfig: AppConfig = {
@@ -94,7 +94,7 @@ function EditorPreview({ locale, accent, interfaceTheme, light = false }: { loca
     plugins: { ...config.plugins, settings: { ...config.plugins.settings, usage: { codexEnabled: true, claudeEnabled: false } } },
   }
   const commit = (next: AppConfig) => { setChangeCount((value) => value + 1); setConfig(next) }
-  return <div className="settings-window-root" data-interface-theme={interfaceTheme} data-color-scheme={light ? 'light' : 'dark'} data-config-width={config.layout.width} data-config-scale={config.layout.scale} data-widget-scale={getLocalServersWidgetScale(config)} data-change-count={changeCount} style={{ containerType: 'inline-size' }}>
+  return <div className="settings-window-root" data-config-width={config.layout.width} data-config-scale={config.layout.scale} data-widget-scale={getLocalServersWidgetScale(config)} data-change-count={changeCount} style={{ containerType: 'inline-size' }}>
     <IslandLayoutEditor config={editorConfig} onChange={commit} />
   </div>
 }
@@ -108,7 +108,7 @@ const meta = {
     workshop: { width: 720, height: 820, note: 'Production editor with an in-memory config. Dragging never connects providers.' },
     controls: { disable: true },
   },
-  render: (_args, context) => <EditorPreview locale={context.globals.locale} accent={context.globals.accent} interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)} light={context.parameters.settingsColorScheme === 'light'} />,
+  render: (_args, context) => <EditorPreview locale={context.globals.locale} accent={context.globals.accent} interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)} />,
 } satisfies Meta<typeof IslandLayoutEditor>
 export default meta
 type Story = StoryObj<typeof meta>
@@ -403,19 +403,20 @@ export const FullInlineLayout: Story = {
     await expect(element(zone(canvasElement, 'player'), 'next')).toHaveFocus()
     await expect(lower).not.toBeVisible()
     const catalog = zone(canvasElement, 'catalog')
-    await expect(getComputedStyle(catalog).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    const restingBackground = getComputedStyle(catalog).backgroundColor
+    await expect(restingBackground).not.toBe('rgba(0, 0, 0, 0)')
     const sample = getComputedStyle(element(catalog, 'seekBack'))
     await expect(sample.backgroundColor).toBe('rgba(0, 0, 0, 0)')
     await expect(sample.boxShadow).toBe('none')
     await expect(catalog.querySelector('.island-root')).toHaveAttribute('data-interface-theme', 'glass')
-    await expect(getComputedStyle(zone(canvasElement, 'widgetCatalog')).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    await expect(getComputedStyle(zone(canvasElement, 'widgetCatalog')).backgroundColor).toBe(restingBackground)
     element(catalog, 'seekBack').focus()
     await userEvent.keyboard(' {ArrowLeft}')
     await expect(catalog).toHaveAttribute('data-over', 'true')
     await expect(getComputedStyle(catalog).outlineStyle).toBe('solid')
-    await waitFor(() => expect(getComputedStyle(catalog).backgroundColor).not.toBe('rgba(0, 0, 0, 0)'))
+    await waitFor(() => expect(getComputedStyle(catalog).backgroundColor).not.toBe(restingBackground))
     await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(getComputedStyle(catalog).backgroundColor).toBe('rgba(0, 0, 0, 0)'))
+    await waitFor(() => expect(getComputedStyle(catalog).backgroundColor).toBe(restingBackground))
     for (const selector of ['.island-preview__resize-edge--left', '.island-preview__body > .preview-resize-handle']) {
       const slider = canvasElement.querySelector<HTMLElement>(selector)
       if (slider) { slider.focus(); await userEvent.keyboard('{Home}') }
@@ -444,5 +445,4 @@ export const FullInlineLayout: Story = {
 }
 
 export const Narrow: Story = { name: 'Узкая ширина', parameters: { workshop: { width: 360, height: 1000 } } }
-export const Light: Story = { name: 'Светлое оформление', parameters: { settingsColorScheme: 'light' } }
 export const English: Story = { name: 'English', globals: { locale: 'en' } }

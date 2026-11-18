@@ -1,5 +1,4 @@
 // Adapted from T3 Code (MIT). See THIRD_PARTY_NOTICES.md.
-import type { InterfaceScene } from "../../lib/interfaceTheme";
 
 export type AnimalColor = readonly [red: number, green: number, blue: number];
 
@@ -137,8 +136,6 @@ function polygon(vertices: readonly Point[], tone: Tone, texture: Texture = "fur
 const glyphsBySurface = {
   fur: ".:;irsx%#",
   long: "'/;i//:",
-  metal: ".:+*",
-  ice: ".:;o*",
   dark: "#%@",
 };
 
@@ -162,92 +159,6 @@ function paintLayers(pen: AnimalPen, pose: AnimalPose, layers: readonly Layer[],
   });
 }
 
-function drawMantaRay(pen: AnimalPen, pose: AnimalPose, phase: number) {
-  const flap = Math.sin(phase);
-  const finSpan = 0.565 - 0.085 * flap * flap;
-  const indigo: AnimalColor = [56, 105, 172];
-  const ocean: AnimalColor = [65, 179, 196];
-  const jade: AnimalColor = [109, 231, 209];
-  const pearl: AnimalColor = [197, 253, 236];
-  const dark: AnimalColor = [18, 42, 68];
-  const wake = (t: number) => 0.105 * Math.sin(phase * 0.75 - t * 3.4) * t * t;
-  const tail = [];
-  for (let segment = 0; segment < 6; segment++) {
-    const a = segment / 6,
-      b = (segment + 1) / 6;
-    tail.push(
-      taperedLine(
-        -0.166 - a * 0.444,
-        wake(a),
-        -0.166 - b * 0.444,
-        wake(b),
-        0.023 - 0.019 * a,
-        0.023 - 0.019 * b,
-        a > 0.46 ? ocean : indigo,
-        "ice",
-      ),
-    );
-  }
-  paintLayers(pen, pose, tail, 0.65);
-  pen.shape(pose, 0.62, (x, y, ink) => {
-    const side = Math.abs(y);
-    const wing = side / finSpan;
-    if (wing > 1) return false;
-    const flex = 0.085 * Math.sin(phase - wing * 2.6) * wing * wing;
-    const nose = 0.214 - 0.473 * wing ** 1.87 + flex;
-    const hem = -0.244 + 0.214 * Math.sin(wing * Math.PI * 0.83) - 0.125 * wing ** 3 + flex;
-    if (x > nose || x < hem) return false;
-    const rib = (nose - x) / Math.max(0.015, nose - hem);
-    const edge = 0.065 + 0.04 * Math.sin(wing * 21 - phase * 0.32);
-    const ripple = Math.sin(wing * 48 + rib * 16 - phase * 0.49);
-    const chevron = Math.abs(rib - (0.15 + 0.34 * wing)) < 0.094 && wing > 0.155 && wing < 0.63;
-    const puncture = animalNoise(x * 114, y * 136, pose.id);
-    let color = indigo;
-    if (rib < edge && wing > 0.17) color = wing > 0.78 ? pearl : jade;
-    else if (chevron) color = wing < 0.37 ? pearl : ocean;
-    else if (rib > 0.79 && wing > 0.22) color = ocean;
-    else if (wing < 0.14) color = rib > 0.18 ? ocean : jade;
-    else if (puncture > 0.945) color = ocean;
-    const light =
-      (0.89 + 0.14 * ripple + 0.15 * Math.sin(wing * 3.5 + 0.8) - 0.12 * rib) * pose.light;
-    ink.color = color;
-    ink.light = light;
-    ink.glyphs = chevron ? ":=+*" : ".,:;i";
-    ink.dark = false;
-    return true;
-  });
-  const horns = [];
-  for (const side of [-1, 1]) {
-    horns.push(
-      taperedLine(
-        0.143,
-        0.084 * side,
-        0.273,
-        (0.143 + 0.012 * flap) * side,
-        0.051,
-        0.028,
-        ocean,
-        "ice",
-      ),
-    );
-    horns.push(
-      taperedLine(
-        0.266,
-        (0.144 + 0.012 * flap) * side,
-        0.318,
-        0.124 * side,
-        0.03,
-        0.01,
-        pearl,
-        "ice",
-      ),
-    );
-  }
-  paintLayers(pen, pose, horns, 0.38);
-  for (const side of [-1, 1]) {
-    pen.accent(pose, 0.152, 0.122 * side, "o", jade, dark);
-  }
-}
 const foxTrot = { stride: 0.56, support: 0.53, frontReach: 0.295, track: 0.063 };
 const foxCoat = {
   spine: [232, 143, 73],
@@ -413,25 +324,9 @@ function drawFox(pen: AnimalPen, pose: AnimalPose, phase: number) {
   }
 }
 
-interface AnimalArtwork {
-  readonly speed: number;
-  readonly scale: number;
-  readonly cadence?: number;
-  readonly strideLength?: number;
-  readonly draw: (pen: AnimalPen, pose: AnimalPose, phase: number) => void;
-}
-
-export const animalArtworks: Readonly<Record<InterfaceScene, AnimalArtwork>> = {
-  fox: {
-    speed: 112,
-    scale: 1.43,
-    strideLength: foxTrot.stride,
-    draw: drawFox,
-  },
-  manta: {
-    speed: 68,
-    scale: 1.57,
-    cadence: 4.25,
-    draw: drawMantaRay,
-  },
-};
+export const foxArtwork = {
+  speed: 112,
+  scale: 1.43,
+  strideLength: foxTrot.stride,
+  draw: drawFox,
+} as const;

@@ -1,4 +1,4 @@
-.island-preview { position: relative; isolation: isolate; display: grid; place-items: center; width: 100%; min-width: 0; min-height: 238px; padding-block: var(--space-6-5); overflow: visible; background: #171412; border-radius: var(--radius-xl); box-sizing: border-box; }
+.island-preview { position: relative; isolation: isolate; display: grid; place-items: center; width: 100%; min-width: 0; min-height: 238px; padding-block: var(--space-6-5); overflow: visible; background: var(--surface-panel); border-radius: var(--radius-xl); box-sizing: border-box; }
 .island-preview__frame.island-root { z-index: 1; display: grid; grid-template-columns: var(--preview-left) minmax(0,1fr) var(--preview-right); align-items: start; height: auto; pointer-events: auto; }
 .island-preview__body { position: relative; min-width: 0; }
 .island-preview__body > .island-card { box-sizing: border-box; }

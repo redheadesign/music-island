@@ -34,7 +34,7 @@
 - In Appearance drag System volume from the catalog to either player row. Check the same layout with the media player closed.
 - Compare the speaker button with Windows Quick Settings. Click twice to toggle mute and restore the previous level. Hover the button and drag the slider, then change the level in Windows and check that the island follows. Repeat with Tab, arrow keys and Escape.
 - Switch the default output between a speaker and headphones with the slider open. A drag started on the old device must never change the replacement device. Close the island and reopen it to check the new endpoint.
-- In Glass disable and re-enable the background wave. With a connected Direct player, check a bass-heavy passage, pause and resume. The wave fades on pause and pulses on bass during playback. The ordinary top-down particles keep their own cadence.
+- In Glass disable and re-enable the background wave. With a connected Direct player, check a bass-heavy passage, pause and resume. Keep the island open while seeking, changing tracks and toggling pause/play. The wave fades on pause, resumes by itself and keeps a steady brightness as bass gently changes its motion. The ordinary top-down particles keep their own cadence.
 
 ## Local servers widget
 
@@ -145,7 +145,7 @@
 
 ## Dictation and graphite settings acceptance
 
-Browser verification covers scoped dark/light tokens, RU/EN, keyboard focus, reduced motion, fixed navigation/right-only scrolling, dialogs, import preview, 0/9/99/100/— quotas, and real preview drag at multiple scales. It does not establish native recording, paste, DPI or SMTC correctness.
+Browser verification covers scoped island materials and the graphite settings chrome, RU/EN, keyboard focus, reduced motion, fixed navigation/right-only scrolling, dialogs, import preview, 0/9/99/100/— quotas, and real preview drag at multiple scales. It does not establish native recording, paste, DPI or SMTC correctness.
 
 Native checks: run the isolated `--dictation-runtime-check` from an EXE-only folder without Handy or adjacent DLLs. Compare identical WAV/model/backend runs with Handy on the same hardware, recording cold load, recognition time and peak/private memory. Test RU/EN short/long recordings, hold/toggle/combined mode, Escape, input device removal/change, playback mute restoration, Better Voice concurrently, and focus-preserving paste into several editors (including closed target and clipboard recovery). Disabled dictation must retain neither an open microphone nor an ASR model. Hidden overlays must not animate.
 
@@ -189,8 +189,8 @@ recorded automated/headless results and the interactive Windows checks still ope
   navigation stay fixed, and the right region reaches the window edge. Changing
   pages resets only that region before paint; reselecting the same page preserves it.
 - Compare all three menus, shared primary/secondary/danger buttons, selects and
-  toggles in RU/EN, dark/light and keyboard/reduced-motion modes. Panels must remain
-  visible against the light canvas. Preserve the fox composition and island material.
+  toggles in RU/EN and keyboard/reduced-motion modes with both island materials. Panels must keep their
+  dark container fills and spacing when the island material changes. Preserve the fox composition and island material.
 - About: developer switch exposes/removes its page. Replay onboarding and replay
   startup/hint are separate actions. Repeat rapidly; late completion from an older
   generation must not close the new intro. Autostart must not open the wizard.

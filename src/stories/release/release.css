@@ -12,14 +12,14 @@
 .release-ui--taskbar .taskbar-preview { height:220px; }
 .release-ui--taskbar .taskbar-editor-controls { zoom:2; }
 .release-ui--voice { display:grid; gap:28px; }
-.release-quota-stage { position:relative; isolation:isolate; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:60px; width:900px; height:530px; border-radius:32px; overflow:hidden; background:#171412; }
+.release-quota-stage { position:relative; isolation:isolate; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:60px; width:900px; height:530px; border-radius:32px; overflow:hidden; background:var(--surface-panel); }
 .release-quota-compact { position:relative; zoom:2.9; }
 .release-quota-details { position:relative; zoom:1.65; }
 .release-quota-details .usage-chip--expanded { display:flex; width:auto; gap:16px; }
 .release-quota-details .usage-chip__provider { width:160px; }
 .release-settings-pair { position:relative; width:920px; height:580px; }
 .release-settings-window { position:absolute; width:860px; height:620px; overflow:hidden; zoom:.77; left:0; top:0; border:1px solid #ffffff13; border-radius:22px; box-shadow:0 24px 64px #0003; }
-.release-settings-window--light { left:326px; top:132px; height:570px; }
+.release-settings-window--glass { left:326px; top:132px; height:570px; }
 .release-source-logos { position:absolute; left:28px; bottom:16px; display:flex; align-items:center; gap:22px; }
 .release-scene--readme { width:1440px; height:900px; padding:65px 80px 35px; }
 .release-scene--readme .release-heading h1 { font-size:60px; }

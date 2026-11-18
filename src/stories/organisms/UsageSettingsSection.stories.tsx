@@ -4,9 +4,9 @@ import { expect, fn } from 'storybook/test'
 import { UsageSettingsSection } from '../../features/usage/UsageSettingsSection'
 import type { UsagePreferences, UsageSnapshot } from '../../shared/lib/usageTypes'
 
-function UsageSettingsPreview({ args, locale, colorScheme, interfaceTheme }: { args: Parameters<typeof UsageSettingsSection>[0]; locale: 'ru' | 'en'; colorScheme: 'dark' | 'light'; interfaceTheme: string }) {
+function UsageSettingsPreview({ args, locale }: { args: Parameters<typeof UsageSettingsSection>[0]; locale: 'ru' | 'en' }) {
   const [preferences, setPreferences] = useState<UsagePreferences>(args.preferences)
-  return <div className="settings-window-root" data-color-scheme={colorScheme} data-interface-theme={interfaceTheme}>
+  return <div className="settings-window-root">
     <UsageSettingsSection {...args} locale={locale} preferences={preferences} onConnect={(provider) => { args.onConnect(provider); setPreferences((current) => ({ ...current, [`${provider}Enabled`]: true })) }} onDisconnect={(provider) => { args.onDisconnect(provider); setPreferences((current) => ({ ...current, [`${provider}Enabled`]: false })) }} />
   </div>
 }
@@ -41,8 +41,8 @@ const meta = {
     preferences: { codexEnabled: true, claudeEnabled: false }, snapshot, busyProvider: null,
     onConnect: fn(), onDisconnect: fn(), onRefresh: fn(),
   },
-  render: (args, context) => <UsageSettingsPreview args={args} locale={context.globals.locale} colorScheme={context.parameters.settingsColorScheme === 'light' ? 'light' : 'dark'} interfaceTheme={context.globals.interfaceTheme} />,
-  parameters: { settingsColorScheme: 'dark', workshop: { width: 620, height: 560, note: 'Согласие показано перед действием; история не обращается к Codex или Claude.' } },
+  render: (args, context) => <UsageSettingsPreview args={args} locale={context.globals.locale} />,
+  parameters: { workshop: { width: 620, height: 560, note: 'Согласие показано перед действием; история не обращается к Codex или Claude.' } },
 } satisfies Meta<typeof UsageSettingsSection>
 export default meta
 type Story = StoryObj<typeof meta>
@@ -80,15 +80,6 @@ export const BothConnected: Story = {
   args: { preferences: { codexEnabled: true, claudeEnabled: true }, snapshot: bothSnapshot },
   play: async ({ canvas, canvasElement }) => {
     await expect(canvasElement.querySelectorAll('.brand-logo')).toHaveLength(2)
-    await expect(canvas.getAllByRole('progressbar')).toHaveLength(4)
-  },
-}
-export const Light: Story = {
-  name: 'Светлое оформление',
-  args: { preferences: { codexEnabled: true, claudeEnabled: true }, snapshot: bothSnapshot },
-  parameters: { settingsColorScheme: 'light' },
-  play: async ({ canvas, canvasElement }) => {
-    await expect(canvasElement.querySelector('.settings-window-root')).toHaveAttribute('data-color-scheme', 'light')
     await expect(canvas.getAllByRole('progressbar')).toHaveLength(4)
   },
 }

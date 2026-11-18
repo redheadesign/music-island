@@ -84,7 +84,7 @@ export function TaskbarLayoutEditor({ config, onChange, active = true }: { confi
   }
   const sample = (element: TaskbarElement) => <div className="taskbar-player taskbar-control-sample"><TaskbarControl element={element} snapshot={media} locale={locale} onCommand={() => undefined} /></div>
   const view = (element: TaskbarElement, node: ReactNode, catalog = false) => <div key={element} className={`taskbar-editor-element${catalog ? ' taskbar-editor-element--catalog' : ''}`} data-taskbar-element={element} data-picked={dragging === element || undefined} data-insert={over?.zone === 'controls' && layout.elements.filter((value) => value !== dragging)[over.index ?? -1] === element || undefined} role="button" tabIndex={0} aria-label={TASKBAR_ELEMENT_LABELS[locale][element]} aria-pressed={dragging === element} title={TASKBAR_ELEMENT_LABELS[locale][element]} draggable={false} {...pointerHandlers(element)} onKeyDown={(event) => keyboard(event, element)}><div className="taskbar-editor-element__visual" inert aria-hidden="true">{node}</div></div>
-  return <section ref={root} style={{ '--drag-indicator': config.appearance.accentColor } as import('react').CSSProperties} className="taskbar-layout-editor" aria-label={ru ? 'Редактор мини-плеера' : 'Mini-player editor'} data-dragging={Boolean(dragging) || undefined}>
+  return <section ref={root} className="taskbar-layout-editor" aria-label={ru ? 'Редактор мини-плеера' : 'Mini-player editor'} data-dragging={Boolean(dragging) || undefined}>
       {undo && <Notice compact action={<Button onClick={() => {
         onChange(withTaskbarLayout({ ...config, taskbar: { ...config.taskbar, enabled: Boolean(config.taskbar?.enabled), scale: undo.scale } }, undo.layout))
         setUndo(null)

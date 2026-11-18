@@ -1,62 +1,30 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent } from 'storybook/test'
 import { InterfacePalettePicker } from '../../features/settings/InterfacePalettePicker'
-import { buildInterfacePaletteStyle, type InterfacePaletteId } from '../../shared/lib/interfacePalette'
+import type { InterfacePaletteId } from '../../shared/lib/interfacePalette'
 import type { Locale } from '../../shared/lib/types'
 
-function PalettePreview({ locale, light = false }: { locale: Locale; light?: boolean }) {
+function PalettePreview({ locale }: { locale: Locale }) {
   const [value, setValue] = useState<InterfacePaletteId>('custom')
-  const colorScheme = light ? 'light' : 'dark'
-  const accent = '#f76100'
-  return (
-    <div
-      className="settings-panel"
-      data-color-scheme={colorScheme}
-      data-interface-theme="glass"
-      data-interface-palette={value}
-      style={buildInterfacePaletteStyle(value, colorScheme, accent) as CSSProperties}
-    >
-      <InterfacePalettePicker value={value} customAccent={accent} onChange={setValue} locale={locale} />
-    </div>
-  )
+  return <div className="settings-control-group"><InterfacePalettePicker value={value} customAccent="#f76100" onChange={setValue} locale={locale} /></div>
 }
 
 const meta = {
-  title: 'Molecules/InterfacePalettePicker',
-  component: InterfacePalettePicker,
-  parameters: { workshop: { width: 590 } },
-  render: (_args, context) => <PalettePreview locale={context.globals.locale} light={context.parameters.settingsColorScheme === 'light'} />,
+  title: 'Molecules/InterfacePalettePicker', component: InterfacePalettePicker,
+  parameters: { workshop: { width: 420 } },
+  render: (_args, context) => <PalettePreview locale={context.globals.locale} />,
 } satisfies Meta<typeof InterfacePalettePicker>
-
 export default meta
-type Story = StoryObj<typeof meta>
-const args = { value: 'custom', customAccent: '#f76100', locale: 'ru', onChange: () => undefined } as const
-
-export const Presets: Story = {
-  name: 'Палитры · тёмное окно',
-  args,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const trigger = canvas.getByRole('button', { name: /^(Цветовая палитра|Color palette)$/ })
-    await userEvent.click(trigger)
-    const ocean = canvas.getByRole('button', { name: /^(Океан|Ocean)$/ })
-    const custom = canvas.getByRole('button', { name: /^(Свой акцент|Custom accent)$/ })
-    await expect(custom).toHaveAttribute('aria-pressed', 'true')
+export const Presets: StoryObj<typeof meta> = {
+  name: 'Палитры островка',
+  args: { locale: 'ru', customAccent: '#f76100', value: 'custom', onChange: () => {} },
+  play: async ({ canvas }) => {
+    const custom = canvas.getByRole('radio', { name: /^(Свой акцент|Custom accent)$/ })
+    const ocean = canvas.getByRole('radio', { name: /^(Океан|Ocean)$/ })
+    await expect(custom).toBeChecked()
     await userEvent.click(ocean)
-    await expect(ocean).toHaveAttribute('aria-pressed', 'true')
-    await expect(custom).toHaveAttribute('aria-pressed', 'false')
-    await expect(canvasElement.querySelector('.settings-panel')).toHaveAttribute('data-interface-palette', 'ocean')
-    await userEvent.keyboard('{Escape}')
-    await expect(trigger).toHaveFocus()
-    await expect(trigger).toHaveAccessibleDescription(/^(Океан|Ocean)$/)
-    await userEvent.click(trigger)
+    await expect(ocean).toBeChecked()
+    await expect(custom).not.toBeChecked()
   },
-}
-
-export const Light: Story = {
-  name: 'Палитры · светлое окно',
-  args,
-  parameters: { settingsColorScheme: 'light' },
 }

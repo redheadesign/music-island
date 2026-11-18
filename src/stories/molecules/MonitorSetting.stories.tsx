@@ -6,7 +6,7 @@ const meta = {
   title: 'Molecules/MonitorSetting', component: MonitorSetting,
   args: { value: null, onChange: fn(), locale: 'ru' },
   parameters: { workshop: { width: 620 } },
-  render: (args, context) => <div className="auxiliary-ui" data-interface-theme={context.globals.interfaceTheme} data-color-scheme={context.parameters.light ? 'light' : 'dark'} style={{ padding: 24, background: 'var(--surface-panel)', color: 'var(--fg-primary)', borderRadius: 16 }}><MonitorSetting {...args} /></div>,
+  render: args => <div className="auxiliary-ui" style={{ padding: 24, background: 'var(--surface-panel)', color: 'var(--fg-primary)', borderRadius: 16 }}><MonitorSetting {...args} /></div>,
 } satisfies Meta<typeof MonitorSetting>
 export default meta
 type Story = StoryObj<typeof meta>
@@ -18,7 +18,7 @@ export const Default: Story = { name: 'Основной и дополнител�
 } }
 export const Disconnected: Story = { name: 'Монитор отключён · временно основной', args: { value: 'display-away' } }
 export const GlassLoadError: Story = {
-  name: 'Стекло · ошибка списка мониторов',
+  name: 'ошибка списка мониторов',
   globals: { interfaceTheme: 'glass' },
   parameters: { nativePreview: { monitorLoadError: true } },
   play: async ({ canvasElement }) => {
@@ -29,7 +29,7 @@ export const GlassLoadError: Story = {
 }
 export const GlassLoadRecovery: Story = {
   ...GlassLoadError,
-  name: 'Стекло · повторная загрузка мониторов',
+  name: 'повторная загрузка мониторов',
   play: async (context) => {
     await GlassLoadError.play?.(context)
     const canvas = within(context.canvasElement)
@@ -39,5 +39,4 @@ export const GlassLoadRecovery: Story = {
     await expect(canvas.queryByRole('alert')).not.toBeInTheDocument()
   },
 }
-export const Light: Story = { name: 'Светлая тема', parameters: { light: true } }
 export const English: Story = { name: 'English', args: { locale: 'en' } }

@@ -1,6 +1,5 @@
-import { useSystemReducedTransparency } from './shared/ui/useSystemReducedTransparency'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { useEffect, useMemo, type CSSProperties } from 'react'
+import { useEffect, useMemo } from 'react'
 import { checkForUpdates, copyDiagnostics } from './app/tauriApi'
 import { useIslandApp } from './app/useIslandApp'
 import { useUsageController } from './app/usage/useUsageController'
@@ -12,7 +11,6 @@ import { OverlayShell } from './features/overlay/OverlayShell'
 import { SettingsPanel } from './features/settings/SettingsPanel'
 import { TaskbarPlayer } from './features/taskbar/TaskbarPlayer'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getSettingsColorScheme } from './shared/lib/uiPrefs'
 import { SettingsReadError, SettingsWindow } from './features/settings/SettingsWindow'
 import { useGlassPointerLight } from './shared/ui/useGlassPointerLight'
 import './App.css'
@@ -36,9 +34,6 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
   const usage = useUsageController(windowLabel === 'main' || windowLabel === 'settings')
   const locale = normalizeLocale(app.config?.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
-  const interfaceTheme = getInterfaceTheme(app.config)
-  const interfaceScene = getInterfaceScene(app.config)
-  const reducedTransparency = useSystemReducedTransparency()
 
   useEffect(() => {
     document.documentElement.lang = locale
@@ -59,23 +54,15 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
   if (windowLabel === 'taskbar') {
     return <TaskbarPlayer snapshot={app.media} locale={locale}
       reducedMotion={app.config.appearance.reducedMotion}
-      interfaceTheme={interfaceTheme} interfaceScene={interfaceScene} reducedTransparency={reducedTransparency}
       unavailable={app.config.media.protocol === 'yandex-direct' && app.directNeedsRecovery}
       onCommand={(command) => void app.sendCommand(command)}
       scale={app.config.taskbar?.scale} showLike={app.config.taskbar?.showLike} />
   }
 
   if (windowLabel === 'settings') {
-    const colorScheme = getSettingsColorScheme(app.config)
     return (
       <SettingsWindow
         locale={locale}
-        colorScheme={colorScheme}
-        interfaceTheme={interfaceTheme}
-        interfaceScene={interfaceScene}
-        interfacePalette={getInterfacePalette(app.config)}
-        paletteStyle={getInterfacePaletteStyle(app.config, colorScheme) as CSSProperties}
-        reducedTransparency={reducedTransparency}
         reducedMotion={app.config.appearance.reducedMotion}
         onMinimize={() => void runWindowAction('minimize')}
         onClose={() => void runWindowAction('hide')}

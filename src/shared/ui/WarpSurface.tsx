@@ -2,13 +2,12 @@ import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRe
 import { createPortal } from 'react-dom'
 import { WarpMaterial, type WarpMaterialProps } from './WarpMaterial'
 
-type Options = Pick<WarpMaterialProps, 'speed' | 'reducedMotion' | 'fieldClassName' | 'variant' | 'frame' | 'maxPixelCount' | 'deferUntilNearViewport'>
-type SurfaceAppearance = Pick<WarpMaterialProps, 'scene' | 'colorScheme'>
+type Options = Pick<WarpMaterialProps, 'speed' | 'reducedMotion' | 'fieldClassName' | 'frame' | 'maxPixelCount' | 'deferUntilNearViewport'>
 type Slot = { node: HTMLDivElement; active: boolean; options: Options }
 const WarpContext = createContext<((slot: Slot) => () => void) | null>(null)
 
 /** Moves one renderer between previews. The portal target never changes. */
-export function WarpSurfaceProvider({ children, scene, colorScheme }: SurfaceAppearance & { children: ReactNode }) {
+export function WarpSurfaceProvider({ children }: { children: ReactNode }) {
   const [host] = useState(() => { const node = document.createElement('div'); node.className = 'warp-shared-host'; return node })
   const parking = useRef<HTMLDivElement>(null)
   const slots = useRef(new Map<HTMLDivElement, Slot>())
@@ -24,14 +23,14 @@ export function WarpSurfaceProvider({ children, scene, colorScheme }: SurfaceApp
     return () => { slots.current.delete(slot.node); update() }
   }, [host])
   useLayoutEffect(() => { if (!host.parentElement) parking.current?.append(host); return () => host.remove() }, [host])
-  return <WarpContext.Provider value={register}>{children}<div hidden ref={parking} aria-hidden="true" />{createPortal(<WarpMaterial {...current?.options} scene={scene} colorScheme={colorScheme} active={Boolean(current)} />, host)}</WarpContext.Provider>
+  return <WarpContext.Provider value={register}>{children}<div hidden ref={parking} aria-hidden="true" />{createPortal(<WarpMaterial {...current?.options} active={Boolean(current)} />, host)}</WarpContext.Provider>
 }
 
 /** A slot inside Settings; standalone everywhere else, including motion exports. */
-export function WarpSurface({ active = true, speed, reducedMotion, fieldClassName, variant, frame, maxPixelCount, deferUntilNearViewport, ...props }: WarpMaterialProps) {
+export function WarpSurface({ active = true, speed, reducedMotion, fieldClassName, frame, maxPixelCount, deferUntilNearViewport, ...props }: WarpMaterialProps) {
   const register = useContext(WarpContext)
   const node = useRef<HTMLDivElement>(null)
-  const options = useMemo(() => ({ speed, reducedMotion, fieldClassName, variant, frame, maxPixelCount, deferUntilNearViewport }), [speed, reducedMotion, fieldClassName, variant, frame, maxPixelCount, deferUntilNearViewport])
+  const options = useMemo(() => ({ speed, reducedMotion, fieldClassName, frame, maxPixelCount, deferUntilNearViewport }), [speed, reducedMotion, fieldClassName, frame, maxPixelCount, deferUntilNearViewport])
   useLayoutEffect(() => {
     if (!register || !node.current) return
     return register({ node: node.current, active, options })

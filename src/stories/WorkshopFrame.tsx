@@ -7,8 +7,8 @@ import {
 } from 'react'
 import type { StoryContext } from '@storybook/react-vite'
 import { WarpSurfaceProvider } from '../shared/ui/WarpSurface'
-import { DEFAULT_INTERFACE_THEME, getInterfaceThemeDefinition, normalizeInterfaceTheme } from '../shared/lib/interfaceTheme'
-import { applyAccentTheme } from '../shared/lib/accentTheme'
+import { DEFAULT_INTERFACE_THEME } from '../shared/lib/interfaceTheme'
+import { buildInterfacePaletteStyle } from '../shared/lib/interfacePalette'
 import { GlassRefraction } from '../shared/ui/GlassRefraction'
 import { useGlassPointerLight } from '../shared/ui/useGlassPointerLight'
 
@@ -29,9 +29,8 @@ export function WorkshopFrame({
     interfaceTheme = DEFAULT_INTERFACE_THEME,
   } = context.globals
   useLayoutEffect(() => {
-    applyAccentTheme(String(accent))
     document.documentElement.lang = String(locale)
-  }, [accent, locale])
+  }, [locale])
 
   useEffect(() => {
     setCopied(false)
@@ -63,8 +62,6 @@ export function WorkshopFrame({
   const refraction = context.viewMode === 'story' ? <GlassRefraction /> : null
   if (context.parameters.workshop?.bare) return <>{children}{refraction}</>
   const note = context.parameters.workshop?.note
-  const scene = getInterfaceThemeDefinition(normalizeInterfaceTheme(interfaceTheme)).scene
-  const colorScheme = context.parameters.settingsColorScheme === 'light' || context.parameters.light ? 'light' : 'dark'
 
   return (
     <div
@@ -95,12 +92,15 @@ export function WorkshopFrame({
         style={{ minHeight: context.parameters.workshop?.height ?? 320 }}
       >
         <div
-          className="workshop-content"
-          data-interface-theme={context.parameters.handlesInterfaceTheme ? undefined : interfaceTheme}
-          style={{ width: context.parameters.workshop?.width ?? 480 }}
+          className={context.parameters.islandComponent ? 'workshop-content island-root' : 'workshop-content'}
+          data-interface-theme={context.parameters.islandComponent ? interfaceTheme : undefined}
+          style={{
+            width: context.parameters.workshop?.width ?? 480,
+            ...(context.parameters.islandComponent ? buildInterfacePaletteStyle('custom', String(accent)) : {}),
+          }}
         >
           {context.parameters.settingsPreviewScene
-            ? <WarpSurfaceProvider scene={scene} colorScheme={colorScheme}>{children}</WarpSurfaceProvider>
+            ? <WarpSurfaceProvider>{children}</WarpSurfaceProvider>
             : children}
         </div>
       </div>

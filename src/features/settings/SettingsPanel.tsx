@@ -1,6 +1,5 @@
-import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
-import { Mic, Database, ClockCounterClockwise, BookOpen, TextAa, PlugsConnected, Activity, CheckCircle2, Copy, HardDrive, Info, Moon, Music2, PanelBottom, Power, RadioTower, SlidersHorizontal, SquareTerminal, Sun, TriangleAlert, Wrench } from '../../shared/ui/SettingsIcons'
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Mic, Database, ClockCounterClockwise, BookOpen, TextAa, PlugsConnected, Activity, CheckCircle2, Copy, HardDrive, Info, Music2, PanelBottom, Power, RadioTower, SlidersHorizontal, SquareTerminal, TriangleAlert, Wrench } from '../../shared/ui/SettingsIcons'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
@@ -23,7 +22,6 @@ import { useDictationController } from '../../app/useIslandApp'
 import { VoiceSettingsView } from '../plugins/voice/VoiceSettingsView'
 import { TaskbarLayoutEditor } from './TaskbarLayoutEditor'
 import { IslandLayoutEditor } from './IslandLayoutEditor'
-import { SettingsDisclosure } from '../../shared/ui/SettingsDisclosure'
 import { SegmentedControl } from '../../shared/ui/SegmentedControl'
 import { getIslandLayout, getLegacyIslandLayout, withIslandLayout } from '../../shared/lib/islandLayout'
 import { getDictationAppearance } from '../../shared/lib/dictationAppearance'
@@ -53,16 +51,12 @@ import type {
   TaskbarStatus,
 } from '../../shared/lib/types'
 import { createTranslator, directStatusMessage, normalizeLocale } from '../../shared/i18n/messages'
-import { applyAccentTheme, normalizeHexColor } from '../../shared/lib/accentTheme'
+import { normalizeHexColor } from '../../shared/lib/accentTheme'
 import {
-  getInterfaceScene,
-  getInterfaceTheme,
   getInterfacePalette,
-  getInterfacePaletteStyle,
   getUiPrefs,
   getUsageWidgetCompact,
   getUsageWidgetScale,
-  getSettingsColorScheme,
   shouldShowSettingsUpdateBanner,
   trackUpdateFirstSeen,
   withUiPrefs,
@@ -112,13 +106,7 @@ export function SettingsPanel({
   const prefersReducedMotion = useReducedMotion()
   const reducedMotion = Boolean(draft.appearance.reducedMotion || prefersReducedMotion)
   const uiPrefs = getUiPrefs(draft)
-  const settingsColorScheme = getSettingsColorScheme(draft)
-  const interfaceTheme = getInterfaceTheme(draft)
-  const interfaceScene = getInterfaceScene(draft)
   const interfacePalette = getInterfacePalette(draft)
-  const paletteStyle = getInterfacePaletteStyle(draft, settingsColorScheme)
-  const accent = paletteStyle['--accent']
-  const reducedTransparency = useSystemReducedTransparency()
   const usageCompact = getUsageWidgetCompact(draft)
   const usageScale = getUsageWidgetScale(draft)
   const updater = useAppUpdater(true, Boolean(uiPrefs.forceSameVersionUpdate))
@@ -209,19 +197,6 @@ export function SettingsPanel({
     document.documentElement.lang = locale
   }, [locale])
 
-  useEffect(() => {
-    const root = panelRef.current?.closest('.settings-window-root')
-    if (!(root instanceof HTMLElement)) return
-    root.dataset.colorScheme = settingsColorScheme
-  }, [settingsColorScheme])
-
-  useEffect(() => {
-    applyAccentTheme(accent)
-    const root = document.querySelector('.settings-window-root')
-    if (root instanceof HTMLElement) {
-      applyAccentTheme(accent, root)
-    }
-  }, [accent])
   useEffect(() => {
     let active = true
     let cleanup: () => void = () => undefined
@@ -421,18 +396,14 @@ export function SettingsPanel({
   const directMessage = directStatusMessage(directStatus.state, directStatus.message, t)
 
   return (
-    <WarpSurfaceProvider scene={interfaceScene} colorScheme={settingsColorScheme}>
+    <WarpSurfaceProvider>
     <section
       ref={panelRef}
       className="settings-panel"
       aria-label={t('settings.title')}
-      data-color-scheme={settingsColorScheme}
-      data-interface-theme={interfaceTheme}
-      data-interface-scene={interfaceScene}
-      data-interface-palette={interfacePalette}
-      data-reduced-transparency={reducedTransparency || undefined}
+      data-color-scheme="dark"
+      data-interface-theme="classic"
       data-reduced-motion={reducedMotion || undefined}
-      style={paletteStyle as CSSProperties}
     >
       {saveFailed && <Notice tone="danger" action={<Button onClick={retry}>{t('settings.saveAgain')}</Button>}>{t('settings.saveFailed')}</Notice>}
       <header className="settings-hero">
@@ -465,14 +436,6 @@ export function SettingsPanel({
           </button>
         </div>
         <div className="settings-hero-tools">
-        <button type="button" className="settings-theme-toggle"
-          aria-label={locale === 'ru' ? settingsColorScheme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему' : settingsColorScheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          title={t('settings.colorScheme')}
-          onClick={() => previewAndSave(withUiPrefs(draft, { settingsColorScheme: settingsColorScheme === 'dark' ? 'light' : 'dark' }))}>
-          <motion.span key={settingsColorScheme} initial={reducedMotion ? false : { rotate: -40, opacity: 0, scale: .6 }} animate={{ rotate: 0, opacity: 1, scale: 1 }} transition={{ duration: .2 }}>
-            {settingsColorScheme === 'dark' ? <Moon size={17} /> : <Sun size={17} />}
-          </motion.span>
-        </button>
         <div className="locale-switch" role="group" aria-label="Language">
           <button
             type="button"
@@ -612,23 +575,6 @@ export function SettingsPanel({
         showTitle={false}
         className="settings-appearance"
       >
-        <InterfaceThemePicker config={draft} locale={locale} onChange={previewAndSave} />
-        <InterfacePalettePicker
-          value={interfacePalette}
-          customAccent={draft.appearance.accentColor}
-          locale={locale}
-          onChange={value => {
-            if (value !== interfacePalette) previewAndSave(withUiPrefs(draft, { interfacePalette: value }))
-          }}
-        >
-          <AccentColorPicker
-            value={draft.appearance.accentColor}
-            label={t('settings.accentColor')}
-            customLabel={t('settings.accentCustom')}
-            onChange={hex => patchAppearance({ accentColor: normalizeHexColor(hex) })}
-          />
-        </InterfacePalettePicker>
-
         {resetUndo && <Notice tone="info" action={<Button onClick={() => {
           const before = resetUndo
           previewAndSave(withIslandLayout(withUiPrefs({
@@ -640,7 +586,23 @@ export function SettingsPanel({
         }}>{t('settings.undo')}</Button>}>{t('settings.resetSummary')}</Notice>}
         <IslandLayoutEditor config={draft} onChange={previewAndSave} onReset={resetIslandSettings} usage={usage?.snapshot ?? null} showHeading={false} active={settingsVisible && settingsPage === 'appearance'} />
 
-        <SettingsDisclosure title={locale === 'ru' ? 'Фон и поведение' : 'Background and behavior'}>
+        <div className="settings-control-group island-appearance-options">
+          <InterfaceThemePicker config={draft} locale={locale} onChange={previewAndSave} />
+          <InterfacePalettePicker
+            value={interfacePalette}
+            customAccent={draft.appearance.accentColor}
+            locale={locale}
+            onChange={value => {
+              if (value !== interfacePalette) previewAndSave(withUiPrefs(draft, { interfacePalette: value }))
+            }}
+          >
+            <AccentColorPicker
+              value={draft.appearance.accentColor}
+              label={t('settings.accentColor')}
+              customLabel={t('settings.accentCustom')}
+              onChange={hex => patchAppearance({ accentColor: normalizeHexColor(hex) })}
+            />
+          </InterfacePalettePicker>
           <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} />
 
           <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
@@ -650,11 +612,11 @@ export function SettingsPanel({
               <strong>{t('settings.hoverDelay')}</strong>
             </span>
             <div className="range-control">
-              <RangeSlider min={80} max={1200} step={20} value={draft.behavior.hoverDelayMs} onChange={(event) => patchBehavior({ hoverDelayMs: Number(event.currentTarget.value) })} />
+              <RangeSlider aria-label={t('settings.hoverDelay')} min={80} max={1200} step={20} value={draft.behavior.hoverDelayMs} onChange={(event) => patchBehavior({ hoverDelayMs: Number(event.currentTarget.value) })} />
               <output>{draft.behavior.hoverDelayMs} {t('settings.milliseconds')}</output>
             </div>
           </label>
-        </SettingsDisclosure>
+        </div>
       </SettingsSection>
 
       {settingsPage === 'usage' ? (
@@ -979,13 +941,9 @@ export function SettingsPanel({
         <div
           className="direct-connection-backdrop"
           role="presentation"
-          data-color-scheme={settingsColorScheme}
-          data-interface-theme={interfaceTheme}
-          data-interface-scene={interfaceScene}
-          data-interface-palette={interfacePalette}
-          data-reduced-transparency={reducedTransparency || undefined}
+          data-color-scheme="dark"
+          data-interface-theme="classic"
           data-reduced-motion={reducedMotion || undefined}
-          style={paletteStyle as CSSProperties}
         >
           <DirectConnectionDialog
             reducedMotion={reducedMotion}

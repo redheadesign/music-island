@@ -2,9 +2,7 @@ import { useEffect } from 'react'
 import { getInterfaceThemeDefinition, isInterfaceThemeId } from '../lib/interfaceTheme'
 
 const controlSelector = [
-  '.ui-button', '.dark-select', '.dark-select-option', '.ui-toggle', '.ui-navigation__item',
-  '.settings-theme-toggle', '.settings-scope-switch__btn', '.locale-switch__btn', '.settings-nav-item',
-  ':is(.settings-window-root, .settings-panel) :is(button, a[href], summary, [role="button"]):not(.island-root *, [inert] *)',
+  '.ui-button',
   '.media-button', '.play-button', '.reaction-button', '.island-actions .icon-button:not(.island-settings-button)', '.island-plugin-button',
 ].join(', ')
 const quietSelector = '[data-reduced-motion="true"], [data-reduced-transparency="true"], .reduced-motion'

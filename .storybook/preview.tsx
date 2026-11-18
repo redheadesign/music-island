@@ -14,7 +14,7 @@ import '../src/stories/workshop.css'
 const preview: Preview = {
   globalTypes: {
     interfaceTheme: {
-      description: 'Тема интерфейса',
+      description: 'Тема островка',
       toolbar: {
         icon: 'contrast',
         items: INTERFACE_THEME_IDS.map(value => ({ value, title: INTERFACE_THEMES[value].label.ru })),
@@ -33,7 +33,7 @@ const preview: Preview = {
       },
     },
     accent: {
-      description: 'Акцент интерфейса',
+      description: 'Акцент островка',
       toolbar: {
         icon: 'paintbrush',
         items: [

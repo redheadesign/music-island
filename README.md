@@ -41,9 +41,7 @@ Clean up your microphone, hear the result and switch voice effects on or off. Th
 
 Optional Codex and Claude widgets show remaining quota in compact rings or a detailed view. Choose their size and position, and whether they stay visible when the island closes. Each connection is off by default: Codex talks to the installed local app-server, while Claude uses the existing local Claude Code sign-in to query Anthropic directly. Screenshots use fictional data. [Connection and privacy details](docs/USAGE.md).
 
-![Music Island settings in dark and light themes](docs/media/v3/05-settings.webp)
-
-Graphite and light themes share the same controls, navigation and surfaces. A short introduction shows music, customization and voice, then offers Windows autostart explicitly. Choose Windows SMTC, the Spotify desktop app via SMTC, or an explicit Direct Yandex Music connection. Shuffle, Repeat and reactions are available where the selected player supports them.
+Settings use the graphite interface. In Appearance, drag controls on the island first, then choose Classic or Glass and its color palette. Both materials use foxes in the preview. A short introduction shows music, customization and voice, then offers Windows autostart explicitly. Choose Windows SMTC, the Spotify desktop app via SMTC, or an explicit Direct Yandex Music connection. Shuffle, Repeat and reactions are available where the selected player supports them.
 
 ## Media connections
 

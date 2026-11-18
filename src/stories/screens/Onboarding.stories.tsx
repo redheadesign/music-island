@@ -12,7 +12,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const FirstLaunch: Story = { name: 'Первый запуск · четыре шага', play: async ({ canvasElement, args }) => {
   const canvas = within(canvasElement)
-  await expect(canvasElement.querySelector('.onboarding')).toHaveAttribute('data-interface-theme', 'glass')
+  await expect(canvasElement.querySelector('.onboarding')).not.toHaveAttribute('data-interface-theme', 'glass')
   await expect(canvasElement.querySelector('.onboarding__music')).toHaveAttribute('data-cover-art', 'true')
   await waitFor(() => expect(canvasElement.querySelector('.onboarding__visual canvas[data-ascii-scene]')).toHaveAttribute('data-ascii-scene', 'fox'))
   await userEvent.click(canvas.getByRole('button', { name: 'Далее' }))
@@ -42,7 +42,7 @@ export const Skip: Story = { name: 'Пропустить · автозагруз
   await expect(args.onFinish).toHaveBeenCalledWith(undefined)
 } }
 export const AutostartEnabled: Story = { name: 'Автозагрузка уже включена', args: { initialStep: 3, config: { ...getDefaultConfig(), behavior: { ...getDefaultConfig().behavior, launchAtStartup: true } } } }
-export const SaveError: Story = { name: 'Стекло · ошибка настройки автозапуска', globals: { interfaceTheme: 'glass' }, args: { initialStep: 3, onFinish: fn(async () => { throw new Error('Access denied') }) }, play: async ({ canvasElement }) => {
+export const SaveError: Story = { name: 'Ошибка настройки автозапуска', globals: { interfaceTheme: 'glass' }, args: { initialStep: 3, onFinish: fn(async () => { throw new Error('Access denied') }) }, play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
   await userEvent.click(canvas.getByRole('button', { name: 'Включить и начать' }))
   const alert = await canvas.findByRole('alert')
@@ -50,6 +50,5 @@ export const SaveError: Story = { name: 'Стекло · ошибка настр
   await expect(alert).toHaveAttribute('data-compact', 'true')
   await expect(canvas.getByRole('button', { name: 'Не сейчас' })).toBeEnabled()
 } }
-export const Light: Story = { name: 'Светлая тема', args: { config: withUiPrefs(getDefaultConfig(), { settingsColorScheme: 'light' }) } }
 export const English: Story = { name: 'English', args: { config: { ...getDefaultConfig(), appearance: { ...getDefaultConfig().appearance, locale: 'en' } } } }
 export const ReducedMotion: Story = { name: 'Без движения', args: { config: { ...getDefaultConfig(), appearance: { ...getDefaultConfig().appearance, reducedMotion: true } } } }

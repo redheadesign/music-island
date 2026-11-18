@@ -17,7 +17,6 @@ const meta = {
   },
   argTypes: { locale: { table: { disable: true } } },
   parameters: {
-    settingsColorScheme: 'dark',
     settingsPreviewScene: true,
     workshop: {
       width: 760,
@@ -26,7 +25,6 @@ const meta = {
   },
   render: function Voice(args, context) {
     const [, updateArgs] = useArgs()
-    const colorScheme = context.parameters.settingsColorScheme === 'light' ? 'light' : 'dark'
     const screen = <VoiceSettingsView
       {...args}
       locale={context.globals.locale}
@@ -36,13 +34,7 @@ const meta = {
       }}
     />
     return (
-      <div className="settings-window-root" data-color-scheme={colorScheme} data-interface-theme={context.globals.interfaceTheme}>
-        {context.parameters.checkSettingsMaterials
-          ? <div className="settings-panel" data-color-scheme={colorScheme} data-interface-theme={context.globals.interfaceTheme}>
-              <div className="settings-content">{screen}</div>
-            </div>
-          : screen}
-      </div>
+      <div className="settings-window-root"><div className="settings-panel"><div className="settings-content">{screen}</div></div></div>
     )
   },
 } satisfies Meta<typeof VoiceSettingsView>
@@ -103,66 +95,31 @@ async function checkSignalRoute(root: HTMLElement, vertical: boolean) {
   }
 }
 
-export const GlassSignalRoute: Story = {
-  name: 'Стекло · соединения между устройствами',
+export const SignalRoute: Story = {
+  name: 'соединения между устройствами',
   globals: { interfaceTheme: 'glass' },
   parameters: Running.parameters,
   play: async ({ canvasElement }) => { await checkSignalRoute(canvasElement, false) },
 }
 
-export const GlassSignalRouteNarrow: Story = {
-  ...GlassSignalRoute,
-  name: 'Стекло · вертикальное соединение устройств',
+export const SignalRouteNarrow: Story = {
+  ...SignalRoute,
+  name: 'вертикальное соединение устройств',
   parameters: { voicePreview: { running: true }, workshop: { width: 420 } },
   play: async ({ canvasElement }) => { await checkSignalRoute(canvasElement, true) },
 }
 
-async function checkVoiceMaterials(root: HTMLElement) {
-  const panel = root.querySelector<HTMLElement>('.settings-panel')!
-  const probe = document.createElement('span')
-  panel.append(probe)
-  const background = (token: string) => {
-    probe.style.backgroundColor = `var(--${token})`
-    return getComputedStyle(probe).backgroundColor
-  }
-  try {
-    const groupFill = background('surface-panel')
-    await expect(groupFill).not.toBe('rgba(0, 0, 0, 0)')
-    const cards = panel.querySelectorAll('.voice-settings-card, .voice-signal-node')
-    await expect(cards).toHaveLength(7)
-    for (const card of cards) await expect(getComputedStyle(card).backgroundColor).toBe(groupFill)
-    for (const row of panel.querySelectorAll('.settings-control-row, .voice-eq-bands')) {
-      await expect(getComputedStyle(row).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+export const SettingsGroups: Story = {
+  name: 'Группы настроек обработки',
+  parameters: { voicePreview: { running: true } },
+  play: async ({ canvasElement }) => {
+    const cards = canvasElement.querySelectorAll<HTMLElement>('.voice-settings-card')
+    await expect(cards.length).toBeGreaterThan(1)
+    for (const card of cards) {
+      await expect(getComputedStyle(card).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+      await expect(parseFloat(getComputedStyle(card).paddingInlineStart)).toBeGreaterThan(0)
     }
-    await expect(getComputedStyle(panel.querySelector('.voice-segment-switch button[aria-pressed="true"]')!).backgroundColor)
-      .toBe(background('control-value'))
-    const effect = panel.querySelector<HTMLButtonElement>('.voice-effect-toggle')!
-    await waitFor(() => expect(effect).toBeEnabled())
-    await userEvent.click(effect)
-    await expect(effect).toHaveAttribute('aria-pressed', 'true')
-    await waitFor(() => expect(getComputedStyle(effect).backgroundColor).toBe(background('control-value')))
-    await waitFor(() => expect(getComputedStyle(effect).color).toBe(background('control-value-ink')))
-    const guide = panel.querySelector<HTMLButtonElement>('.voice-settings-actions button')!
-    await userEvent.click(guide)
-    for (const section of ['.voice-setup-guide__steps', '.voice-setup-guide__help']) {
-      await expect(getComputedStyle(panel.querySelector(section)!).backgroundColor).toBe(groupFill)
-    }
-    await userEvent.click(panel.querySelector<HTMLButtonElement>('.voice-setup-guide__back')!)
-  } finally {
-    probe.remove()
-  }
-}
-
-export const GlassGroupsDark: Story = {
-  name: 'Стекло · группы настроек на тёмном фоне',
-  globals: { interfaceTheme: 'glass' },
-  parameters: { settingsColorScheme: 'dark', checkSettingsMaterials: true, voicePreview: { running: true } },
-  play: async ({ canvasElement }) => { await checkVoiceMaterials(canvasElement) },
-}
-export const GlassGroupsLight: Story = {
-  ...GlassGroupsDark,
-  name: 'Стекло · группы настроек на светлом фоне',
-  parameters: { ...GlassGroupsDark.parameters, settingsColorScheme: 'light' },
+  },
 }
 export const ReducedMotion: Story = {
   name: 'Обработка · без движения',
@@ -202,7 +159,7 @@ export const StartError: Story = {
     await expect(canvas.getByRole('button', { name: /Робот|Robot/ })).toBeDisabled()
   },
 }
-export const GlassStartError: Story = { ...StartError, name: 'Стекло · не удалось открыть микрофон', globals: { interfaceTheme: 'glass' } }
+export const StartErrorWithGlassIsland: Story = { ...StartError, name: 'не удалось открыть микрофон', globals: { interfaceTheme: 'glass' } }
 export const Developer: Story = {
   name: 'Просмотр клипов',
   args: { developerMode: true },
@@ -348,66 +305,6 @@ export const Narrow: Story = {
     voicePreview: { running: true },
   },
   play: Running.play,
-}
-export const Light: Story = {
-  name: 'Классическая · светлое оформление',
-  globals: { interfaceTheme: 'classic' },
-  parameters: {
-    settingsColorScheme: 'light',
-    voicePreview: { running: true },
-    workshop: {
-      width: 760,
-      note: 'Светлая оболочка настроек с рабочим трактом и живыми уровнями.',
-    },
-  },
-  play: async ({ canvas, canvasElement }) => {
-    await waitFor(() => expect(canvas.getByRole('button', { name: /Остановить|Stop processing/ })).toBeEnabled())
-    const root = canvasElement.querySelector<HTMLElement>('.settings-window-root')!
-    const hero = canvasElement.querySelector<HTMLElement>('.voice-control-card')!
-    const flow = canvas.getByRole('group', { name: /Обработка|Processing/ })
-    await expect(root).toHaveAttribute('data-color-scheme', 'light')
-    await expect(getComputedStyle(hero).backgroundColor).toBe('rgb(24, 25, 28)')
-    await expect(getComputedStyle(hero).color).toBe('rgb(245, 245, 247)')
-    await expect(flow.scrollWidth).toBeLessThanOrEqual(flow.clientWidth)
-
-    await userEvent.click(canvas.getByRole('button', { name: /^(Микрофон|Microphone)$/ }))
-    let menu: HTMLElement | null = null
-    await waitFor(() => {
-      menu = root.ownerDocument.querySelector<HTMLElement>('.dark-select-menu')
-      expect(menu).toBeVisible()
-    })
-    const sample = document.createElement('span')
-    sample.style.backgroundColor = 'var(--surface-raised)'
-    root.append(sample)
-    try {
-      await expect(getComputedStyle(menu!).backgroundColor).toBe(getComputedStyle(sample).backgroundColor)
-    } finally {
-      sample.remove()
-    }
-    await userEvent.keyboard('{Escape}')
-  },
-}
-export const LightNarrow: Story = {
-  name: 'Светлое оформление · узко',
-  parameters: {
-    settingsColorScheme: 'light',
-    voicePreview: { running: true },
-    workshop: {
-      width: 420,
-      note: 'Светлая узкая компоновка сохраняет вертикальный тракт в границах панели.',
-    },
-  },
-  play: async ({ canvas, canvasElement }) => {
-    await waitFor(() => expect(canvas.getByRole('button', { name: /Остановить|Stop processing/ })).toBeEnabled())
-    const root = canvasElement.querySelector<HTMLElement>('.settings-window-root')!
-    const flow = canvas.getByRole('group', { name: /Обработка|Processing/ })
-    await expect(root).toHaveAttribute('data-color-scheme', 'light')
-    await expect(flow.scrollWidth).toBeLessThanOrEqual(flow.clientWidth)
-    for (const node of flow.querySelectorAll<HTMLElement>('.voice-signal-node')) {
-      await expect(node.getBoundingClientRect().left).toBeGreaterThanOrEqual(root.getBoundingClientRect().left - 0.5)
-      await expect(node.getBoundingClientRect().right).toBeLessThanOrEqual(root.getBoundingClientRect().right + 0.5)
-    }
-  },
 }
 export const Compact: Story = {
   name: 'Минимальная ширина · 320 px',

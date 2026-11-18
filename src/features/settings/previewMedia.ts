@@ -1,14 +1,20 @@
-import { progressFillColor } from '../overlay/artworkPalette'
+import { artworkCssColors, progressFillColor } from '../overlay/artworkPalette'
 import type { MediaSnapshot } from '../../shared/lib/types'
 import previewRecord from '../../assets/preview-sea-stack.webp'
 
-// Dominant palette sampled from the preview image with the same brightness
-// factors used by the media island's artwork extraction.
-export const APPEARANCE_PREVIEW_ARTWORK_THEME = {
-  '--artwork-progress-color': progressFillColor([64, 76, 92]),
-  '--artwork-primary': '64, 76, 92',
-  '--artwork-secondary': '28, 34, 41',
-} as const
+// Sampled by readArtworkPalette from preview-sea-stack.webp. The workshop
+// checks the source image so a replacement also refreshes these samples.
+const previewPalette = { primary: [106, 118, 139], secondary: [71, 89, 113] } as const
+const progressColor = progressFillColor(previewPalette.primary)
+
+export function getPreviewArtworkStyle(glass: boolean) {
+  const colors = artworkCssColors(previewPalette, glass)
+  return {
+    '--artwork-progress-color': progressColor,
+    '--artwork-primary': colors.primary,
+    '--artwork-secondary': colors.secondary,
+  }
+}
 
 export const APPEARANCE_PREVIEW_MEDIA: MediaSnapshot = {
   hasSession: true,
@@ -40,5 +46,3 @@ export const APPEARANCE_PREVIEW_MEDIA: MediaSnapshot = {
   provider: 'yandex-direct',
   smtcHealth: 'healthy',
 }
-
-export const PREVIEW_COVER_PROGRESS = progressFillColor([168, 98, 55])
