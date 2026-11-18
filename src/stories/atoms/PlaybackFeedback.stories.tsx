@@ -1,7 +1,7 @@
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { PlaybackButton, ReactionButton } from '../../features/music/MusicControls'
 function Feedback({reducedMotion = false}: {reducedMotion?: boolean}) {
   const [playing, setPlaying]=useState(false), [liked,setLiked]=useState(false)
@@ -43,6 +43,10 @@ export const LocalHeart: Story = {
     await expect(button.querySelector('[data-pulse]')).not.toBeInTheDocument()
     await userEvent.keyboard('{Enter}')
     await expect(button).toHaveAttribute('aria-pressed', 'true')
+    if (!matchMedia('(forced-colors: active)').matches) {
+      const primary = getComputedStyle(button).getPropertyValue('--accent').trim()
+      await waitFor(() => expect(button).toHaveStyle({ color: primary }))
+    }
     await expect(canvasElement.querySelector('.island-feedback__wave')).not.toBeInTheDocument()
   },
 }

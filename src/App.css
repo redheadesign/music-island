@@ -722,7 +722,7 @@
 }
 
 .reaction-button--like.reaction-button--active {
-  color: #fff;
+  color: var(--accent);
   background: rgba(255, 255, 255, 0.13);
 }
 
