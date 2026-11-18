@@ -93,7 +93,8 @@ export const GlassCatalog: Story = {
     await expect(material.backgroundColor).toBe('rgba(0, 0, 0, 0)')
     await expect(material.boxShadow).toBe('none')
     const icon = shuffle.querySelector('button')!
-    await expect(getComputedStyle(icon).color).toBe(getComputedStyle(canvasElement.querySelector('.settings-window-root')!).color)
+    await expect(shuffle.closest('.settings-window-root')).toHaveAttribute('data-color-scheme', 'light')
+    await expect(icon).toHaveStyle({ color: material.getPropertyValue('--fg-primary').trim() })
     shuffle.focus()
     await userEvent.keyboard(' ')
     await expect(shuffle).toHaveAttribute('aria-pressed', 'true')

@@ -10,7 +10,6 @@ afterEach(() => { document.body.innerHTML = ''; vi.restoreAllMocks(); vi.unstubA
 describe('island feedback commands', () => {
   it('dispatches immediately, keeps transport feedback centered and reaction feedback inside the button', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
-    window.matchMedia = vi.fn().mockReturnValue({ matches: false, addListener() {}, removeListener() {} })
     const animations: Keyframe[][] = []
     const cancel = vi.fn()
     vi.spyOn(HTMLElement.prototype, 'animate').mockImplementation(frames => { animations.push(frames as Keyframe[]); return { finished: new Promise(() => {}), cancel } as unknown as Animation })
@@ -37,7 +36,6 @@ describe('island feedback commands', () => {
 
 
 it('uses a recent regular beat from this card and forgets it on pause', () => {
-  window.matchMedia = vi.fn().mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} })
   const card = document.createElement('section')
   card.className = 'island-card'
   const layer = document.createElement('span'), button = document.createElement('button')
