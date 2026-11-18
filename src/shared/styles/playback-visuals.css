@@ -34,15 +34,38 @@
   opacity: calc(.31 + var(--island-bass, 0) * .46);
 }
 
+.island-feedback__ambient[data-playback-visual='flow']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 48% 38% at 24% 55%, var(--island-wave-crest), transparent),
+    radial-gradient(ellipse 44% 38% at 79% 41%, var(--island-wave-trough), transparent);
+  opacity: .42;
+}
+
+.island-live-wave {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island-live-wave { display: none; }
+}
+:is(.reduced-motion, [data-reduced-motion='true']) .island-live-wave { display: none; }
+
 @media (prefers-reduced-motion: no-preference) {
   .island-feedback__ambient:is([data-playback-visual='rays'], [data-playback-visual='mercury']):not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before,
   .island-feedback__ambient:is([data-playback-visual='rays'], [data-playback-visual='mercury']):not(:is(.reduced-motion, [data-reduced-motion='true']) *)::after {
-    /* An elliptical orbit joins at the same tangent at both ends. */
-    animation: island-light-orbit calc(var(--motion-unit) * 980) linear infinite;
-    scale: calc(1 + var(--island-bass, 0) * .25);
+    animation: island-light-orbit var(--orbit-duration, calc(var(--motion-unit) * 440)) var(--orbit-delay, 0s) ease-in-out infinite;
+    scale: calc(1 + var(--island-bass, 0) * .33);
   }
   .island-feedback__ambient:is([data-playback-visual='rays'], [data-playback-visual='mercury'])::after {
-    animation-delay: calc(var(--motion-unit) * -245);
+    --orbit-duration: calc(var(--motion-unit) * 605);
+    --orbit-delay: calc(var(--motion-unit) * -200);
+    --orbit-width: 9%;
+    --orbit-height: 14%;
   }
   .island-card[data-document-hidden] .island-feedback__ambient::before,
   .island-card[data-document-hidden] .island-feedback__ambient::after {
@@ -50,6 +73,8 @@
   }
 }
 @keyframes island-light-orbit {
-  from { transform: scaleY(.9) rotate(0turn) translateX(3%) rotate(0turn) scaleY(1.1111); }
-  to { transform: scaleY(.9) rotate(1turn) translateX(3%) rotate(-1turn) scaleY(1.1111); }
+  from, to { transform: translate(var(--orbit-width, 13%), 0) rotate(2deg) scaleY(.95); }
+  25% { transform: translate(0, var(--orbit-height, 9%)) rotate(-3deg) scaleY(1.12); }
+  50% { transform: translate(calc(var(--orbit-width, 13%) * -1), 0) rotate(-2deg) scaleY(1.06); }
+  75% { transform: translate(0, calc(var(--orbit-height, 9%) * -1)) rotate(3deg) scaleY(.9); }
 }

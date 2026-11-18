@@ -31,12 +31,12 @@ describe('interface theme preferences', () => {
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'manta' } }))).toBe('manta')
   })
 
-  it('restores the saved playback visual after switching materials', () => {
-    const base = configWithUi({ interfaceTheme: 'glass', playbackVisual: 'mercury' })
-    expect(getPlaybackVisual(base)).toBe('mercury')
+  it.each(['wave', 'flow', 'rays', 'mercury'])('restores %s after switching materials', visual => {
+    const base = configWithUi({ interfaceTheme: 'glass', playbackVisual: visual })
+    expect(getPlaybackVisual(base)).toBe(visual)
     const classic = withUiPrefs(base, { interfaceTheme: 'classic' })
     expect(getPlaybackVisual(classic)).toBeUndefined()
-    expect(getPlaybackVisual(withUiPrefs(classic, { interfaceTheme: 'glass' }))).toBe('mercury')
+    expect(getPlaybackVisual(withUiPrefs(classic, { interfaceTheme: 'glass' }))).toBe(visual)
     expect(getPlaybackVisual(configWithUi({ playbackVisual: 'removed' }))).toBe('wave')
   })
 

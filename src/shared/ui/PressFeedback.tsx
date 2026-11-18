@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, type ButtonHTMLAttributes, type HTMLAttributes } from 'react'
 import type { PlaybackVisual } from '../lib/interfaceTheme'
+import { LiveWave } from './LiveWave'
 import { IslandParticles } from './IslandParticles'
 import './PressFeedback.css'
 export type RippleDirection = 'outward' | 'inward'
@@ -59,6 +60,7 @@ export function IslandFeedback({ children, className = '', particles = false, pl
             data-playback-motion={playbackMotion === false ? 'paused' : 'playing'}
             data-playback-visual={playbackVisual}
           >
+            {playbackVisual === 'flow' && <LiveWave />}
             {particles ? <IslandParticles /> : null}
           </span>
         ) : null}

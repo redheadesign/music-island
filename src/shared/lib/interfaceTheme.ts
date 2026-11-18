@@ -1,7 +1,7 @@
 export const INTERFACE_SCENES = ['fox', 'manta'] as const
 export type InterfaceScene = typeof INTERFACE_SCENES[number]
 
-export const PLAYBACK_VISUALS = ['wave', 'rays', 'mercury'] as const
+export const PLAYBACK_VISUALS = ['wave', 'flow', 'rays', 'mercury'] as const
 export type PlaybackVisual = typeof PLAYBACK_VISUALS[number]
 
 type ThemeRole = `--${'surface' | 'fg' | 'control' | 'font' | 'space' | 'radius' | 'text' | 'leading' | 'weight' | 'shadow' | 'status' | 'focus' | 'hit' | 'motion' | 'glass'}-${string}`

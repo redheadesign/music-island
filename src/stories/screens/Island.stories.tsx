@@ -1,3 +1,4 @@
+import type { PaperShaderElement } from '@paper-design/shaders'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useEffect, useState } from 'react'
 import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
@@ -467,6 +468,57 @@ export const GlassPlayback: StoryObj<typeof meta> = {
   },
 }
 export const AssistantLimits: StoryObj<typeof meta> = { name: 'Лимиты Codex рядом с островком', args: { assistantLimits: true } }
+export const GlassLiveWave: StoryObj<typeof meta> = {
+  ...Glass,
+  name: 'Стекло · живая волна, бас и пауза',
+  args: { artwork: 'mixed', playbackVisual: 'flow', playbackReactiveWave: true },
+  play: async ({ canvasElement }) => {
+    const field = await waitFor(() => {
+      const node = canvasElement.querySelector<PaperShaderElement>('.island-live-wave')
+      expect(node).toBeInTheDocument()
+      return node!
+    })
+    const layer = field.parentElement!
+    await expect(layer).toHaveAttribute('data-playback-visual', 'flow')
+    if (matchMedia('(prefers-reduced-motion: reduce), (forced-colors: active), (prefers-reduced-transparency: reduce)').matches) {
+      await expect(field).not.toBeVisible()
+      return
+    }
+    await waitFor(() => expect(field.dataset.rendering).toBeDefined())
+    if (field.dataset.rendering === 'fallback') {
+      const gl = document.createElement('canvas').getContext('webgl2')
+      gl?.getExtension('WEBGL_lose_context')?.loseContext()
+      await expect(gl).toBeNull()
+      await expect(getComputedStyle(layer, '::before').backgroundImage).toContain('radial-gradient')
+      return
+    }
+    const shader = field.paperShaderMount!
+    const gl = shader.canvasElement.getContext('webgl2')!
+    await waitFor(() => expect(gl.drawingBufferWidth).toBeGreaterThan(20))
+    const renderAlpha = (frame: number) => {
+      shader.setFrame(frame)
+      const pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4)
+      gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+      return pixels.filter((_, i) => i % 4 === 3)
+    }
+    const first = renderAlpha(1000)
+    const next = renderAlpha(2700)
+    await expect(next.filter((alpha, i) => Math.abs(alpha - first[i]) > 12).length).toBeGreaterThan(first.length * .1)
+    await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeDefined())
+    emitPreviewPlaybackBass(.8)
+    const program = gl.getParameter(gl.CURRENT_PROGRAM) as WebGLProgram
+    const bass = gl.getUniformLocation(program, 'u_bass')!
+    await waitFor(() => expect(gl.getUniform(program, bass)).toBeGreaterThan(.7), { interval: 10 })
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ }))
+    await waitFor(() => expect(getComputedStyle(layer).display).toBe('none'))
+    const stopped = shader.getCurrentFrame()
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    await expect(shader.getCurrentFrame()).toBe(stopped)
+    await userEvent.click(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ }))
+    await waitFor(() => expect(shader.getCurrentFrame()).toBeGreaterThan(stopped))
+  },
+}
 export const GlassRays: StoryObj<typeof meta> = {
   ...Glass,
   name: 'Стекло · северное сияние и контрастная обложка',
