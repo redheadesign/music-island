@@ -18,7 +18,7 @@ export const ThirdTheme: StoryObj<typeof meta> = {
   name: 'Контракт третьей темы · окно, панель задач и меню',
   render: () => <div>
     <div style={{ height: 210 }}><SettingsWindow interfaceTheme={fixture} colorScheme="light">
-      <Select ariaLabel="Проверка темы" value="one" options={[{ value: 'one', label: 'Светлое оформление' }]} onChange={() => {}} />
+      <Select ariaLabel="Проверка темы" value="one" options={[{ value: 'one', label: 'Первая' }, { value: 'two', label: 'Вторая' }]} onChange={() => {}} />
     </SettingsWindow></div>
     <TaskbarPlayer interfaceTheme={fixture} snapshot={media} locale="ru" onCommand={() => {}} />
   </div>,
@@ -36,7 +36,9 @@ export const ThirdTheme: StoryObj<typeof meta> = {
     const menu = await within(canvasElement.ownerDocument.body).findByRole('listbox')
     await expect(canvasElement.contains(menu)).toBe(false)
     await waitFor(() => expect(menu).toHaveAttribute('data-interface-theme', fixture))
-    const option = within(menu).getByRole('option')
+    const selected = within(menu).getByRole('option', { selected: true })
+    await expect(selected).toHaveStyle({ color: '#ffffff', backgroundColor: '#385123' })
+    const option = within(menu).getByRole('option', { selected: false })
     await expect(getComputedStyle(option).minHeight).toBe('46px')
     await expect(getComputedStyle(menu).getPropertyValue('--surface-raised').trim()).toBe('#e8efdd')
     await expect(getComputedStyle(option).color).toBe('rgb(56, 81, 35)')
