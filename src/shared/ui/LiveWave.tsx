@@ -73,8 +73,15 @@ export function LiveWave() {
       reveal.disconnect()
       artwork.disconnect()
       playback.disconnect()
-      shader?.canvasElement.removeEventListener('webglcontextlost', canvasLost)
-      shader?.dispose()
+      if (shader) {
+        const canvas = shader.canvasElement
+        canvas.removeEventListener('webglcontextlost', canvasLost)
+        // Each expanded island owns this canvas. Release its driver resources
+        // immediately so repeated openings don't consume the WebView's context limit.
+        const contextLoss = canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')
+        shader.dispose()
+        contextLoss?.loseContext()
+      }
       delete node.dataset.rendering
     }
   }, [])
