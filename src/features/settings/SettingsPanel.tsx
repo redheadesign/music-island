@@ -22,6 +22,7 @@ import { useDictationController } from '../../app/useIslandApp'
 import { VoiceSettingsView } from '../plugins/voice/VoiceSettingsView'
 import { TaskbarLayoutEditor } from './TaskbarLayoutEditor'
 import { IslandLayoutEditor } from './IslandLayoutEditor'
+import { SettingsDisclosure } from '../../shared/ui/SettingsDisclosure'
 import { SegmentedControl } from '../../shared/ui/SegmentedControl'
 import { getIslandLayout, getLegacyIslandLayout, withIslandLayout } from '../../shared/lib/islandLayout'
 import { getDictationAppearance } from '../../shared/lib/dictationAppearance'
@@ -639,25 +640,24 @@ export function SettingsPanel({
         }}>{t('settings.undo')}</Button>}>{t('settings.resetSummary')}</Notice>}
         <IslandLayoutEditor config={draft} onChange={previewAndSave} onReset={resetIslandSettings} usage={usage?.snapshot ?? null} showHeading={false} active={settingsVisible && settingsPage === 'appearance'} />
 
-        <div className="settings-control-group">
+        <SettingsDisclosure title={locale === 'ru' ? 'Фон и поведение' : 'Background and behavior'}>
+          <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} onOpenSource={() => {
+            setSettingsPage('source')
+            requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('.settings-layout:not([hidden]) > .settings-navigation [aria-current="page"]')?.focus())
+          }} />
 
-        <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} onOpenSource={() => {
-          setSettingsPage('source')
-          requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('.settings-layout:not([hidden]) > .settings-navigation [aria-current="page"]')?.focus())
-        }} />
+          <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
 
-        <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
-
-        <label className="settings-control-row">
-          <span>
-            <strong>{t('settings.hoverDelay')}</strong>
-          </span>
-          <div className="range-control">
-            <RangeSlider min={80} max={1200} step={20} value={draft.behavior.hoverDelayMs} onChange={(event) => patchBehavior({ hoverDelayMs: Number(event.currentTarget.value) })} />
-            <output>{draft.behavior.hoverDelayMs} {t('settings.milliseconds')}</output>
-          </div>
-        </label>
-        </div>
+          <label className="settings-control-row">
+            <span>
+              <strong>{t('settings.hoverDelay')}</strong>
+            </span>
+            <div className="range-control">
+              <RangeSlider min={80} max={1200} step={20} value={draft.behavior.hoverDelayMs} onChange={(event) => patchBehavior({ hoverDelayMs: Number(event.currentTarget.value) })} />
+              <output>{draft.behavior.hoverDelayMs} {t('settings.milliseconds')}</output>
+            </div>
+          </label>
+        </SettingsDisclosure>
       </SettingsSection>
 
       {settingsPage === 'usage' ? (

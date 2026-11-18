@@ -8,7 +8,7 @@ import { ActionMenu } from '../../shared/ui/Select'
 import { Modal } from '../../shared/ui/Modal'
 import { ModelCard } from './ModelCard'
 import { HandyImport } from './HandyImport'
-import { DictationDisclosure } from './DictationSections'
+import { SettingsDisclosure } from '../../shared/ui/SettingsDisclosure'
 import { catalogLanguages, formatModelSize, groupModels, modelNotice } from './modelCatalog'
 import './DictationModelsLead.css'
 
@@ -90,12 +90,12 @@ export function DictationModels({ controller: c, locale }: { controller: Dictati
     {catalog.length ? <section className="dictation-models" aria-label={catalogTitle}><h3>{catalogTitle}</h3>{catalog.map(renderModel)}</section> : null}
     {!groups.installed.length && !groups.catalog.length ? <div className="dictation-empty"><p role="status">{ru ? 'Подходящих моделей нет.' : 'No matching models.'}</p>
       {query || languages.length ? <Button variant="ghost" size="compact" onClick={() => { setQuery(''); setLanguageFilter({ locale, codes: [] }) }}>{ru ? 'Сбросить поиск и фильтр' : 'Clear search and filter'}</Button> : null}</div> : null}
-    <DictationDisclosure title={ru ? 'Хранилище моделей' : 'Model storage'}>
+    <SettingsDisclosure title={ru ? 'Хранилище моделей' : 'Model storage'}>
       <div className="dictation-models__storage">
         <code>{data.path}</code>
         <SettingsIconButton size="compact" variant="ghost" label={ru ? 'Открыть папку' : 'Open folder'} onClick={() => run('open-folder', () => api.openAppDataDir())}><FolderOpen size={17} aria-hidden="true" /></SettingsIconButton>
       </div>
-    </DictationDisclosure>
+    </SettingsDisclosure>
     {confirmation ? <Modal label={confirmation.action === 'download' ? ru ? 'Скачать модель?' : 'Download model?' : ru ? 'Удалить модель?' : 'Delete model?'} onClose={() => setConfirmation(null)}><h3>{confirmation.action === 'download' ? ru ? 'Скачать модель?' : 'Download model?' : ru ? 'Удалить модель?' : 'Delete model?'}</h3><p>{confirmation.model.name} · {formatModelSize(confirmation.model.size_mb, locale)}</p><code className="data-settings__path">{data.path}</code>{modelNotice(confirmation.model) ? <Button variant="ghost" size="compact" onClick={() => void openExternalUrl(modelNotice(confirmation.model)!.url)}>{ru ? 'Условия модели' : 'Model terms'} · {modelNotice(confirmation.model)!.license}</Button> : null}<p>{confirmation.action === 'download' ? ru ? 'Модель останется после удаления EXE.' : 'The model stays if you delete the EXE.' : ru ? 'Удалится только файл модели.' : 'Only the model file will be deleted.'}</p><div className="dictation-dialog__actions"><Button onClick={() => setConfirmation(null)}>{ru ? 'Отмена' : 'Cancel'}</Button><Button variant={confirmation.action === 'delete' ? 'danger' : 'primary'} onClick={() => modelAction(confirmation.model, confirmation.action)}>{confirmation.action === 'download' ? ru ? 'Скачать' : 'Download' : ru ? 'Удалить' : 'Delete'}</Button></div></Modal> : null}
     <Modal open={custom} label={ru ? 'Добавить файл модели' : 'Add a model file'} onClose={() => { if (!picking && c.busy !== 'custom-model') setCustom(false) }}><h3>{ru ? 'Добавить файл модели' : 'Add a model file'}</h3><p>{ru ? 'Выберите файл GGUF или BIN либо введите путь. Исходный файл сохранится.' : 'Choose a GGUF or BIN file, or enter its path. The original file stays in place.'}</p><form className="dictation-model-file" onSubmit={async event => { event.preventDefault(); setCustomError(''); try { await c.run('custom-model', () => api.importCustomModel(path.trim()), ['models', 'settings', 'runtime'], false); setCustom(false); setPath('') } catch (reason) { setCustomError(String(reason)) } }}><Button size="compact" disabled={picking || c.busy === 'custom-model'} onClick={() => void pickFile()}>{ru ? 'Выбрать файл…' : 'Choose file…'}</Button><Input aria-label={ru ? 'Путь к модели' : 'Model path'} value={path} onChange={event => setPath(event.target.value)} style={{ width: '100%' }} />{customError ? <Notice tone="danger">{customError}</Notice> : null}<div className="dictation-dialog__actions"><Button disabled={picking || c.busy === 'custom-model'} onClick={() => setCustom(false)}>{ru ? 'Отмена' : 'Cancel'}</Button><Button variant="primary" type="submit" disabled={picking || !path.trim() || c.busy === 'custom-model'}>{c.busy === 'custom-model' ? ru ? 'Копирование…' : 'Copying…' : ru ? 'Скопировать' : 'Copy model'}</Button></div></form></Modal>
   </>

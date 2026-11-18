@@ -164,6 +164,8 @@ export const MaterialAtMinimumSize: Story = {
   play: async ({ canvasElement }) => {
     const theme = within(canvasElement).getByRole('button', { name: 'Тема интерфейса' })
     const palette = within(canvasElement).getByRole('button', { name: 'Цветовая палитра' })
+    const advanced = within(canvasElement).getByText('Фон и поведение').closest('details')!
+    await expect(advanced).not.toHaveAttribute('open')
     const viewport = theme.closest('[data-settings-scroll]')!
     await waitFor(() => {
       expect(theme.getBoundingClientRect().top).toBeGreaterThanOrEqual(viewport.getBoundingClientRect().top)
@@ -180,6 +182,7 @@ export const BassSourceShortcut: Story = {
     // Better Voice keeps its navigation mounted when the user returns to the island.
     await userEvent.click(canvas.getByRole('button', { name: /^Better Voice/ }))
     await userEvent.click(canvas.getByRole('button', { name: /^Music Island$/ }))
+    await userEvent.click(within(canvasElement).getByText('Фон и поведение'))
     await expect(canvas.getByRole('switch', { name: 'Реакция фона на бас' })).toBeDisabled()
     await userEvent.click(canvas.getByRole('button', { name: 'Настроить источник' }))
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Источник музыки' })).toBeVisible(), { timeout: 5000 })
@@ -193,6 +196,7 @@ export const GlassReactiveWave: Story = {
   globals: { interfaceTheme: 'glass', locale: 'ru' },
   parameters: { directPreview: true },
   play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByText('Фон и поведение'))
     const setting = within(canvasElement).getByRole('switch', { name: 'Реакция фона на бас' })
     await expect(setting).not.toBeChecked()
     await userEvent.click(setting)
@@ -204,8 +208,9 @@ export const GlassPlaybackBackground: Story = {
   name: 'Стекло · выбор фона при воспроизведении',
   globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByText('Фон и поведение'))
     const trigger = within(canvasElement).getByRole('button', { name: 'Фон при воспроизведении' })
-    for (const [from, to] of [['Волна', 'Лучи'], ['Лучи', 'Жидкий металл']]) {
+    for (const [from, to] of [['Классическая волна', 'Живая волна'], ['Живая волна', 'Северное сияние'], ['Северное сияние', 'Отражения']]) {
       await userEvent.click(trigger)
       const menu = await within(canvasElement.ownerDocument.body).findByRole('listbox')
       await expect(within(menu).getByRole('option', { name: from })).toHaveAttribute('aria-selected', 'true')
@@ -298,6 +303,7 @@ export const ThemeSwitch: Story = {
     await expect(canvasElement.querySelector('.settings-panel')).toHaveAttribute('data-interface-theme', 'glass')
     await waitFor(() => expect(window).toHaveAttribute('data-interface-theme', 'glass'))
     await expect(window).toHaveAttribute('data-interface-scene', 'fox')
+    await userEvent.click(within(canvasElement).getByText('Фон и поведение'))
     const scene = canvas.getByRole('button', { name: 'Фон превью' })
     await userEvent.click(scene)
     const list = canvasDocument.getByRole('listbox')

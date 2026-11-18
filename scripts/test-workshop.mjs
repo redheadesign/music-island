@@ -5,7 +5,7 @@ import { preview } from 'vite'
 
 const criticalStories = [
   'foundations-interfacetheme--third-theme', 'screens-settings--retry-failed-save', 'screens-settings--unreadable-profile',
-  'screens-settings--material-at-minimum-size', 'screens-settings--bass-source-shortcut',
+  'screens-settings--material-at-minimum-size', 'screens-settings--bass-source-shortcut', 'screens-settings--glass-playback-background',
   'screens-settings--theme-switch', 'screens-settings--classic-light',
   'screens-settings--taskbar', 'screens-settings--autostart-error',
   'screens-settings--about', 'screens-settings--voice-developer-mode',
@@ -16,7 +16,9 @@ const criticalStories = [
   'screens-dictation--post-processing-setup', 'screens-dictation--glass-advanced-load-error',
   'screens-onboarding--first-launch', 'screens-onboarding--layout', 'screens-onboarding--voice',
   'screens-dictation--history-delete-confirmation', 'screens-dictation--custom-model-file',
-  'screens-dictation--floating-catalog', 'atoms-playbackfeedback--local-heart', 'molecules-dictationoverlay--fox-progress',
+  'screens-dictationcompute--background-recognition', 'screens-dictationcompute--other-engine',
+  'screens-dictation--catalog-cards-light', 'molecules-modelcard--glass-failed', 'molecules-modelcard--downloading',
+  'screens-island--glass-live-wave', 'screens-dictation--floating-catalog', 'atoms-playbackfeedback--local-heart', 'molecules-dictationoverlay--fox-progress',
   'organisms-islandlayouteditor--inline-layout', 'organisms-islandlayouteditor--full-inline-layout',
   'molecules-dictationoverlay--long-transcription', 'screens-onboarding--custom-shortcut',
   'organisms-usagesettingssection--stale-limit',

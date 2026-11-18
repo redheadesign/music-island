@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fireEvent, fn, userEvent, within } from 'storybook/test'
 import { DictationSettings } from '../../features/dictation/DictationSettings'
 import type { DictationController } from '../../app/useIslandApp'
 import { dictationApi } from '../mocks/dictationApi'
@@ -40,17 +40,27 @@ type Story = StoryObj<typeof meta>
 export const Models: Story = { name: 'Модели · русский язык' }
 export const FloatingCatalog: Story = {
   ...Models,
-  name: 'Стекло · каталог без подложек',
-  globals: { interfaceTheme: 'glass' },
+  name: 'Стекло · карточки моделей',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
-    const model = await waitFor(() => {
-      const row = canvasElement.querySelector('.dictation-model')
-      expect(row).toBeInTheDocument()
-      return row!
-    })
-    await expect(getComputedStyle(model).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    await expect(within(model as HTMLElement).getAllByRole('button').length).toBeGreaterThan(0)
+    const models = await within(canvasElement).findAllByRole('article')
+    await expect(models.length).toBeGreaterThan(1)
+    for (const card of models) {
+      const style = getComputedStyle(card)
+      await expect(style.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+      await expect(parseFloat(style.paddingInlineStart)).toBeGreaterThan(12)
+      await expect(within(card).getByRole('heading')).toHaveTextContent(card.getAttribute('aria-label')!)
+      await expect(within(card).getAllByRole('button').length).toBeGreaterThan(0)
+    }
+    const catalog = within(canvasElement).getByRole('region', { name: 'Каталог' })
+    await expect(getComputedStyle(catalog).backgroundColor).toBe('rgba(0, 0, 0, 0)')
   },
+}
+
+export const CatalogCardsLight: Story = {
+  ...FloatingCatalog,
+  name: 'Стекло · карточки моделей в светлой теме',
+  parameters: { light: true, workshop: { width: 420 } },
 }
 
 export const GlassModelSearch: Story = {

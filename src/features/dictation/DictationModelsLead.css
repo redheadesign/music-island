@@ -12,3 +12,10 @@
   font-size: var(--text-caption);
   overflow-wrap: anywhere;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .dictation-page:not([data-reduced-motion]) :is(.dictation-state-in, .settings-disclosure[open] > .settings-disclosure__body) {
+    animation: dictation-state-in var(--motion-fast) var(--ease-enter) both;
+  }
+}
+@keyframes dictation-state-in { from { opacity: 0; transform: translateY(var(--motion-distance-small)); } }
