@@ -20,6 +20,7 @@ const criticalStories = [
   'screens-dictation--history-delete-confirmation', 'screens-dictation--custom-model-file',
   'screens-dictationcompute--background-recognition', 'screens-dictationcompute--other-engine',
   'screens-dictation--catalog-cards-narrow', 'molecules-modelcard--failed-retry', 'molecules-modelcard--downloading',
+  'organisms-musicmodule--directional-progress', 'organisms-musicmodule--reduced-motion-progress', 'organisms-musicmodule--seek-gesture',
   'organisms-musicmodule--system-volume', 'screens-dictation--floating-catalog', 'atoms-playbackfeedback--local-heart', 'molecules-dictationoverlay--fox-progress',
   'organisms-islandlayouteditor--inline-layout', 'organisms-islandlayouteditor--full-inline-layout',
   'molecules-dictationoverlay--long-transcription', 'screens-onboarding--custom-shortcut',

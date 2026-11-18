@@ -13,6 +13,7 @@ type PlayerArgs = ComponentProps<typeof MusicModule> & {
   trackArtist: string
 }
 
+const nowPlayingName = /^(?:Сейчас играет|Now playing)$/
 const transitionTracks = [
   { id: 'transition-a', title: 'Тёплый вечер' },
   { id: 'transition-b', title: 'Вдоль ночных улиц' },
@@ -262,7 +263,7 @@ export const DirectionalProgress: Story = {
   render: trackTransitionRender,
   parameters: { workshop: { note: 'Next заполняет текущую полосу до конца и гасит её, Previous опустошает полосу и гасит. Новый прогресс проявляется на своей фактической позиции; кнопка и подписи не сдвигаются.' } },
   play: async ({ canvasElement, args }) => {
-    const player = within(canvasElement).getByRole('region', { name: 'Now playing' })
+    const player = within(canvasElement).getByRole('region', { name: nowPlayingName })
     const canvas = within(player)
     const seek = canvas.getByRole('slider', { name: /Позиция трека|Seek track/ })
     const motionEnabled = !args.reducedMotion && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -326,7 +327,7 @@ export const ReducedMotionProgress: Story = {
   args: { reducedMotion: true },
   render: trackTransitionRender,
   play: async ({ canvasElement }) => {
-    const canvas = within(within(canvasElement).getByRole('region', { name: 'Now playing' }))
+    const canvas = within(within(canvasElement).getByRole('region', { name: nowPlayingName }))
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Next|Следующий трек)$/ }))
     const visual = canvas.getByRole('slider', { name: /Позиция трека|Seek track/ }).querySelector<HTMLElement>('.progress-visual')!
     const fill = visual.querySelector<HTMLElement>('.progress-fill')!
@@ -340,7 +341,7 @@ export const SeekGesture: Story = {
   name: 'Перемотка · одна команда за жест',
   render: trackTransitionRender,
   play: async ({ canvasElement, args }) => {
-    const player = within(canvasElement).getByRole('region', { name: 'Now playing' })
+    const player = within(canvasElement).getByRole('region', { name: nowPlayingName })
     const seek = within(player).getByRole('slider', { name: /Позиция трека|Seek track/ })
     const captured = new Set<number>()
     // Synthetic PointerEvents have no native capture stream. Only that browser
