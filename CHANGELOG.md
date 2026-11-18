@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The playback wave briefly accelerates on bass attacks and settles between beats on loud tracks.
+- Glass settings use a neutral tint in both color schemes. Better Voice groups devices, microphone settings and effects on distinct cards.
+- Glass previews use foxes. Reduced transparency follows Windows and applies immediately when the system setting changes.
+
 ## 3.2.0 — 2026-11-18
 
 - Glass becomes the default interface. Choose a separate color palette for controls, or switch back to Classic in Appearance. The island picks up the artwork colors in its progress bar and background.

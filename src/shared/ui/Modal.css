@@ -1,7 +1,7 @@
 .app-modal { width: min(480px, calc(100vw - 48px)); max-height: calc(100vh - 48px); box-sizing: border-box; overflow: auto; padding: var(--space-6-5); border: 0; border-radius: calc(var(--radius-unit) * 5.5); background: var(--surface-panel); color: var(--fg-primary); font: var(--text-body)/var(--leading-body) var(--font-sans); box-shadow: var(--shadow-panel); }
 .app-modal::backdrop { background: var(--overlay-scrim); }
 [data-interface-theme='glass'] .app-modal {
-  background-color: var(--surface-panel);
+  background-color: var(--surface-glass);
   background-image: var(--glass-sheen);
   backdrop-filter: var(--glass-filter);
   box-shadow: var(--glass-panel-rim), var(--shadow-panel);

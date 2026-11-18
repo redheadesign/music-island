@@ -9,6 +9,7 @@ import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib
 import { getUiPrefs } from '../../shared/lib/uiPrefs'
 import { media, health } from '../fixtures'
 import { emitPreviewPlaybackBass, getPreviewPlaybackBassRequest } from '../mocks/tauriApi'
+import { previewReducedTransparency } from '../mocks/reducedTransparency'
 import { useWorkshopConfig } from '../useWorkshopConfig'
 import { useUsageController } from '../../app/usage/useUsageController'
 
@@ -30,7 +31,6 @@ function IslandPreview({
   interfaceTheme,
   artwork = 'warm',
   reducedMotion = false,
-  reducedTransparency,
   startCollapsed = false,
   playbackWaveEnabled = true,
 }: {
@@ -51,7 +51,6 @@ function IslandPreview({
   interfaceTheme?: InterfaceThemeId
   artwork?: 'warm' | 'cool' | 'mixed' | 'missing'
   reducedMotion?: boolean
-  reducedTransparency?: boolean
   startCollapsed?: boolean
   playbackWaveEnabled?: boolean
 }) {
@@ -82,7 +81,7 @@ function IslandPreview({
         enabled: latestMessageMode ? ['dictation'] : config.plugins.enabled,
         settings: {
           ...config.plugins.settings,
-          ui: { ...ui, reducedTransparency: reducedTransparency ?? ui.reducedTransparency, playbackWaveEnabled, localServersEnabled: ui.localServersEnabled ?? Boolean(localServersMode), localServersWidgetScale, showLatestDictationMessage: Boolean(latestMessageMode), forceIslandUpdateBanner: update && !ui.islandUpdateSnoozedUntil },
+          ui: { ...ui, playbackWaveEnabled, localServersEnabled: ui.localServersEnabled ?? Boolean(localServersMode), localServersWidgetScale, showLatestDictationMessage: Boolean(latestMessageMode), forceIslandUpdateBanner: update && !ui.islandUpdateSnoozedUntil },
           usage: { codexEnabled: assistantLimits, claudeEnabled: false },
         },
       },
@@ -262,7 +261,7 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
 export const GlassControlLensesReducedTransparency: StoryObj<typeof meta> = {
   ...GlassControlLenses,
   name: 'Стекло · кнопки с пониженной прозрачностью',
-  args: { ...GlassControlLenses.args, reducedTransparency: true },
+  beforeEach: previewReducedTransparency,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const settings = await canvas.findByRole('button', { name: 'Open settings' })
@@ -332,9 +331,18 @@ export const GlassReactiveWave: StoryObj<typeof meta> = {
       return request!
     })
     const originalNodes = [...layer.querySelectorAll('*')]
-    emitPreviewPlaybackBass(.13)
-    await expect(Number(layer.style.getPropertyValue('--island-bass'))).toBeGreaterThan(.6)
-    await waitFor(() => expect(Number(getComputedStyle(layer, '::before').scale)).toBeGreaterThan(1.10), { interval: 16 })
+    const fronts = () => layer.getAnimations({ subtree: true }).filter(
+      animation => animation instanceof CSSAnimation && animation.animationName === 'island-glass-wave-out',
+    )
+    const tracked = await waitFor(() => { const waves = fronts(); expect(waves).toHaveLength(2); return waves })
+    // Already normalized by the native onset detector. A strong attack decays between beats.
+    emitPreviewPlaybackBass(.8)
+    await expect(layer.style.getPropertyValue('--island-bass')).toBe('0.8')
+    await waitFor(() => expect(tracked.every(wave => wave.playbackRate > 3)).toBe(true))
+    emitPreviewPlaybackBass(.09)
+    await waitFor(() => expect(tracked.every(wave => wave.playbackRate < 1.3)).toBe(true))
+    emitPreviewPlaybackBass(0)
+    await waitFor(() => expect(tracked.every(wave => wave.playbackRate === 1)).toBe(true))
     await expect([...layer.querySelectorAll('*')]).toEqual(originalNodes)
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ }))
@@ -345,7 +353,7 @@ export const GlassReactiveWave: StoryObj<typeof meta> = {
     emitPreviewPlaybackBass(.93, initialRequest)
     await expect(layer.style.getPropertyValue('--island-bass')).toBe('')
     emitPreviewPlaybackBass(.8)
-    await expect(Number(layer.style.getPropertyValue('--island-bass'))).toBe(1)
+    await expect(Number(layer.style.getPropertyValue('--island-bass'))).toBe(.8)
   },
 }
 export const GlassBackgroundOff: StoryObj<typeof meta> = {

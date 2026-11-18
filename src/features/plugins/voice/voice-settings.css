@@ -53,13 +53,39 @@
   min-width: 0;
   gap: 0;
   overflow: visible;
-  padding: var(--space-5) var(--settings-group-gutter, var(--space-5));
+  padding: var(--space-5);
   border: 0;
   border-radius: var(--radius-lg);
-  background: var(--settings-group-fill, var(--surface-panel));
+  background: var(--surface-panel);
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* The section owns the grouping surface and inset. Its rows and EQ share it. */
+[data-interface-theme='glass'] .voice-settings .glass-surface.settings-section.voice-settings-card {
+  background: var(--surface-panel);
+  padding-inline: var(--space-5);
+}
+[data-interface-theme='glass'] .voice-settings :is(.voice-eq-bands, .voice-segment-switch, .settings-control-row) {
+  background: transparent;
+  box-shadow: none;
+}
+[data-interface-theme='glass'] .voice-settings .voice-segment-switch { padding: 0; }
+[data-interface-theme='glass'] .voice-settings :is(.voice-segment-switch button, .voice-chip, .voice-gain-reset, .secondary-button) {
+  border-radius: var(--glass-control-radius);
+}
+[data-interface-theme='glass'] .voice-settings :is(.voice-segment-switch button, .voice-chip):not([aria-pressed='true']) {
+  background: var(--glass-button-fill);
+  color: var(--fg-primary);
+}
+[data-interface-theme='glass'] .voice-settings :is(.voice-segment-switch button, .voice-chip):not([aria-pressed='true']):enabled:hover {
+  background: var(--glass-button-hover-fill);
+}
+[data-interface-theme='glass'] .voice-settings :is(.voice-chip, .voice-segment-switch button)[aria-pressed='true'],
+[data-interface-theme='glass'] .voice-settings :is(.voice-chip, .voice-segment-switch button)[aria-pressed='true']:hover {
+  background: var(--control-value);
+  color: var(--control-value-ink);
 }
 
 .voice-settings .settings-section-header {

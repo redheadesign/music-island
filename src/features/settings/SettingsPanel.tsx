@@ -1,3 +1,4 @@
+import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { Mic, Database, ClockCounterClockwise, BookOpen, TextAa, PlugsConnected, Activity, CheckCircle2, Copy, HardDrive, Info, Moon, Music2, PanelBottom, Power, RadioTower, SlidersHorizontal, SquareTerminal, Sun, TriangleAlert, Wrench } from '../../shared/ui/SettingsIcons'
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
@@ -58,7 +59,6 @@ import {
   getInterfaceTheme,
   getInterfacePalette,
   getInterfacePaletteStyle,
-  getReducedTransparency,
   getUiPrefs,
   getUsageWidgetCompact,
   getUsageWidgetScale,
@@ -118,7 +118,7 @@ export function SettingsPanel({
   const interfacePalette = getInterfacePalette(draft)
   const paletteStyle = getInterfacePaletteStyle(draft, settingsColorScheme)
   const accent = paletteStyle['--accent']
-  const reducedTransparency = getReducedTransparency(draft)
+  const reducedTransparency = useSystemReducedTransparency()
   const usageCompact = getUsageWidgetCompact(draft)
   const usageScale = getUsageWidgetScale(draft)
   const updater = useAppUpdater(true, Boolean(uiPrefs.forceSameVersionUpdate))

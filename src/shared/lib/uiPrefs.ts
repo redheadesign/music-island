@@ -29,8 +29,6 @@ export interface UiPrefs {
   interfaceTheme?: InterfaceThemeId
   interfacePalette?: InterfacePaletteId
   playbackWaveEnabled?: boolean
-  interfaceScenes?: Partial<Record<InterfaceThemeId, InterfaceScene>>
-  reducedTransparency?: boolean
   /** Settings update banner dismissed for this latest version */
   dismissedUpdateVersion?: string | null
   /** @deprecated Prefer islandUpdateSnoozedUntil — kept for migration */
@@ -75,14 +73,7 @@ export function getInterfacePaletteStyle(config: AppConfig | null | undefined, s
 }
 
 export function getInterfaceScene(config: AppConfig | null | undefined): InterfaceScene | undefined {
-  const theme = getInterfaceTheme(config)
-  const scene = getInterfaceThemeDefinition(theme).scene
-  const saved = getUiPrefs(config).interfaceScenes?.[theme]
-  return saved && scene?.options.includes(saved) ? saved : scene?.fallback
-}
-
-export function getReducedTransparency(config: AppConfig | null | undefined): boolean {
-  return getUiPrefs(config).reducedTransparency === true
+  return getInterfaceThemeDefinition(getInterfaceTheme(config)).scene
 }
 
 export function usesGlassMaterial(config: AppConfig | null | undefined): boolean {

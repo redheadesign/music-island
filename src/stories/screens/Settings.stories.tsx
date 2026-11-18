@@ -6,7 +6,9 @@ import { SettingsReadError, SettingsWindow } from '../../features/settings/Setti
 import { SettingsPanel } from '../../features/settings/SettingsPanel'
 import { getDefaultConfig } from '../../app/tauriApi'
 import type { AppConfig, Locale } from '../../shared/lib/types'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme, withUiPrefs, type SettingsColorScheme } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getSettingsColorScheme, withUiPrefs, type SettingsColorScheme } from '../../shared/lib/uiPrefs'
+import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
+import { previewReducedTransparency } from '../mocks/reducedTransparency'
 import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { health } from '../fixtures'
 import { useWorkshopConfig } from '../useWorkshopConfig'
@@ -24,7 +26,6 @@ function SettingsPreview({
   preferredSourceAppId,
   scrollViewportHeight,
   interfaceTheme,
-  reducedTransparency,
 }: {
   args: ComponentProps<typeof SettingsPanel>
   locale: Locale
@@ -35,15 +36,14 @@ function SettingsPreview({
   preferredSourceAppId?: string
   scrollViewportHeight?: number
   interfaceTheme: InterfaceThemeId
-  reducedTransparency?: boolean
 }) {
   const [config, setConfig] = useWorkshopConfig(locale, accent, false, interfaceTheme)
+  const reducedTransparency = useSystemReducedTransparency()
   const usage = useUsageController()
   const [selectedColorScheme, setSelectedColorScheme] = useState(colorScheme)
   const previewConfig = useMemo(() => withUiPrefs(config, {
     ...(selectedColorScheme && { settingsColorScheme: selectedColorScheme }),
-    ...(reducedTransparency && { reducedTransparency: true }),
-  }), [config, selectedColorScheme, reducedTransparency])
+  }), [config, selectedColorScheme])
   const configuredPreview = preferredSourceAppId
     ? { ...previewConfig, media: { ...previewConfig.media, protocol: 'smtc' as const, preferredSourceAppId } }
     : previewConfig
@@ -62,7 +62,7 @@ function SettingsPreview({
     <SettingsWindow locale={locale} colorScheme={getSettingsColorScheme(configuredPreview)}
       interfaceTheme={getInterfaceTheme(configuredPreview)} interfaceScene={getInterfaceScene(configuredPreview)}
       interfacePalette={getInterfacePalette(configuredPreview)} paletteStyle={getInterfacePaletteStyle(configuredPreview, getSettingsColorScheme(configuredPreview)) as CSSProperties}
-      reducedTransparency={getReducedTransparency(configuredPreview)} reducedMotion={reducedMotion || configuredPreview.appearance.reducedMotion}>
+      reducedTransparency={reducedTransparency} reducedMotion={reducedMotion || configuredPreview.appearance.reducedMotion}>
       {panel}
     </SettingsWindow>
   </div>
@@ -106,7 +106,6 @@ const meta = {
         locale={context.globals.locale}
         accent={context.globals.accent}
         reducedMotion={context.parameters.reducedMotion === true}
-        reducedTransparency={context.parameters.reducedTransparency === true}
         interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)}
         colorScheme={context.parameters.settingsColorScheme as SettingsColorScheme | undefined}
         preferredSourceAppId={context.parameters.preferredSourceAppId as string | undefined}
@@ -253,13 +252,47 @@ export const GlassScopes: Story = {
   },
 }
 export const GlassLight: Story = { name: 'Стекло · светлое оформление', globals: { interfaceTheme: 'glass' }, parameters: { settingsColorScheme: 'light' } }
+export const GlassLightPalette: Story = {
+  ...GlassLight,
+  name: 'Светлое стекло · палитра кнопок и выпадающего меню',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  play: async ({ canvas, canvasElement }) => {
+    const palette = canvas.getByRole('button', { name: 'Цветовая палитра' })
+    const theme = canvas.getByRole('button', { name: 'Тема интерфейса' })
+    const resting = getComputedStyle(theme).backgroundColor
+    await userEvent.click(palette)
+    await userEvent.click(canvas.getByRole('button', { name: 'Роща' }))
+    await waitFor(() => expect(theme.closest('[data-interface-palette]')).toHaveAttribute('data-interface-palette', 'grove'))
+    await userEvent.unhover(theme)
+    await expect(getComputedStyle(theme).backgroundColor).toBe(resting)
+    await expect(getComputedStyle(theme).backgroundImage).toBe('none')
+    await waitFor(() => {
+      const current = canvasElement.querySelector('.settings-scope-switch__btn--active')!
+      const marker = current.querySelector('.settings-selection-marker')!
+      expect(getComputedStyle(current).color, 'Active scope text on ' + getComputedStyle(marker).backgroundColor).toBe('rgb(255, 255, 255)')
+      expect(getComputedStyle(marker).backgroundColor, 'Active scope fill').toBe('rgb(27, 125, 80)')
+      expect(getComputedStyle(marker).backgroundImage).toBe('none')
+    })
+    await userEvent.click(canvas.getByRole('button', { name: 'Тема интерфейса' }))
+    const menu = await within(document.body).findByRole('listbox')
+    await waitFor(() => {
+      const option = getComputedStyle(within(menu).getByRole('option', { selected: true }))
+      expect(option.color, 'Selected option text').toBe('rgb(255, 255, 255)')
+      expect(option.backgroundColor, 'Selected option fill').toBe('rgb(27, 125, 80)')
+      expect(option.backgroundImage).toBe('none')
+    })
+    await userEvent.keyboard('{Escape}')
+    await expect(theme).toHaveFocus()
+  },
+}
 export const GlassAccessible: Story = {
   name: 'Стекло · узкое окно без прозрачности и анимации',
   globals: { interfaceTheme: 'glass', locale: 'en' },
-  parameters: { settingsColorScheme: 'light', reducedMotion: true, reducedTransparency: true, workshop: { width: 360 } },
+  parameters: { settingsColorScheme: 'light', reducedMotion: true, workshop: { width: 360 } },
+  beforeEach: previewReducedTransparency,
 }
 export const ThemeSwitch: Story = {
-  name: 'Смена темы и фона из настроек',
+  name: 'Смена темы и встроенного фона',
   globals: { interfaceTheme: 'classic', locale: 'ru' },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
@@ -272,19 +305,16 @@ export const ThemeSwitch: Story = {
     await waitFor(() => expect(window).toHaveAttribute('data-interface-theme', 'glass'))
     await expect(window).toHaveAttribute('data-interface-scene', 'fox')
     await userEvent.click(within(canvasElement).getByText('Фон и поведение'))
-    const scene = canvas.getByRole('button', { name: 'Фон превью' })
-    await userEvent.click(scene)
-    const list = canvasDocument.getByRole('listbox')
-    await expect(list).toHaveAttribute('data-interface-theme', 'glass')
-    await userEvent.click(within(list).getByRole('option', { name: 'Скаты' }))
-    await waitFor(() => expect(window).toHaveAttribute('data-interface-scene', 'manta'))
+    await expect(canvas.queryByText('Фон превью')).not.toBeInTheDocument()
+    await expect(canvas.queryByText('Уменьшить прозрачность')).not.toBeInTheDocument()
+    await expect(canvas.getByText('Фон при воспроизведении')).toBeVisible()
     await userEvent.click(theme)
     await userEvent.click(canvasDocument.getByRole('option', { name: 'Классическая' }))
     await waitFor(() => expect(window).toHaveAttribute('data-interface-theme', 'classic'))
-    await expect(scene).not.toBeInTheDocument()
+    await expect(window).not.toHaveAttribute('data-interface-scene')
     await expect(args.onChange).toHaveBeenLastCalledWith(expect.objectContaining({
       plugins: expect.objectContaining({ settings: expect.objectContaining({
-        ui: expect.objectContaining({ interfaceTheme: 'classic', interfaceScenes: { glass: 'manta' } }),
+        ui: expect.objectContaining({ interfaceTheme: 'classic' }),
       }) }),
     }))
   },

@@ -65,7 +65,7 @@
   background: color-mix(in srgb, var(--palette-primary) 13%, var(--surface-raised));
 }
 
-.dark-select-menu[data-interface-palette]:not([data-interface-palette='custom']) .dark-select-option[aria-selected='true'] {
+.dark-select-menu[data-interface-theme='classic'][data-interface-palette]:not([data-interface-palette='custom']) .dark-select-option[aria-selected='true'] {
   background: color-mix(in srgb, var(--palette-secondary) 15%, transparent);
 }
 

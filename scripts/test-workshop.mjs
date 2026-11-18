@@ -6,10 +6,12 @@ import { preview } from 'vite'
 const criticalStories = [
   'foundations-interfacetheme--third-theme', 'screens-settings--retry-failed-save', 'screens-settings--unreadable-profile',
   'screens-settings--material-at-minimum-size', 'screens-settings--glass-playback-background',
-  'screens-settings--theme-switch', 'screens-settings--classic-light',
+  'screens-settings--theme-switch', 'screens-settings--classic-light', 'screens-settings--glass-light-palette',
+  'screens-settings--glass-accessible', 'screens-island--glass-control-lenses-reduced-transparency',
   'screens-settings--taskbar', 'screens-settings--autostart-error',
   'screens-settings--about', 'screens-settings--voice-developer-mode',
   'screens-settings--assistant-limits', 'screens-voiceguide--troubleshooting',
+  'screens-bettervoice--glass-groups-light', 'screens-bettervoice--glass-groups-dark',
   'screens-bettervoice--classic-running', 'screens-bettervoice--glass-start-error',
   'screens-dictation--general-needs-model', 'screens-dictation--import-preview',
   'screens-dictation--history-actions', 'screens-dictation--glass-dictionary',

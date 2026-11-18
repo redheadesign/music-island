@@ -10,7 +10,7 @@ export type ThemeDefinition = {
   roles?: ThemeRoles
   schemes?: Partial<Record<'dark' | 'light', ThemeRoles>>
   playbackWave?: boolean
-  scene?: { fallback: InterfaceScene; options: readonly InterfaceScene[] }
+  scene?: InterfaceScene
 }
 
 export const INTERFACE_THEMES = {
@@ -23,7 +23,7 @@ export const INTERFACE_THEMES = {
       '--radius-unit': '6px',
     },
     playbackWave: true,
-    scene: { fallback: 'fox', options: INTERFACE_SCENES },
+    scene: 'fox',
   },
 } satisfies Record<string, ThemeDefinition>
 

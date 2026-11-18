@@ -27,16 +27,21 @@ const meta = {
   render: function Voice(args, context) {
     const [, updateArgs] = useArgs()
     const colorScheme = context.parameters.settingsColorScheme === 'light' ? 'light' : 'dark'
+    const screen = <VoiceSettingsView
+      {...args}
+      locale={context.globals.locale}
+      onDismissExperimentalBanner={() => {
+        updateArgs({ showExperimentalBanner: false })
+        args.onDismissExperimentalBanner?.()
+      }}
+    />
     return (
       <div className="settings-window-root" data-color-scheme={colorScheme} data-interface-theme={context.globals.interfaceTheme}>
-        <VoiceSettingsView
-          {...args}
-          locale={context.globals.locale}
-          onDismissExperimentalBanner={() => {
-            updateArgs({ showExperimentalBanner: false })
-            args.onDismissExperimentalBanner?.()
-          }}
-        />
+        {context.parameters.checkSettingsMaterials
+          ? <div className="settings-panel" data-color-scheme={colorScheme} data-interface-theme={context.globals.interfaceTheme}>
+              <div className="settings-content">{screen}</div>
+            </div>
+          : screen}
       </div>
     )
   },
@@ -110,6 +115,54 @@ export const GlassSignalRouteNarrow: Story = {
   name: 'Стекло · вертикальное соединение устройств',
   parameters: { voicePreview: { running: true }, workshop: { width: 420 } },
   play: async ({ canvasElement }) => { await checkSignalRoute(canvasElement, true) },
+}
+
+async function checkVoiceMaterials(root: HTMLElement) {
+  const panel = root.querySelector<HTMLElement>('.settings-panel')!
+  const probe = document.createElement('span')
+  panel.append(probe)
+  const background = (token: string) => {
+    probe.style.backgroundColor = `var(--${token})`
+    return getComputedStyle(probe).backgroundColor
+  }
+  try {
+    const groupFill = background('surface-panel')
+    await expect(groupFill).not.toBe('rgba(0, 0, 0, 0)')
+    const cards = panel.querySelectorAll('.voice-settings-card, .voice-signal-node')
+    await expect(cards).toHaveLength(7)
+    for (const card of cards) await expect(getComputedStyle(card).backgroundColor).toBe(groupFill)
+    for (const row of panel.querySelectorAll('.settings-control-row, .voice-eq-bands')) {
+      await expect(getComputedStyle(row).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    }
+    await expect(getComputedStyle(panel.querySelector('.voice-segment-switch button[aria-pressed="true"]')!).backgroundColor)
+      .toBe(background('control-value'))
+    const effect = panel.querySelector<HTMLButtonElement>('.voice-effect-toggle')!
+    await waitFor(() => expect(effect).toBeEnabled())
+    await userEvent.click(effect)
+    await expect(effect).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(getComputedStyle(effect).backgroundColor).toBe(background('control-value')))
+    await waitFor(() => expect(getComputedStyle(effect).color).toBe(background('control-value-ink')))
+    const guide = panel.querySelector<HTMLButtonElement>('.voice-settings-actions button')!
+    await userEvent.click(guide)
+    for (const section of ['.voice-setup-guide__steps', '.voice-setup-guide__help']) {
+      await expect(getComputedStyle(panel.querySelector(section)!).backgroundColor).toBe(groupFill)
+    }
+    await userEvent.click(panel.querySelector<HTMLButtonElement>('.voice-setup-guide__back')!)
+  } finally {
+    probe.remove()
+  }
+}
+
+export const GlassGroupsDark: Story = {
+  name: 'Стекло · группы настроек на тёмном фоне',
+  globals: { interfaceTheme: 'glass' },
+  parameters: { settingsColorScheme: 'dark', checkSettingsMaterials: true, voicePreview: { running: true } },
+  play: async ({ canvasElement }) => { await checkVoiceMaterials(canvasElement) },
+}
+export const GlassGroupsLight: Story = {
+  ...GlassGroupsDark,
+  name: 'Стекло · группы настроек на светлом фоне',
+  parameters: { ...GlassGroupsDark.parameters, settingsColorScheme: 'light' },
 }
 export const ReducedMotion: Story = {
   name: 'Обработка · без движения',
@@ -297,7 +350,8 @@ export const Narrow: Story = {
   play: Running.play,
 }
 export const Light: Story = {
-  name: 'Светлое оформление',
+  name: 'Классическая · светлое оформление',
+  globals: { interfaceTheme: 'classic' },
   parameters: {
     settingsColorScheme: 'light',
     voicePreview: { running: true },
@@ -322,7 +376,14 @@ export const Light: Story = {
       menu = root.ownerDocument.querySelector<HTMLElement>('.dark-select-menu')
       expect(menu).toBeVisible()
     })
-    await expect(getComputedStyle(menu!).backgroundColor).toBe('rgba(255, 255, 255, 0.78)')
+    const sample = document.createElement('span')
+    sample.style.backgroundColor = 'var(--surface-raised)'
+    root.append(sample)
+    try {
+      await expect(getComputedStyle(menu!).backgroundColor).toBe(getComputedStyle(sample).backgroundColor)
+    } finally {
+      sample.remove()
+    }
     await userEvent.keyboard('{Escape}')
   },
 }

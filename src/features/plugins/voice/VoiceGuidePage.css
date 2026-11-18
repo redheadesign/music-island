@@ -191,6 +191,22 @@
 .voice-setup-guide__disclosure[open] summary svg { transform: rotate(180deg); }
 .voice-setup-guide__disclosure p { padding-bottom: var(--space-4); }
 
+[data-interface-theme='glass'] .voice-setup-guide :is(.voice-setup-guide__steps, .voice-setup-guide__help) {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface-panel);
+}
+[data-interface-theme='glass'] .voice-setup-guide__step:first-child { padding-top: 0; }
+[data-interface-theme='glass'] .voice-setup-guide__step:last-child { padding-bottom: 0; }
+[data-interface-theme='glass'] .voice-setup-guide__step .voice-setup-guide__device {
+  background: transparent;
+  padding-inline: 0;
+}
+[data-interface-theme='glass'] .voice-setup-guide .voice-setup-guide__return {
+  background: var(--control-value);
+  color: var(--control-value-ink);
+}
+
 @container (max-width: 420px) {
   .voice-setup-guide__intro h1 { font-size: calc(var(--type-unit) * 22); }
   .voice-setup-guide__step { gap: var(--space-3); padding-block: var(--space-5); }

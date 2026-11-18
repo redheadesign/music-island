@@ -7,6 +7,9 @@ type Option = { value: string; label: string; danger?: boolean; checked?: boolea
 
 const PORTAL_THEME_PROPERTIES = [
   '--accent',
+  '--accent-ink',
+  '--control-value',
+  '--control-value-ink',
   '--palette-primary',
   '--palette-secondary',
   '--palette-on-primary',
@@ -181,7 +184,7 @@ function Menu({
     const scopes = new Set(PORTAL_SCOPE_ATTRIBUTES.map(attribute => trigger.closest(`[${attribute}]`)))
     const observer = new MutationObserver(syncPortalTheme)
     for (const scope of scopes) {
-      if (scope) observer.observe(scope, { attributes: true, attributeFilter: PORTAL_SCOPE_ATTRIBUTES })
+      if (scope) observer.observe(scope, { attributes: true, attributeFilter: [...PORTAL_SCOPE_ATTRIBUTES, 'style'] })
     }
     return () => observer.disconnect()
   }, [open])

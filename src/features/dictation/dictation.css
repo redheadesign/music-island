@@ -31,6 +31,8 @@
 
 dialog.dictation-confirm { position: fixed; inset: 0; padding: 0; width: min(456px,calc(100vw - 48px)); border: 0; border-radius: calc(var(--radius-unit) * 5.5); color: var(--fg-primary); background: var(--surface-panel); }
 dialog.dictation-confirm:not([open]) { display: none; }
+[data-interface-theme='glass'] dialog.dictation-confirm { background: var(--surface-glass); }
+[data-interface-theme='glass'] dialog.dictation-confirm > div { background: transparent; }
 dialog.dictation-confirm::backdrop { background: var(--overlay-scrim); }
 dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-overlay { width: 224px; max-width: calc(100vw - 8px); margin: var(--space-1) auto; color: var(--fg-primary); background: var(--surface-panel, #272727); border-radius: calc(var(--radius-unit) * 5.5); overflow: hidden; animation: dictation-arrive 320ms var(--ease-enter); transition: width var(--motion-slow) var(--ease-standard), background-color var(--motion-normal) ease; }
@@ -81,9 +83,6 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-xl);
   background: var(--surface-panel);
-}
-[data-interface-theme='glass'] .dictation-model {
-  background: var(--surface-glass);
 }
 @media (forced-colors: active) {
   .dictation-model { border: 1px solid CanvasText; }
@@ -276,7 +275,7 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 }
 
 .dictation-overlay[data-phase='error'][data-interface-theme='glass'] {
-  background: color-mix(in srgb, var(--status-danger) 8%, var(--surface-raised));
+  background: color-mix(in srgb, var(--status-danger) 8%, var(--surface-glass));
   box-shadow: var(--glass-panel-rim), inset 0 0 0 1px color-mix(in srgb, var(--status-danger) 22%, transparent);
 }
 

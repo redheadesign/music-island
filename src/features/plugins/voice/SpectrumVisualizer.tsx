@@ -82,9 +82,9 @@ export function SpectrumVisualizer({ spectrumIn, spectrumOut, active = true, red
     resize()
     const ro = new ResizeObserver(resize)
     ro.observe(canvas)
-    const settingsRoot = canvas.closest('.settings-window-root')
+    const settingsRoot = canvas.closest('.settings-panel, .settings-window-root')
     const themeObserver = settingsRoot ? new MutationObserver(readThemeColors) : null
-    themeObserver?.observe(settingsRoot!, { attributes: true, attributeFilter: ['data-color-scheme'] })
+    themeObserver?.observe(settingsRoot!, { attributes: true, attributeFilter: ['data-color-scheme', 'data-interface-theme', 'data-interface-palette'] })
 
     drawRef.current = (smooth) => {
       const width = canvas.clientWidth

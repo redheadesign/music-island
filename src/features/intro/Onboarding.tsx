@@ -1,3 +1,4 @@
+import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Notice } from '../../shared/ui/SettingsControls'
@@ -8,7 +9,7 @@ import { IslandLayoutEditor } from '../settings/IslandLayoutEditor'
 import { MusicModule } from '../music/MusicModule'
 import { APPEARANCE_PREVIEW_ARTWORK_THEME, APPEARANCE_PREVIEW_MEDIA } from '../settings/previewMedia'
 import { DictationOverlayView } from '../dictation/DictationOverlay'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getPlaybackWaveEnabled, usesGlassMaterial, getReducedTransparency, getSettingsColorScheme } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getPlaybackWaveEnabled, usesGlassMaterial, getSettingsColorScheme } from '../../shared/lib/uiPrefs'
 import type { AppConfig } from '../../shared/lib/types'
 import { AppLogo } from '../../shared/ui/AppLogo'
 import './Onboarding.css'
@@ -32,6 +33,7 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
   const locale = ru ? 'ru' : 'en'
   const systemReduced = useReducedMotion()
   const reduced = Boolean(config.appearance.reducedMotion || systemReduced)
+  const reducedTransparency = useSystemReducedTransparency()
   const colorScheme = getSettingsColorScheme(config)
   const interfaceTheme = getInterfaceTheme(config)
   const scene = getInterfaceScene(config)
@@ -40,7 +42,7 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
     'data-interface-theme': interfaceTheme,
     'data-interface-scene': scene,
     'data-interface-palette': getInterfacePalette(config),
-    'data-reduced-transparency': getReducedTransparency(config) || undefined,
+    'data-reduced-transparency': reducedTransparency || undefined,
   }
   const glass = usesGlassMaterial(config)
   const islandStyle = glass ? getInterfacePaletteStyle(config, 'dark') : undefined

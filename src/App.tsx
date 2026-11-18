@@ -1,3 +1,4 @@
+import { useSystemReducedTransparency } from './shared/ui/useSystemReducedTransparency'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useEffect, useMemo, type CSSProperties } from 'react'
 import { checkForUpdates, copyDiagnostics } from './app/tauriApi'
@@ -11,7 +12,7 @@ import { OverlayShell } from './features/overlay/OverlayShell'
 import { SettingsPanel } from './features/settings/SettingsPanel'
 import { TaskbarPlayer } from './features/taskbar/TaskbarPlayer'
 import { createTranslator, normalizeLocale } from './shared/i18n/messages'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getReducedTransparency, getSettingsColorScheme } from './shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getSettingsColorScheme } from './shared/lib/uiPrefs'
 import { SettingsReadError, SettingsWindow } from './features/settings/SettingsWindow'
 import { useGlassPointerLight } from './shared/ui/useGlassPointerLight'
 import './App.css'
@@ -37,7 +38,7 @@ function IslandWindows({ windowLabel }: { windowLabel: string }) {
   const t = useMemo(() => createTranslator(locale), [locale])
   const interfaceTheme = getInterfaceTheme(app.config)
   const interfaceScene = getInterfaceScene(app.config)
-  const reducedTransparency = getReducedTransparency(app.config)
+  const reducedTransparency = useSystemReducedTransparency()
 
   useEffect(() => {
     document.documentElement.lang = locale

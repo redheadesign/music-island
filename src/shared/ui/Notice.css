@@ -9,7 +9,7 @@
 [data-interface-theme='glass'] .ui-notice:is(.ui-notice--danger, .ui-notice--warning) {
   --notice-signal: var(--status-danger);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--notice-signal) 8%, var(--surface-raised));
+  background: color-mix(in srgb, var(--notice-signal) 8%, var(--surface-panel));
   color: var(--fg-primary);
   box-shadow: var(--glass-panel-rim), inset 0 0 0 1px color-mix(in srgb, var(--notice-signal) 22%, transparent);
 }

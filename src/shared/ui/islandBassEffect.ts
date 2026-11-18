@@ -1,6 +1,5 @@
-const MIN_SIGNAL = .075
-const MIN_RISE = .03
-const BASELINE_STEP = .14
+const BEAT_TRIGGER = .22
+const MIN_RISE = .1
 const BEAT_COOLDOWN_MS = 240
 const beatByCard = new WeakMap<HTMLElement, { at: number; interval: number }>()
 
@@ -19,7 +18,7 @@ export function localHeartDuration(button: HTMLElement, now = performance.now())
 /** Drive the two wave fronts and remember regular attacks for the local heart gesture. */
 export function createIslandBassEffect(layer: HTMLElement) {
   let previous = 0
-  let baseline = 0
+  let fronts: Animation[] = []
   const card = layer.closest<HTMLElement>('.island-card')
   let lastInterval = 0
   let lastBeatAt = -Infinity
@@ -27,7 +26,8 @@ export function createIslandBassEffect(layer: HTMLElement) {
   function clear() {
     layer.style.removeProperty('--island-bass')
     previous = 0
-    baseline = 0
+    for (const front of fronts) front.playbackRate = 1
+    fronts = []
     lastBeatAt = -Infinity
     lastInterval = 0
     if (card) beatByCard.delete(card)
@@ -39,15 +39,19 @@ export function createIslandBassEffect(layer: HTMLElement) {
       return
     }
     const rise = level - previous
-    if (rise !== 0) {
-      if (level > 0) layer.style.setProperty('--island-bass', String(Math.min(1, Math.sqrt(level) * 1.8)))
-      else layer.style.removeProperty('--island-bass')
+    if (rise === 0) return
+    if (level > 0) layer.style.setProperty('--island-bass', String(level))
+    else layer.style.removeProperty('--island-bass')
+    // Change playback rate without restarting or shrinking the outward-moving fronts.
+    // System motion preferences and the pause fade own the CSS animations' lifetimes.
+    if (!fronts.length && level > 0) {
+      fronts = (layer.getAnimations?.({ subtree: true }) ?? []).filter(
+        animation => 'animationName' in animation && animation.animationName === 'island-glass-wave-out',
+      )
     }
+    for (const front of fronts) front.playbackRate = 1 + level * 3
     previous = level
-    const excess = level - baseline
-    const threshold = Math.max(MIN_RISE, baseline * .24)
-    baseline += excess * BASELINE_STEP
-    if (level < MIN_SIGNAL || rise < MIN_RISE || excess < threshold) return
+    if (level < BEAT_TRIGGER || rise < MIN_RISE) return
     const now = performance.now()
     if (now - lastBeatAt < BEAT_COOLDOWN_MS) return
     const interval = now - lastBeatAt

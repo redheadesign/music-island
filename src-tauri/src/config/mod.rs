@@ -239,6 +239,9 @@ impl AppConfig {
         let old_bass = ui.remove("playbackReactiveWave");
         let old_visual = ui.remove("playbackVisual");
         changed |= old_bass.is_some() || old_visual.is_some();
+        for retired in ["reducedTransparency", "interfaceScenes"] {
+            changed |= ui.remove(retired).is_some();
+        }
         if ui.get(PLAYBACK_WAVE_KEY).and_then(Value::as_bool).is_none() {
             // Existing Direct users opted into process audio separately from the connection.
             let uses_direct = matches!(self.media.protocol, MediaProtocol::YandexDirect);
@@ -256,7 +259,6 @@ impl AppConfig {
         matches!(self.media.protocol, MediaProtocol::YandexDirect)
             && self.media.direct_yandex_consent
             && !self.appearance.reduced_motion
-            && preference("reducedTransparency").and_then(Value::as_bool) != Some(true)
             && preference(INTERFACE_THEME_KEY).and_then(Value::as_str).unwrap_or(DEFAULT_INTERFACE_THEME) == "glass"
             && preference(PLAYBACK_WAVE_KEY).and_then(Value::as_bool) == Some(true)
     }
@@ -517,6 +519,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn retired_glass_controls_clear_on_an_already_migrated_profile() {
+        for theme in ["classic", "glass"] {
+            let mut config = AppConfig::default();
+            let ui = config.plugins.ui_preferences_mut();
+            ui.insert(INTERFACE_THEME_KEY.into(), theme.into());
+            ui.insert("reducedTransparency".into(), true.into());
+            ui.insert("interfaceScenes".into(), serde_json::json!({ "glass": "manta" }));
+            assert!(config.migrate_interface_preferences());
+            let saved = &config.plugins.settings[UI_PREFS_KEY];
+            assert_eq!(saved[INTERFACE_THEME_KEY], theme);
+            assert!(saved.get("reducedTransparency").is_none());
+            assert!(saved.get("interfaceScenes").is_none());
+            assert!(!config.migrate_interface_preferences());
+        }
+    }
+
+    #[test]
     fn migrating_playback_preserves_process_audio_consent() {
         for (protocol, old_bass, expected) in [
             (MediaProtocol::Smtc, None, true),
@@ -616,10 +635,10 @@ mod tests {
         let ui = &migrated.plugins.settings[UI_PREFS_KEY];
         assert!(migrated.plugins.glass_default_applied());
         assert_eq!(ui[INTERFACE_THEME_KEY], "glass");
-        assert_eq!(ui["interfaceScenes"]["glass"], "manta");
+        assert!(ui.get("interfaceScenes").is_none());
         assert_eq!(ui["interfacePalette"], "ocean");
         assert_eq!(ui["settingsColorScheme"], "light");
-        assert_eq!(ui["reducedTransparency"], true);
+        assert!(ui.get("reducedTransparency").is_none());
         assert_eq!(migrated.behavior.hover_delay_ms, 620);
 
         let submitted = migrated.plugins.ui_preferences_mut();

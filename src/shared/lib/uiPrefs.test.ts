@@ -6,7 +6,6 @@ import {
   getInterfacePaletteStyle,
   getInterfaceScene,
   getInterfaceTheme,
-  getReducedTransparency,
   getSettingsColorScheme,
   getUsageWidgetCompact,
   getUsageWidgetScale,
@@ -28,7 +27,7 @@ describe('interface theme preferences', () => {
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'classic', interfaceScenes: { glass: 'fox' } }))).toBeUndefined()
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass' }))).toBe('fox')
     expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'unknown' } }))).toBe('fox')
-    expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'manta' } }))).toBe('manta')
+    expect(getInterfaceScene(configWithUi({ interfaceTheme: 'glass', interfaceScenes: { glass: 'manta' } }))).toBe('fox')
   })
 
   it('enables the wave in Glass by default and remembers the switch across themes', () => {
@@ -40,15 +39,14 @@ describe('interface theme preferences', () => {
     expect(getPlaybackWaveEnabled(withUiPrefs(classic, { interfaceTheme: 'glass' }))).toBe(false)
   })
 
-  it('remembers the selected Glass scene when switching back from Classic', () => {
-    const glass = withUiPrefs(configWithUi({ settingsColorScheme: 'light' }), {
-      interfaceTheme: 'glass', interfaceScenes: { glass: 'fox' }, reducedTransparency: true,
+  it('uses the Glass scene when returning from Classic with an older profile', () => {
+    const glass = configWithUi({
+      settingsColorScheme: 'light', interfaceTheme: 'glass', interfaceScenes: { glass: 'manta' }, reducedTransparency: true,
     })
     const classic = withUiPrefs(glass, { interfaceTheme: 'classic' })
     const restored = withUiPrefs(classic, { interfaceTheme: 'glass' })
     expect(getInterfaceScene(classic)).toBeUndefined()
     expect(getInterfaceScene(restored)).toBe('fox')
-    expect(getReducedTransparency(restored)).toBe(true)
     expect(getSettingsColorScheme(restored)).toBe('light')
   })
 })

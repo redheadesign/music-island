@@ -35,6 +35,7 @@
 
 .direct-connection-backdrop[data-interface-theme='glass'] { backdrop-filter: var(--glass-filter); }
 .direct-connection-backdrop[data-interface-theme='glass'] .direct-connection-dialog {
+  background-color: var(--surface-glass);
   background-image: var(--glass-sheen);
   box-shadow: var(--glass-panel-rim), var(--shadow-panel);
 }

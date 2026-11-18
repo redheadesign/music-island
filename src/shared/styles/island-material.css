@@ -129,8 +129,7 @@
   .island-feedback__ambient[data-playback-wave]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before,
   .island-feedback__ambient[data-playback-wave]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::after {
     content: '';
-    --island-wave-opacity: calc(.34 + var(--island-bass, 0) * .66);
-    scale: calc(1 + var(--island-bass, 0) * .22);
+    --island-wave-opacity: calc(.28 + var(--island-bass, 0) * .68);
     animation: island-glass-wave-out var(--island-wave-duration) var(--island-front-delay, 0s) linear infinite;
   }
   .island-feedback__ambient[data-playback-wave]::after {

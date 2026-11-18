@@ -1,3 +1,4 @@
+import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
 import { SettingsFilled, SquareTerminal } from '../../shared/ui/SettingsIcons'
 import { Mic, Pin } from 'lucide-react'
@@ -7,7 +8,7 @@ import type { AppConfig } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
 import { islandArrangement, getIslandLayout, inlineActionsWidth, type IslandLayoutElement, type IslandLayoutZone } from '../../shared/lib/islandLayout'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getLocalServersWidgetScale, getPlaybackWaveEnabled, usesGlassMaterial, getReducedTransparency, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceScene, getInterfaceTheme, getLocalServersWidgetScale, getPlaybackWaveEnabled, usesGlassMaterial, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
 import { createTranslator } from '../../shared/i18n/messages'
 import { MusicModule } from '../music/MusicModule'
 import { LocalServersPanel } from '../overlay/LocalServersPanel'
@@ -45,6 +46,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   onResize?: (dimensions: Pick<AppConfig['layout'], 'width' | 'scale'>) => void
   onLocalServersResize?: (scale: number) => void
 } & IslandPreviewRenderers) {
+  const reducedTransparency = useSystemReducedTransparency()
   const layout = getIslandLayout(config)
   const arrangement = islandArrangement(layout)
   const host = useRef<HTMLDivElement>(null)
@@ -177,7 +179,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   return <div className="island-preview-section"><div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined} data-reduced-motion={config.appearance.reducedMotion || undefined}>
     {active ? <WarpSurface className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
     <div className="island-preview__camera" style={{ width: sceneWidth * scale, height: frameHeight * scale }}>
-    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-island-arrangement={arrangement} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={getReducedTransparency(config) || undefined} style={style}>
+    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-interface-scene={getInterfaceScene(config)} data-island-arrangement={arrangement} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={reducedTransparency || undefined} style={style}>
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
         <IslandFeedback className="island-card island-surface" particles={active && usesGlassMaterial(config)} playbackWave={active && playbackWave}>

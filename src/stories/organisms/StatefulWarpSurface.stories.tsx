@@ -45,11 +45,11 @@ export const ReducedMotion: Story = { name: 'Без движения · цвет
   await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0')
   await expect(getComputedStyle(canvasElement.querySelector('.stateful-warp-surface__shader')!).opacity).toBe('1')
 } }
-export const GlassManta: Story = { name: 'Стекло · скаты в движении', args: { scene: 'manta' }, play: async ({ canvasElement }) => {
+export const GlassFoxMoving: Story = { name: 'Стекло · лисы в движении', args: { scene: 'fox' }, play: async ({ canvasElement }) => {
   const canvas = within(canvasElement)
-  const renderer = await waitFor(() => paintedScene(canvasElement, 'manta'))
+  const renderer = await waitFor(() => paintedScene(canvasElement, 'fox'))
   await userEvent.click(canvas.getByRole('button', { name: 'Включено' }))
-  await expect(canvasElement.querySelector('[data-ascii-scene="manta"]')).toBe(renderer)
+  await expect(canvasElement.querySelector('[data-ascii-scene="fox"]')).toBe(renderer)
   await expect(canvasElement.querySelector('[data-speed]')).toHaveAttribute('data-speed', '0.225')
 } }
 export const GlassFox: Story = { name: 'Стекло · лисы без движения', args: { scene: 'fox', light: true, reducedMotion: true }, play: async ({ canvasElement }) => {

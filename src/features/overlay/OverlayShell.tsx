@@ -1,3 +1,4 @@
+import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
 import { createIslandBassEffect } from '../../shared/ui/islandBassEffect'
 import { SettingsFilled } from '../../shared/ui/SettingsIcons'
@@ -45,7 +46,6 @@ import {
   getLocalServersWidgetScale,
   getPlaybackWaveEnabled,
   usesGlassMaterial,
-  getReducedTransparency,
   getUiPrefs,
   getUsageWidgetCompact,
   getUsageWidgetScale,
@@ -153,6 +153,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
   const hasSession = media?.hasSession === true
+  const reducedTransparency = useSystemReducedTransparency()
   const hasPlaybackWave = hasSession && getPlaybackWaveEnabled(config)
   const playbackMotion = hasSession && media?.playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
@@ -172,7 +173,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   }, [])
   usePlaybackBass(
     expandedVisible && hasPlaybackWave && playbackMotion
-      && !reducedMotion && !getReducedTransparency(config)
+      && !reducedMotion && !reducedTransparency
       && config.media.protocol === 'yandex-direct' && config.media.directYandexConsent && media?.provider === 'yandex-direct',
     applyBassLevel,
   )
@@ -914,7 +915,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       data-interface-scene={getInterfaceScene(config)}
       data-interface-palette={getInterfacePalette(config)}
       data-cover-art={artworkPalette !== null || undefined}
-      data-reduced-transparency={getReducedTransparency(config) || undefined}
+      data-reduced-transparency={reducedTransparency || undefined}
       style={style}
     >
       <div className="island-stage">

@@ -1022,9 +1022,6 @@
    provide depth, so layout wrappers never introduce a separate frame. */
 .settings-window-root[data-interface-theme='glass'] { --settings-radius: 0; }
 .settings-window-root[data-interface-theme='glass'] .settings-titlebar { background: transparent; }
-.settings-panel[data-interface-theme='glass'] {
-  --surface-panel: color-mix(in srgb, var(--glass-panel) var(--glass-menu-opacity), transparent);
-}
 .settings-panel[data-interface-theme='glass'] .settings-page-heading { letter-spacing: 0; }
 :where(.settings-window-root[data-interface-theme='glass'], .settings-panel[data-interface-theme='glass'])
   :where(button, a[href], summary, [role='button']):not(:where(.island-root *, [inert] *)) {
@@ -1044,22 +1041,17 @@
   box-shadow: var(--glass-control-rim);
   backdrop-filter: var(--glass-frost-filter);
 }
-.settings-panel[data-interface-theme='glass'] :is(.ui-button--secondary, .secondary-button, .accent-picker__done, .about-social) {
+.settings-panel[data-interface-theme='glass'] :is(.ui-button--secondary, .secondary-button, .about-social) {
   --control-surface: var(--glass-button-fill);
   --control-surface-hover: var(--glass-button-hover-fill);
   background-color: var(--control-surface);
 }
-.settings-panel[data-interface-theme='glass'] :is(.ui-button--secondary, .secondary-button, .accent-picker__done, .about-social):hover:not(:disabled, [aria-pressed='true']) {
+.settings-panel[data-interface-theme='glass'] :is(.ui-button--secondary, .secondary-button, .about-social):hover:not(:disabled, [aria-pressed='true']) {
   background-color: var(--control-surface-hover);
 }
-.settings-panel[data-interface-theme='glass'] :is(.voice-segment-switch > button, .voice-chip, .voice-effect-toggle, .voice-control-card__monitor) {
-  --surface-raised: var(--glass-button-fill);
-}
-.settings-panel[data-interface-theme='glass'] .ui-button--primary:enabled:not(:active) {
-  background-color: color-mix(in srgb, var(--glass-action) var(--glass-emphasis-opacity), transparent);
-}
-.settings-panel[data-interface-theme='glass'] :is(.voice-control-card__primary, .primary-button, .voice-chip--active):not(:hover, :active) {
-  background-color: color-mix(in srgb, var(--fg-primary) var(--glass-emphasis-opacity), transparent);
+.settings-panel[data-interface-theme='glass'] :is(.primary-button, .accent-picker__done) {
+  background-color: var(--glass-action);
+  color: var(--glass-action-ink);
 }
 .settings-window-root[data-interface-theme='glass'] .settings-window-actions > button:not(:hover) {
   background-color: var(--glass-button-fill);
@@ -1067,7 +1059,7 @@
 .settings-panel[data-interface-theme='glass'] .fox-dev-preview__select {
   border-radius: var(--glass-control-radius);
   color: var(--fg-primary);
-  background: color-mix(in srgb, var(--surface-raised) var(--glass-menu-opacity), transparent);
+  background: var(--control-surface);
   box-shadow: var(--glass-control-rim);
   backdrop-filter: var(--glass-frost-filter);
 }
@@ -1077,17 +1069,27 @@
 }
 .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch, .locale-switch) {
   border-radius: var(--glass-control-radius);
-  background: color-mix(in srgb, var(--glass-field) var(--glass-menu-track-opacity), transparent);
+  background: var(--glass-field-fill);
   box-shadow: inset 0 1px rgb(0 0 0 / .13);
 }
 .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn, .settings-theme-toggle) {
   border-radius: var(--glass-control-radius);
 }
 .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn, .settings-nav-item) .settings-selection-marker {
-  background: var(--glass-selection-sheen) color-mix(in srgb, var(--glass-selection-fill) var(--glass-menu-opacity), transparent);
+  background: var(--glass-selection-sheen) var(--glass-selection-fill);
   box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
 }
 .settings-panel[data-interface-theme='glass'] .settings-nav-item { border-radius: var(--radius-md); }
+.settings-panel[data-interface-theme='glass'][data-color-scheme='light'] :is(.settings-scope-switch__btn--active, .locale-switch__btn--active, .settings-nav-item--active) {
+  color: var(--glass-selection-ink);
+  /* Switch ink with its solid face, including when the palette changes in place. */
+  transition-property: transform;
+}
+.settings-panel[data-interface-theme='glass'][data-color-scheme='light'] .settings-scope-switch__btn--active .settings-scope-badge {
+  color: inherit;
+  background: transparent;
+}
+.settings-panel[data-interface-theme='glass'][data-color-scheme='light'] .settings-nav-item--active svg { color: currentColor; }
 :is(.settings-window-root, .settings-panel)[data-interface-theme='glass'] :is(
   .settings-control-group, .settings-taskbar > .settings-control-row, .settings-source-picker,
   .settings-section:not(.settings-appearance, .settings-section--plain, .settings-taskbar),

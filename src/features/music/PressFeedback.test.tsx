@@ -34,7 +34,6 @@ describe('island feedback commands', () => {
   })
 })
 
-
 it('uses a recent regular beat from this card and forgets it on pause', () => {
   const card = document.createElement('section')
   card.className = 'island-card'
@@ -46,10 +45,10 @@ it('uses a recent regular beat from this card and forgets it on pause', () => {
     for (const time of [1000, 1500, 2000]) {
       clock.mockReturnValue(time)
       effect.update(0)
-      effect.update(.2)
+      effect.update(.65)
     }
     expect(layer.childElementCount).toBe(0)
-    expect(Number(layer.style.getPropertyValue('--island-bass'))).toBeGreaterThan(.6)
+    expect(Number(layer.style.getPropertyValue('--island-bass'))).toBe(.65)
     expect(localHeartDuration(button, 2150)).toBe(Math.round(350 / .49))
     expect(localHeartDuration(button, 3400)).toBeUndefined()
     expect(localHeartDuration(document.createElement('button'), 2150)).toBeUndefined()
@@ -57,4 +56,26 @@ it('uses a recent regular beat from this card and forgets it on pause', () => {
     effect.update(0)
     expect(localHeartDuration(button, 2150)).toBeUndefined()
   } finally { effect.dispose() }
+})
+
+it('accelerates both outward wave fronts without restarting them or moving the particles', () => {
+  const layer = document.createElement('span')
+  const animation = (animationName: string) => ({ animationName, playbackRate: 1 })
+  const front = animation('island-glass-wave-out')
+  const following = animation('island-glass-wave-out')
+  const particle = animation('island-particle-fall')
+  const getAnimations = vi.fn(() => [front, following, particle])
+  Object.defineProperty(layer, 'getAnimations', { value: getAnimations })
+  const effect = createIslandBassEffect(layer)
+  effect.update(.8)
+  expect(layer.style.getPropertyValue('--island-bass')).toBe('0.8')
+  expect([front.playbackRate, following.playbackRate]).toEqual([3.4, 3.4].map(rate => expect.closeTo(rate)))
+  expect(particle.playbackRate).toBe(1)
+  effect.update(.1)
+  expect([front.playbackRate, following.playbackRate]).toEqual([1.3, 1.3])
+  effect.update(0)
+  expect([front.playbackRate, following.playbackRate]).toEqual([1, 1])
+  expect(getAnimations).toHaveBeenCalledTimes(1)
+  expect(layer.style.getPropertyValue('--island-bass')).toBe('')
+  effect.dispose()
 })

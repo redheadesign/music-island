@@ -63,7 +63,7 @@ export function WorkshopFrame({
   const refraction = context.viewMode === 'story' ? <GlassRefraction /> : null
   if (context.parameters.workshop?.bare) return <>{children}{refraction}</>
   const note = context.parameters.workshop?.note
-  const scene = getInterfaceThemeDefinition(normalizeInterfaceTheme(interfaceTheme)).scene?.fallback
+  const scene = getInterfaceThemeDefinition(normalizeInterfaceTheme(interfaceTheme)).scene
   const colorScheme = context.parameters.settingsColorScheme === 'light' || context.parameters.light ? 'light' : 'dark'
 
   return (

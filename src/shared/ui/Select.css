@@ -16,7 +16,7 @@
 .dark-select--actions-normal { width: var(--control-height); min-height: var(--control-height); background: var(--control-surface); }
 .dark-select-option--checkbox { justify-content: flex-start; }
 .dark-select-option__checkbox { display: grid; place-items: center; flex: 0 0 16px; width: 16px; height: 16px; border: 1px solid var(--fg-secondary); border-radius: var(--radius-unit); }
-.dark-select-option__checkbox[data-checked] { border-color: var(--fg-primary); background: var(--fg-primary); color: var(--surface-raised); }
+.dark-select-option__checkbox[data-checked] { border-color: var(--fg-primary); background: var(--fg-primary); color: var(--fg-on-solid); }
 .dark-select-option[data-danger] { color: var(--status-danger); }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -31,13 +31,14 @@
 
 .dark-select-menu[data-interface-theme='glass'] {
   border-radius: var(--glass-panel-radius);
-  background-color: color-mix(in srgb, var(--glass-menu-face) var(--glass-menu-opacity), transparent);
+  background-color: var(--surface-glass);
   background-image: var(--glass-sheen);
   backdrop-filter: var(--glass-filter);
   box-shadow: var(--glass-control-rim), var(--shadow-popover);
 }
 .dark-select-menu[data-interface-theme='glass'] .dark-select-option--active {
-  background-color: color-mix(in srgb, var(--glass-selection-fill) var(--glass-menu-opacity), transparent);
+  background-color: var(--glass-selection-fill);
+  color: var(--glass-selection-ink);
   background-image: var(--glass-selection-sheen);
 }
 
