@@ -115,7 +115,8 @@ export function MusicModule({
   const isPlaying = media.playbackStatus === 'playing'
   const title = collapseRepeatedTitle(media.title || t('music.unknownTrack'))
   const artist = media.artist ? collapseRepeatedTitle(media.artist) : null
-  const isButtonsOnly = density === 'buttons-only'
+  // Explicit rows already include the visible composition migrated from old densities.
+  const isButtonsOnly = !layout && density === 'buttons-only'
   const canShowSeek = showProgress && !isButtonsOnly && Boolean(media.durationMs)
   const trackLabel = [
     showArtist ? artist : null,

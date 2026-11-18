@@ -5,8 +5,9 @@ import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import type { ComponentProps } from 'react'
-import { normalizeIslandLayout, type IslandLayout, type IslandPlayerElement, type IslandReactionElement } from '../../shared/lib/islandLayout'
+import { getIslandLayout, moveIslandElement, normalizeIslandLayout, withIslandLayout, type IslandLayout, type IslandPlayerElement, type IslandReactionElement } from '../../shared/lib/islandLayout'
 import type { MediaSnapshot } from '../../shared/lib/types'
+import { getDefaultConfig } from '../../app/tauriApi'
 import { MusicModule } from './MusicModule'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -98,6 +99,33 @@ describe('MusicModule progress characterization', () => {
 })
 
 describe('MusicModule saved layout behavior', () => {
+  it('restores an edited buttons-only profile with exactly the controls added to its rows', () => {
+    const base = getDefaultConfig()
+    const v3 = { version: 3, arrangement: 'stacked', zones: {
+      player: ['artwork', 'transport', 'next', 'progress'], reactionLeft: ['dislike'], reactionRight: ['like'],
+    } }
+    const legacy = {
+      ...base,
+      layout: { ...base.layout, density: 'buttons-only' as const, showArtwork: true, showProgress: true, showPreviousNext: true },
+      plugins: { ...base.plugins, settings: { ...base.plugins.settings, ui: { islandLayout: v3 } } },
+    }
+    const restored = (config: typeof base) => {
+      const container = document.createElement('div')
+      container.innerHTML = renderPlayer({ density: config.layout.density, layout: getIslandLayout(config),
+        showProgress: config.layout.showProgress, showArtwork: config.layout.showArtwork,
+        renderElement: (id, node) => <div data-control={id}>{node}</div> })
+      return Array.from(container.querySelectorAll('[data-control]'), el => el.getAttribute('data-control'))
+    }
+    expect(restored(legacy)).toEqual(['transport', 'next'])
+    expect(restored({ ...legacy, layout: { ...legacy.layout, showPreviousNext: false } })).toEqual(['transport'])
+    let edited = withIslandLayout(legacy, moveIslandElement(getIslandLayout(legacy), 'progress', 'playerLower'))
+    expect(restored(JSON.parse(JSON.stringify(edited)))).toEqual(['transport', 'next', 'progress'])
+    for (const id of ['like', 'artwork'] as const) {
+      edited = withIslandLayout(edited, moveIslandElement(getIslandLayout(edited), id, 'playerLower'))
+    }
+    expect(restored(JSON.parse(JSON.stringify(edited)))).toEqual(['next', 'progress', 'like', 'artwork'])
+  })
+
   it('renders previous and next independently while keeping protected playback without artwork', () => {
     const previousOnly = renderPlayer({
       layout: islandLayout(['previous', 'transport', 'progress']),

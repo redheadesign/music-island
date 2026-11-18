@@ -130,6 +130,16 @@ export function normalizeIslandLayout(value: unknown): IslandLayout {
   return { version: ISLAND_LAYOUT_VERSION, zones: { left, ...rows, right, actions, bottom } }
 }
 
+/** Before rows were editable, buttons-only density overrode the saved controls.
+ * Migrate what the player actually displayed so hidden items return to the tray. */
+function applyLegacyDensity(config: AppConfig, layout: IslandLayout): IslandLayout {
+  if (config.layout.density !== 'buttons-only') return layout
+  const visible = (element: IslandMusicElement) =>
+    element === 'transport' || element === 'seekBack' || element === 'seekForward' || ((element === 'previous' || element === 'next') && config.layout.showPreviousNext)
+  const rows = normalizePlayerRows(layout.zones.player.filter(visible), layout.zones.playerLower.filter(visible))
+  return { ...layout, zones: { ...layout.zones, ...rows } }
+}
+
 export function getLegacyIslandLayout(config: AppConfig): IslandLayout {
   const usage = isRecord(config.plugins?.settings?.usage) ? config.plugins.settings.usage : {}
   const player: IslandPlayerElement[] = []
@@ -138,11 +148,11 @@ export function getLegacyIslandLayout(config: AppConfig): IslandLayout {
   player.push('transport')
   if (config.layout.showPreviousNext) player.push('next')
   if (config.layout.showProgress) player.push('progress')
-  return normalizeIslandLayout({ version: 3, zones: {
+  return applyLegacyDensity(config, normalizeIslandLayout({ version: 3, zones: {
     left: usage.codexEnabled === true ? ['codex'] : [], player,
     right: usage.claudeEnabled === true ? ['claude'] : [],
     reactionLeft: ['dislike'], reactionRight: ['like'], actions: ['settings', 'pin'],
-  } })
+  } }))
 }
 
 export function getIslandLayout(config: AppConfig): IslandLayout {
@@ -152,7 +162,7 @@ export function getIslandLayout(config: AppConfig): IslandLayout {
   const layout = saved ? normalizeIslandLayout(saved) : getLegacyIslandLayout(config)
   const hasBottomZone = isRecord(saved?.zones) && Array.isArray(saved.zones.bottom)
   if (!hasBottomZone && isRecord(ui) && ui.localServersEnabled === true) layout.zones.bottom = ['localServers']
-  return layout
+  return saved && saved.version !== ISLAND_LAYOUT_VERSION ? applyLegacyDensity(config, layout) : layout
 }
 
 export function withIslandLayout(config: AppConfig, layout: IslandLayout): AppConfig {
