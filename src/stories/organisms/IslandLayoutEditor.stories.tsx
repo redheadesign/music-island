@@ -379,8 +379,29 @@ export const IndependentNavigationOrder: Story = {
 
 export const FullInlineLayout: Story = {
   name: 'Одна строка · все кнопки при минимальной ширине',
+  globals: { interfaceTheme: 'glass' },
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: /^(В одну строку|One row)$/ }))
+    const segments = within(canvasElement).getByRole('group', { name: /^(Расположение плеера|Player layout)$/ })
+    const oneRow = within(segments).getByRole('button', { name: /^(В одну строку|One row)$/ })
+    const twoRows = within(segments).getByRole('button', { name: /^(В две строки|Two rows)$/ })
+    await expect(getComputedStyle(segments).display).toMatch(/grid$/)
+    await expect(getComputedStyle(oneRow).appearance).toBe('none')
+    await expect(parseFloat(getComputedStyle(oneRow).minHeight)).toBeGreaterThanOrEqual(32)
+    await expect(parseFloat(getComputedStyle(oneRow).borderRadius)).toBeGreaterThan(0)
+    await userEvent.click(oneRow)
+    await expect(oneRow).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(getComputedStyle(oneRow).boxShadow).not.toBe('none'))
+    await expect(getComputedStyle(oneRow).backgroundColor).not.toBe(getComputedStyle(twoRows).backgroundColor)
+    const catalog = zone(canvasElement, 'catalog')
+    await expect(getComputedStyle(catalog).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    await expect(getComputedStyle(zone(canvasElement, 'widgetCatalog')).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    element(catalog, 'seekBack').focus()
+    await userEvent.keyboard(' {ArrowLeft}')
+    await expect(catalog).toHaveAttribute('data-over', 'true')
+    await expect(getComputedStyle(catalog).outlineStyle).toBe('solid')
+    await waitFor(() => expect(getComputedStyle(catalog).backgroundColor).not.toBe('rgba(0, 0, 0, 0)'))
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(getComputedStyle(catalog).backgroundColor).toBe('rgba(0, 0, 0, 0)'))
     for (const selector of ['.island-preview__resize-edge--left', '.island-preview__body > .preview-resize-handle']) {
       const slider = canvasElement.querySelector<HTMLElement>(selector)
       if (slider) { slider.focus(); await userEvent.keyboard('{Home}') }

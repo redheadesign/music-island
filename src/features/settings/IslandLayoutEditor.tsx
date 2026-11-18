@@ -1,4 +1,5 @@
 import { RadioTower, RotateCcw } from '../../shared/ui/SettingsIcons'
+import { SegmentedControl } from '../../shared/ui/SegmentedControl'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import { dragPosition } from './dragGeometry'
@@ -149,13 +150,9 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
   }
   return <section ref={editorRef} style={{ '--drag-indicator': config.appearance.accentColor } as import('react').CSSProperties} className="island-layout-editor" data-dragging={Boolean(dragging) || undefined}>
     <header className="island-layout-editor__header"><div>{showHeading ? <h3>{locale === 'ru' ? 'Ваш островок' : 'Your island'}</h3> : null}<p>{locale === 'ru' ? 'Перетащите кнопки. Край меняет ширину, угол — масштаб.' : 'Drag elements. Resize the width from an edge and the scale from a corner.'}</p></div><button type="button" className="island-layout-editor__reset" aria-label={locale === 'ru' ? 'Сбросить настройки островка' : 'Reset island settings'} title={locale === 'ru' ? 'Сбросить расположение, размер, цвет и задержку' : 'Reset layout, size, color and opening delay'} onClick={onReset ?? reset}><RotateCcw size={15} /></button></header>
-    <div className="settings-theme-choice island-layout-editor__arrangement" role="group" aria-label={locale === 'ru' ? 'Расположение плеера' : 'Player layout'}>
-      {(['stacked', 'inline'] as const).map((arrangement) =>
-        <button key={arrangement} type="button" className={`settings-theme-choice__button${layout.arrangement === arrangement ? ' settings-theme-choice__button--active' : ''}`}
-          aria-pressed={layout.arrangement === arrangement} onClick={() => commit({ ...layout, arrangement })}>
-          {arrangement === 'inline' ? locale === 'ru' ? 'В одну строку' : 'One row' : locale === 'ru' ? 'В две строки' : 'Two rows'}
-        </button>)}
-    </div>
+    <SegmentedControl className="island-layout-editor__arrangement" label={locale === 'ru' ? 'Расположение плеера' : 'Player layout'}
+      options={[{ value: 'stacked', label: locale === 'ru' ? 'В две строки' : 'Two rows' }, { value: 'inline', label: locale === 'ru' ? 'В одну строку' : 'One row' }]}
+      value={layout.arrangement} onChange={arrangement => commit({ ...layout, arrangement })} />
     <IslandPreview active={active} config={config} label={locale === 'ru' ? 'Редактируемый островок' : 'Editable island'} usage={usage} renderElement={elementView} renderZone={zoneView} onResize={(dimensions) => onChange({ ...config, layout: { ...config.layout, ...dimensions, size: 'medium' } })} onLocalServersResize={(localServersWidgetScale) => onChange(withUiPrefs(config, { localServersWidgetScale }))} />
     <div className="island-layout-editor__catalogs">
       {catalog('catalog', locale === 'ru' ? 'Все элементы добавлены' : 'All controls added')}

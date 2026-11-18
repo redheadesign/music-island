@@ -1,0 +1,36 @@
+.ui-segments {
+  display: inline-grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  max-width: 100%;
+  gap: var(--space-half);
+  padding: var(--space-1);
+  border-radius: var(--glass-control-radius, var(--radius-md));
+  background: var(--control-surface);
+  backdrop-filter: var(--glass-frost-filter, none);
+}
+.ui-segments > button {
+  appearance: none;
+  min-height: var(--control-height-compact);
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--glass-control-radius, var(--radius-sm));
+  background: transparent;
+  color: var(--fg-secondary);
+  font: var(--weight-medium) var(--text-caption)/var(--leading-control) var(--font-sans);
+  cursor: pointer;
+  transition: background-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+}
+@media (hover: hover) {
+  .ui-segments > button:not([aria-pressed='true']):hover { color: var(--fg-primary); background: var(--surface-hover); }
+}
+.ui-segments > button[aria-pressed='true'] {
+  background: var(--surface-current);
+  color: var(--fg-primary);
+  box-shadow: var(--shadow-control);
+}
+.ui-segments > button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+@media (forced-colors: active) {
+  .ui-segments { outline: 1px solid ButtonText; }
+  .ui-segments > button[aria-pressed='true'] { outline: 2px solid Highlight; outline-offset: -2px; }
+}

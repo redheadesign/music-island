@@ -15,5 +15,5 @@
 .taskbar-editor-element:focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
 .taskbar-editor-element__visual { display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .taskbar-layout-catalog__items { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); min-height: var(--control-height); }
-.taskbar-editor-element--catalog { padding: var(--space-2); background: #343537; border-radius: calc(var(--radius-unit) * 3.5); }
+.taskbar-editor-element--catalog { padding: var(--space-2); background: var(--glass-button-fill, var(--surface-raised)); box-shadow: var(--glass-control-rim, none); border-radius: calc(var(--radius-unit) * 3.5); }
 .taskbar-control-sample.taskbar-player { width: auto; height: 32px; padding: 0; background: transparent; border: 0; }

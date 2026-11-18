@@ -737,37 +737,10 @@
 .settings-panel .settings-section-reset:hover { background: var(--surface-hover); }
 .settings-theme-row { border-top: 0 !important; }
 .settings-usage-page { padding: var(--space-6); border: 0; border-radius: var(--radius-lg); background: var(--surface-panel); }
-.settings-theme-choice {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.usage-preview-segments {
   flex: 0 1 240px;
   min-width: 200px;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
 }
-.settings-theme-choice__button {
-  display: flex;
-  min-height: var(--control-height-compact);
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding-inline: var(--space-3);
-  border-radius: var(--radius-sm);
-  color: var(--fg-secondary);
-  font-size: var(--text-caption);
-  transition: color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast);
-}
-.settings-theme-choice__button svg { width: 15px; height: 15px; }
-.settings-theme-choice__button:hover { color: var(--fg-primary); }
-.settings-theme-choice__button--active {
-  color: var(--fg-primary);
-  background: var(--surface-panel);
-  box-shadow:  var(--shadow-control);
-}
-.usage-widget-preview .settings-theme-choice__button { padding-inline: var(--space-1); }
 .settings-content .settings-control-row,
 .settings-content .settings-switch-row {
   min-height: 84px;
@@ -936,7 +909,7 @@
   .settings-window-root .settings-content .settings-section { padding: var(--space-4); }
   .settings-panel .settings-footer { flex-wrap: wrap; }
   .settings-content .settings-control-row > span { flex-basis: 100%; }
-  .settings-theme-choice { flex-basis: 100%; min-width: 0; }
+  .usage-preview-segments { flex-basis: 100%; min-width: 0; }
 }
 @container settings-window (max-width: 540px) {
   .settings-window-root .settings-scroll { padding: 0 var(--space-4) var(--space-4); }
@@ -982,8 +955,6 @@
 }
 .settings-usage-page { padding: 0; border: 0; background: transparent; }
 .usage-widget-preview { box-sizing: border-box; min-height: 200px; }
-.settings-panel .settings-theme-choice__button { border: 0; background: transparent; font-family: inherit; font-weight: var(--weight-medium); cursor: pointer; }
-.settings-panel .settings-theme-choice__button--active { color: var(--fg-primary); background: var(--surface-selected); box-shadow:  var(--shadow-control); }
 .usage-widget-preview { align-items: center; }
 
 
@@ -1009,7 +980,7 @@
 .settings-panel .settings-selection-marker, .settings-panel .settings-nav-item--active { box-shadow: none; }
 .settings-window-root .settings-content .settings-section { border: 0; box-shadow: none; border-radius: var(--radius-lg); background: var(--surface-panel); }
 .settings-content .settings-control-row { border: 0; }
-.settings-panel .settings-usage-page, .settings-panel .island-layout-catalog { border: 0; box-shadow: none; }
+.settings-panel .settings-usage-page { border: 0; box-shadow: none; }
 .settings-panel .settings-appearance { background: transparent !important; padding: 0 !important; }
 .settings-control-group { padding: var(--space-6); border-radius: var(--radius-lg); background: var(--surface-panel); }
 .settings-control-group > .accent-picker { padding-block: var(--space-4); }
@@ -1066,7 +1037,7 @@
 }
 :is(.settings-window-root, .settings-panel)[data-interface-theme='glass'] :is(
   .settings-window-actions > button, .settings-theme-toggle, .ui-button,
-  .settings-theme-choice__button, .voice-segment-switch > button, .voice-chip, .voice-effect-toggle,
+  .voice-segment-switch > button, .voice-chip, .voice-effect-toggle,
   .voice-control-card__primary, .voice-control-card__monitor, .primary-button, .secondary-button,
   .voice-setup-guide__action, .voice-setup-guide__return, .accent-picker__done, .about-social
 ) {
@@ -1130,14 +1101,6 @@
   padding-inline: var(--settings-group-gutter);
   background: var(--settings-group-fill);
   box-shadow: none;
-}
-.settings-panel[data-interface-theme='glass'] .island-layout-catalog:not([data-ready], [data-over]) {
-  padding-inline: var(--settings-group-gutter);
-  background: var(--settings-group-fill);
-}
-.settings-panel[data-interface-theme='glass'] :is(.island-editor-element--catalog, .taskbar-editor-element--catalog) {
-  background: var(--glass-button-fill);
-  box-shadow: var(--glass-control-rim);
 }
 @media (hover: hover) {
   .settings-panel[data-interface-theme='glass'] :is(.settings-scope-switch__btn, .locale-switch__btn):not([aria-pressed='true']):hover { background: var(--surface-hover); }

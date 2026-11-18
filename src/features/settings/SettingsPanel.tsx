@@ -22,6 +22,7 @@ import { useDictationController } from '../../app/useIslandApp'
 import { VoiceSettingsView } from '../plugins/voice/VoiceSettingsView'
 import { TaskbarLayoutEditor } from './TaskbarLayoutEditor'
 import { IslandLayoutEditor } from './IslandLayoutEditor'
+import { SegmentedControl } from '../../shared/ui/SegmentedControl'
 import { getIslandLayout, getLegacyIslandLayout, withIslandLayout } from '../../shared/lib/islandLayout'
 import { getDictationAppearance } from '../../shared/lib/dictationAppearance'
 import { BrandLogo } from '../../shared/ui/BrandLogo'
@@ -662,9 +663,9 @@ export function SettingsPanel({
       {settingsPage === 'usage' ? (
         <div className="settings-usage-page">
             <PreviewScale previewClassName="usage-widget-preview" previewLabel={locale === 'ru' ? 'Превью виджета лимитов' : 'Usage widget preview'} backdrop={<WarpSurface className="preview-warp-material" active={settingsVisible} reducedMotion={draft.appearance.reducedMotion} />} header={<div className="settings-preview__header settings-preview__header--end">
-              <div className="settings-theme-choice" role="group" aria-label={locale === 'ru' ? 'Вид виджета' : 'Widget style'}>
-                {[false, true].map((compact) => <button key={String(compact)} type="button" aria-pressed={usageCompact === compact} className={`settings-theme-choice__button ${usageCompact === compact ? 'settings-theme-choice__button--active' : ''}`} onClick={() => previewAndSave(withUiPrefs(draft, { usageWidgetCompact: compact }))}>{locale === 'ru' ? compact ? 'Компактно' : 'Подробно' : compact ? 'Compact' : 'Detailed'}</button>)}
-              </div>
+              <SegmentedControl className="usage-preview-segments" label={locale === 'ru' ? 'Вид виджета' : 'Widget style'}
+                options={[{ value: 'detailed', label: locale === 'ru' ? 'Подробно' : 'Detailed' }, { value: 'compact', label: locale === 'ru' ? 'Компактно' : 'Compact' }]}
+                value={usageCompact ? 'compact' : 'detailed'} onChange={value => previewAndSave(withUiPrefs(draft, { usageWidgetCompact: value === 'compact' }))} />
             </div>} value={Math.round(usageScale * 100)} min={65} max={135} step={5} locale={locale} readoutLabel={t('settings.scale')} label={locale === 'ru' ? 'Масштаб виджета' : 'Widget scale'} onCommit={value => previewAndSave(withUiPrefs(draft, { usageWidgetScale: value / 100 }))}>{value => <div className="usage-widget-preview__content" style={{ zoom: value / 100 }}><UsageStatusChip snapshot={usage?.snapshot ?? null} enabledProviders={['codex', 'claude']} compact={usageCompact} locale={locale} /></div>}</PreviewScale>
           <UsageSettingsSection
             preferences={getUsagePreferences(draft)} snapshot={usage?.snapshot ?? null}

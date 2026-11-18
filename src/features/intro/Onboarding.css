@@ -22,7 +22,7 @@
 .onboarding__layout .island-layout-editor { gap: var(--space-2); }
 .onboarding__layout .island-layout-editor__header { display: none; }
 .onboarding__layout .island-preview { min-height: 174px; height: 174px; background: transparent; }
-.onboarding__layout .island-layout-catalog { min-height: 0; padding: var(--space-3) var(--space-4-5); background: #272727e8; }
+.onboarding__layout .island-layout-catalog { min-height: 0; }
 .onboarding__layout .island-layout-catalog h4 { display: none; }
 .onboarding__dictation { display: grid; justify-items: center; gap: var(--space-2-5); width: 78%; }
 .onboarding__note { box-sizing: border-box; text-align: left; width: 100%; padding: var(--space-4-5) calc(var(--space-unit) * 5.5); border-radius: var(--radius-lg); background: #1e1e1ef2; color: #f5f5f5; }
