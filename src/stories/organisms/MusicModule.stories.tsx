@@ -196,7 +196,9 @@ export const SystemVolume: Story = {
     await expect(slider).not.toBeInTheDocument()
     await userEvent.unhover(button)
     await userEvent.hover(button)
-    await expect(await canvas.findByRole('slider', { name: /System volume|Системная громкость/i })).toBeVisible()
+    const revealed = await canvas.findByRole('slider', { name: /System volume|Системная громкость/i })
+    await waitFor(() => expect(getComputedStyle(revealed.parentElement!).opacity).toBe('1'))
+    await expect(revealed).toBeVisible()
   },
 }
 export const Playing: Story = { name: 'Воспроизведение' }
