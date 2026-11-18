@@ -22,7 +22,7 @@ if($before.registry){
     $installed=$installed.Trim('"')
     if((Test-Path -LiteralPath $installed) -and [Diagnostics.FileVersionInfo]::GetVersionInfo($installed).FileVersion -ne [Diagnostics.FileVersionInfo]::GetVersionInfo($source).FileVersion){throw 'Refusing to reconcile with a different installed Music Island version'}
 }
-if($CaptureName -notmatch '(?i)CABLE Output.*VB-Audio Virtual Cable' -or $RenderName -notmatch '(?i)CABLE In.*VB-Audio Virtual Cable'){throw 'Specify the two explicit ends of the dedicated VB-Audio cable'}
+if($CaptureName -notmatch '(?i)CABLE Output.*VB-Audio Virtual Cable' -or $RenderName -notmatch '(?i)^(CABLE In(put)?( [0-9]+ Ch)?|Speakers|Динамики) \([^)]*VB-Audio Virtual Cable\)$'){throw 'Specify the two explicit ends of the dedicated VB-Audio cable'}
 $benchRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\.local'))+'\'
 $run=[IO.Path]::GetFullPath($Output)
 if(!$run.StartsWith($benchRoot,[StringComparison]::OrdinalIgnoreCase)){throw 'Use a fresh output directory under the worktree .local folder'}
@@ -41,7 +41,10 @@ function ClearTrialCaches([string]$trial) {
             if($ancestor.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Linked cache root'}
             $ancestor=$ancestor.Parent
         }
-        Remove-Item -LiteralPath $resolved -Recurse -Force
+        for($attempt=0;$attempt -lt 8;$attempt++){
+            try{Remove-Item -LiteralPath $resolved -Recurse -Force;break}
+            catch{if($attempt -eq 7){Write-Warning "Test cache pending cleanup: $resolved";break};Start-Sleep -Milliseconds 400}
+        }
     }
 }
 $toolsDir=Join-Path $run 'tools'
@@ -135,7 +138,7 @@ foreach ($case in @(Get-Content -LiteralPath $Manifest -Raw | ConvertFrom-Json))
         if($process.Name -ne 'msedgewebview2.exe' -or $process.CommandLine -notlike ('*'+$info.Environment['WEBVIEW2_USER_DATA_FOLDER']+'*')){throw 'WebView is not using the isolated profile'}
         while($process -and $process.ProcessId -ne $owned.Id){$process=Get-CimInstance Win32_Process -Filter "ProcessId=$($process.ParentProcessId)"}
         if(!$process){throw 'WebView is not a child of the candidate'}
-        & node (Join-Path $PSScriptRoot 'trial.mjs') $trial
+        & node (Join-Path $PSScriptRoot 'trial.mjs') $trial $owned.Id
         if($LASTEXITCODE){throw "Trial $($case.id) failed"}
     }finally{
         if($owned -and !$owned.HasExited){

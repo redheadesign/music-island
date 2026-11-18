@@ -1,6 +1,8 @@
 // A native multiline editor used only by the dictation benchmark. No clipboard,
 // keyboard hook or desktop-wide paste. The delivery subprocess addresses its peer.
 #include <windows.h>
+#include <UIAutomation.h>
+#include <wrl/client.h>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -51,8 +53,11 @@ static HWND peer() {
     return w;
 }
 static bool key(HWND w, bool up) {
-    if (GetForegroundWindow() != w || GetFocus() != edit)
+    if (GetForegroundWindow() != w || GetFocus() != edit) {
+        record("focus-guard.txt", GetForegroundWindow() != w ? "different foreground window"
+                                                             : "edit control lacks focus");
         return false;
+    }
     INPUT input{};
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = VK_F24;
@@ -105,6 +110,15 @@ static LRESULT CALLBACK editorMessage(HWND w, UINT message, WPARAM a, LPARAM b) 
                 SetFocus(edit);
             }
             return key(w, true);
+        }
+        if (a == 4) {
+            ShowWindow(w, SW_SHOWNORMAL);
+            if (GetForegroundWindow() != w) {
+                SwitchToThisWindow(w, TRUE);
+                SetForegroundWindow(w);
+            }
+            SetFocus(edit);
+            return GetForegroundWindow() == w && GetFocus() == edit;
         }
         if (a == 3) {
             PostMessageW(w, WM_CLOSE, 0, 0);
@@ -207,12 +221,28 @@ int wmain(int argc, wchar_t **argv) {
         auto target = peer();
         if (!target)
             return 3;
-        auto command = op == L"press" ? 1 : op == L"release" ? 2 : op == L"close" ? 3 : 0;
+        auto command = op == L"press"     ? 1
+                       : op == L"release" ? 2
+                       : op == L"close"   ? 3
+                       : op == L"focus"   ? 4
+                                          : 0;
         if (!command)
             return 2;
         DWORD pid = 0;
         GetWindowThreadProcessId(target, &pid);
         AllowSetForegroundWindow(pid);
+        if (op == L"focus") {
+            // UI Automation receives only the child HWND of our nonce-verified peer.
+            // This can activate a native control when the foreground rules defer SetForegroundWindow.
+            HWND input = GetDlgItem(target, 1);
+            if(!input || !IsChild(target, input)) return 3;
+            if(SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED))) {
+                Microsoft::WRL::ComPtr<IUIAutomation> automation;
+                Microsoft::WRL::ComPtr<IUIAutomationElement> element;
+                if(SUCCEEDED(CoCreateInstance(__uuidof(CUIAutomation), nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&automation)))
+                        && SUCCEEDED(automation->ElementFromHandle(input, &element))) element->SetFocus();
+            }
+        }
         DWORD_PTR result = 0;
         return SendMessageTimeoutW(target, control, command, 0, SMTO_ABORTIFHUNG | SMTO_BLOCK, 3000,
                                    &result) &&

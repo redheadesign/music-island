@@ -64,9 +64,11 @@ def score(manifest, runs):
             folder = (runs / case["id"]).resolve()
             if folder.parent != runs:
                 raise ValueError("Case directory escapes the designated output")
-            if not (folder / "report.json").is_file():
+            if not (folder / "report.json").is_file() or not (folder / "integrity.json").is_file():
                 missing.append(case["id"])
                 continue
+            if read_json(folder / "integrity.json").get("registryUnchanged") is not True:
+                raise ValueError(f"Profile check failed for {folder}")
             report = read_json(folder / "report.json")
             meta = read_json(folder / "trial.json")
             if meta["audioHash"].lower() != file_hash or meta["referenceHash"].lower() != group["referenceSha256"]:

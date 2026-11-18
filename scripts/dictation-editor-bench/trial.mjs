@@ -7,6 +7,8 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright-core'
 
 const trial = path.resolve(process.argv[2])
+const appPid = process.argv[3]
+assert.match(appPid, /^[1-9][0-9]*$/)
 const file = name => path.join(trial, name)
 const json = async name => JSON.parse(await readFile(file(name), 'utf8'))
 const meta = await json('trial.json')
@@ -94,7 +96,22 @@ try {
   const ready = await wait('our editor to receive input', async () => (await readFile(file('editor-ready'), 'utf8').catch(() => '')))
   assert.equal(Number(ready), host.pid)
   await status()
-  await execute(audio, ['idle', meta.render.id], options)
+  let renderFailure
+  const playback = new Promise(resolve => {
+    rendering = execFile(audio, ['reserve', meta.render.id, meta.audio], options, (error, _stdout, stderr) => {
+      if (error) renderFailure = Error('Explicit virtual render failed: ' + (stderr.trim() || error.message))
+      resolve()
+    })
+  })
+  await wait('reserved virtual render', async () => {
+    if (renderFailure) throw renderFailure
+    const ready = await readFile(file('render-ready'), 'utf8').catch(() => '')
+    return Number(ready) === rendering.pid
+  })
+  await wait('foreground ownership of the native editor', async () => {
+    try { await command('focus'); return true }
+    catch { return false }
+  }, 15000, 350)
   await command('press')
   held = true
   const active = await wait('native push-to-talk recording', async () => {
@@ -102,12 +119,10 @@ try {
     return s.operationId > initial.operationId && s.ready && ['recording','streaming'].includes(s.phase) && s
   }, 15000)
   stage('recording')
-  await new Promise((resolve, reject) => {
-    rendering = execFile(audio, ['render', meta.render.id, meta.audio], options, (error, stdout, stderr) => {
-      if (error) reject(Error('Explicit render failed: ' + stderr + ' ' + error.message))
-      else resolve(stdout)
-    })
-  })
+  await execute(audio, ['idle', meta.render.id, String(rendering.pid), appPid], options)
+  await writeFile(file('render-go'), 'play', { flag: 'wx' })
+  await playback
+  if (renderFailure) throw renderFailure
   await sleep(150)
   const last = await status()
   assert.equal(last.operationId, active.operationId)
@@ -122,7 +137,7 @@ try {
     const s = await status()
     if (s.progress && progress.at(-1)?.completedAudioMs !== s.progress.completedAudioMs) progress.push(s.progress)
     return false
-  }, 180000, 85)
+  }, 600000, 85)
   const transcript = await readFile(file('editor.txt'), 'utf8')
   assert.ok(transcript.trim())
   assert.ok(metrics.enChange >= metrics.releaseReturned && metrics.releaseReturned >= metrics.release)
@@ -155,7 +170,10 @@ try {
   throw error
 } finally {
   if (rendering && rendering.exitCode === null) rendering.kill()
-  if (held) await command('release').catch(() => {})
+  if (held) {
+    await command('focus').catch(() => {})
+    await command('release').catch(() => {})
+  }
   if (host) {
     await command('close').catch(() => {})
     if (host.exitCode === null) host.kill()

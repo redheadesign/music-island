@@ -84,7 +84,8 @@ static std::vector<Endpoint> endpoints() {
     }
     return result;
 }
-static void requireUnusedCable(const std::vector<Endpoint> &devices, const Endpoint &target) {
+static void requireUnusedCable(const std::vector<Endpoint> &devices, const Endpoint &target,
+                               DWORD ownedPlayer = 0, DWORD ownedApp = 0) {
     const auto familyStart = target.name.find(L'(');
     if (familyStart == std::wstring::npos) {
         throw std::runtime_error("Unrecognized virtual cable name");
@@ -105,8 +106,15 @@ static void requireUnusedCable(const std::vector<Endpoint> &devices, const Endpo
             AudioSessionState state;
             check(sessions->GetSession(index, &session));
             check(session->GetState(&state));
-            if (state == AudioSessionStateActive)
-                throw std::runtime_error("Virtual test cable already has an active render stream");
+            if (state == AudioSessionStateActive) {
+                ComPtr<IAudioSessionControl2> details;
+                check(session.As(&details));
+                DWORD pid = 0;
+                const auto identified = details->GetProcessId(&pid);
+                if (identified != S_OK || !pid || (pid != ownedPlayer && pid != ownedApp))
+                    throw std::runtime_error("Other active render session on virtual cable, pid=" +
+                                             std::to_string(pid));
+            }
         }
     }
 }
@@ -136,7 +144,7 @@ static std::vector<unsigned char> readWav(const std::filesystem::path &file) {
     }
     throw std::runtime_error("Expected uncompressed mono PCM16 at 16 kHz");
 }
-static void render(Endpoint &dest, const std::filesystem::path &wav) {
+static void render(Endpoint &dest, const std::filesystem::path &wav, bool gated) {
     const auto pcm = readWav(wav);
     ComPtr<IAudioClient> audio;
     check(dest.device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr,
@@ -152,9 +160,28 @@ static void render(Endpoint &dest, const std::filesystem::path &wav) {
     check(audio->GetBufferSize(&capacity));
     const size_t frames = pcm.size() / 2;
     size_t sent = 0;
+    check(audio->Start());
+    if (gated) {
+        if (std::filesystem::exists("render-go"))
+            throw std::runtime_error("Stale gate");
+        std::ofstream("render-ready") << GetCurrentProcessId();
+        const auto armDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(45);
+        while (!std::filesystem::exists("render-go")) {
+            if (std::chrono::steady_clock::now() >= armDeadline)
+                throw std::runtime_error("Capture never armed");
+            UINT32 padding;
+            check(audio->GetCurrentPadding(&padding));
+            const UINT32 n = capacity - padding;
+            if (n) {
+                BYTE *buffer;
+                check(stream->GetBuffer(n, &buffer));
+                check(stream->ReleaseBuffer(n, AUDCLNT_BUFFERFLAGS_SILENT));
+            }
+            Sleep(3);
+        }
+    }
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::seconds(frames / 16000 + 12);
-    check(audio->Start());
     while (true) {
         if (std::chrono::steady_clock::now() > deadline)
             throw std::runtime_error("Virtual render timed out");
@@ -182,16 +209,18 @@ int wmain(int argc, wchar_t **argv) {
             for (auto &e : items)
                 std::cout << (e.flow == eCapture ? "capture" : "render") << '\t' << utf8(e.id)
                           << '\t' << utf8(e.name) << '\t' << utf8(e.container) << "\n";
-        } else if ((argc == 4 && std::wstring(argv[1]) == L"render") ||
-                   (argc == 3 && std::wstring(argv[1]) == L"idle")) {
+        } else if ((argc == 4 &&
+                    (std::wstring(argv[1]) == L"render" || std::wstring(argv[1]) == L"reserve")) ||
+                   ((argc == 3 || argc == 5) && std::wstring(argv[1]) == L"idle")) {
             auto dest = std::find_if(items.begin(), items.end(),
                                      [&](auto &e) { return e.flow == eRender && e.id == argv[2]; });
             if (dest == items.end())
                 throw std::runtime_error(
                     "Requested active VB-Audio render endpoint is unavailable");
-            requireUnusedCable(items, *dest);
+            requireUnusedCable(items, *dest, argc == 5 ? std::stoul(argv[3]) : 0,
+                               argc == 5 ? std::stoul(argv[4]) : 0);
             if (argc == 4)
-                render(*dest, argv[3]);
+                render(*dest, argv[3], std::wstring(argv[1]) == L"reserve");
         } else
             throw std::runtime_error("Use list or render <exact VB-Audio endpoint ID> <WAV>");
         return 0;
