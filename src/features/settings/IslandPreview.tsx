@@ -64,10 +64,11 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   const ru = config.appearance.locale !== 'en'
   const t = createTranslator(ru ? 'ru' : 'en')
   const numberFormat = new Intl.NumberFormat(ru ? 'ru' : 'en', { style: 'percent' })
-  const [available, setAvailable] = useState(640)
+  const [available, setAvailable] = useState(0)
   useLayoutEffect(() => {
     const node = host.current
     if (!node) return
+    setAvailable(node.clientWidth)
     const observer = new ResizeObserver(([entry]) => setAvailable(entry.contentRect.width))
     observer.observe(node)
     return () => observer.disconnect()
