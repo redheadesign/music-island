@@ -731,7 +731,7 @@ impl LensRenderer {
             layout.radii[3],
             layout.bend,
             layout.dispersion,
-            0.,
+            (input.crop.top + origin.y) as f32,
             layout.opacity,
         ];
         unsafe {
