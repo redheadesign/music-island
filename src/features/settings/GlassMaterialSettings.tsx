@@ -19,9 +19,10 @@ interface GlassMaterialSettingsProps {
   material: GlassMaterial
   onChange: (material: GlassMaterial) => void
   onReset?: () => void
+  bodyFrostOverride?: number
 }
 
-export function GlassMaterialSettings({ locale, material, onChange, onReset }: GlassMaterialSettingsProps) {
+export function GlassMaterialSettings({ locale, material, onChange, onReset, bodyFrostOverride }: GlassMaterialSettingsProps) {
   const t = createTranslator(locale)
   const custom = controls.some(([key]) => material[key] !== DEFAULT_GLASS_MATERIAL[key])
   const title = t('settings.glassMaterial')
@@ -33,6 +34,9 @@ export function GlassMaterialSettings({ locale, material, onChange, onReset }: G
           value={material[key]} onChange={event => onChange({ ...material, [key]: event.currentTarget.valueAsNumber })} />
         <output aria-hidden="true">{material[key]}%</output>
       </label>)}
+      {bodyFrostOverride !== undefined && <small className="glass-material-settings__note">{locale === 'ru'
+        ? `У корпуса своё размытие (${bodyFrostOverride.toLocaleString('ru')} px) в продвинутых настройках.`
+        : `The island body uses its own blur (${bodyFrostOverride.toLocaleString('en')} px) in Advanced settings.`}</small>}
       <Button variant="ghost" size="compact" aria-label={t('settings.glassReset')} disabled={!custom}
         onClick={onReset ?? (() => onChange(DEFAULT_GLASS_MATERIAL))}>{t('settings.reset')}</Button>
     </div>

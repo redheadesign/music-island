@@ -88,6 +88,7 @@ windows = { version = "0.62", features = [
   "Win32_Graphics_Imaging",
   "Win32_Graphics_Dwm",
   "Win32_Graphics_Direct2D",
+  "Win32_Graphics_Direct2D_Common",
   "Win32_Graphics_Direct3D",
   "Win32_Graphics_Direct3D_Fxc",
   "Win32_Graphics_Direct3D11",

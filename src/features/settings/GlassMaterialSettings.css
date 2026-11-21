@@ -18,6 +18,13 @@
   font-variant-numeric: tabular-nums;
   color: var(--fg-secondary);
 }
+
+.glass-material-settings__note {
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+}
+
 .glass-material-settings > .ui-button {
   justify-self: end;
 }

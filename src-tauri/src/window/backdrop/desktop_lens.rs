@@ -36,7 +36,7 @@ use windows::{
             Graphics::Capture::IGraphicsCaptureItemInterop,
         },
         UI::WindowsAndMessaging::{
-            GetWindowDisplayAffinity, PostMessageW, SetWindowDisplayAffinity,
+            GetWindowDisplayAffinity, KillTimer, PostMessageW, SetTimer, SetWindowDisplayAffinity,
             WDA_EXCLUDEFROMCAPTURE, WINDOW_DISPLAY_AFFINITY, WM_APP,
         },
     },
@@ -46,7 +46,14 @@ use windows::{
 };
 use windows_numerics::{Vector2, Vector3};
 
+#[path = "gaussian.rs"]
+mod gaussian;
+use gaussian::Gaussian;
+
 pub(crate) const LENS_FRAME: u32 = WM_APP + 0x46;
+pub(crate) const LENS_PRESENT_TIMER: usize = 0x4d49_4c50;
+const CAPTURE_BUFFERS: i32 = 2;
+const FRAME_INTERVAL: i64 = 160_000; // 16 ms, in 100 ns ticks
 const FORMAT: DXGI_FORMAT = DXGI_FORMAT_B8G8R8A8_UNORM;
 const SAMPLE: DXGI_SAMPLE_DESC = DXGI_SAMPLE_DESC {
     Count: 1,
@@ -102,7 +109,9 @@ impl LensLayout {
             radii: physical.radii.map(|value| value as f32),
             bend: lens.bend * (24.0 * scale as f32).min(36.0),
             dispersion: lens.dispersion * (6.0 * scale as f32).min(10.0),
-            frost: (region.frost.unwrap_or(global_frost) * 8.0 * scale).min(14.0) as f32,
+            // The slider expresses a visible blur radius in CSS pixels. The
+            // Gaussian standard deviation is one third of that radius.
+            frost: (region.frost.unwrap_or(global_frost) * (32.0 / 3.0) * scale).min(16.0) as f32,
             opacity: region.opacity as f32,
             snapshot: lens.snapshot,
             reduced_motion: lens.reduced_motion,
@@ -114,6 +123,7 @@ struct InputTexture {
     texture: ID3D11Texture2D,
     view: ID3D11ShaderResourceView,
     crop: RECT,
+    revision: u64,
 }
 
 #[derive(Clone)]
@@ -157,6 +167,9 @@ pub(super) struct DesktopLens {
     reveal_batch: Option<CompositionScopedBatch>,
     layout: LensLayout,
     source: Option<InputTexture>,
+    gaussian: Option<Gaussian>,
+    last_frame_time: Option<i64>,
+    present_attempts: u8,
     visible: bool,
     redraw: bool,
 }
@@ -200,12 +213,15 @@ impl DesktopLens {
         let item: GraphicsCaptureItem = unsafe { interop.CreateForMonitor(monitor)? };
         let source_size = item.Size()?;
         let dxgi: IDXGIDevice = gpu.device.cast()?;
+        if let Ok(device) = dxgi.cast::<IDXGIDevice1>() {
+            let _ = unsafe { device.SetMaximumFrameLatency(1) };
+        }
         let projected: IDirect3DDevice =
             unsafe { CreateDirect3D11DeviceFromDXGIDevice(&dxgi)?.cast()? };
         let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
             &projected,
             DirectXPixelFormat::B8G8R8A8UIntNormalized,
-            2,
+            CAPTURE_BUFFERS,
             source_size,
         )?;
         let session = pool.CreateCaptureSession(&item)?;
@@ -216,7 +232,9 @@ impl DesktopLens {
         let dirty_tracking = session
             .SetDirtyRegionMode(GraphicsCaptureDirtyRegionMode::ReportOnly)
             .is_ok();
-        session.SetMinUpdateInterval(TimeSpan { Duration: 333_333 })?;
+        session.SetMinUpdateInterval(TimeSpan {
+            Duration: FRAME_INTERVAL,
+        })?;
 
         let factory: IDXGIFactory2 = unsafe { dxgi.GetAdapter()?.GetParent()? };
         let desc = DXGI_SWAP_CHAIN_DESC1 {
@@ -292,6 +310,9 @@ impl DesktopLens {
             reveal_batch: None,
             layout,
             source: None,
+            gaussian: None,
+            last_frame_time: None,
+            present_attempts: 0,
             visible: false,
             redraw: true,
         };
@@ -378,6 +399,15 @@ impl DesktopLens {
         fit_visual(&self.visual, layout)?;
         self.layout = layout;
         self.redraw = true;
+        self.present_attempts = 0;
+        self.present_cached()?;
+        Ok(())
+    }
+
+    fn present_cached(&mut self) -> Result<()> {
+        if self.monitor != unsafe { MonitorFromWindow(self.hwnd, MONITOR_DEFAULTTONEAREST) } {
+            return Err(E_FAIL.into());
+        }
         if let Some(input) = &self.source {
             let body = self.body_rect()?;
             let crop = input.crop;
@@ -385,16 +415,15 @@ impl DesktopLens {
                 && body.top.max(0) >= crop.top
                 && body.right.min(self.source_size.Width) <= crop.right
                 && body.bottom.min(self.source_size.Height) <= crop.bottom
-                && self.render(
+            {
+                self.submit_frame(
                     POINT {
                         x: body.left - crop.left,
                         y: body.top - crop.top,
                     },
                     (crop.right - crop.left) as u32,
                     (crop.bottom - crop.top) as u32,
-                )?
-            {
-                self.present_visual()?;
+                )?;
             }
         }
         Ok(())
@@ -410,15 +439,31 @@ impl DesktopLens {
             self.reveal_batch = None;
         }
         let Some(capture) = &self.capture else {
+            if self.present_attempts > 0 {
+                self.present_cached()?;
+            }
             return Ok(self.covers_body());
         };
         capture.queued.store(false, Ordering::Release);
         if capture.closed.load(Ordering::Acquire) {
             return Err(E_FAIL.into());
         }
-        let Ok(frame) = capture.pool.TryGetNextFrame() else {
+        let Ok(mut frame) = capture.pool.TryGetNextFrame() else {
+            if self.present_attempts > 0 {
+                self.present_cached()?;
+            }
             return Ok(self.covers_body());
         };
+        // One UI message can represent two arrivals. Leaving the last buffer
+        // queued can strand the previous window on screen after an Alt+Tab.
+        let mut coalesced = false;
+        for _ in 1..CAPTURE_BUFFERS {
+            let Ok(newer) = capture.pool.TryGetNextFrame() else {
+                break;
+            };
+            frame = newer;
+            coalesced = true;
+        }
         if frame.ContentSize()? != self.source_size
             || self.monitor != unsafe { MonitorFromWindow(self.hwnd, MONITOR_DEFAULTTONEAREST) }
         {
@@ -426,7 +471,17 @@ impl DesktopLens {
         }
         let (crop, origin) = self.crop_rect()?;
         let same_crop = self.source.as_ref().is_some_and(|input| input.crop == crop);
-        let crosses_crop = !capture.dirty_tracking
+        let frame_time = frame.SystemRelativeTime().ok().map(|time| time.Duration);
+        // Dirty rectangles are relative to the preceding capture rather than
+        // our last submitted frame. Copy whenever the continuity is unknown.
+        let skipped = self
+            .last_frame_time
+            .zip(frame_time)
+            .is_none_or(|(last, next)| next <= last || next - last >= FRAME_INTERVAL * 2);
+        self.last_frame_time = frame_time;
+        let crosses_crop = coalesced
+            || skipped
+            || !capture.dirty_tracking
             || frame.DirtyRegions().map_or(true, |regions| {
                 regions.into_iter().any(|rect| {
                     rect.X < crop.right
@@ -436,6 +491,9 @@ impl DesktopLens {
                 })
             });
         if !self.redraw && same_crop && !crosses_crop {
+            if self.present_attempts > 0 {
+                self.present_cached()?;
+            }
             return Ok(self.covers_body());
         }
         let tex_width = (crop.right - crop.left) as u32;
@@ -448,7 +506,7 @@ impl DesktopLens {
             self.source = Some(self.allocate_crop(crop, tex_width, tex_height)?);
         }
         let input = self.source.as_mut().ok_or(E_FAIL)?;
-        if needs_texture || !same_crop || crosses_crop || self.redraw {
+        if needs_texture || !same_crop || crosses_crop {
             let access: IDirect3DDxgiInterfaceAccess = frame.Surface()?.cast()?;
             let texture: ID3D11Texture2D = unsafe { access.GetInterface()? };
             let area = D3D11_BOX {
@@ -472,18 +530,33 @@ impl DesktopLens {
                 );
             }
             input.crop = crop;
+            input.revision = input.revision.wrapping_add(1);
         }
+        drop(frame);
+        if crosses_crop {
+            self.present_attempts = 0;
+        }
+        self.submit_frame(origin, tex_width, tex_height)?;
+        Ok(self.covers_body())
+    }
+
+    fn submit_frame(&mut self, origin: POINT, tex_width: u32, tex_height: u32) -> Result<()> {
         if self.render(origin, tex_width, tex_height)? {
             self.redraw = false;
+            self.present_attempts = 0;
             if self.layout.snapshot {
                 // Retain only the cropped GPU texture. Restore this HWND's
                 // recording visibility once the upstream capture has closed.
-                drop(frame);
                 self.capture = None;
             }
             self.present_visual()?;
+        } else if self.present_attempts < 3 {
+            self.present_attempts += 1;
+            // Do not stall the UI thread on DXGI. Retry the already filtered
+            // frame even if the desktop stops changing before the next tick.
+            unsafe { SetTimer(Some(self.hwnd), LENS_PRESENT_TIMER, 16, None) };
         }
-        Ok(self.covers_body())
+        Ok(())
     }
 
     fn body_rect(&self) -> Result<RECT> {
@@ -557,12 +630,28 @@ impl DesktopLens {
                 texture,
                 view: view.ok_or(E_FAIL)?,
                 crop,
+                revision: 0,
             })
         }
     }
 
-    fn render(&self, origin: POINT, tex_width: u32, tex_height: u32) -> Result<bool> {
+    fn render(&mut self, origin: POINT, tex_width: u32, tex_height: u32) -> Result<bool> {
         let layout = self.layout;
+        let input = self.source.as_ref().ok_or(E_FAIL)?;
+        let view = if layout.frost > 0. {
+            let blur = match &mut self.gaussian {
+                Some(blur) => blur,
+                None => self.gaussian.insert(Gaussian::new(&self.gpu.device)?),
+            };
+            blur.prepare(
+                &self.gpu.device,
+                &input.texture,
+                input.revision,
+                layout.frost,
+            )?
+        } else {
+            input.view.clone()
+        };
         let data = [
             layout.width as f32,
             layout.height as f32,
@@ -578,7 +667,7 @@ impl DesktopLens {
             layout.radii[3],
             layout.bend,
             layout.dispersion,
-            layout.frost,
+            0.,
             layout.opacity,
         ];
         unsafe {
@@ -610,10 +699,9 @@ impl DesktopLens {
             self.gpu
                 .context
                 .PSSetSamplers(0, Some(&[Some(self.gpu.sampler.clone())]));
-            self.gpu.context.PSSetShaderResources(
-                0,
-                Some(&[Some(self.source.as_ref().ok_or(E_FAIL)?.view.clone())]),
-            );
+            self.gpu
+                .context
+                .PSSetShaderResources(0, Some(&[Some(view)]));
             self.gpu.context.Draw(3, 0);
             self.gpu.context.PSSetShaderResources(0, Some(&[None]));
             self.gpu.context.OMSetRenderTargets(None, None);
@@ -628,6 +716,7 @@ impl DesktopLens {
 
 impl Drop for DesktopLens {
     fn drop(&mut self) {
+        let _ = unsafe { KillTimer(Some(self.hwnd), LENS_PRESENT_TIMER) };
         self.capture = None;
         if let Ok(children) = self.root.Children() {
             let _ = children.Remove(&self.visual);

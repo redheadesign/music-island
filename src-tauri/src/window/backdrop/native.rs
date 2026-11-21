@@ -1,5 +1,5 @@
 use super::{
-    compositor::{HostBackdrop, LensLayout, LENS_FRAME},
+    compositor::{HostBackdrop, LensLayout, LENS_FRAME, LENS_PRESENT_TIMER},
     BackdropFrame, BackdropRegion,
 };
 use std::{cell::RefCell, collections::HashMap};
@@ -11,9 +11,10 @@ use windows::Win32::{
         Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW},
         Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
         WindowsAndMessaging::{
-            GetClientRect, IsIconic, IsWindowVisible, SystemParametersInfoW, SPI_GETHIGHCONTRAST,
-            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WM_DPICHANGED, WM_DWMCOMPOSITIONCHANGED,
-            WM_NCDESTROY, WM_SETTINGCHANGE, WM_SHOWWINDOW, WM_SIZE,
+            GetClientRect, IsIconic, IsWindowVisible, KillTimer, SystemParametersInfoW,
+            SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WM_DPICHANGED,
+            WM_DWMCOMPOSITIONCHANGED, WM_NCDESTROY, WM_SETTINGCHANGE, WM_SHOWWINDOW, WM_SIZE,
+            WM_TIMER,
         },
     },
 };
@@ -221,7 +222,11 @@ unsafe extern "system" fn window_proc(
     _: usize,
     data: usize,
 ) -> LRESULT {
-    if message == LENS_FRAME {
+    let retry_present = message == WM_TIMER && wp.0 == LENS_PRESENT_TIMER;
+    if message == LENS_FRAME || retry_present {
+        if retry_present {
+            let _ = KillTimer(Some(hwnd), LENS_PRESENT_TIMER);
+        }
         WINDOWS.with(|windows| {
             if let Ok(mut windows) = windows.try_borrow_mut() {
                 if let Some(compositor) = windows

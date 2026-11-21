@@ -1,8 +1,9 @@
 import { createTranslator } from '../../shared/i18n/messages'
 import { getGlassMaterial } from '../../shared/lib/glassMaterial'
+import { normalizeAdvancedGlass } from '../../shared/lib/advancedGlass'
 import { getInterfaceThemeDefinition, INTERFACE_THEME_IDS, INTERFACE_THEMES } from '../../shared/lib/interfaceTheme'
 import type { AppConfig, Locale } from '../../shared/lib/types'
-import { getInterfaceTheme, getPlaybackWaveEnabled, withUiPrefs } from '../../shared/lib/uiPrefs'
+import { getInterfaceTheme, getPlaybackWaveEnabled, getUiPrefs, withUiPrefs } from '../../shared/lib/uiPrefs'
 import { AppearanceChoices } from './AppearanceChoices'
 import { Switch } from '../../shared/ui/SettingsControls'
 import { GlassMaterialSettings } from './GlassMaterialSettings'
@@ -33,6 +34,7 @@ export function InterfaceThemeSettings({ config, locale, onChange }: AppearanceP
     {hasGlass && <GlassMaterialSettings
       locale={locale}
       material={material}
+      bodyFrostOverride={normalizeAdvancedGlass(getUiPrefs(config).advancedGlass).body?.frost}
       onChange={glassMaterial => onChange(withUiPrefs(config, { glassMaterial }))}
       onReset={() => onChange(withUiPrefs(config, { glassMaterial: undefined }))}
     />}

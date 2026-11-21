@@ -28,7 +28,7 @@ mod desktop_lens;
 #[path = "optics.rs"]
 mod optics;
 use desktop_lens::{DesktopLens, LensDevice};
-pub(super) use desktop_lens::{LensLayout, LENS_FRAME};
+pub(super) use desktop_lens::{LensLayout, LENS_FRAME, LENS_PRESENT_TIMER};
 
 /// One visual tree behind the HWND's child WebView2. HostBackdropBrush samples
 /// the desktop inside DWM, and the app has no access to those source pixels.

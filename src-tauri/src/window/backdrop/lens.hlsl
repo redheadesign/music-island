@@ -9,7 +9,7 @@ cbuffer Glass : register(b0) {
     float4 cornerRadii;
     float bend;
     float dispersion;
-    float frost;
+    float padding;
     float opacity;
 };
 
@@ -48,13 +48,6 @@ float4 pixel(float4 position : SV_POSITION) : SV_TARGET {
     float2 displaced = position.xy + bodyOrigin - normal * (bend * rim * rim);
     float2 fringe = normal * (dispersion * rim);
     float3 color = spectralSample(displaced, fringe);
-    if (frost >= .25) {
-        float2 tap = float2(frost, frost * .82);
-        float3 blur = (sampleDesktop(displaced + tap) + sampleDesktop(displaced - tap)
-            + sampleDesktop(displaced + float2(tap.x, -tap.y)) + sampleDesktop(displaced + float2(-tap.x, tap.y))) * .25;
-        // Keep some sharp refraction at the bevel and let the center go matte.
-        color = lerp(color, blur, .66 - rim * .38);
-    }
     float alpha = opacity * coverage;
     return float4(color * alpha, alpha);
 }
