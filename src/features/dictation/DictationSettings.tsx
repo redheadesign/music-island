@@ -8,6 +8,7 @@ import type { AppConfig } from '../../shared/lib/types'
 import { DictationPreview } from './DictationPreview'
 import { DictationThemePicker } from './DictationThemePicker'
 import { defaultDictationAppearance, type DictationAppearance } from '../../shared/lib/dictationAppearance'
+import { getGlassMaterial } from '../../shared/lib/glassMaterial'
 import { DictationModels } from './DictationModels'
 import { DictationAdvanced } from './DictationAdvanced'
 import { DictationProcessing } from './DictationProcessing'
@@ -80,7 +81,7 @@ export function DictationSettings({ controller: c, config, page, locale, onEnabl
     {page === 'processing' ? null : error}
     {page === 'general' ? <>
 <DictationPreview controller={c} config={config} locale={locale} active={active} reducedMotion={reducedMotion} appearance={appearance} onEnable={onEnable} onDisable={onDisable} />
-<DictationThemePicker value={appearance} onChange={onAppearanceChange} locale={locale} />
+<DictationThemePicker value={appearance} islandGlass={getGlassMaterial(config)} onChange={onAppearanceChange} locale={locale} />
 <section className="dictation-card" aria-label={t('Сочетания клавиш', 'Keyboard shortcuts')}>
         <DictationField label={t('Сочетание клавиш', 'Keyboard shortcut')}><DictationShortcut controller={c} id="transcribe" locale={locale} /></DictationField>
         <DictationField label={t('Отмена записи', 'Cancel recording')}><DictationShortcut controller={c} id="cancel" locale={locale} /></DictationField>

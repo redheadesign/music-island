@@ -77,6 +77,22 @@ export async function checkIslandWidgetTransmission(page) {
         }
       }
     }
+    // In each independent silhouette, frost must actually suppress fine
+    // desktop detail even while its transmission and text remain unchanged.
+    const stripes = first => `repeating-linear-gradient(90deg, ${first ? '#fff' : '#000'} 0 2px, ${first ? '#000' : '#fff'} 2px 4px)`
+    let clearDetail
+    for (const filter of ['none', 'blur(32px) saturate(1.15)']) {
+      const css = `.island-root { --glass-user-filter: ${filter} !important }`
+      const a = await capture(css, stripes(true)), b = await capture(css, stripes(false))
+      const detail = await Promise.all(areas.map(async ({ crop }) => {
+        const [first, second] = await Promise.all([a, b].map(frame => sharp(frame).extract(crop).greyscale().raw().toBuffer()))
+        return first.reduce((sum, value, i) => sum + Math.abs(value - second[i]), 0) / first.length
+      }))
+      if (!clearDetail) clearDetail = detail
+      else detail.forEach((value, i) => {
+        assert.ok(clearDetail[i] > 12 && value < clearDetail[i] * .55, `${areas[i].selector} frost 0/100: ${clearDetail[i].toFixed(1)} / ${value.toFixed(1)}`)
+      })
+    }
     return defaults
   } finally {
     await style.evaluate(el => el.remove())

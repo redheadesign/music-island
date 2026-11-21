@@ -1,9 +1,11 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { listen } from '@tauri-apps/api/event'
+import { DEFAULT_GLASS_MATERIAL } from '../../shared/lib/glassMaterialTokens'
 import { setOverlayBackdrop, type NativeBackdropFrame, type NativeBackdropRegion } from '../tauriApi'
 
 export type NativeBackdropStatus = 'pending' | 'active' | 'unavailable' | undefined
 let sequence = Date.now() * 1000
+const defaultFrost = DEFAULT_GLASS_MATERIAL.frost / 100
 
 /** Measure the visible surface, including CSS transforms and ancestor fades. */
 export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElement, styles = new Map<HTMLElement, CSSStyleDeclaration>()): NativeBackdropRegion | null {
@@ -33,12 +35,12 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
 }
 
 /** DWM owns the backdrop; this hook only publishes each surface's geometry. */
-export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = .72): NativeBackdropStatus {
+export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost): NativeBackdropStatus {
   const [status, setStatus] = useState<NativeBackdropStatus>()
-  const frostAmount = useRef(.72)
+  const frostAmount = useRef(defaultFrost)
   const changeFrost = useRef<((crossedZero: boolean) => void) | null>(null)
   useLayoutEffect(() => {
-    const amount = Number.isFinite(frost) ? Math.min(1, Math.max(0, frost)) : .72
+    const amount = Number.isFinite(frost) ? Math.min(1, Math.max(0, frost)) : defaultFrost
     const crossedZero = (amount === 0) !== (frostAmount.current === 0)
     frostAmount.current = amount
     changeFrost.current?.(crossedZero)

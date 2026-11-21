@@ -2,6 +2,12 @@
   position: relative;
 }
 
+/* Anchor a local lens to its own control/satellite. Existing absolute
+   positioning (artwork buttons, the recorder overlay) takes precedence. */
+:where([data-interface-theme='glass']) :where(.island-surface, .island-root button, .dictation-overlay button, .island-root a[href], [role='slider']) {
+  position: relative;
+}
+
 [data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, .media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button, [data-glass-light]:not(.island-card, [data-native-backdrop-surface]))::before {
   content: '';
   position: absolute;
@@ -11,7 +17,7 @@
   pointer-events: none;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   background: var(--glass-contour);
-  opacity: var(--glass-highlight-strength, .5);
+  opacity: var(--glass-highlight-strength, .42);
 }
 
 [data-interface-theme='glass'] [data-glass-light]:not(.island-card, [data-native-backdrop-surface])::before {
@@ -20,23 +26,27 @@
     var(--glass-contour);
 }
 
-/* Restrict the moving glint to the three exposed edges. The top edge is
-   attached to the monitor. There is no full-card mask or animated filter. */
-.island-card[data-glass-light] > .island-glass-optic .lg-glass::after {
-  border-radius: inherit;
-  opacity: calc(var(--glass-highlight-strength, .5) * var(--glass-parallax-strength, .5));
-  background:
-    radial-gradient(ellipse at var(--glass-light-x, 50%) 50%, white, transparent 40%) bottom / 100% var(--optic-width) no-repeat,
-    radial-gradient(ellipse at 50% var(--glass-light-y, 50%), white, transparent 45%) left / var(--optic-width) 100% no-repeat,
-    radial-gradient(ellipse at 50% var(--glass-light-y, 50%), white, transparent 45%) right / var(--optic-width) 100% no-repeat;
-  transition: none;
+.island-card[data-glass-edge] > .island-glass-optic .lg-glass::after {
+  background: radial-gradient(ellipse at var(--glass-rim-light), white, transparent 48%) var(--glass-rim-side) / var(--glass-rim-size) no-repeat;
+  opacity: calc(var(--glass-highlight-strength, .42) * var(--glass-parallax-strength, .91));
+}
+.island-card:is([data-glass-edge='left'], [data-glass-edge='right']) {
+  --glass-rim-size: var(--glass-edge-width) 100%;
+  --glass-rim-light: 50% var(--glass-light-y, 50%);
+}
+.island-card[data-glass-edge='left'] { --glass-rim-side: left; }
+.island-card[data-glass-edge='right'] { --glass-rim-side: right; }
+.island-card[data-glass-edge='bottom'] {
+  --glass-rim-size: 100% var(--glass-edge-width);
+  --glass-rim-side: bottom;
+  --glass-rim-light: var(--glass-light-x, 50%) 50%;
 }
 
 [data-native-backdrop-surface][data-glass-light] > .island-glass-optic .lg-glass::after {
   padding: var(--glass-edge-width);
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   background: radial-gradient(ellipse 55% 110% at var(--glass-light-x, 50%) var(--glass-light-y, 50%), white, transparent 80%);
-  opacity: calc(var(--glass-highlight-strength, .5) * var(--glass-parallax-strength, .5));
+  opacity: calc(var(--glass-highlight-strength, .42) * var(--glass-parallax-strength, .91));
   transition: none;
 }
 

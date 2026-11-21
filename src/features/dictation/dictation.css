@@ -183,8 +183,7 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-theme-choice__name { font-size: var(--text-caption); color: var(--fg-secondary); pointer-events: none; }
 .dictation-theme-choice[data-selected='true'] .dictation-theme-choice__name { color: var(--fg-primary); }
 .dictation-theme-choice__check { position: absolute; top: var(--space-2); right: var(--space-2); color: var(--fg-primary); pointer-events: none; }
-.dictation-theme-options { animation: dictation-options 180ms var(--ease-standard); }
-.dictation-theme-options .ui-color-swatches:has(+ .ui-setting-row) { margin-bottom: var(--space-2); }
+.dictation-theme-options { display: grid; gap: var(--space-4); animation: dictation-options 180ms var(--ease-standard); }
 @keyframes dictation-options { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .dictation-overlay, .dictation-overlay *, .dictation-theme-choice, .dictation-theme-options { animation: none !important; transition: none !important; } }
 [data-reduced-motion='true'] .dictation-theme-choice, [data-reduced-motion='true'] .dictation-theme-options { animation: none; transition: none; }

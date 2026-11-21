@@ -157,7 +157,7 @@ it('stops observing geometry when Windows has disabled backdrop effects', async 
 it('adjusts frost on the same native target and skips measurements at zero', async () => {
   await act(async () => root.render(<Overlay />))
   await act(async () => vi.advanceTimersByTimeAsync(500))
-  expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0].frost).toBe(.72)
+  expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0].frost).toBe(.85)
   for (const amount of [.45, 0, 1]) {
     await act(async () => root.render(<Overlay frost={amount} />))
     await act(async () => vi.advanceTimersByTimeAsync(48))

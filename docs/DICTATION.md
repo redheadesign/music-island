@@ -280,6 +280,12 @@ preview renders the same production component as the recording window, restarts
 its recording → recognition → done cycle after a theme/color/colored-edge change,
 and never starts audio capture. Fox is the default when a profile has no saved theme; explicit saved choices are preserved. The picker order is Fox, Waves, Classic.
 
+**Capsule material** defaults to **Match island**. Choosing **Glass** for the
+first time copies the island’s five current settings. Open **Glass material**
+to adjust the capsule’s transparency, background blur, parallax, highlight and
+edge thickness. The capsule remembers those values through switches to Classic
+or Match island. The live preview and recording window use the same material.
+
 Waves use the source recorder's multilayer glow, soft energy limiter, diffuse
 material, refraction and full bevel. The central 84 × 44 capsule leaves generous
 horizontal space around the artwork in every phase; detached controls are 32 px.

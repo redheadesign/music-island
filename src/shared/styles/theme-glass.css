@@ -20,21 +20,27 @@
   --glass-contour: linear-gradient(146deg, rgb(255 255 255 / .53), rgb(255 255 255 / .14) 29%, rgb(255 255 255 / .045) 53%, rgb(255 255 255 / .12) 75%, rgb(255 255 255 / .35));
   --glass-light-peak: rgb(255 255 255 / .82);
   --glass-panel-rim: inset 0 1px rgb(255 255 255 / calc(.18 * var(--glass-highlight)));
-  --glass-control-rim: inset 1px 1px rgb(255 255 255 / calc(.48 * var(--glass-highlight))), inset -1px -1px rgb(255 255 255 / calc(.13 * var(--glass-highlight)));
-  /* At the default 55%, the player transmits half the desktop and the small
-     text surfaces transmit 36%. Keep text readable even at 100% over white. */
+  --glass-control-rim: inset 0 var(--glass-edge-width) rgb(255 255 255 / calc(.44 * var(--glass-highlight))), inset 0 calc(0px - var(--glass-edge-width)) rgb(255 255 255 / calc(.16 * var(--glass-highlight)));
+  /* Independent silhouettes share the same desktop transmission. A neutral
+     veil behind small text preserves its contrast on a bright document. */
   --glass-transparency: var(--glass-transparency-strength, .55);
   --glass-base-range: min(var(--glass-transparency), .55);
   --glass-clear-range: max(0, var(--glass-transparency) - .55);
   --glass-island-transmission: calc(var(--glass-base-range) * .91 + var(--glass-clear-range) * .55);
-  --glass-reading-transmission: calc(var(--glass-base-range) * .655 + var(--glass-clear-range) * .067);
+  --glass-reading-veil: calc(.62 * var(--glass-island-transmission));
+  --glass-reading-transmission: calc(var(--glass-island-transmission) * (1 - var(--glass-reading-veil)));
   --glass-island-fill: rgb(8 8 8 / calc(1 - var(--glass-island-transmission)));
   --glass-reading-fill: rgb(8 8 8 / calc(1 - var(--glass-reading-transmission)));
   --glass-reading-secondary: #eeeee9;
   --glass-edge-width: calc(.5px + 1.5px * var(--glass-edge-strength, .5));
   --glass-reading-sheen:
     linear-gradient(90deg, transparent, rgb(255 255 255 / calc(.44 * var(--glass-highlight))), transparent) top / 62% var(--glass-edge-width) no-repeat,
-    linear-gradient(160deg, rgb(255 255 255 / calc(.04 * var(--glass-highlight))), transparent 52%);
+    linear-gradient(90deg, transparent, rgb(255 255 255 / calc(.18 * var(--glass-highlight))), transparent) bottom / 72% var(--glass-edge-width) no-repeat,
+    linear-gradient(180deg, transparent, rgb(8 8 8 / var(--glass-reading-veil)) var(--space-2), rgb(8 8 8 / var(--glass-reading-veil)) calc(100% - var(--space-2)), transparent);
+  /* Buttons on a frosted plane only add tint and a specular edge. Cap the
+     combined transmission behind labels, regardless of the desktop color. */
+  --glass-upper-fill: rgb(8 8 8 / max(.14, 1 - .40 / max(.01, var(--glass-island-transmission))));
+  --glass-layer-tint: rgb(8 8 8 / calc(.32 - .18 * var(--glass-transparency)));
   --glass-island-opaque: #242424;
   --glass-depth: 0 9px 32px -16px rgb(0 0 0 / .68);
   --shadow-control-depth: 0 2px 10px -4px rgb(0 0 0 / .48);
@@ -95,6 +101,7 @@
   --glass-island-fill: var(--glass-island-opaque);
   --glass-reading-fill: var(--glass-island-opaque);
   --glass-reading-sheen: none;
+  --glass-layer-tint: #424241;
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -114,6 +121,7 @@
     --glass-island-fill: var(--glass-island-opaque);
     --glass-reading-fill: var(--glass-island-opaque);
     --glass-reading-sheen: none;
+    --glass-layer-tint: #424241;
   }
 }
 
@@ -133,5 +141,6 @@
     --glass-popup-opacity: 100%;
     --glass-reading-fill: var(--glass-island-opaque);
     --glass-reading-sheen: none;
+    --glass-layer-tint: #424241;
   }
 }

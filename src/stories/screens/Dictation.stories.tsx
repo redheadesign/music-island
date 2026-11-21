@@ -6,6 +6,8 @@ import { dictationApi } from '../mocks/dictationApi'
 import { dictationModels, dictationSettings, gigaamRnnt, parakeetEnglish } from '../dictationFixtures'
 import { useState, type ComponentProps } from 'react'
 import { defaultDictationAppearance } from '../../shared/lib/dictationAppearance'
+import { getDefaultConfig } from '../../app/tauriApi'
+import { withUiPrefs } from '../../shared/lib/uiPrefs'
 function DictationWorkshop({ args }: { args: ComponentProps<typeof DictationSettings> }) {
   const [appearance, setAppearance] = useState(args.appearance ?? defaultDictationAppearance)
   const [showLatestMessage, setShowLatestMessage] = useState(args.showLatestMessage ?? false)
@@ -107,6 +109,31 @@ const readyController: DictationController = {
     settings: { ...dictationSettings, selected_model: gigaamRnnt.id } },
 }
 export const General: Story = { name: 'Микрофон и сочетание', args: { page: 'general', controller: readyController } }
+export const IndependentCapsuleMaterial: Story = {
+  name: 'Лиса · независимое стекло капсулы',
+  args: { ...General.args, reducedMotion: true, config: withUiPrefs(getDefaultConfig(), { interfaceTheme: 'classic', glassMaterial: { frost: 62 } }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const modes = within(canvas.getByRole('group', { name: 'Материал капсулы' }))
+    const capsule = canvasElement.querySelector<HTMLElement>('.dictation-preview .dictation-overlay')!
+    const match = modes.getByRole('radio', { name: 'Как у островка' })
+    const glass = modes.getByRole('radio', { name: 'Стекло' })
+    await expect(match).toBeChecked()
+    await expect(capsule).toHaveAttribute('data-material', 'classic')
+    await userEvent.click(glass)
+    await expect(capsule).toHaveAttribute('data-material', 'glass')
+    await userEvent.click(canvas.getByText('Параметры стекла'))
+    const frost = canvas.getByRole('slider', { name: 'Размытие фона' })
+    await expect(frost).toHaveValue('62')
+    await fireEvent.change(frost, { target: { value: '17' } })
+    await expect(capsule.style.getPropertyValue('--glass-frost-strength')).toBe('0.17')
+    await userEvent.click(match)
+    await expect(capsule).toHaveAttribute('data-material', 'classic')
+    await expect(canvas.queryByRole('slider', { name: 'Размытие фона' })).toBeNull()
+    await userEvent.click(glass)
+    await expect(capsule.style.getPropertyValue('--glass-frost-strength')).toBe('0.17')
+  },
+}
 export const GeneralNeedsModel: Story = { name: 'Основное · требуется модель', args: { page: 'general' } }
 export const WaveTheme: Story = { name: 'Тема · волны и оптический материал', args: { page: 'general', appearance: { ...defaultDictationAppearance, theme: 'wave', palette: 'prism' } } }
 export const WaveWhite: Story = { name: 'Волны · белый цвет', args: { page: 'general', appearance: { ...defaultDictationAppearance, theme: 'wave', palette: 'white' } } }
@@ -133,7 +160,8 @@ export const ThemeSwitching: Story = { name: 'Темы · переключени
   await expect(canvas.getByRole('switch', { name: 'Цветные края волн' })).toBeVisible()
   await userEvent.click(canvas.getByRole('radio', { name: 'Лиса' }))
   await expect(canvas.getByRole('radio', { name: 'Сакура' })).toBeChecked()
-  await userEvent.click(canvas.getByRole('radio', { name: 'Классическая' }))
+  const artwork = within(canvas.getByRole('radiogroup', { name: 'Тема диктовки' }))
+  await userEvent.click(artwork.getByRole('radio', { name: 'Классическая' }))
   await expect(canvas.queryByRole('radiogroup', { name: 'Цвет диктовки' })).not.toBeInTheDocument()
 } }
 export const History: Story = { name: 'История · пустое состояние', args: { page: 'history' } }

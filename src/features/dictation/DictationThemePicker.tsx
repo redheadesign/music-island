@@ -2,6 +2,10 @@ import { useId } from 'react'
 import { ColorSwatches } from '../../shared/ui/ColorSwatches'
 import { Switch } from '../../shared/ui/SettingsControls'
 import { Check } from '../../shared/ui/SettingsIcons'
+import { DEFAULT_GLASS_MATERIAL, type GlassMaterial } from '../../shared/lib/glassMaterial'
+import { INTERFACE_THEMES, INTERFACE_THEME_IDS, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
+import { AppearanceChoices } from '../settings/AppearanceChoices'
+import { GlassMaterialSettings } from '../settings/GlassMaterialSettings'
 import { dictationThemes, dictationPalettes, dictationPaletteSwatches, type DictationAppearance } from '../../shared/lib/dictationAppearance'
 import { DictationVisual } from './DictationVisual'
 
@@ -9,7 +13,7 @@ const themeNames = { classic: ['Классическая', 'Classic'], wave: ['�
 const paletteNames = { accent: ['Акцент', 'Accent'], white: ['Белый', 'White'], prism: ['Призма', 'Prism'], aurora: ['Аврора', 'Aurora'], lagoon: ['Лагуна', 'Lagoon'], sakura: ['Сакура', 'Sakura'], ember: ['Угли', 'Ember'], dune: ['Дюны', 'Dune'] }
 const previewLevels = [.65]
 
-export function DictationThemePicker({ value, onChange, locale }: { value: DictationAppearance; onChange: (value: DictationAppearance) => void; locale: 'ru' | 'en' }) {
+export function DictationThemePicker({ value, islandGlass, onChange, locale }: { value: DictationAppearance; islandGlass: GlassMaterial; onChange: (value: DictationAppearance) => void; locale: 'ru' | 'en' }) {
   const ru = locale === 'ru', index = ru ? 0 : 1
   const id = useId()
   const t = (a: string, b: string) => ru ? a : b
@@ -24,9 +28,28 @@ export function DictationThemePicker({ value, onChange, locale }: { value: Dicta
       </label>)}
     </div>
   </section>
-    {value.theme !== 'classic' ? <div className="dictation-card dictation-theme-options">
-      <ColorSwatches ariaLabel={t('Цвет диктовки', 'Dictation color')} value={value.palette} onChange={palette => patch({ palette })} options={dictationPalettes.map(palette => ({ value: palette, label: paletteNames[palette][index], color: dictationPaletteSwatches[palette] }))} />
+    <div className="dictation-card dictation-theme-options">
+      {value.theme !== 'classic' && <ColorSwatches ariaLabel={t('Цвет диктовки', 'Dictation color')} value={value.palette} onChange={palette => patch({ palette })} options={dictationPalettes.map(palette => ({ value: palette, label: paletteNames[palette][index], color: dictationPaletteSwatches[palette] }))} />}
       {value.theme === 'wave' ? <Switch label={t('Цветные края волн', 'Colored wave edges')} checked={value.chromatic} onChange={chromatic => patch({ chromatic })} /> : null}
-    </div> : null}
+      <AppearanceChoices<InterfaceThemeId | 'island'>
+        label={t('Материал капсулы', 'Capsule material')}
+        value={value.materialTheme ?? 'island'}
+        options={[
+          { value: 'island', label: t('Как у островка', 'Match island'), swatch: null },
+          ...INTERFACE_THEME_IDS.map(id => ({
+            value: id, label: INTERFACE_THEMES[id].label[locale],
+            swatch: <span aria-hidden="true" className="appearance-choices__swatch appearance-choices__material" data-interface-theme={id} />,
+          })),
+        ]}
+        onChange={mode => patch({
+          materialTheme: mode === 'island' ? undefined : mode,
+          ...(mode === 'glass' && !value.glassMaterial && { glassMaterial: islandGlass }),
+        })}
+      />
+      {value.materialTheme === 'glass' && <GlassMaterialSettings
+        locale={locale} material={value.glassMaterial ?? DEFAULT_GLASS_MATERIAL}
+        onChange={glassMaterial => patch({ glassMaterial })}
+      />}
+    </div>
   </>
 }

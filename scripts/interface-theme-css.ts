@@ -1,4 +1,5 @@
 import postcss, { type Plugin } from 'postcss'
+import { DEFAULT_GLASS_MATERIAL, glassMaterialStyle } from '../src/shared/lib/glassMaterialTokens.ts'
 import { INTERFACE_THEMES, type ThemeDefinition, type ThemeRoles } from '../src/shared/lib/interfaceTheme.ts'
 
 /** Material selectors keep their original specificity. Adding a theme only changes the registry. */
@@ -18,6 +19,13 @@ export function interfaceThemeCss(themes: Record<string, ThemeDefinition> = INTE
           (original: string, _quote: string, material: string) => materials.get(material) ?? original)
       })
       root.walkAtRules('interface-theme-roles', marker => {
+        // The first paint and standalone components use the same preset as Settings.
+        // Declare it once at the root so nested surfaces inherit live overrides.
+        const defaults = postcss.rule({ selector: ':root', source: marker.source })
+        for (const [prop, value] of Object.entries(glassMaterialStyle(DEFAULT_GLASS_MATERIAL))) {
+          defaults.append(postcss.decl({ prop, value: String(value), source: marker.source }))
+        }
+        marker.before(defaults)
         for (const [id, theme] of entries) {
           const base = themes[theme.material]
           const write = (scope: string, roles: ThemeRoles) => {

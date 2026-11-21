@@ -151,7 +151,10 @@ export const MaterialAtMinimumSize: Story = {
     theme.scrollIntoView({ block: 'nearest' })
     await expect(within(theme).getByRole('radio', { name: 'Стекло' })).toBeChecked()
     await expect(appearance.scrollWidth).toBeLessThanOrEqual(appearance.clientWidth + 1)
-    await expect(appearance.querySelector('details')).toBeNull()
+    await expect(within(appearance).getByRole('switch', { name: 'Фон при воспроизведении' }).closest('details')).toBeNull()
+    const tuning = within(appearance).getByText('Параметры стекла').closest('details')!
+    await expect(tuning.open).toBe(false)
+    await expect(tuning.querySelector('summary')!.getBoundingClientRect().height).toBeGreaterThanOrEqual(32)
   },
 }
 export const GlassPlaybackBackground: Story = {
@@ -176,13 +179,19 @@ export const GlassMaterialTuning: Story = {
   ...Glass, name: 'Стекло · настройка материала',
   globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
+    const canvas = within(canvasElement.querySelector<HTMLElement>('.settings-appearance')!)
+    const disclosure = () => canvas.getByText('Параметры стекла').closest('summary')!
+    await expect(disclosure()).toHaveTextContent('По умолчанию')
+    disclosure().focus()
+    await userEvent.keyboard('{Enter}')
     const controls = within(canvas.getByRole('group', { name: 'Параметры стекла' }))
     const preview = canvasElement.querySelector<HTMLElement>('.island-preview .island-root')!
     const transparency = controls.getByRole('slider', { name: 'Прозрачность' })
     const frost = controls.getByRole('slider', { name: 'Размытие фона' })
     const parallax = controls.getByRole('slider', { name: 'Параллакс' })
     await expect(controls.getAllByRole('slider')).toHaveLength(5)
+    await expect(transparency).toBeVisible()
+    await expect(controls.getByRole('button', { name: 'Сбросить параметры стекла' })).toBeDisabled()
     await fireEvent.change(transparency, { target: { value: '82' } })
     await fireEvent.change(frost, { target: { value: '0' } })
     await fireEvent.change(parallax, { target: { value: '0' } })
@@ -191,12 +200,22 @@ export const GlassMaterialTuning: Story = {
       expect(preview.style.getPropertyValue('--glass-user-filter')).toBe('none')
       expect(preview.style.getPropertyValue('--glass-parallax-strength')).toBe('0')
     })
+    await expect(disclosure()).toHaveTextContent('Свои значения')
+    await userEvent.click(disclosure())
+    await expect(transparency).not.toBeVisible()
     await userEvent.click(canvas.getByRole('radio', { name: 'Классическая' }))
-    await expect(canvas.queryByRole('slider', { name: 'Параллакс' })).toBeNull()
+    await expect(canvas.queryByText('Параметры стекла')).toBeNull()
     await userEvent.click(canvas.getByRole('radio', { name: 'Стекло' }))
+    await expect(disclosure()).toHaveTextContent('Свои значения')
+    await userEvent.click(disclosure())
     await expect(canvas.getByRole('slider', { name: 'Прозрачность' })).toHaveValue('82')
     await userEvent.click(canvas.getByRole('button', { name: 'Сбросить параметры стекла' }))
-    await expect(canvas.getByRole('slider', { name: 'Размытие фона' })).toHaveValue('72')
+    await expect(disclosure()).toHaveTextContent('По умолчанию')
+    await expect(canvas.getByRole('slider', { name: 'Прозрачность' })).toHaveValue('90')
+    await expect(canvas.getByRole('slider', { name: 'Размытие фона' })).toHaveValue('85')
+    await expect(canvas.getByRole('slider', { name: 'Параллакс' })).toHaveValue('91')
+    await expect(canvas.getByRole('slider', { name: 'Яркость блика' })).toHaveValue('42')
+    await expect(canvas.getByRole('slider', { name: 'Толщина кромки' })).toHaveValue('50')
     canvas.getByRole('group', { name: 'Параметры стекла' }).scrollIntoView({ block: 'center' })
   },
 }

@@ -9,7 +9,7 @@ import { buildInterfacePaletteStyle, normalizeInterfacePalette, type InterfacePa
 export const UI_PREFS_KEY = 'ui'
 
 export interface UiPrefs {
-  /** Recorder artwork only; native capture and overlay visibility remain independent. */
+  /** Recorder artwork and optional capsule material override. */
   dictationAppearance?: DictationAppearance
   /** Opt in to a persistent view of the most recent dictation text on the island. */
   showLatestDictationMessage?: boolean

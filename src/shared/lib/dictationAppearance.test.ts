@@ -2,6 +2,7 @@ import { expect, it } from 'vitest'
 import { defaultDictationAppearance, getDictationAppearance, normalizeDictationAppearance } from './dictationAppearance'
 import type { AppConfig } from './types'
 import { withUiPrefs } from './uiPrefs'
+import { DEFAULT_GLASS_MATERIAL } from './glassMaterial'
 
 it('defaults to Fox, preserves explicit saved themes and salvages malformed preferences', () => {
   expect(normalizeDictationAppearance(undefined)).toEqual(defaultDictationAppearance)
@@ -21,4 +22,14 @@ it('preserves per-theme choices when switching away and back in the persisted ap
   config = withUiPrefs(config, { dictationAppearance: { ...getDictationAppearance(config), theme: 'pixels' } })
   expect(getDictationAppearance(JSON.parse(JSON.stringify(config)))).toEqual(saved)
   expect(config.plugins.settings.ui).toMatchObject({ developerMode: true })
+})
+
+it('retains a separate capsule material and safely reads older or partial profiles', () => {
+  const saved = normalizeDictationAppearance({ materialTheme: 'glass', glassMaterial: { frost: 0, transparency: 113 } })
+  expect(saved.materialTheme).toBe('glass')
+  expect(saved.glassMaterial).toEqual({ ...DEFAULT_GLASS_MATERIAL, frost: 0, transparency: 100 })
+  expect(normalizeDictationAppearance({ ...saved, materialTheme: 'unknown' })).toEqual({
+    ...defaultDictationAppearance, glassMaterial: saved.glassMaterial,
+  })
+  expect(normalizeDictationAppearance({ materialTheme: null, glassMaterial: [] })).toEqual(defaultDictationAppearance)
 })

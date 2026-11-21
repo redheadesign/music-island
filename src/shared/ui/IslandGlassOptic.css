@@ -1,6 +1,6 @@
 .island-glass-optic {
   --optic-width: var(--glass-edge-width, 1px);
-  --optic-highlight: var(--glass-highlight-strength, .5);
+  --optic-highlight: var(--glass-highlight-strength, .42);
   position: absolute;
   inset: 0;
   z-index: 0;
@@ -27,6 +27,15 @@
   box-sizing: border-box;
   border-radius: var(--island-optic-radius, inherit);
   box-shadow: inset 0 0 0 var(--optic-width) rgb(255 255 255 / calc(.4 * var(--optic-highlight)));
+}
+
+/* Glisse's press overlay fades a full-surface radial gradient on release.
+   Keep it absent on both sides of a hover transition: the only moving light
+   on this lens is the local edge drawn by glass-optics.css. */
+.island-glass-optic > .lg-glass::after {
+  background: none;
+  opacity: 0;
+  transition: none;
 }
 
 /* Nine-slice the 2x original Glisse rim at its 36 CSS-pixel corner radius.

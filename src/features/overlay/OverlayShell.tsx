@@ -159,7 +159,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const playbackMotion = hasSession && media?.playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
   const glassMaterial = useMemo(() => getGlassMaterial(config), [config])
-  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency, '.island-surface, .island-actions > .icon-button', glassMaterial.frost / 100)
+  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency, '.island-surface, .island-actions > .icon-button, .island-plugin-button', glassMaterial.frost / 100)
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {

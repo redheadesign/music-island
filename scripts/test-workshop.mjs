@@ -14,7 +14,7 @@ const criticalStories = [
   'screens-settings--assistant-limits', 'screens-voiceguide--troubleshooting',
   'screens-bettervoice--settings-groups',
   'screens-bettervoice--classic-running', 'screens-bettervoice--start-error',
-  'screens-dictation--general-needs-model', 'screens-dictation--import-preview',
+  'screens-dictation--general-needs-model', 'screens-dictation--independent-capsule-material', 'screens-dictation--import-preview',
   'screens-dictation--history-actions', 'screens-dictation--dictionary-fields',
   'screens-dictation--post-processing-setup', 'screens-dictation--advanced-load-error-narrow',
   'screens-onboarding--first-launch', 'screens-onboarding--layout', 'screens-onboarding--voice',

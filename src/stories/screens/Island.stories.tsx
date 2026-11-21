@@ -236,6 +236,27 @@ export const GlassOpticalSurface: StoryObj<typeof meta> = {
       await expect(getComputedStyle(lens).backdropFilter).toContain('glisse-bezel-')
       await expect(frame.querySelectorAll('feDisplacementMap')).toHaveLength(1)
     }
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const move = (target: Element, x: number, y: number) => target.dispatchEvent(
+      new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse', clientX: x, clientY: y }),
+    )
+    const edge = card.getBoundingClientRect()
+    move(card, edge.left + 2, edge.top + edge.height / 2)
+    await waitFor(() => expect(card).toHaveAttribute('data-glass-edge', 'left'))
+    for (const control of card.querySelectorAll<HTMLButtonElement>('button:enabled')) {
+      const { left, top, width, height } = control.getBoundingClientRect()
+      move(control.querySelector('svg, span') ?? control, left + width / 2, top + height / 2)
+      await waitFor(() => expect(control).toHaveAttribute('data-glass-light'))
+      await expect(card).not.toHaveAttribute('data-glass-light')
+      const idle = getComputedStyle(lens, '::after')
+      await expect(idle.opacity).toBe('0')
+      await expect(idle.backgroundImage).toBe('none')
+      await expect(idle.transitionDuration).toBe('0s')
+    }
+    move(card, edge.left + edge.width / 2, edge.top + edge.height / 2)
+    await new Promise(requestAnimationFrame)
+    await expect(card.querySelector('[data-glass-light]')).toBeNull()
+    await expect(card).not.toHaveAttribute('data-glass-light')
   },
 }
 export const GlassControlLenses: StoryObj<typeof meta> = {
@@ -672,25 +693,42 @@ export const GlassWidgetPanels: StoryObj<typeof meta> = {
     // already be present in the first render, while its opacity is still zero.
     const surfaces = await waitFor(() => {
       const drawer = canvasElement.querySelector<HTMLElement>('.island-hover-zone')
-      expect(drawer).toHaveStyle({ opacity: '1' })
+      if (!drawer || getComputedStyle(drawer).opacity !== '1') throw new Error('Waiting for the drawer entrance')
       return ['.usage-chip__compact-provider', '.island-local-servers', '.island-latest-dictation'].map(selector => {
         const surface = canvasElement.querySelector<HTMLElement>(selector)
-        expect(surface).toBeVisible()
-        return surface!
+        if (!surface) throw new Error(`Waiting for ${selector}`)
+        return surface
       })
     })
     for (const surface of surfaces) {
+      await expect(surface).toBeVisible()
       await expect(surface).toHaveClass('island-surface')
       await expect(surface.querySelector('.island-glass-optic')).toBeNull()
     }
     if (matchMedia('(forced-colors: active), (prefers-reduced-transparency: reduce), (prefers-contrast: more)').matches) return
     const [provider, servers, latest] = surfaces.map(surface => getComputedStyle(surface))
+    const player = canvasElement.querySelector<HTMLElement>('.island-card')!
+    // Artwork colors remain in the progress and wave. The base has no
+    // directional highlight in the top-left corner.
+    await expect(getComputedStyle(player).backgroundImage).toBe('none')
     await expect(provider.backgroundColor).toBe(servers.backgroundColor)
     await expect(latest.backgroundColor).toBe(servers.backgroundColor)
     await expect(servers.backgroundColor).toMatch(/^rgba\(.+, 0\.\d+\)$/)
     for (const surface of [provider, servers, latest]) {
       await expect(surface.backdropFilter).toContain('blur(')
       await expect(surface.backgroundImage).toBe(servers.backgroundImage)
+    }
+    const root = player.closest<HTMLElement>('.island-root')!
+    const previousEdge = root.style.getPropertyValue('--glass-edge-strength')
+    try {
+      root.style.setProperty('--glass-edge-strength', '0')
+      const thin = getComputedStyle(surfaces[0]).backgroundSize
+      root.style.setProperty('--glass-edge-strength', '1')
+      for (const surface of surfaces) {
+        await expect(getComputedStyle(surface).backgroundSize).not.toBe(thin)
+      }
+    } finally {
+      root.style.setProperty('--glass-edge-strength', previousEdge)
     }
   },
 }

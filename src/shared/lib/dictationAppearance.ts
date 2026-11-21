@@ -1,4 +1,6 @@
 import type { AppConfig } from './types'
+import { normalizeGlassMaterial, type GlassMaterial } from './glassMaterial'
+import { isInterfaceThemeId, type InterfaceThemeId } from './interfaceTheme'
 import { getUiPrefs } from './uiPrefs'
 
 export const dictationThemes = ['pixels', 'wave', 'classic'] as const
@@ -8,6 +10,9 @@ export interface DictationAppearance {
   theme: typeof dictationThemes[number]
   palette: typeof dictationPalettes[number]
   chromatic: boolean
+  /** No override means that the recording capsule follows the island. */
+  materialTheme?: InterfaceThemeId
+  glassMaterial?: GlassMaterial
 }
 
 export const defaultDictationAppearance: DictationAppearance = {
@@ -27,6 +32,9 @@ export function normalizeDictationAppearance(value: unknown): DictationAppearanc
     theme: choice(raw.theme, dictationThemes, defaultDictationAppearance.theme),
     palette: choice(raw.palette, dictationPalettes, 'accent'),
     chromatic: raw.chromatic === true,
+    ...(isInterfaceThemeId(raw.materialTheme) && { materialTheme: raw.materialTheme }),
+    ...(raw.glassMaterial && typeof raw.glassMaterial === 'object' && !Array.isArray(raw.glassMaterial)
+      && { glassMaterial: normalizeGlassMaterial(raw.glassMaterial) }),
   }
 }
 

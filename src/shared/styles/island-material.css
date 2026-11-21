@@ -18,7 +18,7 @@
 /* Independent desktop silhouettes get one frost plane. The soft highlight also
    works on the small quota capsule without a second lens or a hard outline. */
 [data-interface-theme='glass'] .island-surface:not(.island-card) {
-  background: var(--glass-reading-sheen) var(--glass-reading-fill);
+  background: var(--glass-reading-sheen) var(--glass-island-fill);
   backdrop-filter: var(--island-detached-filter, var(--glass-filter));
   box-shadow: var(--glass-depth);
   --fg-secondary: var(--glass-reading-secondary);
@@ -38,19 +38,23 @@
 [data-interface-theme='glass'] .usage-chip__provider--stale .usage-chip__ring-logo {
   opacity: .72;
 }
+/* Secondary actions already have a readable, frosted plane underneath them. */
+.island-root[data-interface-theme='glass'] .island-surface :is(.ui-button--ghost, .island-update-rail__ghost) {
+  background: var(--glass-control-sheen) var(--glass-layer-tint);
+  border-radius: var(--glass-control-radius);
+  box-shadow: var(--glass-control-rim);
+}
 @media (hover: hover) {
-  .island-root[data-interface-theme='glass'] .island-surface .ui-button--ghost:enabled:hover {
-    background-color: var(--surface-hover);
+  .island-root[data-interface-theme='glass'] .island-surface :is(.ui-button--ghost, .island-update-rail__ghost):enabled:hover {
+    background: var(--glass-selection-sheen) var(--glass-layer-tint);
   }
 }
-.island-root[data-interface-theme='glass'] .island-surface .ui-button--ghost:enabled:active {
-  background-color: var(--surface-selected);
+.island-root[data-interface-theme='glass'] .island-surface :is(.ui-button--ghost, .island-update-rail__ghost):enabled:active {
+  background: var(--glass-sheen) var(--glass-layer-tint);
 }
 
 [data-interface-theme='glass'] .island-card {
-  background-image:
-    var(--glass-sheen),
-    linear-gradient(115deg, var(--island-artwork-tint, transparent), transparent 76%);
+  background: var(--island-player-fill, var(--glass-island-fill));
   border-radius: 0 0 var(--glass-island-radius) var(--glass-island-radius);
   box-shadow: inset 1px 0 rgb(255 255 255 / .16), inset -1px -1px rgb(255 255 255 / .12), var(--glass-depth);
   backdrop-filter: var(--glass-filter);
@@ -64,24 +68,18 @@
   --island-optic-radius: var(--glass-island-radius);
   --island-optic-overhang: var(--glass-island-radius);
   --island-optic-fill: transparent;
-  background: linear-gradient(115deg, var(--island-artwork-tint, transparent), transparent 76%) var(--glass-island-fill);
+  background: var(--island-player-fill, var(--glass-island-fill));
   box-shadow: var(--glass-depth);
   backdrop-filter: none;
 }
 
 /* Controls stay neutral. The plate, playback fill and light pick up the cover. */
 .island-root[data-interface-theme='glass'] {
-  --island-glass-control: var(--glass-reading-fill);
-  --island-glass-hover: color-mix(in srgb, var(--glass-reading-fill) 85%, white);
-  --island-glass-pressed: color-mix(in srgb, var(--glass-reading-fill) 85%, black);
-  /* The darkening under labels is local to their control as the card clears.
-     Cap combined transmission at 38% for white glyphs over bright desktops. */
-  --island-control-transmission: min(var(--glass-transparency) * 1.45, .38 / max(.01, var(--glass-island-transmission)));
-  --island-clear-lens-fill: rgb(8 8 8 / calc(1 - var(--island-control-transmission)));
-  --island-lens-fill: var(--glass-reading-fill);
+  --island-lens-fill: var(--glass-upper-fill);
+  --island-lens-sheen: var(--glass-control-sheen);
   --island-lens-hover-tint: rgb(62 62 61 / calc(1 - var(--glass-reading-transmission)));
   --island-lens-pressed-tint: rgb(12 12 12 / calc(1 - var(--glass-reading-transmission)));
-  --island-lens-hover-sheen: var(--glass-sheen), linear-gradient(rgb(255 255 255 / calc(.10 * var(--glass-highlight))), transparent);
+  --island-lens-hover-sheen: var(--glass-selection-sheen);
   --island-cover-primary: #a6a6a2;
   --island-cover-secondary: #777774;
   --island-progress-start: var(--artwork-progress-color, #6d6d69);
@@ -96,7 +94,7 @@
 .island-root[data-interface-theme='glass'][data-cover-art='true'] {
   --island-cover-primary: rgb(var(--artwork-primary));
   --island-cover-secondary: rgb(var(--artwork-secondary));
-  --island-artwork-tint: color-mix(in srgb, var(--island-cover-primary) 16%, transparent);
+  --island-player-fill: color-mix(in srgb, var(--island-cover-primary) 4%, var(--glass-island-fill));
   --island-wave-crest: color-mix(in srgb, var(--island-cover-primary) 50%, transparent);
   --island-wave-trough: color-mix(in srgb, var(--island-cover-secondary) 21%, transparent);
 }
@@ -203,20 +201,15 @@
   16%, 66% { opacity: .65; }
   100% { opacity: 0; transform: translateY(var(--particle-fall)); }
 }
-.island-root[data-interface-theme='glass'] .island-plugin-button {
-  color: var(--island-glass-ink);
-  background: var(--glass-sheen) var(--island-glass-control);
-  box-shadow: var(--glass-control-rim), var(--shadow-control-depth);
-}
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button) {
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button) {
   color: var(--island-glass-ink);
   background: var(--island-lens-sheen, var(--glass-sheen)) var(--island-lens-state, var(--island-lens-fill));
   box-shadow: var(--island-lens-shadow, var(--island-lens-rim, var(--glass-control-rim)), var(--shadow-control-depth));
   /* These controls sit on an already frosted card. */
   backdrop-filter: none;
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .progress-track, .reaction-button:not(.playback-mode-button)) {
-  --island-lens-fill: var(--island-clear-lens-fill);
+.island-root[data-interface-theme='glass'] .progress-track {
+  --island-lens-sheen: var(--glass-sheen);
   --island-lens-shadow: var(--glass-control-rim);
 }
 .island-root[data-interface-theme='glass'] .artwork-play-button {
@@ -226,7 +219,7 @@
 }
 /* Detached actions sit directly over the desktop; their neutral reading fill
    keeps the white glyph legible even over a bright window. */
-.island-root[data-interface-theme='glass'] .island-actions .icon-button {
+.island-root[data-interface-theme='glass'] :is(.island-actions .icon-button, .island-plugin-button) {
   --island-lens-fill: var(--glass-reading-fill);
   --island-lens-sheen: var(--glass-control-sheen);
   backdrop-filter: var(--island-detached-filter, var(--glass-filter));
@@ -241,22 +234,13 @@
 }
 
 @media (hover: hover) {
-  .island-root[data-interface-theme='glass'] .island-plugin-button:enabled:hover {
-    background-color: var(--island-glass-hover);
-    background-image: var(--glass-selection-sheen);
-  }
-  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button):enabled:hover {
+  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button):enabled:hover {
     --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 82%, var(--island-lens-hover-tint));
     --island-lens-sheen: var(--island-lens-hover-sheen);
   }
   .island-root[data-interface-theme='glass'] .reaction-button:hover { transform: none; }
 }
-.island-root[data-interface-theme='glass'] .island-plugin-button:enabled:active {
-  color: var(--island-glass-ink);
-  background-color: var(--island-glass-pressed);
-  box-shadow: inset 0 1px 4px rgb(0 0 0 / .35);
-}
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button):enabled:active {
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button):enabled:active {
   --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 70%, var(--island-lens-pressed-tint));
   --island-lens-sheen: var(--glass-sheen);
   --island-lens-rim: inset 0 1px 4px rgb(0 0 0 / .35);
@@ -301,6 +285,9 @@
   }
 }
 .island-root[data-interface-theme='glass'] .island-actions .island-settings-button::before { content: none; }
+.island-root[data-interface-theme='glass'] .island-actions .island-settings-button[data-glass-light] {
+  --island-lens-sheen: radial-gradient(ellipse at var(--glass-light-x,50%) var(--glass-light-y,50%), rgb(255 255 255 / calc(.23 * var(--glass-highlight))), transparent 70%);
+}
 .island-root[data-interface-theme='glass'] .progress-track::before { background: none; }
 .island-root[data-interface-theme='glass'] .progress-fill {
   background: linear-gradient(90deg, var(--island-progress-start), var(--island-progress-end));
@@ -355,7 +342,7 @@
 }
 @media (forced-colors: none) {
   .island-root[data-interface-theme='glass'][data-native-backdrop='unavailable'] .island-surface,
-  .island-root[data-interface-theme='glass'][data-native-backdrop='unavailable'] .island-actions .icon-button {
+  .island-root[data-interface-theme='glass'][data-native-backdrop='unavailable'] :is(.island-actions .icon-button, .island-plugin-button) {
     background: var(--glass-island-opaque);
     backdrop-filter: none;
     transition-property: transform, opacity;
@@ -397,25 +384,17 @@
   }
 }
 .island-root[data-interface-theme='glass'][data-reduced-transparency='true'] {
-  --island-glass-control: #424241;
-  --island-glass-hover: #555553;
-  --island-glass-pressed: #2d2d2c;
-  --island-lens-fill: var(--island-glass-control);
-  --island-clear-lens-fill: var(--island-glass-control);
-  --island-lens-hover-tint: var(--island-glass-hover);
-  --island-lens-pressed-tint: var(--island-glass-pressed);
+  --island-lens-fill: #424241;
+  --island-lens-hover-tint: #555553;
+  --island-lens-pressed-tint: #2d2d2c;
   --island-detached-filter: none;
   --island-lens-hover-sheen: none;
 }
 @media (prefers-reduced-transparency: reduce) {
   .island-root[data-interface-theme='glass'] {
-    --island-glass-control: #424241;
-    --island-glass-hover: #555553;
-    --island-glass-pressed: #2d2d2c;
-    --island-lens-fill: var(--island-glass-control);
-    --island-clear-lens-fill: var(--island-glass-control);
-    --island-lens-hover-tint: var(--island-glass-hover);
-    --island-lens-pressed-tint: var(--island-glass-pressed);
+    --island-lens-fill: #424241;
+    --island-lens-hover-tint: #555553;
+    --island-lens-pressed-tint: #2d2d2c;
     --island-detached-filter: none;
     --island-lens-hover-sheen: none;
   }

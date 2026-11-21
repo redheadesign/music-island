@@ -1,28 +1,33 @@
 .glass-material-settings {
   display: grid;
-  gap: var(--space-3);
   container-type: inline-size;
   min-width: 0;
+  padding-inline: var(--space-1);
+  gap: var(--space-1);
 }
-.glass-material-settings__header,
-.glass-material-settings__sliders label {
+.glass-material-settings__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 4ch;
   align-items: center;
-  gap: var(--space-2);
-}
-.glass-material-settings__header strong {
+  gap: var(--space-3);
+  color: var(--fg-secondary);
   font-size: var(--text-label);
-  font-weight: var(--weight-medium);
 }
-.glass-material-settings__sliders {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-5);
+.glass-material-settings__row output {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-secondary);
 }
-.glass-material-settings__sliders label { color: var(--fg-secondary); font-size: var(--text-label); }
-.glass-material-settings__sliders output { font-variant-numeric: tabular-nums; color: var(--fg-muted); }
-.glass-material-settings__sliders .range-slider { grid-column: 1 / -1; width: 100%; }
+.glass-material-settings > .ui-button {
+  justify-self: end;
+}
 @container (max-width: 310px) {
-  .glass-material-settings__sliders { grid-template-columns: 1fr; }
+  .glass-material-settings__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 var(--space-2);
+  }
+  .glass-material-settings__row .range-slider {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }

@@ -1,13 +1,18 @@
 import { useLayoutEffect } from 'react'
+import { DEFAULT_GLASS_MATERIAL } from '../lib/glassMaterial'
 import { getInterfaceThemeDefinition, isInterfaceThemeId } from '../lib/interfaceTheme'
 
 const controlSelector = [
-  '.ui-button',
-  '.island-card[data-island-optical]',
+  '.ui-button', '.island-surface',
+  ':is(.island-root, .dictation-overlay) :is(button, a[href], input, [role="button"], [role="slider"])',
   '.dictation-overlay[data-native-backdrop-surface]', '.dictation-overlay [data-native-backdrop-surface]',
-  '.media-button', '.play-button', '.reaction-button', '.island-actions .icon-button:not(.island-settings-button)', '.island-plugin-button',
+  '.media-button', '.play-button', '.reaction-button', '.island-plugin-button',
 ].join(', ')
 const quietSelector = '[data-reduced-motion="true"], [data-reduced-transparency="true"], .reduced-motion'
+
+function surfaceAt(target: EventTarget | null) {
+  return target instanceof Element ? target.closest<HTMLElement>(controlSelector) : null
+}
 
 /** Paint only the hovered rim. No animation clock runs between pointer events. */
 export function useGlassPointerLight(enabled: boolean) {
@@ -23,6 +28,7 @@ export function useGlassPointerLight(enabled: boolean) {
 
     const removeLight = () => {
       active?.removeAttribute('data-glass-light')
+      active?.removeAttribute('data-glass-edge')
       active?.style.removeProperty('--glass-light-x')
       active?.style.removeProperty('--glass-light-y')
       active = null
@@ -40,11 +46,19 @@ export function useGlassPointerLight(enabled: boolean) {
       const next = pending
       pending = null
       if (!next?.control.isConnected) return reset()
-      if (active !== next.control) removeLight()
-      const strength = Number.parseFloat(getComputedStyle(next.control).getPropertyValue('--glass-parallax-strength') || '.5')
+      const setting = getComputedStyle(next.control).getPropertyValue('--glass-parallax-strength')
+      const strength = setting ? Number.parseFloat(setting) : DEFAULT_GLASS_MATERIAL.parallax / 100
       if (!(strength > 0)) return reset()
       const rect = next.control.getBoundingClientRect()
       if (!rect.width || !rect.height) return reset()
+      if (next.control.classList.contains('island-card')) {
+        // Only the exposed edge beneath the pointer reflects it. Passing
+        // through the gaps between playback controls leaves the bezel at rest.
+        const left = next.x - rect.left, right = rect.right - next.x, bottom = rect.bottom - next.y
+        const distance = Math.min(left, right, bottom)
+        if (distance < 0 || distance > 12) return reset()
+        next.control.dataset.glassEdge = distance === bottom ? 'bottom' : distance === left ? 'left' : 'right'
+      }
       const percent = (fraction: number) => `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%`
       const clamp = Math.min(strength, 1)
       next.control.style.setProperty('--glass-light-x', percent(.5 + (((next.x - rect.left) / rect.width) - .5) * clamp))
@@ -55,19 +69,19 @@ export function useGlassPointerLight(enabled: boolean) {
 
     const move = (event: PointerEvent) => {
       if (event.pointerType === 'touch' || systemQuiet.matches || document.hidden) return reset()
-      const control = event.target instanceof Element ? event.target.closest<HTMLElement>(controlSelector) : null
+      const control = surfaceAt(event.target)
       const theme = control?.closest('[data-interface-theme]')?.getAttribute('data-interface-theme')
       if (!control || !isInterfaceThemeId(theme) || getInterfaceThemeDefinition(theme).material !== 'glass'
         || control.matches(':disabled, [aria-disabled="true"]') || control.closest(quietSelector)) return reset()
 
+      if (active && active !== control) removeLight()
       pending = { control, x: event.clientX, y: event.clientY }
       if (!frame) frame = requestAnimationFrame(paint)
     }
 
     const leave = (event: PointerEvent) => {
       const target = pending?.control ?? active
-      if (target && event.target instanceof Node && target.contains(event.target)
-        && (!(event.relatedTarget instanceof Node) || !target.contains(event.relatedTarget))) reset()
+      if (target && surfaceAt(event.relatedTarget) !== target) reset()
     }
 
     document.addEventListener('pointermove', move, { passive: true })

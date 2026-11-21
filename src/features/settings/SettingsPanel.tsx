@@ -34,7 +34,7 @@ import { getUsagePreferences, withUsageProviderEnabled, type UsageController } f
 import type { UsageProvider } from '../../shared/lib/usageTypes'
 import { AccentColorPicker } from './AccentColorPicker'
 import { MonitorSetting } from './MonitorSetting'
-import { InterfaceAppearanceSettings, InterfaceThemePicker } from './InterfaceAppearanceSettings'
+import { InterfaceThemeSettings, PlaybackBackgroundSetting } from './InterfaceAppearanceSettings'
 import { InterfacePalettePicker } from './InterfacePalettePicker'
 import { DirectConnectionDialog } from './DirectConnectionDialog'
 import { useAppUpdater } from './useAppUpdater'
@@ -587,7 +587,7 @@ export function SettingsPanel({
         <IslandLayoutEditor config={draft} onChange={previewAndSave} onReset={resetIslandSettings} usage={usage?.snapshot ?? null} showHeading={false} active={settingsVisible && settingsPage === 'appearance'} />
 
         <div className="settings-control-group island-appearance-options">
-          <InterfaceThemePicker config={draft} locale={locale} onChange={previewAndSave} />
+          <InterfaceThemeSettings config={draft} locale={locale} onChange={previewAndSave} />
           <InterfacePalettePicker
             value={interfacePalette}
             customAccent={draft.appearance.accentColor}
@@ -603,7 +603,7 @@ export function SettingsPanel({
               onChange={hex => patchAppearance({ accentColor: normalizeHexColor(hex) })}
             />
           </InterfacePalettePicker>
-          <InterfaceAppearanceSettings config={draft} locale={locale} onChange={previewAndSave} />
+          <PlaybackBackgroundSetting config={draft} locale={locale} onChange={previewAndSave} />
 
           <MonitorSetting value={draft.behavior.monitorId} onChange={monitorId => patchBehavior({ monitorId })} locale={locale} />
 

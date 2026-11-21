@@ -14,7 +14,7 @@ import { DictationCloudSurface } from './DictationCloudSurface'
 import './dictation.css'
 import './dictation-material.css'
 export function DictationOverlay() { return <DictationOverlayView {...useDictationOverlay()} desktop /> }
-export function DictationOverlayView({ status, visible, levels, text, locale = 'ru', reducedMotion, appearance = defaultDictationAppearance, interfaceTheme = 'classic', interfacePalette = 'custom', paletteStyle, glassMaterial = DEFAULT_GLASS_MATERIAL, active = true, demo = false, desktop = false, finish, cancel, copy }: {
+export function DictationOverlayView({ status, visible, levels, text, locale = 'ru', reducedMotion, appearance = defaultDictationAppearance, interfaceTheme: islandTheme = 'classic', interfacePalette = 'custom', paletteStyle, glassMaterial: islandGlass = DEFAULT_GLASS_MATERIAL, active = true, demo = false, desktop = false, finish, cancel, copy }: {
   status: DictationStatus; visible: boolean; levels: number[]; text: { committed: string; tentative: string }; locale?: 'ru' | 'en'; reducedMotion?: boolean; cancel: () => Promise<unknown>; copy: () => Promise<unknown>
   appearance?: DictationAppearance; active?: boolean; demo?: boolean; desktop?: boolean
   interfaceTheme?: InterfaceThemeId; interfacePalette?: InterfacePaletteId
@@ -59,6 +59,8 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   const previewText = recording && (hasText || noticeShown) ? <p className="dictation-overlay__text">{loadingNotice ? loadingLabel : text.committed}<span>{text.tentative}</span></p> : null
   // Keep the canvas/context between recordings; hidden artwork has no clock.
   const artworkActive = active && visible
+  const interfaceTheme = appearance.materialTheme ?? islandTheme
+  const glassMaterial = appearance.materialTheme === 'glass' ? appearance.glassMaterial ?? DEFAULT_GLASS_MATERIAL : islandGlass
   const material = getInterfaceThemeDefinition(interfaceTheme).material
   const nativeBackdrop = useNativeBackdrop(desktop ? root : previewRoot, material === 'glass' && artworkActive, '[data-native-backdrop-surface]', glassMaterial.frost / 100)
   const opticsActive = artworkActive && nativeBackdrop !== 'unavailable'
