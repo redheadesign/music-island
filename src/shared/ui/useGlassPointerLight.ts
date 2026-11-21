@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 import { getInterfaceThemeDefinition, isInterfaceThemeId } from '../lib/interfaceTheme'
 
 const controlSelector = [
@@ -11,7 +11,9 @@ const quietSelector = '[data-reduced-motion="true"], [data-reduced-transparency=
 
 /** Paint only the hovered rim. No animation clock runs between pointer events. */
 export function useGlassPointerLight(enabled: boolean) {
-  useEffect(() => {
+  // The first pointermove may be the event that opened the desktop overlay.
+  // Attach during commit so the first painted frame can respond to its pointer.
+  useLayoutEffect(() => {
     if (!enabled) return
 
     const systemQuiet = matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)')

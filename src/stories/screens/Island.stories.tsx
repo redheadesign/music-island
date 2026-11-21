@@ -668,18 +668,23 @@ export const GlassWidgetPanels: StoryObj<typeof meta> = {
   play: async (context) => {
     await LatestDictationExpanded.play!(context)
     const { canvasElement } = context
-    const surfaces = [
-      canvasElement.querySelector<HTMLElement>('.usage-chip__compact-provider'),
-      canvasElement.querySelector<HTMLElement>('.island-local-servers'),
-      canvasElement.querySelector<HTMLElement>('.island-latest-dictation'),
-    ]
+    // The three widgets mount inside the animated drawer. Native data can
+    // already be present in the first render, while its opacity is still zero.
+    const surfaces = await waitFor(() => {
+      const drawer = canvasElement.querySelector<HTMLElement>('.island-hover-zone')
+      expect(drawer).toHaveStyle({ opacity: '1' })
+      return ['.usage-chip__compact-provider', '.island-local-servers', '.island-latest-dictation'].map(selector => {
+        const surface = canvasElement.querySelector<HTMLElement>(selector)
+        expect(surface).toBeVisible()
+        return surface!
+      })
+    })
     for (const surface of surfaces) {
-      await expect(surface).toBeVisible()
       await expect(surface).toHaveClass('island-surface')
-      await expect(surface!.querySelector('.island-glass-optic')).toBeNull()
+      await expect(surface.querySelector('.island-glass-optic')).toBeNull()
     }
     if (matchMedia('(forced-colors: active), (prefers-reduced-transparency: reduce), (prefers-contrast: more)').matches) return
-    const [provider, servers, latest] = surfaces.map(surface => getComputedStyle(surface!))
+    const [provider, servers, latest] = surfaces.map(surface => getComputedStyle(surface))
     await expect(provider.backgroundColor).toBe(servers.backgroundColor)
     await expect(latest.backgroundColor).toBe(servers.backgroundColor)
     await expect(servers.backgroundColor).toMatch(/^rgba\(.+, 0\.\d+\)$/)
