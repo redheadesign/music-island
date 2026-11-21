@@ -181,6 +181,30 @@ export const AdvancedSurfaceEditor: Story = {
     reopened.scrollIntoView({ block: 'center' })
   },
 }
+export const DesktopGlassEffect: Story = {
+  ...Glass, name: 'Стекло · выбор эффекта Windows',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'О программе' }))
+    await userEvent.click(canvas.getByRole('switch', { name: 'Режим разработчика' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Превью и отладка' }))
+    const effect = await canvas.findByRole('button', { name: 'Эффект стекла' })
+    const select = async (name: string) => {
+      await userEvent.click(effect)
+      await userEvent.click(await within(canvasElement.ownerDocument.body).findByRole('option', { name }))
+    }
+    expect(effect).toHaveTextContent('Системное стекло')
+    await select('GPU-линза · эксперимент')
+    const bend = await canvas.findByRole('slider', { name: 'Преломление' })
+    await fireEvent.change(bend, { target: { value: '70' } })
+    await expect(bend).toHaveValue('70')
+    await select('Системное стекло')
+    await expect(canvas.queryByRole('slider', { name: 'Дисперсия' })).toBeNull()
+    await select('GPU-линза · эксперимент')
+    await expect(await canvas.findByRole('slider', { name: 'Преломление' })).toHaveValue('70')
+  },
+}
 export const MaterialAtMinimumSize: Story = {
   name: 'Выбор темы · минимальное окно Windows',
   globals: { interfaceTheme: 'glass', locale: 'ru' },

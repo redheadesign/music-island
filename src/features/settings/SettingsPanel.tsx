@@ -37,6 +37,7 @@ import { AccentColorPicker } from './AccentColorPicker'
 import { MonitorSetting } from './MonitorSetting'
 import { InterfaceThemeSettings, PlaybackBackgroundSetting } from './InterfaceAppearanceSettings'
 import { AdvancedGlassSwitch } from './AdvancedGlassEditor'
+import { DesktopGlassSettings } from './DesktopGlassSettings'
 import { InterfacePalettePicker } from './InterfacePalettePicker'
 import { DirectConnectionDialog } from './DirectConnectionDialog'
 import { useAppUpdater } from './useAppUpdater'
@@ -887,6 +888,7 @@ export function SettingsPanel({
       </SettingsSection>
       {uiPrefs.developerMode ? (
         <SettingsSection hidden={settingsPage !== 'developer'} title={t('settings.devPreview')} showTitle={false}>
+          <DesktopGlassSettings config={draft} locale={locale} onChange={previewAndSave} />
           <div className="settings-dev-panel">
             <Button type="button" variant="secondary" disabled={launchBusy} onClick={() => void replayLaunch(true)}>{locale === 'ru' ? 'Повторить знакомство' : 'Replay introduction'}</Button>
             <Switch

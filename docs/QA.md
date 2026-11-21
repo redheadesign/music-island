@@ -7,6 +7,8 @@
 
 ## Windows glass surfaces
 
+- In Preview & debug, switch from System glass to GPU lens with Glass selected. Place a high-contrast image behind the expanded island. At zero bend and dispersion the image aligns at both edges. Raise each slider separately and check the displacement and color separation follow the island's shape. Collapse the island, then return to System glass and confirm its window is visible in screen capture again.
+
 - Check the five Glass sliders with the player pinned above a two-tone background. At zero transparency the island is opaque. With transparency raised, zero frost reveals sharp detail and maximum frost softens it. Check the Codex indicator, latest transcript and local servers against the same background.
 - On cold open, record frame intervals and look for texture encoding on the WebView main thread. In steady playback and recording, the native player and capsule should use desktop composition with no full-card CSS backdrop filter. At fractional DPI inspect the Fox border during expansion.
 - Change parallax, highlight and edge thickness independently. Check the resting state, mouse movement and keyboard focus. With reduced motion, moving the pointer should leave the material still.

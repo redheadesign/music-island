@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { DEFAULT_GLASS_MATERIAL } from '../../shared/lib/glassMaterialTokens'
+import type { DesktopLens } from '../../shared/lib/advancedGlass'
 import { setOverlayBackdrop, type NativeBackdropFrame, type NativeBackdropRegion } from '../tauriApi'
 
 export type NativeBackdropStatus = 'pending' | 'active' | 'unavailable' | undefined
@@ -39,18 +40,20 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
 }
 
 /** DWM owns the backdrop; this hook only publishes each surface's geometry. */
-export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost, regionFrostKey = ''): NativeBackdropStatus {
+export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost, regionFrostKey = '', optics?: DesktopLens): NativeBackdropStatus {
   const [status, setStatus] = useState<NativeBackdropStatus>()
   const frostAmount = useRef(defaultFrost)
   const individualFrost = useRef('')
+  const lens = useRef<DesktopLens | undefined>(undefined)
   const changeFrost = useRef<((crossedZero: boolean) => void) | null>(null)
   useLayoutEffect(() => {
     const amount = Number.isFinite(frost) ? Math.min(1, Math.max(0, frost)) : defaultFrost
-    const crossedZero = (amount === 0 && !regionFrostKey) !== (frostAmount.current === 0 && !individualFrost.current)
+    const crossedZero = (!amount && !regionFrostKey && !optics) !== (!frostAmount.current && !individualFrost.current && !lens.current)
     frostAmount.current = amount
     individualFrost.current = regionFrostKey
+    lens.current = optics
     changeFrost.current?.(crossedZero)
-  }, [frost, regionFrostKey])
+  }, [frost, regionFrostKey, optics])
   useLayoutEffect(() => {
     if (!('__TAURI_INTERNALS__' in window)) return
     const node = root.current
@@ -71,9 +74,19 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
     const policy = matchMedia('(prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)')
     const resize = new ResizeObserver(() => refresh())
     const available = () => enabled && !document.hidden && !policy.matches && !unsupported
-    const measuring = () => available() && (frostAmount.current > 0 || Boolean(individualFrost.current))
+    const measuring = () => available() && (frostAmount.current > 0 || Boolean(individualFrost.current || lens.current))
     const frame = (capture: boolean): NativeBackdropFrame => {
       const styles = new Map<HTMLElement, CSSStyleDeclaration>()
+      const regions: NativeBackdropRegion[] = []
+      let desktopLens: NativeBackdropFrame['lens']
+      if (capture) for (const surface of surfaces) {
+        const region = measureNativeBackdropRegion(surface, node, styles)
+        if (!region) continue
+        if (lens.current && surface.classList.contains('island-card')) {
+          desktopLens = { ...lens.current, region: regions.length }
+        } else if ((region.frost ?? frostAmount.current) === 0) continue
+        regions.push(region)
+      }
       return {
         generation: ++sequence,
         enabled: capture,
@@ -81,10 +94,8 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
         viewportHeight: window.innerHeight,
         scale: window.devicePixelRatio || 1,
         frost: frostAmount.current,
-        regions: capture ? surfaces.flatMap(surface => {
-          const region = measureNativeBackdropRegion(surface, node, styles)
-          return region && (region.frost ?? frostAmount.current) > 0 ? [region] : []
-        }) : [],
+        regions,
+        ...(desktopLens && { lens: desktopLens }),
       }
     }
 

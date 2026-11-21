@@ -1,5 +1,5 @@
-//! Host backdrop pixels stay inside Windows Composition. This module never reads
-//! the desktop or alters the overlay's click-through, HWND bounds, or input mask.
+//! Native materials behind the transparent WebView. Host frost uses DWM.
+//! The optional desktop lens keeps its Windows Graphics Capture frames on GPU.
 #[cfg(windows)]
 mod compositor;
 mod geometry;

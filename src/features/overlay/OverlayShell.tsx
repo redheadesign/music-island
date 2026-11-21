@@ -2,6 +2,7 @@ import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTr
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
 import { useAdvancedGlass } from '../../shared/ui/useAdvancedGlass'
 import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMaterial'
+import { normalizeDesktopLens } from '../../shared/lib/advancedGlass'
 import { progressTrackKey } from '../music/progressTransition'
 import { createIslandBassEffect } from '../../shared/ui/islandBassEffect'
 import { SettingsFilled } from '../../shared/ui/SettingsIcons'
@@ -161,7 +162,10 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const overlay = useRef<HTMLElement>(null)
   const glassMaterial = useMemo(() => getGlassMaterial(config), [config])
   const advanced = useAdvancedGlass(usesGlassMaterial(config) ? uiPrefs.advancedGlass : undefined, glassMaterial)
-  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency, '.island-surface, .island-actions > .icon-button, .island-plugin-button', glassMaterial.frost / 100, advanced.regionFrostKey)
+  const desktopLens = useMemo(() => uiPrefs.developerMode === true && uiPrefs.desktopGlassMode === 'lens'
+    ? normalizeDesktopLens(uiPrefs.desktopLens) : undefined, [uiPrefs.developerMode, uiPrefs.desktopGlassMode, uiPrefs.desktopLens])
+  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency,
+    '.island-surface, .island-actions > .icon-button, .island-plugin-button', glassMaterial.frost / 100, advanced.regionFrostKey, desktopLens)
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {

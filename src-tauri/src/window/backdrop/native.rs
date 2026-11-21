@@ -1,4 +1,7 @@
-use super::{compositor::HostBackdrop, BackdropFrame, BackdropRegion};
+use super::{
+    compositor::{HostBackdrop, LensLayout, LENS_FRAME},
+    BackdropFrame, BackdropRegion,
+};
 use std::{cell::RefCell, collections::HashMap};
 use tauri::{AppHandle, Emitter};
 use windows::Win32::{
@@ -22,6 +25,7 @@ struct State {
     unsupported: bool,
     policy: Option<bool>,
     frame: Option<(f64, f64, Vec<BackdropRegion>)>,
+    lens: Option<(usize, LensLayout)>,
 }
 struct WindowEvents {
     app: AppHandle,
@@ -93,6 +97,7 @@ pub(super) fn apply(
                 unsupported: !listening,
                 policy: None,
                 frame: None,
+                lens: None,
             }
         });
         if frame.generation <= state.generation {
@@ -101,6 +106,7 @@ pub(super) fn apply(
         state.generation = frame.generation;
         if !frame.enabled || !*state.policy.get_or_insert_with(allowed_by_windows) {
             state.frame = None;
+            state.lens = None;
             if let Some(compositor) = &mut state.compositor {
                 compositor.clear();
             }
@@ -131,6 +137,7 @@ pub(super) fn apply(
             && !unsafe { IsIconic(hwnd) }.as_bool();
         if frame.regions.is_empty() || !ready {
             state.frame = None;
+            state.lens = None;
             compositor.clear();
             // A missing surface or a show/resize race is not a policy denial.
             return Ok(if frame.regions.is_empty() {
@@ -149,7 +156,22 @@ pub(super) fn apply(
             frame.viewport_height * frame.scale,
             regions,
         );
-        if state.frame.as_ref() != Some(&geometry) {
+        let lens = (label == "main")
+            .then_some(frame.lens)
+            .flatten()
+            .map(|settings| {
+                (
+                    settings.region,
+                    LensLayout::new(
+                        &frame.regions[settings.region],
+                        frame.scale,
+                        frame.frost,
+                        settings,
+                    ),
+                )
+            });
+        let geometry_changed = state.frame.as_ref() != Some(&geometry);
+        if geometry_changed {
             if compositor
                 .update(geometry.0 as f32, geometry.1 as f32, &geometry.2)
                 .is_err()
@@ -159,6 +181,10 @@ pub(super) fn apply(
                 return Ok(Some(false));
             }
             state.frame = Some(geometry);
+        }
+        if geometry_changed || lens != state.lens {
+            compositor.configure_lens(lens);
+            state.lens = lens;
         }
         Ok(Some(true))
     })
@@ -172,6 +198,19 @@ unsafe extern "system" fn window_proc(
     _: usize,
     data: usize,
 ) -> LRESULT {
+    if message == LENS_FRAME {
+        WINDOWS.with(|windows| {
+            if let Ok(mut windows) = windows.try_borrow_mut() {
+                if let Some(compositor) = windows
+                    .get_mut(&(hwnd.0 as usize))
+                    .and_then(|state| state.compositor.as_mut())
+                {
+                    compositor.draw_lens();
+                }
+            }
+        });
+        return LRESULT(0);
+    }
     if matches!(
         message,
         WM_SHOWWINDOW | WM_SIZE | WM_DPICHANGED | WM_SETTINGCHANGE | WM_DWMCOMPOSITIONCHANGED
@@ -180,6 +219,7 @@ unsafe extern "system" fn window_proc(
             if let Ok(mut windows) = windows.try_borrow_mut() {
                 if let Some(state) = windows.get_mut(&(hwnd.0 as usize)) {
                     state.frame = None;
+                    state.lens = None;
                     if let Some(compositor) = &mut state.compositor {
                         compositor.clear();
                     }

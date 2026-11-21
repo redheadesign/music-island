@@ -42,6 +42,7 @@ export interface NativeBackdropFrame {
   scale: number
   frost: number
   regions: NativeBackdropRegion[]
+  lens?: { region: number; bend: number; dispersion: number }
 }
 
 /** A null response means the native viewport is still changing. */

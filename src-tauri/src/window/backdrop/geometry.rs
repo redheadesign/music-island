@@ -27,6 +27,16 @@ pub struct BackdropFrame {
     pub scale: f64,
     pub frost: f64,
     pub regions: Vec<BackdropRegion>,
+    #[serde(default)]
+    pub lens: Option<DesktopLensSettings>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopLensSettings {
+    pub region: usize,
+    pub bend: f32,
+    pub dispersion: f32,
 }
 
 impl BackdropFrame {
@@ -38,6 +48,11 @@ impl BackdropFrame {
                 .into_iter()
                 .all(|value| value.is_finite() && value > 0.0 && value <= 32_768.0)
             && self.regions.len() <= 24
+            && self.lens.is_none_or(|lens| {
+                lens.region < self.regions.len()
+                    && (0.0..=1.0).contains(&lens.bend)
+                    && (0.0..=1.0).contains(&lens.dispersion)
+            })
             && self.regions.iter().all(|region| region.is_valid(self))
     }
 
@@ -99,6 +114,7 @@ mod tests {
             scale: 1.5,
             frost: 0.72,
             regions: vec![],
+            lens: None,
         }
     }
 
@@ -151,6 +167,7 @@ mod tests {
             scale: 1.5,
             frost: 0.72,
             regions: vec![],
+            lens: None,
         };
         frame.regions = vec![
             BackdropRegion {

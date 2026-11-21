@@ -26,10 +26,11 @@ function PreviewWithoutWindowOwner() {
   return <output>{status ?? 'preview'}</output>
 }
 
-function IndependentFrost({ global, local, blur }: { global: number; local?: number; blur?: number }) {
+const previewOptics = { bend: .65, dispersion: .42 }
+function IndependentFrost({ global, local, blur, gpu }: { global: number; local?: number; blur?: number; gpu?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
-  useNativeBackdrop(ref, true, '[data-blur]', global, local === undefined ? '' : 'usage:' + local)
-  return <div ref={ref}><div data-blur /><div data-blur
+  useNativeBackdrop(ref, true, '[data-blur]', global, local === undefined ? '' : 'usage:' + local, gpu ? previewOptics : undefined)
+  return <div ref={ref}><div data-blur className="island-card" /><div data-blur
     style={{ '--glass-region-frost': local, '--glass-region-blur': blur } as CSSProperties} /></div>
 }
 
@@ -189,4 +190,17 @@ it('updates an independent surface when the global frost is zero and restores in
     expect(regions?.map(region => region.frost)).toEqual(expected)
     expect(regions?.flatMap(region => region.blurRadius ?? [])).toEqual(local ? [local * 24] : [])
   }
+})
+
+it('publishes an optical scene only when the island body exists, even with frost at zero', async () => {
+  await act(async () => root.render(<IndependentFrost global={0} local={.6} gpu />))
+  await act(async () => vi.advanceTimersByTimeAsync(100))
+  let frame = vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]
+  expect(frame?.regions).toHaveLength(2)
+  expect(frame?.lens).toEqual({ region: 0, ...previewOptics })
+  await act(async () => root.render(<IndependentFrost global={0} local={.6} />))
+  await act(async () => vi.advanceTimersByTimeAsync(100))
+  frame = vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]
+  expect(frame?.regions).toHaveLength(1)
+  expect(frame?.lens).toBeUndefined()
 })

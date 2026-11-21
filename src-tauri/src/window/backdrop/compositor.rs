@@ -2,17 +2,19 @@ use super::geometry::BackdropRegion;
 use std::{
     cell::{OnceCell, RefCell},
     rc::Rc,
+    sync::mpsc::{self, Receiver, TryRecvError},
 };
 use windows::{
     core::Interface,
     System::{DispatcherQueue, DispatcherQueueController},
     Win32::{
-        Foundation::HWND,
+        Foundation::{E_FAIL, HWND, LPARAM, WPARAM},
         Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_USE_HOSTBACKDROPBRUSH},
         System::WinRT::{
             Composition::ICompositorDesktopInterop, CreateDispatcherQueueController,
             DispatcherQueueOptions, DQTAT_COM_STA, DQTYPE_THREAD_CURRENT,
         },
+        UI::WindowsAndMessaging::PostMessageW,
     },
     UI::Composition::{
         CompositionBackdropBrush, CompositionEffectBrush, CompositionEffectFactory,
@@ -21,8 +23,12 @@ use windows::{
     },
 };
 use windows_numerics::{Vector2, Vector3};
+#[path = "desktop_lens.rs"]
+mod desktop_lens;
 #[path = "optics.rs"]
 mod optics;
+use desktop_lens::{DesktopLens, LensDevice};
+pub(super) use desktop_lens::{LensLayout, LENS_FRAME};
 
 /// One visual tree behind the HWND's child WebView2. HostBackdropBrush samples
 /// the desktop inside DWM, and the app has no access to those source pixels.
@@ -31,6 +37,12 @@ pub(super) struct HostBackdrop {
     root: ContainerVisual,
     brush: CompositionBackdropBrush,
     frost_factory: OnceCell<Option<CompositionEffectFactory>>,
+    lens: Option<(usize, DesktopLens)>,
+    lens_failed: bool,
+    lens_ready: bool,
+    lens_request: Option<(usize, LensLayout)>,
+    lens_device: Option<LensDevice>,
+    lens_preparing: Option<Receiver<windows::core::Result<LensDevice>>>,
     compositor: Compositor,
     hwnd: HWND,
     _queue: Rc<QueueOwner>,
@@ -113,6 +125,12 @@ impl HostBackdrop {
                 root,
                 brush,
                 frost_factory: OnceCell::new(),
+                lens: None,
+                lens_failed: false,
+                lens_ready: false,
+                lens_request: None,
+                lens_device: None,
+                lens_preparing: None,
                 compositor,
                 hwnd,
                 _queue: queue,
@@ -136,10 +154,118 @@ impl HostBackdrop {
     }
 
     pub(super) fn clear(&mut self) {
+        self.lens_request = None;
+        self.stop_lens();
         if self.visible {
             let _ = self.root.SetOpacity(0.0);
             self.visible = false;
         }
+    }
+
+    fn stop_lens(&mut self) {
+        self.lens_ready = false;
+        if let Some((index, lens)) = self.lens.take() {
+            drop(lens);
+            if let Some(region) = self.regions.get(index) {
+                let _ = region.group.SetIsVisible(true);
+            }
+        }
+    }
+
+    pub(super) fn configure_lens(&mut self, request: Option<(usize, LensLayout)>) {
+        self.lens_request = request;
+        let Some((index, _)) = request else {
+            self.stop_lens();
+            self.lens_failed = false;
+            return;
+        };
+        if self.lens_failed {
+            return;
+        }
+        if self
+            .lens
+            .as_ref()
+            .is_some_and(|(previous, _)| *previous != index)
+        {
+            self.stop_lens();
+        }
+        self.draw_lens();
+    }
+
+    pub(super) fn draw_lens(&mut self) {
+        if let Err(error) = self.prepare_lens() {
+            self.lens_error(error);
+            return;
+        }
+        let Some((index, lens)) = &mut self.lens else {
+            return;
+        };
+        match lens.draw() {
+            Ok(visible) => {
+                if self.lens_ready != visible {
+                    if let Some(region) = self.regions.get(*index) {
+                        let _ = region.group.SetIsVisible(!visible);
+                    }
+                    self.lens_ready = visible;
+                }
+            }
+            Err(error) => self.lens_error(error),
+        }
+    }
+
+    fn prepare_lens(&mut self) -> windows::core::Result<()> {
+        if let Some(receiver) = &self.lens_preparing {
+            match receiver.try_recv() {
+                Ok(result) => {
+                    self.lens_preparing = None;
+                    self.lens_device = Some(result?);
+                }
+                Err(TryRecvError::Empty) => return Ok(()),
+                Err(TryRecvError::Disconnected) => {
+                    self.lens_preparing = None;
+                    return Err(E_FAIL.into());
+                }
+            }
+        }
+        let Some((index, layout)) = self.lens_request.filter(|_| !self.lens_failed) else {
+            return Ok(());
+        };
+        if let Some((_, lens)) = &mut self.lens {
+            return lens.configure(layout);
+        }
+        if let Some(device) = &self.lens_device {
+            self.lens = Some((
+                index,
+                DesktopLens::start(
+                    self.hwnd,
+                    &self.compositor,
+                    &self.root,
+                    layout,
+                    device.clone(),
+                )?,
+            ));
+            return Ok(());
+        }
+        let (send, receive) = mpsc::channel();
+        let window = self.hwnd.0 as usize;
+        std::thread::Builder::new()
+            .name("desktop-glass-device".into())
+            .spawn(move || {
+                if send.send(LensDevice::new()).is_ok() {
+                    let _ = unsafe {
+                        PostMessageW(Some(HWND(window as _)), LENS_FRAME, WPARAM(0), LPARAM(0))
+                    };
+                }
+            })
+            .map_err(|_| E_FAIL)?;
+        self.lens_preparing = Some(receive);
+        Ok(())
+    }
+
+    fn lens_error(&mut self, error: windows::core::Error) {
+        self.stop_lens();
+        self.lens_failed = true;
+        crate::logging::append_event(&format!("desktop glass lens unavailable: {error}"));
     }
 
     pub(super) fn update(

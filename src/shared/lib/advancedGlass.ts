@@ -1,5 +1,20 @@
 import type { GlassMaterial } from './glassMaterialTokens'
 
+export interface DesktopLens {
+  bend: number
+  dispersion: number
+}
+
+export const DESKTOP_LENS_DEFAULTS: Readonly<DesktopLens> = { bend: .52, dispersion: .28 }
+
+export function normalizeDesktopLens(value?: Partial<DesktopLens>): DesktopLens {
+  const dial = (key: keyof DesktopLens) => {
+    const input = value?.[key]
+    return typeof input === 'number' && Number.isFinite(input) ? Math.min(1, Math.max(0, input)) : DESKTOP_LENS_DEFAULTS[key]
+  }
+  return { bend: dial('bend'), dispersion: dial('dispersion') }
+}
+
 export const GLASS_SURFACE_IDS = [
   'body', 'transport', 'seek', 'reactions', 'modes', 'volume', 'actions', 'usage',
   'localServers', 'latestDictation', 'notices', 'progressTrack', 'progressFill', 'dictation', 'dictationActions',

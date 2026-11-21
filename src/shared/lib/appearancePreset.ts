@@ -1,5 +1,5 @@
 import { normalizeHexColor } from './accentTheme'
-import { GLASS_SURFACE_FIELDS, GLASS_SURFACE_IDS, getSurfaceDefaults, normalizeAdvancedGlass } from './advancedGlass'
+import { GLASS_SURFACE_FIELDS, GLASS_SURFACE_IDS, getSurfaceDefaults, normalizeAdvancedGlass, normalizeDesktopLens } from './advancedGlass'
 import { getDictationAppearance } from './dictationAppearance'
 import { DEFAULT_GLASS_MATERIAL, getGlassMaterial } from './glassMaterial'
 import { getIslandLayout } from './islandLayout'
@@ -41,6 +41,7 @@ export function serializeAppearancePreset(config: AppConfig): string {
         localServersScale: getLocalServersWidgetScale(config), showLatestDictation: ui.showLatestDictationMessage === true },
       glass, glassOverrides: Object.fromEntries(Object.entries(glass).filter(([key]) =>
         Number.isFinite(ui.glassMaterial?.[key as keyof typeof glass]))),
+      desktopGlass: { mode: ui.desktopGlassMode === 'lens' ? 'lens' : 'system', ...normalizeDesktopLens(ui.desktopLens) },
       shaders: { playbackWaveEnabled: ui.playbackWaveEnabled !== false, overrides: shaderOverrides(ui.islandShader, islandShader), effective: islandShader },
     },
     dictation: {
