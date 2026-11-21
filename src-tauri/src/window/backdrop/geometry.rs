@@ -29,6 +29,8 @@ pub struct BackdropFrame {
     pub regions: Vec<BackdropRegion>,
     #[serde(default)]
     pub lens: Option<DesktopLensSettings>,
+    #[serde(default)]
+    pub prewarm_lens: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
@@ -37,6 +39,10 @@ pub struct DesktopLensSettings {
     pub region: usize,
     pub bend: f32,
     pub dispersion: f32,
+    #[serde(default)]
+    pub snapshot: bool,
+    #[serde(default)]
+    pub reduced_motion: bool,
 }
 
 impl BackdropFrame {
@@ -115,6 +121,7 @@ mod tests {
             frost: 0.72,
             regions: vec![],
             lens: None,
+            prewarm_lens: false,
         }
     }
 
@@ -168,6 +175,7 @@ mod tests {
             frost: 0.72,
             regions: vec![],
             lens: None,
+            prewarm_lens: false,
         };
         frame.regions = vec![
             BackdropRegion {

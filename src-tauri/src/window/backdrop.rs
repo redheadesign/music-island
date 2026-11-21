@@ -9,6 +9,20 @@ mod native;
 pub use geometry::{BackdropFrame, BackdropRegion};
 
 #[tauri::command]
+pub async fn request_glass_borderless(window: tauri::WebviewWindow) -> Result<bool, String> {
+    if window.label() != "settings" {
+        return Err("Open Settings to request borderless capture".into());
+    }
+    #[cfg(windows)]
+    return tokio::task::spawn_blocking(native::request_borderless)
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string());
+    #[cfg(not(windows))]
+    Ok(false)
+}
+
+#[tauri::command]
 pub async fn set_overlay_backdrop(
     window: tauri::WebviewWindow,
     frame: BackdropFrame,

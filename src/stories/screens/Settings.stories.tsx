@@ -188,21 +188,23 @@ export const DesktopGlassEffect: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'О программе' }))
     await userEvent.click(canvas.getByRole('switch', { name: 'Режим разработчика' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Превью и отладка' }))
+    await userEvent.click(canvas.getByRole('switch', { name: 'Продвинутые настройки' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Внешний вид' }))
+    await userEvent.click(await canvas.findByText('Корпус островка'))
     const effect = await canvas.findByRole('button', { name: 'Эффект стекла' })
     const select = async (name: string) => {
       await userEvent.click(effect)
       await userEvent.click(await within(canvasElement.ownerDocument.body).findByRole('option', { name }))
     }
-    expect(effect).toHaveTextContent('Системное стекло')
-    await select('GPU-линза · эксперимент')
+    await expect(effect).toHaveTextContent('GPU-линза')
     const bend = await canvas.findByRole('slider', { name: 'Преломление' })
     await fireEvent.change(bend, { target: { value: '70' } })
     await expect(bend).toHaveValue('70')
     await select('Системное стекло')
     await expect(canvas.queryByRole('slider', { name: 'Дисперсия' })).toBeNull()
-    await select('GPU-линза · эксперимент')
+    await select('GPU-линза для записи')
     await expect(await canvas.findByRole('slider', { name: 'Преломление' })).toHaveValue('70')
+    await expect(canvas.getByText('Островок виден в записи. Снимок фона обновляется при каждом открытии.')).toBeInTheDocument()
   },
 }
 export const MaterialAtMinimumSize: Story = {

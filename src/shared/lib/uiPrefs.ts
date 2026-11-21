@@ -2,7 +2,7 @@ import type { AppConfig } from './types'
 import type { TaskbarLayoutV1 } from './taskbarLayout'
 import type { DictationAppearance } from './dictationAppearance'
 import type { GlassMaterial } from './glassMaterial'
-import type { AdvancedGlassOverrides, DesktopLens } from './advancedGlass'
+import type { AdvancedGlassOverrides, DesktopGlassMode, DesktopLens } from './advancedGlass'
 import type { IslandShaderTuning } from './shaderTuning'
 import { getInterfaceThemeDefinition, normalizeInterfaceTheme, type InterfaceThemeId } from './interfaceTheme'
 import { DEFAULT_ACCENT } from './accentTheme'
@@ -30,7 +30,7 @@ export interface UiPrefs {
   /** Per-surface appearance persists independently of the developer editor. */
   advancedGlass?: AdvancedGlassOverrides
   glassAdvancedEnabled?: boolean
-  desktopGlassMode?: 'system' | 'lens'
+  desktopGlassMode?: DesktopGlassMode
   desktopLens?: Partial<DesktopLens>
   interfacePalette?: InterfacePaletteId
   playbackWaveEnabled?: boolean

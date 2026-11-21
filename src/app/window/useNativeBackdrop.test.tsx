@@ -198,9 +198,11 @@ it('publishes an optical scene only when the island body exists, even with frost
   let frame = vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]
   expect(frame?.regions).toHaveLength(2)
   expect(frame?.lens).toEqual({ region: 0, ...previewOptics })
+  expect(frame?.prewarmLens).toBe(true)
   await act(async () => root.render(<IndependentFrost global={0} local={.6} />))
   await act(async () => vi.advanceTimersByTimeAsync(100))
   frame = vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]
   expect(frame?.regions).toHaveLength(1)
   expect(frame?.lens).toBeUndefined()
+  expect(frame?.prewarmLens).toBeUndefined()
 })

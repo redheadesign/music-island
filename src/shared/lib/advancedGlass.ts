@@ -5,6 +5,12 @@ export interface DesktopLens {
   dispersion: number
 }
 
+export type DesktopGlassMode = 'lens' | 'snapshot' | 'system'
+
+export function normalizeDesktopGlassMode(value: unknown): DesktopGlassMode {
+  return value === 'system' || value === 'snapshot' ? value : 'lens'
+}
+
 export const DESKTOP_LENS_DEFAULTS: Readonly<DesktopLens> = { bend: .52, dispersion: .28 }
 
 export function normalizeDesktopLens(value?: Partial<DesktopLens>): DesktopLens {

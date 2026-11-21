@@ -1,8 +1,7 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { DEFAULT_GLASS_MATERIAL } from '../../shared/lib/glassMaterialTokens'
-import type { DesktopLens } from '../../shared/lib/advancedGlass'
-import { setOverlayBackdrop, type NativeBackdropFrame, type NativeBackdropRegion } from '../tauriApi'
+import { setOverlayBackdrop, type NativeBackdropFrame, type NativeBackdropRegion, type NativeDesktopLens } from '../tauriApi'
 
 export type NativeBackdropStatus = 'pending' | 'active' | 'unavailable' | undefined
 let sequence = Date.now() * 1000
@@ -40,11 +39,11 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
 }
 
 /** DWM owns the backdrop; this hook only publishes each surface's geometry. */
-export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost, regionFrostKey = '', optics?: DesktopLens): NativeBackdropStatus {
+export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost, regionFrostKey = '', optics?: NativeDesktopLens): NativeBackdropStatus {
   const [status, setStatus] = useState<NativeBackdropStatus>()
   const frostAmount = useRef(defaultFrost)
   const individualFrost = useRef('')
-  const lens = useRef<DesktopLens | undefined>(undefined)
+  const lens = useRef<NativeDesktopLens | undefined>(undefined)
   const changeFrost = useRef<((crossedZero: boolean) => void) | null>(null)
   useLayoutEffect(() => {
     const amount = Number.isFinite(frost) ? Math.min(1, Math.max(0, frost)) : defaultFrost
@@ -95,6 +94,7 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
         scale: window.devicePixelRatio || 1,
         frost: frostAmount.current,
         regions,
+        ...(capture && lens.current && { prewarmLens: true }),
         ...(desktopLens && { lens: desktopLens }),
       }
     }

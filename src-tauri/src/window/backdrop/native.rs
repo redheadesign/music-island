@@ -33,6 +33,21 @@ struct WindowEvents {
 }
 thread_local! { static WINDOWS: RefCell<HashMap<usize, State>> = RefCell::new(HashMap::new()); }
 
+pub(super) fn request_borderless() -> windows::core::Result<bool> {
+    use windows::{
+        Graphics::Capture::{GraphicsCaptureAccess, GraphicsCaptureAccessKind},
+        Security::Authorization::AppCapabilityAccess::AppCapabilityAccessStatus,
+        Win32::System::WinRT::{RoInitialize, RoUninitialize, RO_INIT_MULTITHREADED},
+    };
+    // This command is invoked by the settings button. Windows presents and
+    // enforces its own consent. Never wait on the overlay's UI thread.
+    unsafe { RoInitialize(RO_INIT_MULTITHREADED)? };
+    let response = GraphicsCaptureAccess::RequestAccessAsync(GraphicsCaptureAccessKind::Borderless)
+        .and_then(|operation| operation.join());
+    unsafe { RoUninitialize() };
+    Ok(response? == AppCapabilityAccessStatus::Allowed)
+}
+
 fn allowed_by_windows() -> bool {
     if !unsafe { DwmIsCompositionEnabled() }.is_ok_and(|value| value.as_bool()) {
         return false;
@@ -130,12 +145,13 @@ pub(super) fn apply(
             }
         }
         let compositor = state.compositor.as_mut().expect("initialized compositor");
+        if label == "main" && frame.prewarm_lens {
+            compositor.prewarm_lens();
+        }
         let mut bounds = RECT::default();
-        let ready = unsafe { GetClientRect(hwnd, &mut bounds) }.is_ok()
-            && frame.matches_pixels(bounds.right, bounds.bottom)
-            && unsafe { IsWindowVisible(hwnd) }.as_bool()
-            && !unsafe { IsIconic(hwnd) }.as_bool();
-        if frame.regions.is_empty() || !ready {
+        let shown =
+            unsafe { IsWindowVisible(hwnd) }.as_bool() && !unsafe { IsIconic(hwnd) }.as_bool();
+        if frame.regions.is_empty() || !shown {
             state.frame = None;
             state.lens = None;
             compositor.clear();
@@ -145,6 +161,13 @@ pub(super) fn apply(
             } else {
                 None
             });
+        }
+        if unsafe { GetClientRect(hwnd, &mut bounds) }.is_err()
+            || !frame.matches_pixels(bounds.right, bounds.bottom)
+        {
+            compositor.hide_visuals();
+            state.frame = None;
+            return Ok(None);
         }
         let regions: Vec<_> = frame
             .regions
@@ -221,7 +244,11 @@ unsafe extern "system" fn window_proc(
                     state.frame = None;
                     state.lens = None;
                     if let Some(compositor) = &mut state.compositor {
-                        compositor.clear();
+                        if message == WM_SIZE && !IsIconic(hwnd).as_bool() {
+                            compositor.hide_visuals();
+                        } else {
+                            compositor.clear();
+                        }
                     }
                     if matches!(message, WM_SETTINGCHANGE | WM_DWMCOMPOSITIONCHANGED) {
                         state.compositor = None;

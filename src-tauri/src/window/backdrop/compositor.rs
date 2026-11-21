@@ -156,6 +156,10 @@ impl HostBackdrop {
     pub(super) fn clear(&mut self) {
         self.lens_request = None;
         self.stop_lens();
+        self.hide_visuals();
+    }
+
+    pub(super) fn hide_visuals(&mut self) {
         if self.visible {
             let _ = self.root.SetOpacity(0.0);
             self.visible = false;
@@ -174,7 +178,7 @@ impl HostBackdrop {
 
     pub(super) fn configure_lens(&mut self, request: Option<(usize, LensLayout)>) {
         self.lens_request = request;
-        let Some((index, _)) = request else {
+        let Some((index, layout)) = request else {
             self.stop_lens();
             self.lens_failed = false;
             return;
@@ -182,11 +186,9 @@ impl HostBackdrop {
         if self.lens_failed {
             return;
         }
-        if self
-            .lens
-            .as_ref()
-            .is_some_and(|(previous, _)| *previous != index)
-        {
+        if self.lens.as_ref().is_some_and(|(previous, lens)| {
+            *previous != index || lens.is_snapshot() != layout.snapshot
+        }) {
             self.stop_lens();
         }
         self.draw_lens();
@@ -246,9 +248,19 @@ impl HostBackdrop {
             ));
             return Ok(());
         }
+        self.prewarm_lens();
+        Ok(())
+    }
+
+    // Setup of D3D11 and the shaders starts while the island is collapsed.
+    // The first frame request is still what starts desktop capture.
+    pub(super) fn prewarm_lens(&mut self) {
+        if self.lens_preparing.is_some() || self.lens_device.is_some() || self.lens_failed {
+            return;
+        }
         let (send, receive) = mpsc::channel();
         let window = self.hwnd.0 as usize;
-        std::thread::Builder::new()
+        let worker = std::thread::Builder::new()
             .name("desktop-glass-device".into())
             .spawn(move || {
                 if send.send(LensDevice::new()).is_ok() {
@@ -256,10 +268,12 @@ impl HostBackdrop {
                         PostMessageW(Some(HWND(window as _)), LENS_FRAME, WPARAM(0), LPARAM(0))
                     };
                 }
-            })
-            .map_err(|_| E_FAIL)?;
-        self.lens_preparing = Some(receive);
-        Ok(())
+            });
+        if worker.is_ok() {
+            self.lens_preparing = Some(receive);
+        } else {
+            self.lens_error(E_FAIL.into());
+        }
     }
 
     fn lens_error(&mut self, error: windows::core::Error) {

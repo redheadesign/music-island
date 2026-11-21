@@ -40,7 +40,9 @@ use windows::{
             WDA_EXCLUDEFROMCAPTURE, WINDOW_DISPLAY_AFFINITY, WM_APP,
         },
     },
-    UI::Composition::{Compositor, ContainerVisual, SpriteVisual},
+    UI::Composition::{
+        CompositionBatchTypes, CompositionScopedBatch, Compositor, ContainerVisual, SpriteVisual,
+    },
 };
 use windows_numerics::{Vector2, Vector3};
 
@@ -80,6 +82,8 @@ pub(crate) struct LensLayout {
     pub dispersion: f32,
     pub frost: f32,
     pub opacity: f32,
+    pub snapshot: bool,
+    pub reduced_motion: bool,
 }
 
 impl LensLayout {
@@ -100,6 +104,8 @@ impl LensLayout {
             dispersion: lens.dispersion * (6.0 * scale as f32).min(10.0),
             frost: (region.frost.unwrap_or(global_frost) * 8.0 * scale).min(14.0) as f32,
             opacity: region.opacity as f32,
+            snapshot: lens.snapshot,
+            reduced_motion: lens.reduced_motion,
         }
     }
 }
@@ -139,6 +145,23 @@ pub(super) struct DesktopLens {
     hwnd: HWND,
     monitor: HMONITOR,
     source_size: SizeInt32,
+    capture: Option<CaptureStream>,
+    gpu: LensDevice,
+    swapchain: IDXGISwapChain1,
+    target: Option<ID3D11RenderTargetView>,
+    root: ContainerVisual,
+    visual: SpriteVisual,
+    compositor: Compositor,
+    revealed: Arc<AtomicBool>,
+    reveal_started: bool,
+    reveal_batch: Option<CompositionScopedBatch>,
+    layout: LensLayout,
+    source: Option<InputTexture>,
+    visible: bool,
+    redraw: bool,
+}
+
+struct CaptureStream {
     item: GraphicsCaptureItem,
     pool: Direct3D11CaptureFramePool,
     session: GraphicsCaptureSession,
@@ -146,17 +169,17 @@ pub(super) struct DesktopLens {
     closed_token: i64,
     closed: Arc<AtomicBool>,
     queued: Arc<AtomicBool>,
-    _exclusion: CaptureExclusion,
-    gpu: LensDevice,
-    swapchain: IDXGISwapChain1,
-    target: Option<ID3D11RenderTargetView>,
-    root: ContainerVisual,
-    visual: SpriteVisual,
-    layout: LensLayout,
-    source: Option<InputTexture>,
-    visible: bool,
     dirty_tracking: bool,
-    redraw: bool,
+    _exclusion: CaptureExclusion,
+}
+
+impl Drop for CaptureStream {
+    fn drop(&mut self) {
+        let _ = self.session.Close();
+        let _ = self.item.RemoveClosed(self.closed_token);
+        let _ = self.pool.RemoveFrameArrived(self.token);
+        let _ = self.pool.Close();
+    }
 }
 
 impl DesktopLens {
@@ -187,6 +210,9 @@ impl DesktopLens {
         )?;
         let session = pool.CreateCaptureSession(&item)?;
         let _ = session.SetIsCursorCaptureEnabled(false);
+        // DWM still enforces the user's OS preference and capture permissions.
+        // This is the same public session property used by Windhawk and OBS.
+        let _ = session.SetIsBorderRequired(false);
         let dirty_tracking = session
             .SetDirtyRegionMode(GraphicsCaptureDirtyRegionMode::ReportOnly)
             .is_ok();
@@ -239,10 +265,7 @@ impl DesktopLens {
             };
             Ok(())
         }))?;
-        let lens = Self {
-            hwnd,
-            monitor,
-            source_size,
+        let capture = CaptureStream {
             item,
             pool,
             session,
@@ -250,21 +273,80 @@ impl DesktopLens {
             closed_token,
             closed,
             queued,
+            dirty_tracking,
             _exclusion: exclusion,
+        };
+        let lens = Self {
+            hwnd,
+            monitor,
+            source_size,
+            capture: Some(capture),
             gpu,
             swapchain,
             target,
             root: root.clone(),
             visual,
+            compositor: compositor.clone(),
+            revealed: Arc::new(AtomicBool::new(false)),
+            reveal_started: false,
+            reveal_batch: None,
             layout,
             source: None,
             visible: false,
-            dirty_tracking,
             redraw: true,
         };
         root.Children()?.InsertAtTop(&lens.visual)?;
-        lens.session.StartCapture()?;
+        lens.capture
+            .as_ref()
+            .ok_or(E_FAIL)?
+            .session
+            .StartCapture()?;
         Ok(lens)
+    }
+
+    pub(super) fn is_snapshot(&self) -> bool {
+        self.layout.snapshot
+    }
+
+    fn present_visual(&mut self) -> Result<()> {
+        if self.visible {
+            return Ok(());
+        }
+        self.visual.SetIsVisible(true)?;
+        self.visible = true;
+        if self.reveal_started {
+            return Ok(());
+        }
+        self.reveal_started = true;
+        if self.layout.reduced_motion {
+            self.revealed.store(true, Ordering::Release);
+            self.visual.StopAnimation(&"Opacity".into())?;
+            self.visual.SetOpacity(1.)?;
+            return Ok(());
+        }
+        let opacity = self.compositor.CreateScalarKeyFrameAnimation()?;
+        opacity.InsertKeyFrame(0., 0.)?;
+        opacity.InsertKeyFrame(1., 1.)?;
+        opacity.SetDuration(TimeSpan {
+            Duration: 1_400_000,
+        })?;
+        self.visual.SetOpacity(1.)?;
+        let batch = self
+            .compositor
+            .CreateScopedBatch(CompositionBatchTypes::Animation)?;
+        let done = self.revealed.clone();
+        let window_id = self.hwnd.0 as usize;
+        batch.Completed(&TypedEventHandler::new(move |_, _| {
+            done.store(true, Ordering::Release);
+            let _ = unsafe {
+                PostMessageW(Some(HWND(window_id as _)), LENS_FRAME, WPARAM(0), LPARAM(0))
+            };
+            Ok(())
+        }))?;
+        self.visual.StartAnimation(&"Opacity".into(), &opacity)?;
+        batch.End()?;
+        self.reveal_batch = Some(batch);
+        Ok(())
     }
 
     pub(super) fn configure(&mut self, layout: LensLayout) -> Result<()> {
@@ -296,27 +378,46 @@ impl DesktopLens {
         fit_visual(&self.visual, layout)?;
         self.layout = layout;
         self.redraw = true;
-        if self.visible {
-            let (crop, origin) = self.crop_rect()?;
-            if self.source.as_ref().is_some_and(|input| input.crop == crop) {
-                self.render(
-                    origin,
+        if let Some(input) = &self.source {
+            let body = self.body_rect()?;
+            let crop = input.crop;
+            if body.left.max(0) >= crop.left
+                && body.top.max(0) >= crop.top
+                && body.right.min(self.source_size.Width) <= crop.right
+                && body.bottom.min(self.source_size.Height) <= crop.bottom
+                && self.render(
+                    POINT {
+                        x: body.left - crop.left,
+                        y: body.top - crop.top,
+                    },
                     (crop.right - crop.left) as u32,
                     (crop.bottom - crop.top) as u32,
-                )?;
+                )?
+            {
+                self.present_visual()?;
             }
         }
         Ok(())
     }
 
-    /// Returns whether the lens has a valid frame. DWM paints the body until then.
+    fn covers_body(&self) -> bool {
+        self.visible && self.revealed.load(Ordering::Acquire)
+    }
+
+    /// Keep DWM behind the lens until a frame has finished fading in.
     pub(super) fn draw(&mut self) -> Result<bool> {
-        self.queued.store(false, Ordering::Release);
-        if self.closed.load(Ordering::Acquire) {
+        if self.revealed.load(Ordering::Acquire) {
+            self.reveal_batch = None;
+        }
+        let Some(capture) = &self.capture else {
+            return Ok(self.covers_body());
+        };
+        capture.queued.store(false, Ordering::Release);
+        if capture.closed.load(Ordering::Acquire) {
             return Err(E_FAIL.into());
         }
-        let Ok(frame) = self.pool.TryGetNextFrame() else {
-            return Ok(self.visible);
+        let Ok(frame) = capture.pool.TryGetNextFrame() else {
+            return Ok(self.covers_body());
         };
         if frame.ContentSize()? != self.source_size
             || self.monitor != unsafe { MonitorFromWindow(self.hwnd, MONITOR_DEFAULTTONEAREST) }
@@ -325,7 +426,7 @@ impl DesktopLens {
         }
         let (crop, origin) = self.crop_rect()?;
         let same_crop = self.source.as_ref().is_some_and(|input| input.crop == crop);
-        let crosses_crop = !self.dirty_tracking
+        let crosses_crop = !capture.dirty_tracking
             || frame.DirtyRegions().map_or(true, |regions| {
                 regions.into_iter().any(|rect| {
                     rect.X < crop.right
@@ -335,7 +436,7 @@ impl DesktopLens {
                 })
             });
         if !self.redraw && same_crop && !crosses_crop {
-            return Ok(true);
+            return Ok(self.covers_body());
         }
         let tex_width = (crop.right - crop.left) as u32;
         let tex_height = (crop.bottom - crop.top) as u32;
@@ -372,16 +473,20 @@ impl DesktopLens {
             }
             input.crop = crop;
         }
-        self.render(origin, tex_width, tex_height)?;
-        if !self.visible {
-            self.visual.SetIsVisible(true)?;
-            self.visible = true;
+        if self.render(origin, tex_width, tex_height)? {
+            self.redraw = false;
+            if self.layout.snapshot {
+                // Retain only the cropped GPU texture. Restore this HWND's
+                // recording visibility once the upstream capture has closed.
+                drop(frame);
+                self.capture = None;
+            }
+            self.present_visual()?;
         }
-        self.redraw = false;
-        Ok(true)
+        Ok(self.covers_body())
     }
 
-    fn crop_rect(&self) -> Result<(RECT, POINT)> {
+    fn body_rect(&self) -> Result<RECT> {
         let mut client = POINT::default();
         let mut monitor = MONITORINFO {
             cbSize: size_of::<MONITORINFO>() as u32,
@@ -393,8 +498,21 @@ impl DesktopLens {
         }
         let left = client.x + self.layout.left - monitor.rcMonitor.left;
         let top = client.y + self.layout.top - monitor.rcMonitor.top;
-        let right = left + self.layout.width as i32;
-        let bottom = top + self.layout.height as i32;
+        Ok(RECT {
+            left,
+            top,
+            right: left + self.layout.width as i32,
+            bottom: top + self.layout.height as i32,
+        })
+    }
+
+    fn crop_rect(&self) -> Result<(RECT, POINT)> {
+        let RECT {
+            left,
+            top,
+            right,
+            bottom,
+        } = self.body_rect()?;
         let pad = 64;
         let crop = RECT {
             left: (left - pad).max(0),
@@ -443,7 +561,7 @@ impl DesktopLens {
         }
     }
 
-    fn render(&self, origin: POINT, tex_width: u32, tex_height: u32) -> Result<()> {
+    fn render(&self, origin: POINT, tex_width: u32, tex_height: u32) -> Result<bool> {
         let layout = self.layout;
         let data = [
             layout.width as f32,
@@ -499,26 +617,18 @@ impl DesktopLens {
             self.gpu.context.Draw(3, 0);
             self.gpu.context.PSSetShaderResources(0, Some(&[None]));
             self.gpu.context.OMSetRenderTargets(None, None);
-            self.swapchain
-                .Present(0, DXGI_PRESENT_DO_NOT_WAIT)
-                .ok()
-                .or_else(|error| {
-                    if error.code() == DXGI_ERROR_WAS_STILL_DRAWING {
-                        Ok(())
-                    } else {
-                        Err(error)
-                    }
-                })
+            let presented = self.swapchain.Present(0, DXGI_PRESENT_DO_NOT_WAIT);
+            if presented == DXGI_ERROR_WAS_STILL_DRAWING {
+                return Ok(false);
+            }
+            presented.ok().map(|_| true)
         }
     }
 }
 
 impl Drop for DesktopLens {
     fn drop(&mut self) {
-        let _ = self.session.Close();
-        let _ = self.item.RemoveClosed(self.closed_token);
-        let _ = self.pool.RemoveFrameArrived(self.token);
-        let _ = self.pool.Close();
+        self.capture = None;
         if let Ok(children) = self.root.Children() {
             let _ = children.Remove(&self.visual);
         }

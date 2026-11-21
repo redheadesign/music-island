@@ -42,13 +42,25 @@ export interface NativeBackdropFrame {
   scale: number
   frost: number
   regions: NativeBackdropRegion[]
-  lens?: { region: number; bend: number; dispersion: number }
+  lens?: { region: number } & NativeDesktopLens
+  prewarmLens?: boolean
+}
+
+export interface NativeDesktopLens {
+  bend: number
+  dispersion: number
+  snapshot?: boolean
+  reducedMotion?: boolean
 }
 
 /** A null response means the native viewport is still changing. */
 export async function setOverlayBackdrop(frame: NativeBackdropFrame): Promise<boolean | null> {
   if (!isTauriRuntime()) return false
   return invoke<boolean | null>('set_overlay_backdrop', { frame })
+}
+
+export async function requestGlassBorderless(): Promise<boolean> {
+  return isTauriRuntime() && invoke<boolean>('request_glass_borderless')
 }
 
 interface PlaybackBassSample {

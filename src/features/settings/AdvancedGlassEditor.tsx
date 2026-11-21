@@ -12,6 +12,7 @@ import { Button, SettingsIconButton, Switch, Textarea } from '../../shared/ui/Se
 import { SettingsDisclosure } from '../../shared/ui/SettingsDisclosure'
 import { RotateCcw } from '../../shared/ui/SettingsIcons'
 import { AdvancedShaderSettings } from './AdvancedShaderSettings'
+import { DesktopGlassSettings } from './DesktopGlassSettings'
 import './AdvancedGlassEditor.css'
 
 type Names = Record<Locale, string>
@@ -95,7 +96,9 @@ export function AdvancedGlassEditor({ config, locale, onChange, scope, base, has
         <section key={title.en} className="glass-editor__section" aria-label={title[locale]}>
           <h3>{title[locale]}</h3>
           {surfaces.map(surface => <SurfaceEditor key={surface} surface={surface} base={base}
-            locale={locale} saved={overrides[surface]} onChange={next => update(surface, next)} />)}
+            locale={locale} saved={overrides[surface]} onChange={next => update(surface, next)}>
+            {surface === 'body' && <DesktopGlassSettings config={config} locale={locale} onChange={onChange} />}
+          </SurfaceEditor>)}
         </section>
       ))}
       <AdvancedShaderSettings config={config} locale={locale} onChange={onChange} scope={scope} />
@@ -133,9 +136,10 @@ function PresetCopy({ config, locale }: Pick<PageProps, 'config' | 'locale'>) {
   </>
 }
 
-function SurfaceEditor({ surface, base, locale, saved = {}, onChange }: {
+function SurfaceEditor({ surface, base, locale, saved = {}, onChange, children }: {
   surface: GlassSurfaceId; base: GlassMaterial; locale: Locale; saved?: SurfaceOverrides
   onChange: (next?: SurfaceOverrides) => void
+  children?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const id = useId()
@@ -151,6 +155,7 @@ function SurfaceEditor({ surface, base, locale, saved = {}, onChange }: {
   return <SettingsDisclosure title={title}
     summary={custom ? (ru ? 'Свои значения' : 'Custom') : undefined} onOpenChange={setOpen}>
     {open && <div className="glass-editor__fields" role="group" aria-label={title}>
+      {children}
       {GLASS_SURFACE_FIELDS[surface].map(field => {
         const inputId = id + field
         const label = surface === 'progressFill' && field === 'background'
