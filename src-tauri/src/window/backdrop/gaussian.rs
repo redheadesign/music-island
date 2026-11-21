@@ -31,8 +31,14 @@ impl Gaussian {
     pub(super) fn new(device: &ID3D11Device) -> Result<Self> {
         unsafe {
             let dxgi: IDXGIDevice = device.cast()?;
-            let context = D2D1CreateDevice(&dxgi, None)?
-                .CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)?;
+            let context = D2D1CreateDevice(
+                &dxgi,
+                Some(&D2D1_CREATION_PROPERTIES {
+                    threadingMode: D2D1_THREADING_MODE_MULTI_THREADED,
+                    ..Default::default()
+                }),
+            )?
+            .CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)?;
             let effect = context.CreateEffect(&CLSID_D2D1GaussianBlur)?;
             effect.SetValue(
                 D2D1_GAUSSIANBLUR_PROP_BORDER_MODE.0 as u32,

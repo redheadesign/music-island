@@ -40,13 +40,19 @@ float4 pixel(float4 position : SV_POSITION) : SV_TARGET {
     float edge = distanceToEdge(p);
     float coverage = saturate(.5 - edge);
     if (coverage <= 0) return 0;
-    float bevel = min(24, bodySize.y * .36);
+    // Spread stronger optics over a wider bevel. Keep the falloff shallower
+    // than one source pixel per screen pixel, so the mapping cannot reverse
+    // along a straight edge and show the same detail twice.
+    float maxBevel = min(bodySize.x, bodySize.y) * .4;
+    float requiredBevel = max(min(24, maxBevel), bend * 2.1 + dispersion * 1.6);
+    float bevel = min(maxBevel, requiredBevel);
+    float strength = bevel / requiredBevel;
     float rim = 1 - smoothstep(0, bevel, -edge);
     float2 normal = float2(distanceToEdge(p + float2(1, 0)) - edge,
                            distanceToEdge(p + float2(0, 1)) - edge);
     // Pull from inside at the monitor's top edge, where no image exists above.
-    float2 displaced = position.xy + bodyOrigin - normal * (bend * rim * rim);
-    float2 fringe = normal * (dispersion * rim);
+    float2 displaced = position.xy + bodyOrigin - normal * (strength * bend * rim * rim);
+    float2 fringe = normal * (strength * dispersion * rim);
     float3 color = spectralSample(displaced, fringe);
     float alpha = opacity * coverage;
     return float4(color * alpha, alpha);

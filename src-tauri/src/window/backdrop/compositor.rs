@@ -28,7 +28,7 @@ mod desktop_lens;
 #[path = "optics.rs"]
 mod optics;
 use desktop_lens::{DesktopLens, LensDevice};
-pub(super) use desktop_lens::{LensLayout, LENS_FRAME, LENS_PRESENT_TIMER};
+pub(super) use desktop_lens::{LensLayout, LENS_FRAME, LENS_PRESENT_TIMER, LENS_RETRY};
 
 /// One visual tree behind the HWND's child WebView2. HostBackdropBrush samples
 /// the desktop inside DWM, and the app has no access to those source pixels.
@@ -195,6 +195,14 @@ impl HostBackdrop {
     }
 
     pub(super) fn draw_lens(&mut self) {
+        self.refresh_lens(false);
+    }
+
+    pub(super) fn retry_lens(&mut self) {
+        self.refresh_lens(true);
+    }
+
+    fn refresh_lens(&mut self, retry: bool) {
         if let Err(error) = self.prepare_lens() {
             self.lens_error(error);
             return;
@@ -202,7 +210,7 @@ impl HostBackdrop {
         let Some((index, lens)) = &mut self.lens else {
             return;
         };
-        match lens.draw() {
+        match lens.draw(retry) {
             Ok(visible) => {
                 if self.lens_ready != visible {
                     if let Some(region) = self.regions.get(*index) {
