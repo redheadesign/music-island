@@ -182,8 +182,7 @@ export const GlassMaterialTuning: Story = {
     const canvas = within(canvasElement.querySelector<HTMLElement>('.settings-appearance')!)
     const disclosure = () => canvas.getByText('Параметры стекла').closest('summary')!
     await expect(disclosure()).toHaveTextContent('По умолчанию')
-    disclosure().focus()
-    await userEvent.keyboard('{Enter}')
+    await userEvent.click(disclosure())
     const controls = within(canvas.getByRole('group', { name: 'Параметры стекла' }))
     const preview = canvasElement.querySelector<HTMLElement>('.island-preview .island-root')!
     const transparency = controls.getByRole('slider', { name: 'Прозрачность' })

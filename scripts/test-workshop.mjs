@@ -68,6 +68,15 @@ try {
       if (phase !== 'finished') throw new Error('Render ended in ' + phase)
       if (!await page.locator('#storybook-root > *').count()) throw new Error('Empty story')
       await page.evaluate(() => document.fonts.ready)
+      if (id === 'screens-settings--glass-material-tuning') {
+        // Native summary activation requires browser keyboard events.
+        const group = page.locator('.glass-material-settings')
+        const summary = page.locator('details').filter({ has: group }).locator('summary')
+        await summary.press('Space')
+        await group.waitFor({ state: 'hidden' })
+        await summary.press('Enter')
+        await group.waitFor({ state: 'visible' })
+      }
       if (id === 'screens-island--glass-without-cover') {
         await checkGlassFrost(page)
       }
