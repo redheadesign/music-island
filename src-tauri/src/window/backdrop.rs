@@ -22,6 +22,7 @@ pub async fn set_overlay_backdrop(
     #[cfg(windows)]
     {
         use tauri::Manager;
+        use windows::Win32::Foundation::HWND;
         let (send, receive) = tokio::sync::oneshot::channel();
         let app = window.app_handle().clone();
         let label = window.label().to_string();
@@ -31,7 +32,7 @@ pub async fn set_overlay_backdrop(
                 let result = main
                     .hwnd()
                     .map_err(|error| error.to_string())
-                    .and_then(|hwnd| native::apply(hwnd, &app, &label, frame));
+                    .and_then(|hwnd| native::apply(HWND(hwnd.0), &app, &label, frame));
                 let _ = send.send(result);
             })
             .map_err(|error| error.to_string())?;
