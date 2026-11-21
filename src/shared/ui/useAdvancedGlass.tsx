@@ -127,6 +127,7 @@ export function useAdvancedGlass(raw: AdvancedGlassOverrides | undefined, base: 
         }
         if (changed.frost !== undefined) {
           declarations.push('--glass-user-blur:' + values.frost + 'px', '--glass-region-frost:' + values.frost / 32)
+          if (group === 'body') declarations.push('--glass-region-blur:' + values.frost * .75)
         }
         const filter = parts.length ? parts.join(' ') : 'none'
         // DWM owns external silhouettes. Only inner controls sample the rendered
@@ -157,7 +158,7 @@ export function useAdvancedGlass(raw: AdvancedGlassOverrides | undefined, base: 
           const reflection = '{content:"";position:absolute;pointer-events:none;inset:0;border-radius:inherit;'
             + 'background:linear-gradient(165deg,transparent 46%,rgb(210 223 239 / .13) 75%,rgb(242 245 249 / .25) 82%,transparent 95%);'
             + 'opacity:1;filter:' + refraction + ';}'
-          if (lens) {
+          if (isRecorder(group)) {
             rules.push(native + ' > .island-glass-optic > .lg-glass::after' + reflection)
             if (group === 'dictationActions') rules.push(native + ':not(:has(> .island-glass-optic))::after' + reflection)
           } else if (readingSurface.has(group) || group === 'actions') {

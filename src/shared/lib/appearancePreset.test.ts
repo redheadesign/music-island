@@ -34,6 +34,7 @@ it('exports one deterministic visual preset with active and inherited settings f
     taskbar: { enabled: true, scale: 1.15 },
   })
   expect(preset.surfaces.effective.body).not.toHaveProperty('rim')
+  expect(preset.surfaces.effective.body).not.toHaveProperty('bend')
   expect(preset.surfaces.effective.progressFill).not.toHaveProperty('textSize')
 })
 

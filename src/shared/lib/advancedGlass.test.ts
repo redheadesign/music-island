@@ -8,7 +8,7 @@ describe('per-surface glass', () => {
       body: { frost: 45, background: '#AbCdEf', text: 'red; opacity:0', bend: 0, rim: 1 },
       transport: { dispersion: .4, frost: 1.6666, highlight: NaN, parallax: Infinity },
       progressFill: { angle: -20, text: '#000000' }, unknown: { rim: .5 },
-    })).toEqual({ body: { frost: 32, background: '#abcdef', bend: 0 }, transport: { dispersion: .4, frost: 1.7 }, progressFill: { angle: 0 } })
+    })).toEqual({ body: { frost: 32, background: '#abcdef' }, transport: { dispersion: .4, frost: 1.7 }, progressFill: { angle: 0 } })
   })
 
   it('drops retired or malformed overrides without materializing defaults', () => {

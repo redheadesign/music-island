@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 /// CSS viewport coordinates, already including the element's CSS transform.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BackdropRegion {
     pub left: f64,
     pub top: f64,
@@ -12,6 +13,8 @@ pub struct BackdropRegion {
     pub opacity: f64,
     #[serde(default)]
     pub frost: Option<f64>,
+    #[serde(default)]
+    pub blur_radius: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -60,6 +63,9 @@ impl BackdropRegion {
             && (0.0..=1.0).contains(&self.opacity)
             && self.frost.is_none_or(|frost| (0.0..=1.0).contains(&frost))
             && self
+                .blur_radius
+                .is_none_or(|radius| (0.0..=24.0).contains(&radius))
+            && self
                 .radii
                 .into_iter()
                 .all(|radius| radius.is_finite() && radius >= 0.0)
@@ -75,6 +81,7 @@ impl BackdropRegion {
             radii: self.radii.map(|radius| radius.min(limit) * scale),
             opacity: self.opacity * self.frost.unwrap_or(frost),
             frost: None,
+            blur_radius: self.blur_radius.map(|radius| (radius * scale).min(32.0)),
         }
     }
 }
@@ -105,6 +112,7 @@ mod tests {
             radii: [0.0, 0.0, 36.0, 36.0],
             opacity: 0.6,
             frost: None,
+            blur_radius: None,
         };
         let physical = region.physical(1.5, 0.5);
         assert_eq!(
@@ -153,6 +161,7 @@ mod tests {
                 radii: [0.0; 4],
                 opacity: 1.0,
                 frost: None,
+                blur_radius: None,
             };
             25
         ];

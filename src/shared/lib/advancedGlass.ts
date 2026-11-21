@@ -29,7 +29,7 @@ export type AdvancedGlassOverrides = Partial<Record<GlassSurfaceId, Partial<Glas
 export function getSurfaceDefaults(id: GlassSurfaceId, base: GlassMaterial): GlassSurfaceSettings {
   const nested = ['transport', 'seek', 'reactions', 'modes', 'volume', 'progressTrack', 'progressFill'].includes(id)
   return {
-    bend: id === 'body' ? .45 : 0, dispersion: 0, frost: nested ? 0 : Math.round(base.frost * .32 * 10) / 10,
+    bend: 0, dispersion: 0, frost: nested ? 0 : Math.round(base.frost * .32 * 10) / 10,
     rim: .13, transparency: id === 'progressFill' ? 0 : base.transparency,
     parallax: base.parallax, highlight: base.highlight, edge: base.edge,
     background: id === 'progressFill' ? '#6d6d69' : '#080808', text: '#f4f4f1',
@@ -41,7 +41,8 @@ const optics = ['bend', 'dispersion', 'frost'] as const
 const plate = [...optics, 'transparency', 'background', 'text'] as const
 const control = [...optics, 'rim', 'transparency', 'parallax', 'highlight', 'edge', 'background', 'text'] as const
 export const GLASS_SURFACE_FIELDS: Record<GlassSurfaceId, readonly (keyof GlassSurfaceSettings)[]> = {
-  body: plate, transport: control, seek: control, reactions: control, modes: control,
+  body: ['frost', 'transparency', 'background', 'text'],
+  transport: control, seek: control, reactions: control, modes: control,
   volume: control, actions: control, usage: plate, localServers: plate, latestDictation: plate,
   notices: plate, progressTrack: [...control, 'height', 'radius', 'textSize'],
   progressFill: [...optics, 'transparency', 'background', 'endColor', 'angle', 'radius'],

@@ -23,6 +23,7 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
   if (opacity <= 0.001) return null
   const style = styles.get(surface)!
   const override = parseFloat(style.getPropertyValue('--glass-region-frost'))
+  const blurRadius = parseFloat(style.getPropertyValue('--glass-region-blur'))
   const scale = Math.min(rect.width / Math.max(surface.offsetWidth, 1), rect.height / Math.max(surface.offsetHeight, 1))
   const radius = (value: string) => {
     const parsed = Number.parseFloat(value) || 0
@@ -33,6 +34,7 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
     radii: [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius].map(radius) as [number, number, number, number],
     opacity,
     ...(Number.isFinite(override) && override >= 0 && { frost: Math.min(1, override) }),
+    ...(Number.isFinite(blurRadius) && blurRadius > 0 && { blurRadius: Math.min(24, blurRadius) }),
   }
 }
 

@@ -5,9 +5,12 @@ use windows::{
     core::w,
     Win32::{
         Foundation::{COLORREF, LPARAM, LRESULT, RECT, WPARAM},
-        Graphics::Gdi::{
-            BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, FillRect, GetDC, GetPixel,
-            ReleaseDC, HGDIOBJ, PAINTSTRUCT,
+        Graphics::{
+            Dwm::DwmFlush,
+            Gdi::{
+                BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, FillRect, GetDC, GetPixel,
+                RedrawWindow, ReleaseDC, HGDIOBJ, PAINTSTRUCT, RDW_INVALIDATE, RDW_UPDATENOW,
+            },
         },
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::*,
@@ -26,15 +29,18 @@ unsafe extern "system" fn checker_proc(
     if message == WM_PAINT {
         let mut paint = PAINTSTRUCT::default();
         let dc = BeginPaint(hwnd, &mut paint);
-        if GetWindowLongPtrW(hwnd, GWLP_USERDATA) == 1 {
-            for x in (0..640).step_by(4) {
-                let brush = CreateSolidBrush(COLORREF(if x % 8 == 0 { 0xffffff } else { 0 }));
+        let mode = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+        if mode != 0 {
+            let bar = if mode == 1 { 4 } else { 48 };
+            for x in (0..640).step_by(bar as usize) {
+                let brush =
+                    CreateSolidBrush(COLORREF(if x % (bar * 2) == 0 { 0xffffff } else { 0 }));
                 FillRect(
                     dc,
                     &RECT {
                         left: x,
                         top: 0,
-                        right: x + 4,
+                        right: x + bar,
                         bottom: 400,
                     },
                     brush,
@@ -130,6 +136,7 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
                 radii: [0.0, 0.0, 35.0, 35.0],
                 opacity: 1.0,
                 frost: None,
+                blur_radius: None,
             },
             BackdropRegion {
                 left: 20.0,
@@ -139,6 +146,7 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
                 radii: [20.0; 4],
                 opacity: 1.0,
                 frost: None,
+                blur_radius: None,
             },
         ];
         let regions = |frost| {
@@ -214,6 +222,46 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
             cleared >= 240,
             "removing the visual did not restore desktop contrast"
         );
+        SetWindowLongPtrW(checker, GWLP_USERDATA, 2);
+        let _ = RedrawWindow(Some(checker), None, None, RDW_INVALIDATE | RDW_UPDATENOW);
+        DwmFlush()?;
+        compositor.update(640.0, 400.0, &regions(1.0)[..1])?;
+        pump();
+        let profile = || {
+            let dc = GetDC(None);
+            let values: Vec<_> = (150..430)
+                .step_by(8)
+                .map(|x| GetPixel(dc, 100 + x, 240).0 & 255)
+                .collect();
+            ReleaseDC(None, dc);
+            values
+        };
+        let native = profile();
+        let mut body = regions(1.0)[0].clone();
+        body.blur_radius = Some(24.0);
+        compositor.update(640.0, 400.0, std::slice::from_ref(&body))?;
+        pump();
+        let stronger = profile();
+        let detail = |samples: &[u32]| {
+            let center = &samples[8..26];
+            center.iter().max().unwrap() - center.iter().min().unwrap()
+        };
+        println!(
+            "wide stripe contrast: stock={}, custom={}",
+            detail(&native),
+            detail(&stronger)
+        );
+        assert!(detail(&native) > 15, "wide checker must be visible first");
+        assert!(detail(&stronger) * 4 < detail(&native) * 3);
+        let brush = compositor.regions[0].frost.clone();
+        body.blur_radius = Some(12.0);
+        compositor.update(640.0, 400.0, std::slice::from_ref(&body))?;
+        assert_eq!(compositor.regions[0].frost, brush);
+        body.blur_radius = None;
+        compositor.update(640.0, 400.0, &[body])?;
+        pump();
+        assert_eq!(profile(), native);
+        assert!(compositor.regions[0].frost.is_none());
         drop(compositor);
         Ok(())
     }

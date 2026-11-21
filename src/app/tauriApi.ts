@@ -30,6 +30,8 @@ export interface NativeBackdropRegion {
   opacity: number
   /** Per-surface strength of Windows' frosted desktop brush, 0–1. */
   frost?: number
+  /** Optional additional native blur in CSS pixels. */
+  blurRadius?: number
 }
 
 export interface NativeBackdropFrame {

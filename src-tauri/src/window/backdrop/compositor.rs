@@ -1,5 +1,8 @@
 use super::geometry::BackdropRegion;
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{OnceCell, RefCell},
+    rc::Rc,
+};
 use windows::{
     core::Interface,
     System::{DispatcherQueue, DispatcherQueueController},
@@ -12,11 +15,14 @@ use windows::{
         },
     },
     UI::Composition::{
-        CompositionBackdropBrush, CompositionRoundedRectangleGeometry, Compositor, ContainerVisual,
+        CompositionBackdropBrush, CompositionEffectBrush, CompositionEffectFactory,
+        CompositionRoundedRectangleGeometry, Compositor, ContainerVisual,
         Desktop::DesktopWindowTarget, SpriteVisual,
     },
 };
 use windows_numerics::{Vector2, Vector3};
+#[path = "optics.rs"]
+mod optics;
 
 /// One visual tree behind the HWND's child WebView2. HostBackdropBrush samples
 /// the desktop inside DWM, and the app has no access to those source pixels.
@@ -24,6 +30,7 @@ pub(super) struct HostBackdrop {
     target: DesktopWindowTarget,
     root: ContainerVisual,
     brush: CompositionBackdropBrush,
+    frost_factory: OnceCell<Option<CompositionEffectFactory>>,
     compositor: Compositor,
     hwnd: HWND,
     _queue: Rc<QueueOwner>,
@@ -40,6 +47,7 @@ struct Surface {
         CompositionRoundedRectangleGeometry,
     )>,
     previous: Option<BackdropRegion>,
+    frost: Option<CompositionEffectBrush>,
 }
 
 struct QueueOwner(Option<DispatcherQueueController>);
@@ -104,6 +112,7 @@ impl HostBackdrop {
                 target,
                 root,
                 brush,
+                frost_factory: OnceCell::new(),
                 compositor,
                 hwnd,
                 _queue: queue,
@@ -159,9 +168,18 @@ impl HostBackdrop {
                     group,
                     tiles: Vec::new(),
                     previous: None,
+                    frost: None,
                 });
             }
-            self.regions[index].update(&self.compositor, &self.brush, region)?;
+            let factory = region
+                .blur_radius
+                .filter(|radius| *radius > 0.0)
+                .and_then(|_| {
+                    self.frost_factory
+                        .get_or_init(|| optics::blur_factory(&self.compositor).ok())
+                        .as_ref()
+                });
+            self.regions[index].update(&self.compositor, &self.brush, factory, region)?;
         }
         if !self.visible {
             self.root.SetOpacity(1.0)?;
@@ -176,6 +194,7 @@ impl Surface {
         &mut self,
         compositor: &Compositor,
         brush: &CompositionBackdropBrush,
+        factory: Option<&CompositionEffectFactory>,
         region: &BackdropRegion,
     ) -> windows::core::Result<()> {
         let previous = self.previous.as_ref();
@@ -189,12 +208,53 @@ impl Surface {
         if previous.is_none_or(|p| p.opacity != region.opacity) {
             self.group.SetOpacity(region.opacity as f32)?;
         }
-        if previous.is_none_or(|p| {
+        let resized = previous.is_none_or(|p| {
             (p.width, p.height, p.radii) != (region.width, region.height, region.radii)
-        }) {
+        });
+        let frost_changed = previous.is_none_or(|p| p.blur_radius != region.blur_radius);
+        if resized {
             self.fit(compositor, brush, region)?;
         }
+        if resized || frost_changed {
+            self.apply_frost(brush, factory, region.blur_radius)?;
+        }
         self.previous = Some(region.clone());
+        Ok(())
+    }
+
+    fn apply_frost(
+        &mut self,
+        backdrop: &CompositionBackdropBrush,
+        factory: Option<&CompositionEffectFactory>,
+        radius: Option<f64>,
+    ) -> windows::core::Result<()> {
+        if let (Some(factory), Some(radius)) = (factory, radius) {
+            // Composition can reject the optional effect brush on a device.
+            // Keep its normal DWM backdrop if that happens.
+            let effect = self
+                .frost
+                .take()
+                .map(Ok)
+                .unwrap_or_else(|| optics::bind_frost(factory, backdrop));
+            if let Ok(effect) = effect {
+                if optics::set_radius(&effect, radius as f32).is_ok()
+                    && self
+                        .tiles
+                        .iter()
+                        .all(|(_, sprite, _)| sprite.SetBrush(&effect).is_ok())
+                {
+                    self.frost = Some(effect);
+                    return Ok(());
+                }
+                for (_, sprite, _) in &self.tiles {
+                    sprite.SetBrush(backdrop)?;
+                }
+            }
+        } else if self.frost.take().is_some() {
+            for (_, sprite, _) in &self.tiles {
+                sprite.SetBrush(backdrop)?;
+            }
+        }
         Ok(())
     }
 

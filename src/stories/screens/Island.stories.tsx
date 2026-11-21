@@ -227,10 +227,18 @@ export const AdvancedGlassSurfaces: StoryObj<typeof meta> = {
     if (matchMedia('(prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)').matches) return
     const track = root.querySelector<HTMLElement>('.progress-track')!
     const fill = track.querySelector<HTMLElement>('.progress-fill')!
+    const card = root.querySelector<HTMLElement>('.island-card')!
     const lens = root.querySelector<HTMLElement>('.island-card .lg-glass')!
     await expect(root.querySelectorAll('filter[id^="glass-optics-"]')).toHaveLength(1)
     await expect(getComputedStyle(lens).boxShadow).toBe('none')
     await expect(getComputedStyle(lens).backdropFilter).toContain('blur(6.5px)')
+    await expect(parseFloat(getComputedStyle(card).getPropertyValue('--glass-region-blur'))).toBeCloseTo(4.875)
+    // Older profiles contained player-only optics. They must not recreate the
+    // diagonal reflection on the desktop after an upgrade.
+    root.dataset.nativeBackdrop = 'active'
+    await expect(getComputedStyle(lens, '::after').backgroundImage).toBe('none')
+    await expect(getComputedStyle(lens).backdropFilter).toBe('none')
+    delete root.dataset.nativeBackdrop
     await expect(getComputedStyle(track).height).toBe('48px')
     await expect(getComputedStyle(track).borderRadius).toBe('14px')
     await expect(getComputedStyle(track.querySelector('.progress-content')!).color).toBe('rgb(255, 240, 208)')

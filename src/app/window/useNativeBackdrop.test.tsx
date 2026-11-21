@@ -26,10 +26,11 @@ function PreviewWithoutWindowOwner() {
   return <output>{status ?? 'preview'}</output>
 }
 
-function IndependentFrost({ global, local }: { global: number; local?: number }) {
+function IndependentFrost({ global, local, blur }: { global: number; local?: number; blur?: number }) {
   const ref = useRef<HTMLDivElement>(null)
   useNativeBackdrop(ref, true, '[data-blur]', global, local === undefined ? '' : 'usage:' + local)
-  return <div ref={ref}><div data-blur /><div data-blur style={{ '--glass-region-frost': local } as CSSProperties} /></div>
+  return <div ref={ref}><div data-blur /><div data-blur
+    style={{ '--glass-region-frost': local, '--glass-region-blur': blur } as CSSProperties} /></div>
 }
 
 function Recording({ text }: { text: string }) {
@@ -181,8 +182,11 @@ it('updates an independent surface when the global frost is zero and restores in
   for (const [global, local, expected] of [
     [0, undefined, []], [0, .5, [.5]], [.9, 0, [undefined]], [.9, undefined, [undefined, undefined]],
   ] as const) {
-    await act(async () => root.render(<IndependentFrost global={global} local={local} />))
+    await act(async () => root.render(<IndependentFrost global={global} local={local}
+      blur={local === undefined ? undefined : local * 24} />))
     await act(async () => vi.advanceTimersByTimeAsync(500))
-    expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0].regions.map(region => region.frost)).toEqual(expected)
+    const regions = vi.mocked(setOverlayBackdrop).mock.lastCall?.[0].regions
+    expect(regions?.map(region => region.frost)).toEqual(expected)
+    expect(regions?.flatMap(region => region.blurRadius ?? [])).toEqual(local ? [local * 24] : [])
   }
 })

@@ -4,6 +4,12 @@
   initial-value: -1;
 }
 
+@property --glass-region-blur {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
 [data-interface-theme='glass'] :where(.ui-button, .media-button, .play-button:not(.artwork-play-button), .reaction-button, .island-actions .icon-button, .island-plugin-button) {
   position: relative;
 }
