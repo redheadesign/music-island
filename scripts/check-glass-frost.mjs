@@ -35,6 +35,61 @@ export async function checkGlassFrost(page) {
   }
 }
 
+// Measure each widget's actual desktop transmission, including any ancestor
+// fills. Text covers some pixels, so compare the median in the centre.
+export async function checkIslandWidgetTransmission(page) {
+  const widgets = [
+    ['.usage-chip__compact-provider', '.usage-chip__compact-value'],
+    ['.island-local-servers', '.island-local-servers__address span'],
+    ['.island-latest-dictation', '.island-latest-dictation__text'],
+  ]
+  const areas = await Promise.all(widgets.map(async ([selector, text]) => {
+    const element = page.locator(selector).first()
+    const widget = await element.boundingBox()
+    assert.ok(widget, `Missing visible ${selector}`)
+    const crop = {
+      left: Math.ceil(widget.x + widget.width * .15), top: Math.ceil(widget.y + widget.height * .2),
+      width: Math.floor(widget.width * .7), height: Math.floor(widget.height * .6),
+    }
+    return { selector, text: element.locator(text).first(), crop }
+  }))
+  const style = await page.addStyleTag({ content: '.workshop-stage { background: #000 !important }' })
+  async function capture(css, background) {
+    await style.evaluate((el, rules) => { el.textContent = rules }, css + `.workshop-stage { background: ${background} !important }`)
+    return page.screenshot()
+  }
+  try {
+    const defaults = []
+    for (const [strength, min, max] of [[null, .25, .55], [0, 0, .01], [1, .36, .48]]) {
+      const css = strength === null ? '' : `.island-root { --glass-transparency-strength: ${strength} !important; --glass-highlight-strength: 1 !important }`
+      const dark = await capture(css, '#000'), light = await capture(css, '#fff')
+      for (const { selector, text, crop } of areas) {
+        const patches = await Promise.all([dark, light].map(frame => sharp(frame).extract(crop).removeAlpha().greyscale().raw().toBuffer()))
+        const differences = patches[1].map((value, index) => Math.abs(value - patches[0][index])).sort()
+        const transmitted = differences[Math.floor(differences.length / 2)] / 255
+        assert.ok(transmitted >= min && transmitted <= max, `${selector} transmitted ${Math.round(transmitted * 100)}% at ${strength ?? 'default'}`)
+        if (strength === null) defaults.push(transmitted)
+        if (strength === 1) {
+          const plate = patches[1].sort()[Math.floor(patches[1].length / 2)]
+          const ink = (await text.evaluate(el => getComputedStyle(el).color)).match(/[\d.]+/g).map(Number)
+          const contrast = (luminance(ink.slice(0, 3)) + .05) / (luminance([plate, plate, plate]) + .05)
+          assert.ok(contrast >= 4.5, `${selector} text on white backdrop: ${contrast.toFixed(2)}:1`)
+        }
+      }
+    }
+    return defaults
+  } finally {
+    await style.evaluate(el => el.remove())
+  }
+}
+
+function luminance(rgb) {
+  return Array.from(rgb, (channel, index) => {
+    const s = channel / 255
+    return (s <= .04045 ? s / 12.92 : ((s + .055) / 1.055) ** 2.4) * [.2126, .7152, .0722][index]
+  }).reduce((sum, channel) => sum + channel, 0)
+}
+
 // Small dictated text must remain readable over a bright document, including
 // the tentative words that are drawn with a different emphasis.
 export async function checkRecorderContrast(page) {
@@ -54,10 +109,6 @@ export async function checkRecorderContrast(page) {
       }),
     )
     assert.equal(styles.length, 2)
-    const luminance = rgb => Array.from(rgb, (channel, index) => {
-      const s = channel / 255
-      return (s <= .04045 ? s / 12.92 : ((s + .055) / 1.055) ** 2.4) * [.2126, .7152, .0722][index]
-    }).reduce((sum, channel) => sum + channel, 0)
     for (const { color, opacity } of styles) {
       const [r, g, b, alpha = 1] = color.match(/[\d.]+/g).map(Number)
       const ink = [r, g, b].map((channel, i) => plate[i] + (channel - plate[i]) * opacity * alpha)

@@ -1,4 +1,6 @@
 .island-glass-optic {
+  --optic-width: var(--glass-edge-width, 1px);
+  --optic-highlight: var(--glass-highlight-strength, .5);
   position: absolute;
   inset: 0;
   z-index: 0;
@@ -8,19 +10,47 @@
   background-color: var(--island-optic-fill, var(--glass-island-fill));
 }
 
+.island-glass-optic > svg {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* The CSS stroke and frost exist on the first paint and follow the exact
+   radius at fractional Windows scaling. Never stretch a per-size rim bitmap. */
 .island-glass-optic > .lg-glass {
-  --lg-blur: var(--island-optic-blur, 3px);
-  --lg-glass-bend: var(--island-optic-bend, .42);
-  --lg-glass-dispersion: 0;
-  --lg-rim-shine: var(--island-optic-shine, .38);
-  --lg-edge: rgba(242, 245, 248, .22);
-  --lg-drop: transparent;
   --lg-glass: transparent;
+  --lg-blur: var(--glass-user-blur, var(--island-optic-blur, 4px));
+  --lg-filter: var(--island-optic-filter, saturate(1));
   position: absolute;
   inset: calc(0px - var(--island-optic-overhang, 0px)) 0 0;
+  box-sizing: border-box;
   border-radius: var(--island-optic-radius, inherit);
-  box-shadow: none;
+  box-shadow: inset 0 0 0 var(--optic-width) rgb(255 255 255 / calc(.4 * var(--optic-highlight)));
 }
+
+/* Nine-slice the 2x original Glisse rim at its 36 CSS-pixel corner radius.
+   The tiny recorder gets only its antialiased vector line. */
+.island-glass-optic[data-glass-surface='player'] > .lg-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  border-image-source: url('./glisse-player-rim.png?inline');
+  border-image-slice: 72;
+  border-image-width: var(--glass-island-radius);
+  opacity: var(--optic-highlight);
+}
+
+/* On the real overlay, DWM produces all background blur. A WebView-wide
+   backdrop snapshot on top of that was the hot path during playback. */
+[data-native-backdrop] .island-glass-optic > .lg-glass {
+  backdrop-filter: none;
+}
+
+.island-glass-optic:not([data-active]) > .lg-glass { backdrop-filter: none; }
+
+[data-reduced-transparency='true'] .island-glass-optic > .lg-glass { display: none; }
 
 @media (prefers-reduced-transparency: reduce), (forced-colors: active), (prefers-contrast: more) {
   .island-glass-optic { background: var(--glass-island-opaque, Canvas); }

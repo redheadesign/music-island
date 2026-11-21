@@ -1,6 +1,7 @@
 import type { AppConfig } from './types'
 import type { TaskbarLayoutV1 } from './taskbarLayout'
 import type { DictationAppearance } from './dictationAppearance'
+import type { GlassMaterial } from './glassMaterial'
 import { getInterfaceThemeDefinition, normalizeInterfaceTheme, type InterfaceThemeId } from './interfaceTheme'
 import { DEFAULT_ACCENT } from './accentTheme'
 import { buildInterfacePaletteStyle, normalizeInterfacePalette, type InterfacePaletteId } from './interfacePalette'
@@ -23,6 +24,7 @@ export interface UiPrefs {
   /** Visual size of local server rows, as a percentage. */
   localServersWidgetScale?: number
   interfaceTheme?: InterfaceThemeId
+  glassMaterial?: Partial<GlassMaterial>
   interfacePalette?: InterfacePaletteId
   playbackWaveEnabled?: boolean
   /** Settings update banner dismissed for this latest version */

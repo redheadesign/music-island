@@ -69,7 +69,7 @@ pub(super) fn apply(
     app: &AppHandle,
     label: &str,
     frame: BackdropFrame,
-) -> Result<bool, String> {
+) -> Result<Option<bool>, String> {
     WINDOWS.with(|windows| {
         let mut windows = windows.borrow_mut();
         let state = windows.entry(hwnd.0 as usize).or_insert_with(|| {
@@ -96,28 +96,21 @@ pub(super) fn apply(
             }
         });
         if frame.generation <= state.generation {
-            return Ok(state.compositor.is_some() && state.frame.is_some());
+            return Ok(None);
         }
         state.generation = frame.generation;
-        let mut bounds = RECT::default();
-        let size_matches = unsafe { GetClientRect(hwnd, &mut bounds) }.is_ok()
-            && frame.matches_pixels(bounds.right, bounds.bottom);
-        if !frame.enabled
-            || frame.regions.is_empty()
-            || !size_matches
-            || !*state.policy.get_or_insert_with(allowed_by_windows)
-            || !unsafe { IsWindowVisible(hwnd) }.as_bool()
-            || unsafe { IsIconic(hwnd) }.as_bool()
-        {
+        if !frame.enabled || !*state.policy.get_or_insert_with(allowed_by_windows) {
             state.frame = None;
-            if let Some(compositor) = &state.compositor {
+            if let Some(compositor) = &mut state.compositor {
                 compositor.clear();
             }
-            return Ok(false);
+            return Ok(if frame.enabled { Some(false) } else { None });
         }
         if state.unsupported {
-            return Ok(false);
+            return Ok(Some(false));
         }
+        // Prepare the empty target while the top-edge window is still
+        // collapsed, so attaching its first visible region needs no new target.
         if state.compositor.is_none() {
             match HostBackdrop::new(hwnd) {
                 Ok(compositor) => state.compositor = Some(compositor),
@@ -126,14 +119,30 @@ pub(super) fn apply(
                     crate::logging::append_event(&format!(
                         "desktop backdrop unavailable for {label}: {error}"
                     ));
-                    return Ok(false);
+                    return Ok(Some(false));
                 }
             }
+        }
+        let compositor = state.compositor.as_mut().expect("initialized compositor");
+        let mut bounds = RECT::default();
+        let ready = unsafe { GetClientRect(hwnd, &mut bounds) }.is_ok()
+            && frame.matches_pixels(bounds.right, bounds.bottom)
+            && unsafe { IsWindowVisible(hwnd) }.as_bool()
+            && !unsafe { IsIconic(hwnd) }.as_bool();
+        if frame.regions.is_empty() || !ready {
+            state.frame = None;
+            compositor.clear();
+            // A missing surface or a show/resize race is not a policy denial.
+            return Ok(if frame.regions.is_empty() {
+                Some(true)
+            } else {
+                None
+            });
         }
         let regions: Vec<_> = frame
             .regions
             .iter()
-            .map(|region| region.physical(frame.scale))
+            .map(|region| region.physical(frame.scale, frame.frost))
             .collect();
         let geometry = (
             frame.viewport_width * frame.scale,
@@ -141,18 +150,17 @@ pub(super) fn apply(
             regions,
         );
         if state.frame.as_ref() != Some(&geometry) {
-            let compositor = state.compositor.as_ref().expect("initialized compositor");
             if compositor
                 .update(geometry.0 as f32, geometry.1 as f32, &geometry.2)
                 .is_err()
             {
                 compositor.clear();
                 state.frame = None;
-                return Ok(false);
+                return Ok(Some(false));
             }
             state.frame = Some(geometry);
         }
-        Ok(true)
+        Ok(Some(true))
     })
 }
 
@@ -172,7 +180,7 @@ unsafe extern "system" fn window_proc(
             if let Ok(mut windows) = windows.try_borrow_mut() {
                 if let Some(state) = windows.get_mut(&(hwnd.0 as usize)) {
                     state.frame = None;
-                    if let Some(compositor) = &state.compositor {
+                    if let Some(compositor) = &mut state.compositor {
                         compositor.clear();
                     }
                     if matches!(message, WM_SETTINGCHANGE | WM_DWMCOMPOSITIONCHANGED) {

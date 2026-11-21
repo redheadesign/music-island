@@ -1,5 +1,6 @@
 import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
+import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMaterial'
 import { SettingsFilled, SquareTerminal } from '../../shared/ui/SettingsIcons'
 import { Mic, Pin } from 'lucide-react'
 import { Fragment, useLayoutEffect, useRef, useState } from 'react'
@@ -161,6 +162,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   const paletteStyle = getInterfacePaletteStyle(config)
   const style: CSSProperties & Record<`--${string}`, string | number | undefined> = {
     ...paletteStyle,
+    ...glassMaterialStyle(getGlassMaterial(config)),
     '--drag-indicator': paletteStyle['--accent'],
     '--preview-render-scale': scale,
     '--drop-zone-ready': 'color-mix(in srgb, var(--drag-indicator) 12%, transparent)',

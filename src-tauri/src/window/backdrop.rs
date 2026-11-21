@@ -12,7 +12,7 @@ pub use geometry::{BackdropFrame, BackdropRegion};
 pub async fn set_overlay_backdrop(
     window: tauri::WebviewWindow,
     frame: BackdropFrame,
-) -> Result<bool, String> {
+) -> Result<Option<bool>, String> {
     if !matches!(window.label(), "main" | "recording_overlay") {
         return Err("Only an overlay can set its backdrop".into());
     }
@@ -41,5 +41,5 @@ pub async fn set_overlay_backdrop(
             .map_err(|_| "Backdrop window closed".to_string())?
     }
     #[cfg(not(windows))]
-    Ok(false)
+    Ok(Some(false))
 }

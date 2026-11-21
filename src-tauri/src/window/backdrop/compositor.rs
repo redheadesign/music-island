@@ -12,7 +12,8 @@ use windows::{
         },
     },
     UI::Composition::{
-        CompositionBackdropBrush, Compositor, ContainerVisual, Desktop::DesktopWindowTarget,
+        CompositionBackdropBrush, CompositionRoundedRectangleGeometry, Compositor, ContainerVisual,
+        Desktop::DesktopWindowTarget, SpriteVisual,
     },
 };
 use windows_numerics::{Vector2, Vector3};
@@ -26,6 +27,19 @@ pub(super) struct HostBackdrop {
     compositor: Compositor,
     hwnd: HWND,
     _queue: Rc<QueueOwner>,
+    regions: Vec<Surface>,
+    viewport: (f32, f32),
+    visible: bool,
+}
+
+struct Surface {
+    group: ContainerVisual,
+    tiles: Vec<(
+        ContainerVisual,
+        SpriteVisual,
+        CompositionRoundedRectangleGeometry,
+    )>,
+    previous: Option<BackdropRegion>,
 }
 
 struct QueueOwner(Option<DispatcherQueueController>);
@@ -82,6 +96,8 @@ impl HostBackdrop {
             let interop: ICompositorDesktopInterop = compositor.cast()?;
             let target = unsafe { interop.CreateDesktopWindowTarget(hwnd, false)? };
             let root = compositor.CreateContainerVisual()?;
+            root.SetClip(&compositor.CreateInsetClip()?)?;
+            root.SetOpacity(0.0)?;
             let brush = compositor.CreateHostBackdropBrush()?;
             target.SetRoot(&root)?;
             Ok(Self {
@@ -91,6 +107,9 @@ impl HostBackdrop {
                 compositor,
                 hwnd,
                 _queue: queue,
+                regions: Vec::new(),
+                viewport: (0.0, 0.0),
+                visible: false,
             })
         })();
         if result.is_err() {
@@ -107,95 +126,135 @@ impl HostBackdrop {
         result
     }
 
-    pub(super) fn clear(&self) {
-        let _ = self.root.SetOpacity(0.0);
-        if let Ok(children) = self.root.Children() {
-            let _ = children.RemoveAll();
+    pub(super) fn clear(&mut self) {
+        if self.visible {
+            let _ = self.root.SetOpacity(0.0);
+            self.visible = false;
         }
     }
 
     pub(super) fn update(
-        &self,
+        &mut self,
         width: f32,
         height: f32,
         regions: &[BackdropRegion],
     ) -> windows::core::Result<()> {
-        let layer = self.compositor.CreateContainerVisual()?;
-        layer.SetSize(Vector2 {
-            X: width,
-            Y: height,
-        })?;
-        layer.SetClip(&self.compositor.CreateInsetClip()?)?;
-        for region in regions {
-            self.add_region(&layer, region)?;
+        if self.viewport != (width, height) {
+            self.root.SetSize(Vector2 {
+                X: width,
+                Y: height,
+            })?;
+            self.viewport = (width, height);
         }
-        let children = self.root.Children()?;
-        children.RemoveAll()?;
-        children.InsertAtTop(&layer)?;
-        self.root.SetOpacity(1.0)
+        while self.regions.len() > regions.len() {
+            let last = self.regions.last().unwrap();
+            self.root.Children()?.Remove(&last.group)?;
+            self.regions.pop();
+        }
+        for (index, region) in regions.iter().enumerate() {
+            if index == self.regions.len() {
+                let group = self.compositor.CreateContainerVisual()?;
+                self.root.Children()?.InsertAtTop(&group)?;
+                self.regions.push(Surface {
+                    group,
+                    tiles: Vec::new(),
+                    previous: None,
+                });
+            }
+            self.regions[index].update(&self.compositor, &self.brush, region)?;
+        }
+        if !self.visible {
+            self.root.SetOpacity(1.0)?;
+            self.visible = true;
+        }
+        Ok(())
     }
+}
 
-    fn add_region(
-        &self,
-        layer: &ContainerVisual,
+impl Surface {
+    fn update(
+        &mut self,
+        compositor: &Compositor,
+        brush: &CompositionBackdropBrush,
         region: &BackdropRegion,
     ) -> windows::core::Result<()> {
-        let group = self.compositor.CreateContainerVisual()?;
-        group.SetOffset(Vector3 {
-            X: region.left as f32,
-            Y: region.top as f32,
-            Z: 0.0,
-        })?;
-        group.SetOpacity(region.opacity as f32)?;
+        let previous = self.previous.as_ref();
+        if previous.is_none_or(|p| (p.left, p.top) != (region.left, region.top)) {
+            self.group.SetOffset(Vector3 {
+                X: region.left as f32,
+                Y: region.top as f32,
+                Z: 0.0,
+            })?;
+        }
+        if previous.is_none_or(|p| p.opacity != region.opacity) {
+            self.group.SetOpacity(region.opacity as f32)?;
+        }
+        if previous.is_none_or(|p| {
+            (p.width, p.height, p.radii) != (region.width, region.height, region.radii)
+        }) {
+            self.fit(compositor, brush, region)?;
+        }
+        self.previous = Some(region.clone());
+        Ok(())
+    }
+
+    fn fit(
+        &mut self,
+        compositor: &Compositor,
+        brush: &CompositionBackdropBrush,
+        region: &BackdropRegion,
+    ) -> windows::core::Result<()> {
+        let [tl, tr, br, bl] = region.radii;
+        // The top-edge island is a single rounded rectangle extended above its
+        // tile. This avoids joining four antialiased clips through its center.
+        let flat_top = tl == 0.0 && tr == 0.0 && br == bl;
+        let single = flat_top || (tl == tr && tr == br && br == bl);
+        let tiles = if single { 1 } else { 4 };
+        if self.tiles.len() != tiles {
+            self.group.Children()?.RemoveAll()?;
+            self.tiles.clear();
+            for _ in 0..tiles {
+                let tile = compositor.CreateContainerVisual()?;
+                tile.SetClip(&compositor.CreateInsetClip()?)?;
+                let sprite = compositor.CreateSpriteVisual()?;
+                sprite.SetBrush(brush)?;
+                let shape = compositor.CreateRoundedRectangleGeometry()?;
+                sprite.SetClip(&compositor.CreateGeometricClipWithGeometry(&shape)?)?;
+                tile.Children()?.InsertAtTop(&sprite)?;
+                self.group.Children()?.InsertAtTop(&tile)?;
+                self.tiles.push((tile, sprite, shape));
+            }
+        }
         let width = region.width as f32;
         let height = region.height as f32;
-        // Common pill/roundrect is one visual. Unequal CSS corner radii use four
-        // disjoint quadrants, each clipped to its own rounded source rectangle.
-        let uniform = region.radii.iter().all(|radius| *radius == region.radii[0]);
-        let corners: &[(f32, f32, usize)] = if uniform {
-            &[(0.0, 0.0, 0)]
-        } else {
-            &[(0.0, 0.0, 0), (0.5, 0.0, 1), (0.5, 0.5, 2), (0.0, 0.5, 3)]
+        let top_extension = if flat_top { br as f32 } else { 0.0 };
+        let size = Vector2 {
+            X: width,
+            Y: height + top_extension,
         };
-        for &(x, y, corner) in corners {
-            let tile = self.compositor.CreateContainerVisual()?;
-            let factor = if uniform { 1.0 } else { 0.5 };
+        for (i, (tile, sprite, shape)) in self.tiles.iter().enumerate() {
+            let fraction = if single { 1.0 } else { 0.5 };
+            let x = if i == 1 || i == 2 { width * 0.5 } else { 0.0 };
+            let y = if i >= 2 { height * 0.5 } else { 0.0 };
             tile.SetSize(Vector2 {
-                X: width * factor,
-                Y: height * factor,
+                X: width * fraction,
+                Y: height * fraction,
             })?;
-            tile.SetOffset(Vector3 {
-                X: width * x,
-                Y: height * y,
+            tile.SetOffset(Vector3 { X: x, Y: y, Z: 0.0 })?;
+            sprite.SetSize(size)?;
+            sprite.SetOffset(Vector3 {
+                X: -x,
+                Y: -y - top_extension,
                 Z: 0.0,
             })?;
-            tile.SetClip(&self.compositor.CreateInsetClip()?)?;
-            let visual = self.compositor.CreateSpriteVisual()?;
-            visual.SetSize(Vector2 {
-                X: width,
-                Y: height,
-            })?;
-            visual.SetOffset(Vector3 {
-                X: -width * x,
-                Y: -height * y,
-                Z: 0.0,
-            })?;
-            visual.SetBrush(&self.brush)?;
-            let shape = self.compositor.CreateRoundedRectangleGeometry()?;
-            shape.SetSize(Vector2 {
-                X: width,
-                Y: height,
-            })?;
-            let radius = region.radii[corner] as f32;
+            shape.SetSize(size)?;
+            let radius = if flat_top { br } else { region.radii[i] } as f32;
             shape.SetCornerRadius(Vector2 {
                 X: radius,
                 Y: radius,
             })?;
-            visual.SetClip(&self.compositor.CreateGeometricClipWithGeometry(&shape)?)?;
-            tile.Children()?.InsertAtTop(&visual)?;
-            group.Children()?.InsertAtTop(&tile)?;
         }
-        layer.Children()?.InsertAtTop(&group)
+        Ok(())
     }
 }
 

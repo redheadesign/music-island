@@ -23,6 +23,31 @@ export const GlassWaves: Story = {
 export const GlassFox: Story = {
   ...GlassClassic, name: 'Стекло · лиса',
   args: { ...GlassClassic.args, appearance: { ...defaultDictationAppearance, theme: 'pixels', palette: 'ember' } },
+  play: async ({ canvasElement }) => {
+    const core = canvasElement.querySelector<HTMLElement>('.dictation-cloud__core')!
+    const rim = core.querySelector('.lg-glass')!
+    await expect(getComputedStyle(canvasElement.querySelector('.dictation-cloud-surface')!).visibility).toBe('hidden')
+    await expect(rim).toBeInTheDocument()
+    await expect(core.querySelector('feDisplacementMap, .lg-glass[data-rim]')).toBeNull()
+    await expect(getComputedStyle(rim).backgroundImage).toBe('none')
+    await expect(getComputedStyle(rim).borderRadius).toBe(getComputedStyle(core).borderRadius)
+    if (matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)').matches) return
+    const move = () => {
+      const { right, top, height } = core.getBoundingClientRect()
+      core.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse', clientX: right - 1, clientY: top + height / 2 }))
+    }
+    try {
+      core.style.setProperty('--glass-parallax-strength', '1')
+      move()
+      await waitFor(() => expect(core).toHaveAttribute('data-glass-light'))
+      await expect(parseFloat(core.style.getPropertyValue('--glass-light-x'))).toBeGreaterThan(90)
+      core.style.setProperty('--glass-parallax-strength', '0')
+      move()
+      await waitFor(() => expect(core).not.toHaveAttribute('data-glass-light'))
+    } finally {
+      core.style.removeProperty('--glass-parallax-strength')
+    }
+  },
 }
 export const GlassPreparing: Story = { ...GlassFox, name: 'Стекло · подготовка', args: { ...GlassFox.args, status: { ...meta.args.status, phase: 'preparing', ready: false } } }
 export const GlassTranscribing: Story = { ...GlassFox, name: 'Стекло · распознавание', args: { ...GlassFox.args, status: { ...meta.args.status, phase: 'transcribing' } } }

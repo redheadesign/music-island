@@ -7,6 +7,10 @@
 
 ## Windows glass surfaces
 
+- Check the five Glass sliders with the player pinned above a two-tone background. At zero transparency the island is opaque. With transparency raised, zero frost reveals sharp detail and maximum frost softens it. Check the Codex indicator, latest transcript and local servers against the same background.
+- On cold open, record frame intervals and look for texture encoding on the WebView main thread. In steady playback and recording, the native player and capsule should use desktop composition with no full-card CSS backdrop filter. At fractional DPI inspect the Fox border during expansion.
+- Change parallax, highlight and edge thickness independently. Check the resting state, mouse movement and keyboard focus. With reduced motion, moving the pointer should leave the material still.
+
 - Open the island over a window with legible text or alternating stripes. In Glass, background detail softens inside the card and stays sharp outside its lower corners. The title and controls remain sharp. Click through the transparent area beside the island, then collapse it and verify the blur disappears.
 - Move the island between displays with different Windows scaling and open it again. The blurred silhouette should match the card on both displays.
 - Switch the island material during dictation. The recorder should keep its artwork, current text, active operation and finish button. Check a compact recording, the wider transcript, and a failed insertion with a copy action.

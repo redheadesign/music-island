@@ -1,28 +1,28 @@
-import { useLayoutEffect, useState, type RefObject } from 'react'
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { setOverlayBackdrop, type NativeBackdropFrame, type NativeBackdropRegion } from '../tauriApi'
 
-export type NativeBackdropStatus = 'active' | 'unavailable' | undefined
+export type NativeBackdropStatus = 'pending' | 'active' | 'unavailable' | undefined
 let sequence = Date.now() * 1000
 
 /** Measure the visible surface, including CSS transforms and ancestor fades. */
-export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElement): NativeBackdropRegion | null {
+export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElement, styles = new Map<HTMLElement, CSSStyleDeclaration>()): NativeBackdropRegion | null {
   const rect = surface.getBoundingClientRect()
   if (!(rect.width > 0 && rect.height > 0) || rect.right <= 0 || rect.bottom <= 0
     || rect.left >= window.innerWidth || rect.top >= window.innerHeight) return null
-  const style = getComputedStyle(surface)
-  if (style.display === 'none' || style.visibility === 'hidden') return null
   let opacity = 1
   for (let node: HTMLElement | null = surface; node; node = node.parentElement) {
-    const ancestor = getComputedStyle(node)
-    opacity *= Number(ancestor.opacity)
+    const ancestor = styles.get(node) ?? getComputedStyle(node)
+    styles.set(node, ancestor)
+    opacity *= Number(ancestor.opacity || 1)
     if (ancestor.display === 'none' || ancestor.visibility === 'hidden') return null
     if (node === root) break
   }
   if (opacity <= 0.001) return null
+  const style = styles.get(surface)!
   const scale = Math.min(rect.width / Math.max(surface.offsetWidth, 1), rect.height / Math.max(surface.offsetHeight, 1))
   const radius = (value: string) => {
-    const parsed = Number.parseFloat(value)
+    const parsed = Number.parseFloat(value) || 0
     return value.includes('%') ? Math.min(rect.width, rect.height) * parsed / 100 : parsed * scale
   }
   return {
@@ -33,38 +33,54 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
 }
 
 /** DWM owns the backdrop; this hook only publishes each surface's geometry. */
-export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string): NativeBackdropStatus {
+export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = .72): NativeBackdropStatus {
   const [status, setStatus] = useState<NativeBackdropStatus>()
+  const frostAmount = useRef(.72)
+  const changeFrost = useRef<((crossedZero: boolean) => void) | null>(null)
+  useLayoutEffect(() => {
+    const amount = Number.isFinite(frost) ? Math.min(1, Math.max(0, frost)) : .72
+    const crossedZero = (amount === 0) !== (frostAmount.current === 0)
+    frostAmount.current = amount
+    changeFrost.current?.(crossedZero)
+  }, [frost])
   useLayoutEffect(() => {
     if (!('__TAURI_INTERNALS__' in window)) return
     const node = root.current
     if (!node) return
-    setStatus('unavailable')
+    setStatus(current => current ?? 'pending')
     let disposed = false
     let animation = 0
-    let animateUntil = 0
+    let mountUntil = 0
     let inFlight = false
     let dirty = false
     let previous = ''
     let retry = 0
     let retryCount = 0
+    let unsupported = false
+    let surfaces: HTMLElement[] = []
+    const ancestors = new Set<Element>()
+    const transitions = new Map<Element, Set<string>>()
     const policy = matchMedia('(prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)')
     const resize = new ResizeObserver(() => refresh())
-    const surfaces = () => [...(node.matches(selector) ? [node] : []), ...node.querySelectorAll<HTMLElement>(selector)]
-      .filter(surface => !surface.parentElement?.closest(selector))
+    const available = () => enabled && !document.hidden && !policy.matches && !unsupported
+    const measuring = () => available() && frostAmount.current > 0
+    const frame = (capture: boolean): NativeBackdropFrame => {
+      const styles = new Map<HTMLElement, CSSStyleDeclaration>()
+      return {
+        generation: ++sequence,
+        enabled: capture,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        scale: window.devicePixelRatio || 1,
+        frost: frostAmount.current,
+        regions: capture ? surfaces.flatMap(surface => {
+          const region = measureNativeBackdropRegion(surface, node, styles)
+          return region ? [region] : []
+        }) : [],
+      }
+    }
 
-    const available = () => enabled && !document.hidden && !policy.matches
-    const frame = (capture: boolean): NativeBackdropFrame => ({
-      generation: ++sequence,
-      enabled: capture,
-      viewportWidth: window.innerWidth,
-      viewportHeight: window.innerHeight,
-      scale: window.devicePixelRatio || 1,
-      regions: capture ? surfaces().flatMap(surface => {
-        const region = measureNativeBackdropRegion(surface, node)
-        return region ? [region] : []
-      }) : [],
-    })
+    const inMotion = () => transitions.size > 0 || performance.now() < mountUntil
 
     const publish = () => {
       animation = 0
@@ -74,70 +90,132 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
       const next = frame(available())
       const signature = JSON.stringify({ ...next, generation: 0 })
       if (signature !== previous) {
+        window.clearTimeout(retry)
         previous = signature
         inFlight = true
         void setOverlayBackdrop(next).then(active => {
           if (disposed) return
-          setStatus(active && available() ? 'active' : 'unavailable')
-          // A frame can precede show_overlay_ready or a native DPI update.
-          if (!active && next.enabled && next.regions.length && retryCount < 2) {
+          if (active !== null && available()) {
+            setStatus(active ? 'active' : 'unavailable')
+            if (active) retryCount = 0
+            else {
+              unsupported = true
+              syncAvailability()
+            }
+          }
+          // Keep the material during a show/DPI race. A policy denial is final
+          // until Windows invalidates it, so it never starts a retry loop.
+          if (active === null && next.enabled && next.regions.length && retryCount < 2) {
             retryCount += 1
             retry = window.setTimeout(() => { previous = ''; refresh() }, 250)
           }
         }).catch(() => { if (!disposed) setStatus('unavailable') }).finally(() => {
           inFlight = false
-          if (!disposed && (dirty || (available() && performance.now() < animateUntil)) && !animation) animation = requestAnimationFrame(publish)
+          if (!disposed && (dirty || (available() && inMotion())) && !animation) animation = requestAnimationFrame(publish)
         })
       }
-      if (available() && performance.now() < animateUntil && !animation) animation = requestAnimationFrame(publish)
+      if (available() && inMotion() && !animation && !inFlight) animation = requestAnimationFrame(publish)
     }
 
     function refresh() {
       if (disposed) return
-      window.clearTimeout(retry)
       dirty = true
-      animateUntil = available() ? performance.now() + 360 : 0
-      if (!animation) animation = requestAnimationFrame(publish)
+      if (!animation && !inFlight) animation = requestAnimationFrame(publish)
     }
     const observeSurfaces = () => {
-      resize.disconnect()
-      if (available()) {
-        resize.observe(node)
-        surfaces().forEach(surface => resize.observe(surface))
+      const found = measuring() ? [...(node.matches(selector) ? [node] : []), ...node.querySelectorAll<HTMLElement>(selector)]
+        .filter(surface => !surface.parentElement?.closest(selector)) : []
+      const path = new Set<Element>()
+      for (const surface of found) {
+        for (let parent: Element | null = surface; parent && !path.has(parent); parent = parent.parentElement) {
+          path.add(parent)
+          if (parent === node) break
+        }
       }
+      if (found.length === surfaces.length && found.every((surface, index) => surface === surfaces[index])
+        && path.size === ancestors.size && [...path].every(element => ancestors.has(element))) return
+      resize.disconnect()
+      layout.disconnect()
+      ancestors.clear()
+      surfaces = found
+      if (measuring()) {
+        resize.observe(node)
+        for (const surface of surfaces) resize.observe(surface)
+        for (const element of path) {
+          ancestors.add(element)
+          layout.observe(element, { attributes: true, attributeFilter: ['style', 'class', 'hidden', 'data-state', 'data-phase', 'data-expanded', 'data-audio-progress', 'data-recording-control', 'data-island-arrangement'] })
+        }
+      }
+      for (const target of transitions.keys()) if (!ancestors.has(target)) transitions.delete(target)
+      // Framer can start the entry transform using WAAPI after insertion.
+      // Only mounting a new silhouette needs this short sampling window.
+      mountUntil = found.length ? performance.now() + 320 : 0
     }
+    // Inline styles of the level meter, pixel fox and wave change every frame.
+    // Only a surface or one of its layout ancestors can move its native mask.
+    const layout = new MutationObserver(refresh)
+    const includesSurface = (part: Node) => part instanceof Element && (part.matches(selector) || part.querySelector(selector) || surfaces.some(surface => part.contains(surface)))
     const mutations = new MutationObserver(records => {
-      if (records.some(record => record.type === 'childList')) observeSurfaces()
-      const targets = surfaces()
-      if (records.some(record => record.type === 'childList' || targets.some(surface => record.target === surface || (record.target instanceof Element && record.target.contains(surface))))) refresh()
+      let membership = false
+      let geometry = false
+      for (const record of records) {
+        if (!(record.target instanceof Element)) continue
+        if (record.type === 'childList') {
+          // Text, meter bars and optical art frequently change inside a stable
+          // silhouette. Their content is not native window geometry.
+          const parts = [...record.addedNodes, ...record.removedNodes]
+          membership ||= parts.some(includesSurface)
+          geometry ||= ancestors.has(record.target) && !surfaces.includes(record.target as HTMLElement) && parts.some(part => part instanceof Element)
+        } else {
+          membership ||= record.target.matches(selector) || surfaces.includes(record.target as HTMLElement)
+        }
+      }
+      if (membership) observeSurfaces()
+      if (geometry || membership) refresh()
     })
+    const transitionChanged = (event: TransitionEvent) => {
+      const target = event.target
+      if (!(target instanceof Element) || !ancestors.has(target) || event.pseudoElement) return
+      if (!/^(opacity|transform|translate|scale|rotate|inset|top|right|bottom|left|margin|border-.*-radius)/.test(event.propertyName)) return
+      const properties = transitions.get(target) ?? new Set<string>()
+      if (event.type === 'transitionrun') properties.add(event.propertyName)
+      else properties.delete(event.propertyName)
+      if (properties.size) transitions.set(target, properties)
+      else transitions.delete(target)
+      refresh()
+    }
     const syncAvailability = () => {
       mutations.disconnect()
       observeSurfaces()
-      if (available()) mutations.observe(node, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'data-state', 'data-phase', 'data-native-backdrop-surface'] })
+      if (measuring()) mutations.observe(node, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'data-native-backdrop-surface'] })
       refresh()
     }
+    changeFrost.current = crossedZero => crossedZero ? syncAvailability() : refresh()
     window.addEventListener('resize', refresh)
-    node.addEventListener('transitionend', refresh)
-    node.addEventListener('animationend', refresh)
+    node.addEventListener('transitionrun', transitionChanged)
+    node.addEventListener('transitionend', transitionChanged)
+    node.addEventListener('transitioncancel', transitionChanged)
     document.addEventListener('visibilitychange', syncAvailability)
     policy.addEventListener('change', syncAvailability)
     let unlisten: (() => void) | undefined
-    void listen('overlay:backdrop-invalidated', () => { previous = ''; retryCount = 0; refresh() }).then(remove => {
+    void listen('overlay:backdrop-invalidated', () => { previous = ''; retryCount = 0; unsupported = false; syncAvailability() }).then(remove => {
       if (disposed) remove()
       else unlisten = remove
     }).catch(() => undefined)
     syncAvailability()
     return () => {
       disposed = true
+      changeFrost.current = null
       cancelAnimationFrame(animation)
       window.clearTimeout(retry)
       mutations.disconnect()
+      layout.disconnect()
       resize.disconnect()
       unlisten?.()
       window.removeEventListener('resize', refresh)
-      node.removeEventListener('transitionend', refresh)
-      node.removeEventListener('animationend', refresh)
+      node.removeEventListener('transitionrun', transitionChanged)
+      node.removeEventListener('transitionend', transitionChanged)
+      node.removeEventListener('transitioncancel', transitionChanged)
       document.removeEventListener('visibilitychange', syncAvailability)
       policy.removeEventListener('change', syncAvailability)
       void setOverlayBackdrop(frame(false)).catch(() => undefined)

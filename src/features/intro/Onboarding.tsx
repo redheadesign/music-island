@@ -10,6 +10,8 @@ import { MusicModule } from '../music/MusicModule'
 import { getPreviewArtworkStyle, APPEARANCE_PREVIEW_MEDIA } from '../settings/previewMedia'
 import { DictationOverlayView } from '../dictation/DictationOverlay'
 import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, getPlaybackWaveEnabled, usesGlassMaterial } from '../../shared/lib/uiPrefs'
+import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMaterial'
+import { getDictationAppearance } from '../../shared/lib/dictationAppearance'
 import type { AppConfig } from '../../shared/lib/types'
 import { AppLogo } from '../../shared/ui/AppLogo'
 import './Onboarding.css'
@@ -42,7 +44,7 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
     'data-reduced-transparency': reducedTransparency || undefined,
   }
   const glass = usesGlassMaterial(config)
-  const islandStyle = getInterfacePaletteStyle(config)
+  const islandStyle = { ...getInterfacePaletteStyle(config), ...glassMaterialStyle(getGlassMaterial(config)) }
   const autostart = config.behavior.launchAtStartup
   const titles = ru ? ['Музыка', 'Настройка островка', 'Диктовка', 'Запуск вместе с Windows'] : ['Music', 'Customize the island', 'Dictation', 'Launch with Windows']
   const [binding, activation] = dictationShortcut ?? ['Ctrl+Space', 'hold_or_toggle']
@@ -81,7 +83,7 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
               <Mouse className="onboarding__mouse" size={27} aria-hidden="true" />
             </> : null}
             {step === 1 ? <div className="onboarding__layout settings-panel"><IslandLayoutEditor config={demoConfig} onChange={setDemoConfig} active={false} showHeading={false} /></div> : null}
-            {step === 2 ? <div className="onboarding__dictation"><div className="onboarding__note"><span>{ru ? 'Новая заметка' : 'New note'}</span><p>{ru ? 'Встреча в четверг в десять.' : 'Meeting on Thursday at ten.'}</p></div><div inert aria-hidden="true"><DictationOverlayView status={{ revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null, shortcutActivation: activation === 'push_to_talk' || activation === 'toggle' ? activation : 'hold_or_toggle' }} visible levels={[.2,.6,.4,.8,.9,.5,.35,.65]} text={{ committed: '', tentative: '' }} locale={locale} reducedMotion={reduced} cancel={async () => {}} copy={async () => {}} /></div>{binding ? <kbd>{binding.split('+').join(' + ')}</kbd> : null}</div> : null}
+            {step === 2 ? <div className="onboarding__dictation"><div className="onboarding__note"><span>{ru ? 'Новая заметка' : 'New note'}</span><p>{ru ? 'Встреча в четверг в десять.' : 'Meeting on Thursday at ten.'}</p></div><div inert aria-hidden="true"><DictationOverlayView demo appearance={getDictationAppearance(config)} interfaceTheme={interfaceTheme} interfacePalette={getInterfacePalette(config)} paletteStyle={getInterfacePaletteStyle(config)} glassMaterial={getGlassMaterial(config)} status={{ revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null, shortcutActivation: activation === 'push_to_talk' || activation === 'toggle' ? activation : 'hold_or_toggle' }} visible levels={[.2,.6,.4,.8,.9,.5,.35,.65]} text={{ committed: '', tentative: '' }} locale={locale} reducedMotion={reduced} cancel={async () => {}} copy={async () => {}} /></div>{binding ? <kbd>{binding.split('+').join(' + ')}</kbd> : null}</div> : null}
             {step === 3 ? <div className="onboarding__startup"><AppLogo size={112} alt="Music Island" /></div> : null}
           </div>
           <h1>{titles[step]}</h1>{descriptions[step] ? <p>{descriptions[step]}</p> : null}

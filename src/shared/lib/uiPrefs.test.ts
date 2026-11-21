@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AppConfig } from './types'
+import { DEFAULT_GLASS_MATERIAL, getGlassMaterial, glassMaterialStyle } from './glassMaterial'
 import {
   getInterfacePalette,
   getPlaybackWaveEnabled,
@@ -18,6 +19,22 @@ function configWithUi(ui?: unknown): AppConfig {
 }
 
 describe('interface theme preferences', () => {
+  it('keeps each glass control across theme switches and accepts zero', () => {
+    expect(getGlassMaterial(configWithUi())).toEqual(DEFAULT_GLASS_MATERIAL)
+    const values = { transparency: 80, frost: 0, parallax: 0, edge: 23, highlight: 40 }
+    const config = withUiPrefs(configWithUi(), { glassMaterial: values })
+    const classic = withUiPrefs(config, { interfaceTheme: 'classic' })
+    expect(getGlassMaterial(withUiPrefs(classic, { interfaceTheme: 'glass' }))).toEqual(values)
+    expect(glassMaterialStyle(values)).toMatchObject({
+      '--glass-user-filter': 'none', '--glass-frost-strength': 0, '--glass-parallax-strength': 0,
+      '--glass-transparency-strength': .8, '--glass-edge-strength': .23, '--glass-highlight-strength': .4,
+    })
+  })
+
+  it('repairs each invalid persisted setting without discarding the other values', () => {
+    expect(getGlassMaterial(configWithUi({ glassMaterial: { frost: '80', transparency: 125, edge: -12, highlight: .6 } })))
+      .toEqual({ ...DEFAULT_GLASS_MATERIAL, transparency: 100, edge: 0, highlight: 1 })
+  })
   it('defaults to Glass and keeps explicit Classic after native migration', () => {
     expect(getInterfaceTheme(configWithUi())).toBe('glass')
     expect(getInterfaceTheme(configWithUi({ interfaceTheme: 'future' }))).toBe('glass')

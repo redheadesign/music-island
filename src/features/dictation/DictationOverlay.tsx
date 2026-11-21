@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type TransitionEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { formatTime } from '../../shared/lib/format'
 import { useReducedMotion } from 'framer-motion'
 import { Check, Copy, LoaderCircle, Mic, Stop, X } from '../../shared/ui/SettingsIcons'
@@ -7,17 +7,19 @@ import type { DictationStatus } from '../../shared/lib/dictationTypes'
 import { defaultDictationAppearance, dictationPaletteColors, type DictationAppearance } from '../../shared/lib/dictationAppearance'
 import { getInterfaceThemeDefinition, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import type { InterfacePaletteId, buildInterfacePaletteStyle } from '../../shared/lib/interfacePalette'
+import { DEFAULT_GLASS_MATERIAL, glassMaterialStyle, type GlassMaterial } from '../../shared/lib/glassMaterial'
 import { IslandGlassOptic } from '../../shared/ui/IslandGlassOptic'
 import { DictationVisual } from './DictationVisual'
 import { DictationCloudSurface } from './DictationCloudSurface'
 import './dictation.css'
 import './dictation-material.css'
-export function DictationOverlay() { return <DictationOverlayView {...useDictationOverlay()} /> }
-export function DictationOverlayView({ status, visible, levels, text, locale = 'ru', reducedMotion, appearance = defaultDictationAppearance, interfaceTheme = 'classic', interfacePalette = 'custom', paletteStyle, active = true, demo = false, finish, cancel, copy }: {
+export function DictationOverlay() { return <DictationOverlayView {...useDictationOverlay()} desktop /> }
+export function DictationOverlayView({ status, visible, levels, text, locale = 'ru', reducedMotion, appearance = defaultDictationAppearance, interfaceTheme = 'classic', interfacePalette = 'custom', paletteStyle, glassMaterial = DEFAULT_GLASS_MATERIAL, active = true, demo = false, desktop = false, finish, cancel, copy }: {
   status: DictationStatus; visible: boolean; levels: number[]; text: { committed: string; tentative: string }; locale?: 'ru' | 'en'; reducedMotion?: boolean; cancel: () => Promise<unknown>; copy: () => Promise<unknown>
-  appearance?: DictationAppearance; active?: boolean; demo?: boolean
+  appearance?: DictationAppearance; active?: boolean; demo?: boolean; desktop?: boolean
   interfaceTheme?: InterfaceThemeId; interfacePalette?: InterfacePaletteId
   paletteStyle?: ReturnType<typeof buildInterfacePaletteStyle>
+  glassMaterial?: GlassMaterial
   finish?: () => Promise<unknown>
 }) {
   const [copyFailure, setCopyFailure] = useState<number | null>(null)
@@ -31,8 +33,6 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   const root = useRef<HTMLDivElement>(null)
   const previewRoot = useRef<HTMLDivElement>(null)
   const progressArt = useRef<HTMLSpanElement>(null)
-  const resizing = useRef(new Set<string>())
-  const [materialResizing, setMaterialResizing] = useState(false)
   const systemReducedMotion = useReducedMotion()
   const still = Boolean(reducedMotion || systemReducedMotion || !active)
   const ru = locale === 'ru'
@@ -60,26 +60,15 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   // Keep the canvas/context between recordings; hidden artwork has no clock.
   const artworkActive = active && visible
   const material = getInterfaceThemeDefinition(interfaceTheme).material
-  const nativeBackdrop = useNativeBackdrop(demo ? previewRoot : root, material === 'glass' && artworkActive, '[data-native-backdrop-surface]')
-  const opticsActive = artworkActive && !materialResizing && nativeBackdrop !== 'unavailable'
-  const trackMaterialResize = (event: TransitionEvent<HTMLDivElement>, running: boolean) => {
-    // React normalizes propertyName only for transitionend, not run/cancel.
-    const property = event.nativeEvent.propertyName
-    if (event.target !== event.currentTarget || !['width', 'height'].includes(property)) return
-    if (running) resizing.current.add(property)
-    else resizing.current.delete(property)
-    setMaterialResizing(resizing.current.size > 0)
-  }
+  const nativeBackdrop = useNativeBackdrop(desktop ? root : previewRoot, material === 'glass' && artworkActive, '[data-native-backdrop-surface]', glassMaterial.frost / 100)
+  const opticsActive = artworkActive && nativeBackdrop !== 'unavailable'
   const materialAttributes = {
     'data-interface-theme': interfaceTheme,
     'data-interface-palette': interfacePalette,
     'data-material': material,
-    'data-native-backdrop': nativeBackdrop,
+    'data-native-backdrop': nativeBackdrop ?? (desktop ? 'pending' : undefined),
     lang: locale,
-    style: paletteStyle as CSSProperties,
-    onTransitionRun: (event: TransitionEvent<HTMLDivElement>) => trackMaterialResize(event, true),
-    onTransitionEnd: (event: TransitionEvent<HTMLDivElement>) => trackMaterialResize(event, false),
-    onTransitionCancel: (event: TransitionEvent<HTMLDivElement>) => trackMaterialResize(event, false),
+    style: { ...paletteStyle, ...(material === 'glass' ? glassMaterialStyle(glassMaterial) : {}) } as CSSProperties,
   }
   if (appearance.theme !== 'classic') {
     const expanded = Boolean(previewText)

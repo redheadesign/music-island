@@ -3,10 +3,8 @@
 .dictation-overlay--cloud:has([data-fallback='true']) .dictation-wave-fallback { display: flex; }
 .dictation-overlay--cloud:has([data-fallback='true']) .dictation-wave-fallback + .dictation-cloud__fallback { display: none; }
 .dictation-overlay[data-material='glass'] {
-  --island-optic-blur: min(8px, var(--glass-blur));
-  --island-optic-bend: .25;
-  --island-optic-shine: .35;
-  --island-optic-fill: rgb(24 24 24 / .76);
+  --island-optic-blur: min(6px, var(--glass-blur));
+  --island-optic-fill: var(--glass-island-fill);
   --dictation-reading-ink: #f4f4f1;
   color: var(--dictation-reading-ink);
   background: transparent;
@@ -18,8 +16,9 @@
 
 .dictation-overlay[data-material='glass'][data-expanded='true'] { border-radius: var(--glass-island-radius); }
 .dictation-overlay[data-material='glass']:is([data-theme='classic'], [data-expanded='true'], [data-phase='error']),
+.dictation-overlay--cloud[data-material='glass'] .dictation-cloud__satellite,
 .dictation-overlay[data-material='glass'][data-audio-progress='true'] .dictation-cloud__core {
-  --island-optic-fill: rgb(24 24 24 / .82);
+  --island-optic-fill: var(--glass-reading-fill);
 }
 .dictation-overlay[data-material='glass'] > .dictation-overlay__bar,
 .dictation-overlay[data-material='glass'] > .dictation-overlay__text {
@@ -31,11 +30,16 @@
 .dictation-overlay[data-material='glass'] .dictation-cloud__bar button {
   color: var(--dictation-reading-ink);
 }
-.dictation-overlay[data-material='glass'] .dictation-overlay__text span { opacity: .86; }
+.dictation-overlay[data-material='glass'] .dictation-overlay__text span { opacity: .95; }
 .dictation-overlay--cloud[data-material='glass'] .dictation-cloud__core {
   background: transparent;
   border-radius: var(--radius-pill);
   box-shadow: none;
+}
+/* Switching a live recording from Classic or Waves can leave the previous
+   frame in its retained WebGL canvas. Fox only draws its existing SVG here. */
+.dictation-overlay--cloud[data-material='glass'][data-theme='pixels'] .dictation-cloud-surface {
+  visibility: hidden;
 }
 .dictation-overlay--cloud[data-material='glass'] .dictation-cloud__core > :not(.island-glass-optic) {
   position: relative;

@@ -120,29 +120,31 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
         )?;
         windows.0.push(overlay);
         SetLayeredWindowAttributes(overlay, COLORREF(0), 255, LWA_ALPHA)?;
-        let compositor = HostBackdrop::new(overlay)?;
-        compositor.update(
-            640.0,
-            400.0,
-            &[
-                BackdropRegion {
-                    left: 140.0,
-                    top: 80.0,
-                    width: 300.0,
-                    height: 180.0,
-                    radii: [0.0, 0.0, 35.0, 35.0],
-                    opacity: 1.0,
-                },
-                BackdropRegion {
-                    left: 20.0,
-                    top: 80.0,
-                    width: 100.0,
-                    height: 40.0,
-                    radii: [20.0; 4],
-                    opacity: 1.0,
-                },
-            ],
-        )?;
+        let mut compositor = HostBackdrop::new(overlay)?;
+        let surfaces = [
+            BackdropRegion {
+                left: 140.0,
+                top: 80.0,
+                width: 300.0,
+                height: 180.0,
+                radii: [0.0, 0.0, 35.0, 35.0],
+                opacity: 1.0,
+            },
+            BackdropRegion {
+                left: 20.0,
+                top: 80.0,
+                width: 100.0,
+                height: 40.0,
+                radii: [20.0; 4],
+                opacity: 1.0,
+            },
+        ];
+        let regions = |frost| {
+            surfaces
+                .each_ref()
+                .map(|surface| surface.physical(1.0, frost))
+        };
+        compositor.update(640.0, 400.0, &regions(0.72))?;
         let _ = ShowWindow(overlay, SW_SHOWNOACTIVATE);
         pump();
         let dc = GetDC(None);
@@ -158,9 +160,22 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
             "blur escaped the actual visual silhouette"
         );
         assert!(
-            inside <= 40,
-            "Windows did not blur the checker behind the visual"
+            (24..=110).contains(&inside),
+            "the frosted surface should retain some contrast from the checker"
         );
+        let fitted_mask = compositor.regions[0].tiles[0].2.clone();
+        for (frost, expected) in [(0.0, 240..=255), (1.0, 0..=20)] {
+            compositor.update(640.0, 400.0, &regions(frost))?;
+            pump();
+            let dc = GetDC(None);
+            let delta = ((GetPixel(dc, 300, 240).0 & 255) as i32
+                - (GetPixel(dc, 304, 240).0 & 255) as i32)
+                .abs();
+            ReleaseDC(None, dc);
+            println!("checker contrast at frost {frost}: {delta}");
+            assert!(expected.contains(&delta));
+            assert_eq!(compositor.regions[0].tiles[0].2, fitted_mask);
+        }
         compositor.clear();
         pump();
         let dc = GetDC(None);

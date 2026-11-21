@@ -50,7 +50,7 @@ export function UpdateBanner({
 
   if (variant === 'island') {
     return (
-      <div className="update-notice island-update-rail" data-status={state} role="region" aria-labelledby={titleId}>
+      <div className="update-notice island-update-rail island-surface" data-status={state} role="region" aria-labelledby={titleId}>
         <div className="island-update-rail__copy">
           <strong className="island-update-rail__title" id={titleId} role="status">
             {heading}

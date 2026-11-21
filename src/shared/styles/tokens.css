@@ -84,7 +84,6 @@
   --focus-offset: 3px;
   --hit-target-min: 24px;
   --stage-reading-scrim: rgb(15 15 17 / .76);
-  --satellite-reading-fill: rgb(24 24 24 / .82);
   --glass-blur: 24px;
   --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.3);
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.22);

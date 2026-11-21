@@ -172,6 +172,34 @@ export const GlassPlaybackBackground: Story = {
     await waitFor(() => expect(previewWave()).toBeInTheDocument())
   },
 }
+export const GlassMaterialTuning: Story = {
+  ...Glass, name: 'Стекло · настройка материала',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const controls = within(canvas.getByRole('group', { name: 'Параметры стекла' }))
+    const preview = canvasElement.querySelector<HTMLElement>('.island-preview .island-root')!
+    const transparency = controls.getByRole('slider', { name: 'Прозрачность' })
+    const frost = controls.getByRole('slider', { name: 'Размытие фона' })
+    const parallax = controls.getByRole('slider', { name: 'Параллакс' })
+    await expect(controls.getAllByRole('slider')).toHaveLength(5)
+    await fireEvent.change(transparency, { target: { value: '82' } })
+    await fireEvent.change(frost, { target: { value: '0' } })
+    await fireEvent.change(parallax, { target: { value: '0' } })
+    await waitFor(() => {
+      expect(preview.style.getPropertyValue('--glass-transparency-strength')).toBe('0.82')
+      expect(preview.style.getPropertyValue('--glass-user-filter')).toBe('none')
+      expect(preview.style.getPropertyValue('--glass-parallax-strength')).toBe('0')
+    })
+    await userEvent.click(canvas.getByRole('radio', { name: 'Классическая' }))
+    await expect(canvas.queryByRole('slider', { name: 'Параллакс' })).toBeNull()
+    await userEvent.click(canvas.getByRole('radio', { name: 'Стекло' }))
+    await expect(canvas.getByRole('slider', { name: 'Прозрачность' })).toHaveValue('82')
+    await userEvent.click(canvas.getByRole('button', { name: 'Сбросить параметры стекла' }))
+    await expect(canvas.getByRole('slider', { name: 'Размытие фона' })).toHaveValue('72')
+    canvas.getByRole('group', { name: 'Параметры стекла' }).scrollIntoView({ block: 'center' })
+  },
+}
 export const GlassScopes: Story = {
   ...Glass,
   name: 'Стекло · состояния верхнего меню',

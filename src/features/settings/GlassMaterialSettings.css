@@ -1,0 +1,28 @@
+.glass-material-settings {
+  display: grid;
+  gap: var(--space-3);
+  container-type: inline-size;
+  min-width: 0;
+}
+.glass-material-settings__header,
+.glass-material-settings__sliders label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.glass-material-settings__header strong {
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+}
+.glass-material-settings__sliders {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+.glass-material-settings__sliders label { color: var(--fg-secondary); font-size: var(--text-label); }
+.glass-material-settings__sliders output { font-variant-numeric: tabular-nums; color: var(--fg-muted); }
+.glass-material-settings__sliders .range-slider { grid-column: 1 / -1; width: 100%; }
+@container (max-width: 310px) {
+  .glass-material-settings__sliders { grid-template-columns: 1fr; }
+}

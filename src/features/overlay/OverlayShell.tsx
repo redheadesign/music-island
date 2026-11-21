@@ -1,5 +1,6 @@
 import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
+import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMaterial'
 import { progressTrackKey } from '../music/progressTransition'
 import { createIslandBassEffect } from '../../shared/ui/islandBassEffect'
 import { SettingsFilled } from '../../shared/ui/SettingsIcons'
@@ -157,7 +158,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const hasPlaybackWave = hasSession && getPlaybackWaveEnabled(config)
   const playbackMotion = hasSession && media?.playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
-  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency, '.island-surface, .island-actions > .icon-button')
+  const glassMaterial = useMemo(() => getGlassMaterial(config), [config])
+  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency, '.island-surface, .island-actions > .icon-button', glassMaterial.frost / 100)
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -582,11 +584,12 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,
       '--island-hit-width': `${(500 * (config.layout.width / 100) + 112) * (config.layout.scale / 100)}px`,
       ...getInterfacePaletteStyle(config),
+      ...glassMaterialStyle(glassMaterial),
       '--artwork-progress-color': progressColor,
       '--artwork-primary': artworkColors.primary,
       '--artwork-secondary': artworkColors.secondary,
     } as CSSProperties
-  }, [artworkPalette, config, islandLayout.zones.actions.length, progressColor])
+  }, [artworkPalette, config, glassMaterial, islandLayout.zones.actions.length, progressColor])
 
   const clearCloseTimer = () => {
     if (closeTimerRef.current) {
@@ -900,7 +903,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   return (
     <main
       ref={overlay}
-      data-native-backdrop={nativeBackdrop}
+      data-native-backdrop={nativeBackdrop ?? (isTauriRuntime() ? 'pending' : undefined)}
       className={[
         'island-root',
         `island-root--${mode}`,
@@ -974,7 +977,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
             <IslandFeedback
               className="island-card island-surface"
               glassOptic={usesGlassMaterial(config)}
-              opticActive={!reducedTransparency && nativeBackdrop !== 'unavailable'}
+              opticActive={!reducedTransparency && !isTauriRuntime()}
               particles={hasSession && usesGlassMaterial(config)}
               ambientRef={ambientRef}
               playbackWave={hasPlaybackWave}

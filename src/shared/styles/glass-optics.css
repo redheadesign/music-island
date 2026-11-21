@@ -2,21 +2,42 @@
   position: relative;
 }
 
-[data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, .media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button, [data-glass-light])::before {
+[data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, .media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button, [data-glass-light]:not(.island-card, [data-native-backdrop-surface]))::before {
   content: '';
   position: absolute;
   inset: 0;
-  padding: calc(var(--space-unit) / 4);
+  padding: var(--glass-edge-width);
   border-radius: inherit;
   pointer-events: none;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   background: var(--glass-contour);
+  opacity: var(--glass-highlight-strength, .5);
 }
 
-[data-interface-theme='glass'] [data-glass-light]::before {
+[data-interface-theme='glass'] [data-glass-light]:not(.island-card, [data-native-backdrop-surface])::before {
   background:
     radial-gradient(ellipse 54% 110% at var(--glass-light-x, 50%) var(--glass-light-y, 0%), var(--glass-light-peak), transparent 76%),
     var(--glass-contour);
+}
+
+/* Restrict the moving glint to the three exposed edges. The top edge is
+   attached to the monitor. There is no full-card mask or animated filter. */
+.island-card[data-glass-light] > .island-glass-optic .lg-glass::after {
+  border-radius: inherit;
+  opacity: calc(var(--glass-highlight-strength, .5) * var(--glass-parallax-strength, .5));
+  background:
+    radial-gradient(ellipse at var(--glass-light-x, 50%) 50%, white, transparent 40%) bottom / 100% var(--optic-width) no-repeat,
+    radial-gradient(ellipse at 50% var(--glass-light-y, 50%), white, transparent 45%) left / var(--optic-width) 100% no-repeat,
+    radial-gradient(ellipse at 50% var(--glass-light-y, 50%), white, transparent 45%) right / var(--optic-width) 100% no-repeat;
+  transition: none;
+}
+
+[data-native-backdrop-surface][data-glass-light] > .island-glass-optic .lg-glass::after {
+  padding: var(--glass-edge-width);
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  background: radial-gradient(ellipse 55% 110% at var(--glass-light-x, 50%) var(--glass-light-y, 50%), white, transparent 80%);
+  opacity: calc(var(--glass-highlight-strength, .5) * var(--glass-parallax-strength, .5));
+  transition: none;
 }
 
 /* Reduced transparency still has a clear resting line. It has no reflections. */

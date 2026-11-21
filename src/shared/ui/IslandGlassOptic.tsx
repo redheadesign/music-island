@@ -1,33 +1,27 @@
-import { Glass } from 'glisse'
-import { memo, useCallback, useState, useSyncExternalStore } from 'react'
-import { REDUCED_TRANSPARENCY_QUERY } from './useSystemReducedTransparency'
+import { memo, useId, type CSSProperties } from 'react'
+import 'glisse/styles.css'
+import bezelField from './glisse-bezel.png?inline'
 import './IslandGlassOptic.css'
 
-const solidMaterialQuery = `${REDUCED_TRANSPARENCY_QUERY}, (forced-colors: active), (prefers-contrast: more)`
-
-function subscribeVisibility(update: () => void) {
-  document.addEventListener('visibilitychange', update)
-  return () => document.removeEventListener('visibilitychange', update)
-}
-
-function FittedLens() {
-  const [preference] = useState(() => globalThis.matchMedia?.(solidMaterialQuery))
-  const subscribePreference = useCallback((update: () => void) => {
-    preference?.addEventListener('change', update)
-    return () => preference?.removeEventListener('change', update)
-  }, [preference])
-  const visible = useSyncExternalStore(subscribeVisibility, () => !document.hidden, () => false)
-  const solid = useSyncExternalStore(subscribePreference, () => preference?.matches ?? false, () => true)
-  return visible && !solid ? <Glass /> : null
-}
-
-/** Static shape-fitted Glisse bezel. Sibling artwork is the in-page backdrop.
- * Keep controls and text outside this decorative layer so neither is refracted. */
-export const IslandGlassOptic = memo(function IslandGlassOptic({ active = true, className = '' }: {
+/** Windows supplies the desktop frost. Browser previews use the original
+ * Glisse field; the player rim is already baked at 2x for either renderer. */
+export const IslandGlassOptic = memo(function IslandGlassOptic({ active = true, refract = false }: {
   active?: boolean
-  className?: string
+  refract?: boolean
 }) {
-  return <div className={`island-glass-optic ${className}`.trim()} aria-hidden="true">
-    {active && <FittedLens />}
+  const id = useId()
+  const filterId = `glisse-bezel-${id}`
+  const hasField = active && refract
+  const style = hasField ? { '--island-optic-filter': `url("#${filterId}")` } as CSSProperties : undefined
+  return <div className="island-glass-optic" data-glass-surface={refract ? 'player' : 'capsule'} data-active={active || undefined} aria-hidden="true" style={style}>
+    {hasField && <svg width="0" height="0" focusable="false" aria-hidden="true">
+      <defs>
+        <filter id={filterId} x="0%" y="0%" width="100%" height="100%" colorInterpolationFilters="sRGB">
+          <feImage href={bezelField} x="0%" y="0%" width="100%" height="100%" preserveAspectRatio="none" result="field" />
+          <feDisplacementMap in="SourceGraphic" in2="field" scale="15" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>}
+    <span className="lg-glass" />
   </div>
 })

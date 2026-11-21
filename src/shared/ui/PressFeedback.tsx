@@ -67,7 +67,7 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
           </span>
         ) : null}
       </span>
-      {glassOptic && <IslandGlassOptic active={opticActive} />}
+      {glassOptic && <IslandGlassOptic active={opticActive} refract />}
       {children}
     </section>
   </Feedback.Provider>

@@ -222,20 +222,19 @@ export const GlassOpticalSurface: StoryObj<typeof meta> = {
     await expect(frame.querySelector('button, a, input')).toBeNull()
     const button = card.querySelector('button')!
     await expect(getComputedStyle(button).filter).toBe('none')
+    const lens = frame.querySelector(':scope > .lg-glass')!
     if (matchMedia('(prefers-reduced-transparency: reduce), (forced-colors: active), (prefers-contrast: more)').matches) {
-      await expect(frame.querySelector('.lg-glass')).toBeNull()
+      await expect(lens).not.toBeVisible()
       return
     }
-    await waitFor(() => expect(frame.querySelector(':scope > .lg-glass[data-rim]')).toBeInTheDocument())
-    const lens = frame.firstElementChild!
     const radius = parseFloat(getComputedStyle(card).borderBottomLeftRadius)
     await expect(radius).toBeGreaterThan(0)
     await expect(parseFloat(getComputedStyle(lens).borderTopLeftRadius)).toBe(radius)
     await expect(parseFloat(getComputedStyle(lens).top)).toBe(-radius)
-    // Chromium uses a real fitted displacement map with the browser backdrop.
+    // The first rendered surface has its optical field, with one displacement pass.
     if (/Chrom(?:e|ium)\//.test(navigator.userAgent)) {
-      await expect(getComputedStyle(lens).backdropFilter).toContain('glisse-backdrop-')
-      await expect(card.ownerDocument.querySelector('filter[id^="glisse-backdrop-"] feDisplacementMap')).toBeInTheDocument()
+      await expect(getComputedStyle(lens).backdropFilter).toContain('glisse-bezel-')
+      await expect(frame.querySelectorAll('feDisplacementMap')).toHaveLength(1)
     }
   },
 }
@@ -258,10 +257,10 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
     const restingLikeRim = documentView.getComputedStyle(like).boxShadow
     const restingDislikeRim = documentView.getComputedStyle(dislike).boxShadow
     if (!forcedColors && !documentView.matchMedia('(prefers-reduced-transparency: reduce)').matches) {
-      for (const button of [previous, pause, next, like, dislike, settings, seek]) {
-        await expect(documentView.getComputedStyle(button).backdropFilter).toContain('blur(')
+      for (const button of [previous, pause, next, like, dislike, seek]) {
+        await expect(documentView.getComputedStyle(button).backdropFilter).toBe('none')
       }
-      await expect(documentView.getComputedStyle(previous).backdropFilter).not.toContain('brightness(')
+      await expect(documentView.getComputedStyle(settings).backdropFilter).toContain('blur(')
       await expect(documentView.getComputedStyle(next).backgroundColor).toBe(documentView.getComputedStyle(seek).backgroundColor)
       for (const reaction of [like, dislike]) {
         await expect(documentView.getComputedStyle(reaction).backdropFilter).toBe(documentView.getComputedStyle(previous).backdropFilter)
@@ -314,7 +313,8 @@ export const GlassControlLensesReducedTransparency: StoryObj<typeof meta> = {
     const settings = await canvas.findByRole('button', { name: 'Open settings' })
     const seek = canvas.getByRole('slider', { name: /Позиция трека|Seek track/ })
     await expect(settings.closest('.island-root')).toHaveAttribute('data-reduced-transparency', 'true')
-    await expect(canvasElement.querySelector('.island-glass-optic .lg-glass')).toBeNull()
+    await expect(canvasElement.querySelector('.island-glass-optic .lg-glass')).not.toBeVisible()
+    await expect(canvasElement.querySelector('.island-glass-optic feDisplacementMap')).toBeNull()
     await expect(canvasElement.ownerDocument.defaultView!.getComputedStyle(settings).backdropFilter).toBe('none')
     await expect(canvasElement.ownerDocument.defaultView!.getComputedStyle(seek).backdropFilter).toBe('none')
   },
@@ -661,9 +661,33 @@ export const LatestDictationExpanded: StoryObj<typeof meta> = {
 
 export const GlassWidgetPanels: StoryObj<typeof meta> = {
   ...LatestDictationExpanded,
-  name: 'Стекло · серверы и последняя запись под островком',
+  name: 'Стекло · Codex, серверы и последняя запись',
+  args: { ...LatestDictationExpanded.args, assistantLimits: true },
   globals: { interfaceTheme: 'glass' },
-  parameters: { workshop: { height: 720 } },
+  parameters: { workshop: { height: 720, backdrop: seaStack } },
+  play: async (context) => {
+    await LatestDictationExpanded.play!(context)
+    const { canvasElement } = context
+    const surfaces = [
+      canvasElement.querySelector<HTMLElement>('.usage-chip__compact-provider'),
+      canvasElement.querySelector<HTMLElement>('.island-local-servers'),
+      canvasElement.querySelector<HTMLElement>('.island-latest-dictation'),
+    ]
+    for (const surface of surfaces) {
+      await expect(surface).toBeVisible()
+      await expect(surface).toHaveClass('island-surface')
+      await expect(surface!.querySelector('.island-glass-optic')).toBeNull()
+    }
+    if (matchMedia('(forced-colors: active), (prefers-reduced-transparency: reduce), (prefers-contrast: more)').matches) return
+    const [provider, servers, latest] = surfaces.map(surface => getComputedStyle(surface!))
+    await expect(provider.backgroundColor).toBe(servers.backgroundColor)
+    await expect(latest.backgroundColor).toBe(servers.backgroundColor)
+    await expect(servers.backgroundColor).toMatch(/^rgba\(.+, 0\.\d+\)$/)
+    for (const surface of [provider, servers, latest]) {
+      await expect(surface.backdropFilter).toContain('blur(')
+      await expect(surface.backgroundImage).toBe(servers.backgroundImage)
+    }
+  },
 }
 
 export const LatestDictationNarrow: StoryObj<typeof meta> = {

@@ -11,7 +11,6 @@ vi.mock('../../app/useIslandApp', () => ({ useDictationOverlay: vi.fn(), useNati
 vi.mock('framer-motion', () => ({ useReducedMotion: () => false }))
 vi.mock('./DictationCloudSurface', () => ({ DictationCloudSurface: () => <canvas /> }))
 vi.mock('./DictationVisual', () => ({ DictationVisual: () => <svg /> }))
-vi.mock('../../shared/ui/IslandGlassOptic', () => ({ IslandGlassOptic: ({ active }: { active: boolean }) => <span className="island-glass-optic" hidden={!active} /> }))
 
 it('uses release to finish in hold mode, and one finish action in toggle modes for every theme', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
@@ -148,7 +147,7 @@ it('switches material and colors in every recorder state while keeping its rende
         expect(container.querySelector('canvas, svg')).toBe(artwork)
         expect([...container.querySelectorAll('button')]).toEqual(controls)
         expect((overlay as HTMLElement).style.getPropertyValue('--accent')).toBe('#70b9ee')
-        expect(container.querySelector('.island-glass-optic:not([hidden])')).not.toBeNull()
+        expect(container.querySelector('.island-glass-optic[data-active]')).not.toBeNull()
       }
     }
     expect(finish).not.toHaveBeenCalled()
@@ -167,7 +166,7 @@ it('keeps readable artwork and controls when native glass is unavailable', async
       status={{ revision: 3, operationId: 7, phase: 'recording', ready: true, text: '', error: null }}
       levels={[.8]} text={{ committed: '', tentative: '' }} finish={finish} cancel={async () => {}} copy={async () => {}} />))
     expect(container.querySelector('.dictation-overlay')?.getAttribute('data-native-backdrop')).toBe('unavailable')
-    expect(container.querySelectorAll('.island-glass-optic:not([hidden])')).toHaveLength(0)
+    expect(container.querySelectorAll('.island-glass-optic[data-active]')).toHaveLength(0)
     expect(container.querySelectorAll('[data-native-backdrop-surface]')).toHaveLength(2)
     expect(container.querySelectorAll('.dictation-wave-fallback i')).toHaveLength(8)
     const stop = container.querySelector<HTMLButtonElement>('[aria-label="Завершить запись"]')!
@@ -177,7 +176,7 @@ it('keeps readable artwork and controls when native glass is unavailable', async
   } finally { native.status = undefined; await act(async () => root.unmount()) }
 })
 
-it('fits the optical edge after a capsule resize while its artwork and recording keep running', async () => {
+it('keeps the capsule edge visible and mounted throughout a resize', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   const container = document.createElement('div'), root = createRoot(container)
   const finish = vi.fn(async () => {}), cancel = vi.fn(async () => {})
@@ -188,6 +187,10 @@ it('fits the optical edge after a capsule resize while its artwork and recording
       levels={[.8]} text={{ committed: '', tentative: '' }} finish={finish} cancel={cancel} copy={async () => {}} />))
     const overlay = container.querySelector('.dictation-overlay')!
     const canvas = container.querySelector('canvas')
+    const rim = container.querySelector('.island-glass-optic[data-active]')
+    expect(rim).not.toBeNull()
+    expect(rim?.querySelector('feDisplacementMap, canvas')).toBeNull()
+    expect(rim?.querySelector('.lg-glass')).not.toBeNull()
     const transition = async (type: string, propertyName: string) => {
       const event = new Event(type, { bubbles: true })
       Object.defineProperty(event, 'propertyName', { value: propertyName })
@@ -195,11 +198,11 @@ it('fits the optical edge after a capsule resize while its artwork and recording
     }
     await transition('transitionrun', 'width')
     await transition('transitionrun', 'height')
-    expect(container.querySelectorAll('.island-glass-optic:not([hidden])')).toHaveLength(0)
+    expect(container.querySelector('.island-glass-optic[data-active]')).toBe(rim)
     await transition('transitionend', 'width')
-    expect(container.querySelectorAll('.island-glass-optic:not([hidden])')).toHaveLength(0)
+    expect(container.querySelector('.island-glass-optic[data-active]')).toBe(rim)
     await transition('transitioncancel', 'height')
-    expect(container.querySelector('.island-glass-optic:not([hidden])')).not.toBeNull()
+    expect(container.querySelector('.island-glass-optic[data-active]')).toBe(rim)
     expect(container.querySelector('canvas')).toBe(canvas)
     expect(overlay.getAttribute('data-phase')).toBe('recording')
     expect(finish).not.toHaveBeenCalled()

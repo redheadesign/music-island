@@ -3,6 +3,8 @@ import { getInterfaceThemeDefinition, isInterfaceThemeId } from '../lib/interfac
 
 const controlSelector = [
   '.ui-button',
+  '.island-card[data-island-optical]',
+  '.dictation-overlay[data-native-backdrop-surface]', '.dictation-overlay [data-native-backdrop-surface]',
   '.media-button', '.play-button', '.reaction-button', '.island-actions .icon-button:not(.island-settings-button)', '.island-plugin-button',
 ].join(', ')
 const quietSelector = '[data-reduced-motion="true"], [data-reduced-transparency="true"], .reduced-motion'
@@ -12,7 +14,7 @@ export function useGlassPointerLight(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
 
-    const systemQuiet = matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)')
+    const systemQuiet = matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)')
     let active: HTMLElement | null = null
     let pending: { control: HTMLElement; x: number; y: number } | null = null
     let frame = 0
@@ -37,11 +39,14 @@ export function useGlassPointerLight(enabled: boolean) {
       pending = null
       if (!next?.control.isConnected) return reset()
       if (active !== next.control) removeLight()
+      const strength = Number.parseFloat(getComputedStyle(next.control).getPropertyValue('--glass-parallax-strength') || '.5')
+      if (!(strength > 0)) return reset()
       const rect = next.control.getBoundingClientRect()
       if (!rect.width || !rect.height) return reset()
       const percent = (fraction: number) => `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%`
-      next.control.style.setProperty('--glass-light-x', percent((next.x - rect.left) / rect.width))
-      next.control.style.setProperty('--glass-light-y', percent((next.y - rect.top) / rect.height))
+      const clamp = Math.min(strength, 1)
+      next.control.style.setProperty('--glass-light-x', percent(.5 + (((next.x - rect.left) / rect.width) - .5) * clamp))
+      next.control.style.setProperty('--glass-light-y', percent(.5 + (((next.y - rect.top) / rect.height) - .5) * clamp))
       next.control.setAttribute('data-glass-light', '')
       active = next.control
     }

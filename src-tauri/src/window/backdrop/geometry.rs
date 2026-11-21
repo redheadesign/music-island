@@ -20,6 +20,7 @@ pub struct BackdropFrame {
     pub viewport_width: f64,
     pub viewport_height: f64,
     pub scale: f64,
+    pub frost: f64,
     pub regions: Vec<BackdropRegion>,
 }
 
@@ -27,6 +28,7 @@ impl BackdropFrame {
     pub(super) fn is_valid(&self) -> bool {
         self.scale.is_finite()
             && (0.5..=8.0).contains(&self.scale)
+            && (0.0..=1.0).contains(&self.frost)
             && [self.viewport_width, self.viewport_height]
                 .into_iter()
                 .all(|value| value.is_finite() && value > 0.0 && value <= 32_768.0)
@@ -60,7 +62,7 @@ impl BackdropRegion {
                 .all(|radius| radius.is_finite() && radius >= 0.0)
     }
 
-    pub(super) fn physical(&self, scale: f64) -> Self {
+    pub(super) fn physical(&self, scale: f64, frost: f64) -> Self {
         let limit = self.width.min(self.height) / 2.0;
         Self {
             left: self.left * scale,
@@ -68,7 +70,7 @@ impl BackdropRegion {
             width: self.width * scale,
             height: self.height * scale,
             radii: self.radii.map(|radius| radius.min(limit) * scale),
-            opacity: self.opacity,
+            opacity: self.opacity * frost,
         }
     }
 }
@@ -84,6 +86,7 @@ mod tests {
             viewport_width: 1280.0,
             viewport_height: 720.0,
             scale: 1.5,
+            frost: 0.72,
             regions: vec![],
         }
     }
@@ -98,13 +101,16 @@ mod tests {
             radii: [0.0, 0.0, 36.0, 36.0],
             opacity: 0.6,
         };
-        let physical = region.physical(1.5);
+        let physical = region.physical(1.5, 0.5);
         assert_eq!(
             (physical.left, physical.width, physical.height),
             (180.0, 750.0, 300.0)
         );
         assert_eq!(physical.radii, [0.0, 0.0, 54.0, 54.0]);
         assert_eq!(region.width, 500.0);
+        assert_eq!(physical.opacity, 0.3);
+        assert_eq!(region.physical(1.0, 0.0).opacity, 0.0);
+        assert_eq!(region.physical(1.0, 1.0).opacity, region.opacity);
     }
 
     #[test]
@@ -120,6 +126,7 @@ mod tests {
             viewport_width: 1280.0,
             viewport_height: 720.0,
             scale: 1.5,
+            frost: 0.72,
             regions: vec![],
         };
         frame.regions = vec![
@@ -134,5 +141,14 @@ mod tests {
             25
         ];
         assert!(!frame.is_valid());
+    }
+
+    #[test]
+    fn rejects_nonfinite_and_out_of_range_frost() {
+        let mut frame = frame();
+        for invalid in [-0.01, 1.01, f64::NAN, f64::INFINITY] {
+            frame.frost = invalid;
+            assert!(!frame.is_valid());
+        }
     }
 }

@@ -25,8 +25,7 @@
 .system-volume__panel[data-side='right'] { left: 100%; transform-origin: left center; }
 .system-volume__panel[data-side='left'] { right: 100%; transform-origin: right center; }
 [data-interface-theme='glass'] .system-volume__panel {
-  background: var(--glass-control-sheen) var(--surface-glass);
-  backdrop-filter: var(--glass-filter);
+  background: var(--glass-control-sheen) var(--glass-reading-fill);
 }
 .system-volume__panel input.range-slider.range-slider[type='range'] {
   --range-thumb-size: var(--space-3);

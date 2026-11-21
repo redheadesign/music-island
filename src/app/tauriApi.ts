@@ -36,12 +36,14 @@ export interface NativeBackdropFrame {
   viewportWidth: number
   viewportHeight: number
   scale: number
+  frost: number
   regions: NativeBackdropRegion[]
 }
 
-export async function setOverlayBackdrop(frame: NativeBackdropFrame): Promise<boolean> {
+/** A null response means the native viewport is still changing. */
+export async function setOverlayBackdrop(frame: NativeBackdropFrame): Promise<boolean | null> {
   if (!isTauriRuntime()) return false
-  return invoke<boolean>('set_overlay_backdrop', { frame })
+  return invoke<boolean | null>('set_overlay_backdrop', { frame })
 }
 
 interface PlaybackBassSample {

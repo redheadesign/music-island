@@ -14,16 +14,24 @@ let notifyResize: () => void
 let observed: number
 let width = 240
 
-function Overlay({ enabled = true }: { enabled?: boolean }) {
+function Overlay({ enabled = true, frost }: { enabled?: boolean; frost?: number }) {
   const ref = useRef<HTMLDivElement>(null)
-  useNativeBackdrop(ref, enabled, '[data-blur]')
-  return <div ref={ref} data-blur style={{ borderRadius: '20px', opacity: 1 }} />
+  const status = useNativeBackdrop(ref, enabled, '[data-blur]', frost)
+  return <div ref={ref} data-blur data-status={status} style={{ borderRadius: '20px', opacity: 1 }} />
 }
 
 function PreviewWithoutWindowOwner() {
   const ref = useRef<HTMLDivElement>(null)
   const status = useNativeBackdrop(ref, false, '[data-blur]')
   return <output>{status ?? 'preview'}</output>
+}
+
+function Recording({ text }: { text: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const status = useNativeBackdrop(ref, true, '[data-blur]')
+  return <div ref={ref}><div data-blur style={{ borderRadius: '22px', opacity: 1 }}>
+    <span className="meter" style={{ height: text.length }}>{text}</span>
+  </div><output>{status ?? 'pending'}</output></div>
 }
 
 beforeEach(() => {
@@ -113,4 +121,52 @@ it('leaves a settings preview without an overlay owner entirely local', async ()
   expect(setOverlayBackdrop).not.toHaveBeenCalled()
   expect(container.textContent).toBe('preview')
   expect(observed).toBe(0)
+})
+
+it('keeps a translucent first frame while Windows prepares the viewport', async () => {
+  vi.mocked(setOverlayBackdrop).mockResolvedValueOnce(null)
+  await act(async () => root.render(<Recording text="one" />))
+  expect(container.querySelector('output')?.textContent).toBe('pending')
+  await act(async () => vi.advanceTimersByTimeAsync(50))
+  expect(container.querySelector('output')?.textContent).toBe('pending')
+  await act(async () => vi.advanceTimersByTimeAsync(300))
+  expect(container.querySelector('output')?.textContent).toBe('active')
+})
+
+it('does not schedule native layout reads when only speech text or meter levels change', async () => {
+  await act(async () => root.render(<Recording text="one" />))
+  await act(async () => vi.advanceTimersByTimeAsync(1000))
+  const bounds = vi.mocked(HTMLElement.prototype.getBoundingClientRect)
+  bounds.mockClear()
+  for (const text of ['two', 'three', 'four']) {
+    await act(async () => root.render(<Recording text={text} />))
+    await act(async () => vi.advanceTimersByTimeAsync(100))
+  }
+  expect(bounds).not.toHaveBeenCalled()
+})
+
+it('stops observing geometry when Windows has disabled backdrop effects', async () => {
+  vi.mocked(setOverlayBackdrop).mockResolvedValue(false)
+  await act(async () => root.render(<Recording text="one" />))
+  await act(async () => vi.advanceTimersByTimeAsync(1000))
+  expect(container.querySelector('output')?.textContent).toBe('unavailable')
+  expect(observed).toBe(0)
+  expect(vi.mocked(setOverlayBackdrop).mock.calls.filter(([frame]) => frame.enabled)).toHaveLength(1)
+})
+
+it('adjusts frost on the same native target and skips measurements at zero', async () => {
+  await act(async () => root.render(<Overlay />))
+  await act(async () => vi.advanceTimersByTimeAsync(500))
+  expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0].frost).toBe(.72)
+  for (const amount of [.45, 0, 1]) {
+    await act(async () => root.render(<Overlay frost={amount} />))
+    await act(async () => vi.advanceTimersByTimeAsync(48))
+    const frame = vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]
+    expect(frame?.enabled).toBe(true)
+    expect(frame?.frost).toBe(amount)
+    expect(frame?.regions).toHaveLength(amount === 0 ? 0 : 1)
+    expect(container.firstElementChild?.getAttribute('data-status')).toBe('active')
+    expect(observed > 0).toBe(amount > 0)
+  }
+  expect(vi.mocked(setOverlayBackdrop).mock.calls.some(([frame]) => !frame.enabled)).toBe(false)
 })
