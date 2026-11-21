@@ -1,0 +1,28 @@
+.island-glass-optic {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  background-color: var(--island-optic-fill, var(--glass-island-fill));
+}
+
+.island-glass-optic > .lg-glass {
+  --lg-blur: var(--island-optic-blur, 3px);
+  --lg-glass-bend: var(--island-optic-bend, .42);
+  --lg-glass-dispersion: 0;
+  --lg-rim-shine: var(--island-optic-shine, .38);
+  --lg-edge: rgba(242, 245, 248, .22);
+  --lg-drop: transparent;
+  --lg-glass: transparent;
+  position: absolute;
+  inset: calc(0px - var(--island-optic-overhang, 0px)) 0 0;
+  border-radius: var(--island-optic-radius, inherit);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-transparency: reduce), (forced-colors: active), (prefers-contrast: more) {
+  .island-glass-optic { background: var(--glass-island-opaque, Canvas); }
+  .island-glass-optic > .lg-glass { display: none; }
+}

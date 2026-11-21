@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest'
 import type { DictationStatus } from '../../shared/lib/dictationTypes'
 import type { AppConfig } from '../../shared/lib/types'
 import { useDictationOverlay } from './useDictationOverlay'
+import { withUiPrefs } from '../../shared/lib/uiPrefs'
 
 const mocks = vi.hoisted(() => ({ listeners: new Map<string, (event: { payload: unknown }) => void>(), disposers: [] as ReturnType<typeof vi.fn>[], readConfig: vi.fn(async () => ({ appearance: { locale: 'ru', reducedMotion: false, accentColor: '#f76100' } })), configChanged: null as null | ((config: AppConfig) => void), configDispose: vi.fn() }))
 vi.mock('./dictationEvents', () => ({ listenDictationEvent: async (name: string, callback: (event: { payload: unknown }) => void) => {
@@ -61,4 +62,43 @@ it('applies theme changes live and rejects an older config read that finishes af
     expect(overlay.reducedMotion).toBe(true)
   } finally { await act(async () => root.unmount()) }
   expect(mocks.configDispose).toHaveBeenCalledTimes(2)
+})
+
+it('updates capsule material and interface palette during a live recording without resetting its operation', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  const root = createRoot(document.createElement('div'))
+  let overlay!: ReturnType<typeof useDictationOverlay>
+  function Probe() { overlay = useDictationOverlay(); return null }
+  const config = {
+    appearance: { locale: 'ru', reducedMotion: false, accentColor: '#548dec' },
+    plugins: { enabled: [], settings: { ui: {
+      interfaceTheme: 'classic', interfacePalette: 'ember',
+      dictationAppearance: { theme: 'wave', palette: 'white', chromatic: true },
+    } } },
+  } as unknown as AppConfig
+  const status: DictationStatus = { revision: 7, operationId: 9, phase: 'streaming', ready: true, text: '', error: null }
+  const emit = async (name: string, payload: unknown) => act(async () => mocks.listeners.get(name)?.({ payload }))
+  try {
+    await act(async () => root.render(<Probe />))
+    await act(async () => mocks.configChanged?.(config))
+    await emit('show-overlay', 'streaming')
+    await emit('dictation:status', status)
+    await emit('mic-level', [.3, .5])
+    await emit('stream-text-event', { operation_id: 9, committed: 'Слова ', tentative: 'сейчас' })
+    const text = overlay.text
+    const levels = overlay.levels
+    await act(async () => mocks.configChanged?.(withUiPrefs(config, { interfaceTheme: 'glass', interfacePalette: 'ocean' })))
+    expect(overlay.status).toBe(status)
+    expect(overlay.visible).toBe(true)
+    expect(overlay.text).toBe(text)
+    expect(overlay.levels).toBe(levels)
+    expect(overlay.interfaceTheme).toBe('glass')
+    expect(overlay.interfacePalette).toBe('ocean')
+    expect(overlay.paletteStyle['--accent']).toBe('#70b9ee')
+    expect(overlay.appearance).toEqual({ theme: 'wave', palette: 'white', chromatic: true })
+    await act(async () => mocks.configChanged?.({ ...config, appearance: { ...config.appearance, locale: 'en' } }))
+    expect(overlay.interfaceTheme).toBe('classic')
+    expect(overlay.locale).toBe('en')
+    expect(overlay.status.operationId).toBe(9)
+  } finally { await act(async () => root.unmount()) }
 })

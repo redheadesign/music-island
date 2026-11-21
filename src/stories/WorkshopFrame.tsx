@@ -9,7 +9,6 @@ import type { StoryContext } from '@storybook/react-vite'
 import { WarpSurfaceProvider } from '../shared/ui/WarpSurface'
 import { DEFAULT_INTERFACE_THEME } from '../shared/lib/interfaceTheme'
 import { buildInterfacePaletteStyle } from '../shared/lib/interfacePalette'
-import { GlassRefraction } from '../shared/ui/GlassRefraction'
 import { useGlassPointerLight } from '../shared/ui/useGlassPointerLight'
 
 export function WorkshopFrame({
@@ -59,15 +58,13 @@ export function WorkshopFrame({
   }
 
   if (context.parameters.workshop?.welcome) return <>{children}</>
-  const refraction = context.viewMode === 'story' ? <GlassRefraction /> : null
-  if (context.parameters.workshop?.bare) return <>{children}{refraction}</>
+  if (context.parameters.workshop?.bare) return <>{children}</>
   const note = context.parameters.workshop?.note
 
   return (
     <div
       className={`workshop workshop--${surface} ${context.viewMode === 'docs' ? 'workshop--docs' : ''}`}
     >
-      {refraction}
       {context.viewMode === 'story' && (
         <header className="workshop-bar">
           <strong>
@@ -89,7 +86,12 @@ export function WorkshopFrame({
       )}
       <div
         className="workshop-stage"
-        style={{ minHeight: context.parameters.workshop?.height ?? 320 }}
+        style={{
+          minHeight: context.parameters.workshop?.height ?? 320,
+          background: context.parameters.workshop?.backdrop
+            ? `center / cover no-repeat url("${context.parameters.workshop.backdrop}")`
+            : undefined,
+        }}
       >
         <div
           className={context.parameters.islandComponent ? 'workshop-content island-root' : 'workshop-content'}

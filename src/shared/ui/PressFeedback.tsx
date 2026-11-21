@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, type ButtonHTMLAttributes, type HTMLAttributes, type Ref } from 'react'
+import { IslandGlassOptic } from './IslandGlassOptic'
 import { IslandParticles } from './IslandParticles'
 import './PressFeedback.css'
 export type RippleDirection = 'outward' | 'inward'
@@ -11,6 +12,8 @@ function rippleFrames(direction: RippleDirection): Keyframe[] {
 }
 
 type IslandFeedbackProps = HTMLAttributes<HTMLElement> & {
+  glassOptic?: boolean
+  opticActive?: boolean
   particles?: boolean
   playbackMotion?: boolean
   playbackWave?: boolean
@@ -18,7 +21,7 @@ type IslandFeedbackProps = HTMLAttributes<HTMLElement> & {
 }
 
 /** The ripple belongs to the surface, never to a moving button. */
-export function IslandFeedback({ children, className = '', particles = false, playbackMotion, playbackWave = false, ambientRef, ...props }: IslandFeedbackProps) {
+export function IslandFeedback({ children, className = '', glassOptic = false, opticActive = true, particles = false, playbackMotion, playbackWave = false, ambientRef, ...props }: IslandFeedbackProps) {
   const surface = useRef<HTMLElement>(null)
   const layer = useRef<HTMLSpanElement>(null)
   const animations = useRef<Animation[]>([])
@@ -51,7 +54,7 @@ export function IslandFeedback({ children, className = '', particles = false, pl
     void animation.finished.then(remove, remove)
   }
   return <Feedback.Provider value={ripple}>
-    <section {...props} ref={surface} className={`island-feedback ${className}`}>
+    <section {...props} data-island-optical={glassOptic || undefined} ref={surface} className={`island-feedback ${className}`}>
       <span ref={layer} className="island-feedback__layer" aria-hidden="true">
         {particles || playbackWave ? (
           <span
@@ -64,6 +67,7 @@ export function IslandFeedback({ children, className = '', particles = false, pl
           </span>
         ) : null}
       </span>
+      {glassOptic && <IslandGlassOptic active={opticActive} />}
       {children}
     </section>
   </Feedback.Provider>

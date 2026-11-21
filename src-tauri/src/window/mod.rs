@@ -9,6 +9,7 @@ use tauri::{
 };
 use tokio::time::{sleep, Duration};
 pub mod monitors;
+pub mod backdrop;
 #[cfg(windows)]
 mod clickthrough;
 

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useEffect, useState } from 'react'
 import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
+import seaStack from '../../assets/preview-sea-stack.webp'
 import { OverlayShell } from '../../features/overlay/OverlayShell'
 import type { IslandAppState, OverlayMode } from '../../app/useIslandApp'
 import type { MediaSnapshot } from '../../shared/lib/types'
@@ -203,6 +204,41 @@ const meta = {
 export default meta
 export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый островок' }
 export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный островок', globals: { interfaceTheme: 'glass' } }
+export const GlassOpticalSurface: StoryObj<typeof meta> = {
+  ...Glass,
+  name: 'Стекло · оптический край островка',
+  parameters: { workshop: { backdrop: seaStack } },
+  args: { artwork: 'cool' },
+  play: async ({ canvasElement }) => {
+    const card = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('.island-card[data-island-optical]')
+      expect(element).toBeInTheDocument()
+      return element!
+    })
+    const frame = card.querySelector<HTMLElement>(':scope > .island-glass-optic')!
+    await expect(frame).toHaveAttribute('aria-hidden', 'true')
+    await expect(getComputedStyle(frame).pointerEvents).toBe('none')
+    await expect(getComputedStyle(frame).overflow).toBe('hidden')
+    await expect(frame.querySelector('button, a, input')).toBeNull()
+    const button = card.querySelector('button')!
+    await expect(getComputedStyle(button).filter).toBe('none')
+    if (matchMedia('(prefers-reduced-transparency: reduce), (forced-colors: active), (prefers-contrast: more)').matches) {
+      await expect(frame.querySelector('.lg-glass')).toBeNull()
+      return
+    }
+    await waitFor(() => expect(frame.querySelector(':scope > .lg-glass[data-rim]')).toBeInTheDocument())
+    const lens = frame.firstElementChild!
+    const radius = parseFloat(getComputedStyle(card).borderBottomLeftRadius)
+    await expect(radius).toBeGreaterThan(0)
+    await expect(parseFloat(getComputedStyle(lens).borderTopLeftRadius)).toBe(radius)
+    await expect(parseFloat(getComputedStyle(lens).top)).toBe(-radius)
+    // Chromium uses a real fitted displacement map with the browser backdrop.
+    if (/Chrom(?:e|ium)\//.test(navigator.userAgent)) {
+      await expect(getComputedStyle(lens).backdropFilter).toContain('glisse-backdrop-')
+      await expect(card.ownerDocument.querySelector('filter[id^="glisse-backdrop-"] feDisplacementMap')).toBeInTheDocument()
+    }
+  },
+}
 export const GlassControlLenses: StoryObj<typeof meta> = {
   ...Glass,
   name: 'Стекло · кнопки плеера рядом с виджетом Codex',
@@ -235,7 +271,11 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
       await expect(documentView.getComputedStyle(codex).boxShadow).not.toContain('inset')
     }
     await expect(documentView.getComputedStyle(settings, '::before').content).toBe('none')
-    await expect(documentView.getComputedStyle(settings).boxShadow).toBe('none')
+    if (forcedColors) {
+      await expect(documentView.getComputedStyle(settings).boxShadow).not.toBe('none')
+    } else {
+      await expect(documentView.getComputedStyle(settings).boxShadow).toBe('none')
+    }
     await userEvent.click(previous)
     await expect(onCommand).toHaveBeenLastCalledWith('previous')
     await userEvent.tab()
@@ -244,16 +284,19 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
     await expect(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ })).toHaveFocus()
     await userEvent.click(next)
     await expect(onCommand).toHaveBeenLastCalledWith('next')
-    await userEvent.click(dislike)
-    await expect(dislike).toHaveAttribute('aria-pressed', 'true')
-    await expect(dislike.querySelector('svg')).toHaveAttribute('fill', 'currentColor')
-    if (!forcedColors) await expect(documentView.getComputedStyle(dislike).boxShadow).toBe(restingDislikeRim)
-    await userEvent.click(dislike)
-    await userEvent.click(like)
-    await expect(like).toHaveAttribute('aria-pressed', 'true')
-    await expect(like.querySelector('svg')).toHaveAttribute('fill', 'currentColor')
+    // Changing the track remounts the reaction glyphs to reset their animations.
+    const currentDislike = canvas.getByRole('button', { name: 'Dislike' })
+    const currentLike = canvas.getByRole('button', { name: 'Like' })
+    await userEvent.click(currentDislike)
+    await expect(currentDislike).toHaveAttribute('aria-pressed', 'true')
+    await expect(currentDislike.querySelector('svg')).toHaveAttribute('fill', 'currentColor')
+    if (!forcedColors) await expect(documentView.getComputedStyle(currentDislike).boxShadow).toBe(restingDislikeRim)
+    await userEvent.click(currentDislike)
+    await userEvent.click(currentLike)
+    await expect(currentLike).toHaveAttribute('aria-pressed', 'true')
+    await expect(currentLike.querySelector('svg')).toHaveAttribute('fill', 'currentColor')
     if (!forcedColors) {
-      await expect(documentView.getComputedStyle(like).boxShadow).toBe(restingLikeRim)
+      await expect(documentView.getComputedStyle(currentLike).boxShadow).toBe(restingLikeRim)
     }
     await userEvent.tab()
     await expect(settings).toHaveFocus()
@@ -271,6 +314,7 @@ export const GlassControlLensesReducedTransparency: StoryObj<typeof meta> = {
     const settings = await canvas.findByRole('button', { name: 'Open settings' })
     const seek = canvas.getByRole('slider', { name: /Позиция трека|Seek track/ })
     await expect(settings.closest('.island-root')).toHaveAttribute('data-reduced-transparency', 'true')
+    await expect(canvasElement.querySelector('.island-glass-optic .lg-glass')).toBeNull()
     await expect(canvasElement.ownerDocument.defaultView!.getComputedStyle(settings).backdropFilter).toBe('none')
     await expect(canvasElement.ownerDocument.defaultView!.getComputedStyle(seek).backdropFilter).toBe('none')
   },

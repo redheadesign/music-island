@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Pin, PinOff } from 'lucide-react'
-import { useLatestDictationMessage, useLocalServersController, usePlaybackBass, type IslandAppState, type LatestDictationMessageController, type LocalServersController, type UsageController } from '../../app/useIslandApp'
+import { useLatestDictationMessage, useLocalServersController, useNativeBackdrop, usePlaybackBass, type IslandAppState, type LatestDictationMessageController, type LocalServersController, type UsageController } from '../../app/useIslandApp'
 import { islandArrangement, getIslandLayout, inlineActionsWidth } from '../../shared/lib/islandLayout'
 import {
   getCollapsedGestureState,
@@ -157,6 +157,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const hasPlaybackWave = hasSession && getPlaybackWaveEnabled(config)
   const playbackMotion = hasSession && media?.playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
+  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency, '.island-surface, .island-actions > .icon-button')
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -899,6 +900,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   return (
     <main
       ref={overlay}
+      data-native-backdrop={nativeBackdrop}
       className={[
         'island-root',
         `island-root--${mode}`,
@@ -971,6 +973,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
             <div className="island-scale-layer">
             <IslandFeedback
               className="island-card island-surface"
+              glassOptic={usesGlassMaterial(config)}
+              opticActive={!reducedTransparency && nativeBackdrop !== 'unavailable'}
               particles={hasSession && usesGlassMaterial(config)}
               ambientRef={ambientRef}
               playbackWave={hasPlaybackWave}

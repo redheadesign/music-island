@@ -1,7 +1,36 @@
 # Third-party notices
 
 Music Island is licensed under GPL-3.0-or-later. The portable executable also
-contains separately licensed third-party components. This notice covers the embedded voice and dictation components. Cargo dependencies retain their own licenses.
+contains separately licensed third-party components. This notice covers the embedded interface, voice and dictation components. Cargo dependencies retain their own licenses.
+
+## Glisse optical material
+
+Music Island bundles the published React component from
+[Glisse 0.6.0](https://github.com/0kzh/glisse/tree/4922c852a6866ee9991d2f8c715bb1cfbe7aa2b9).
+Its shape-fitted lens and rim render the island material over artwork in the WebView.
+The original license follows.
+
+MIT License
+
+Copyright (c) 2026 Kelvin Zhang
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ## T3 Code ASCII artwork
 

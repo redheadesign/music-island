@@ -74,7 +74,7 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
                 data-cover-art="true"
                 style={{ ...islandStyle, ...getPreviewArtworkStyle(glass) } as CSSProperties}
               >
-                <IslandFeedback className="island-card island-surface" particles={glass} playbackWave={playbackWave} playbackMotion={playing}>
+                <IslandFeedback className="island-card island-surface" glassOptic={glass} particles={glass} playbackWave={playbackWave} playbackMotion={playing}>
                   <MusicModule media={{ ...APPEARANCE_PREVIEW_MEDIA, playbackStatus: playing ? 'playing' : 'paused' }} progressMs={APPEARANCE_PREVIEW_MEDIA.positionMs} progressPercent={34} density="balanced" showArtwork showTitle showArtist showProgress showSource={false} showPreviousNext locale={locale} reducedMotion={reduced} onCommand={command => setPlaying(command === 'play-pause' ? !playing : true)} />
                 </IslandFeedback>
               </div>

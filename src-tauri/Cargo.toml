@@ -1,6 +1,6 @@
 [package]
 name = "music-island"
-version = "3.2.1"
+version = "3.2.2"
 description = "Windows top-edge media controller with SMTC and opt-in direct desktop integration."
 authors = ["Music Island contributors"]
 edition = "2021"
@@ -56,9 +56,13 @@ wasapi = "0.23"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
 windows-core = "0.62"
+windows-numerics = "0.3"
 windows = { version = "0.62", features = [
   "Foundation",
   "Foundation_Collections",
+  "System",
+  "UI_Composition",
+  "UI_Composition_Desktop",
   "Storage_Streams",
   "Media_Control",
   "Win32_Foundation",
@@ -79,6 +83,8 @@ windows = { version = "0.62", features = [
   "Win32_Graphics_Dwm",
   "Win32_UI_Shell_PropertiesSystem",
   "Win32_System_Threading",
+  "Win32_System_WinRT",
+  "Win32_System_WinRT_Composition",
   "Win32_System_Com",
   "Win32_System_Com_StructuredStorage",
   "Win32_System_Variant",

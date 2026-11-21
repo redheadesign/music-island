@@ -71,7 +71,7 @@ import { AppLogo } from '../../shared/ui/AppLogo'
 import './settings.css'
 export { IslandPreview as AppearancePreview } from './IslandPreview'
 
-const APP_VERSION = '3.2.1'
+const APP_VERSION = '3.2.2'
 
 interface SettingsPanelProps {
   usage?: UsageController
@@ -495,7 +495,7 @@ export function SettingsPanel({
           const Icon = { general: Mic, models: Database, history: ClockCounterClockwise, dictionary: BookOpen, processing: TextAa, advanced: SlidersHorizontal }[id]
           return { id, label: dictationPages[id][locale === 'ru' ? 0 : 1], icon: (active: boolean) => <Icon size={20} weight={active ? 'fill' : 'regular'} /> }
         })} />
-        <div className="settings-content" data-settings-scroll><DictationSettings appearance={getDictationAppearance(draft)} onAppearanceChange={dictationAppearance => previewAndSave(withUiPrefs(draft, { dictationAppearance }))}
+        <div className="settings-content" data-settings-scroll><DictationSettings config={draft} appearance={getDictationAppearance(draft)} onAppearanceChange={dictationAppearance => previewAndSave(withUiPrefs(draft, { dictationAppearance }))}
           showLatestMessage={uiPrefs.showLatestDictationMessage === true}
           onShowLatestMessage={showLatestDictationMessage => previewAndSave(withUiPrefs(draft, { showLatestDictationMessage }))}
           active={settingsVisible} reducedMotion={reducedMotion} controller={dictation} page={dictationPage} locale={locale} onPage={setDictationPage} onDisable={async () => {

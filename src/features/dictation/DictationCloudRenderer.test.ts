@@ -79,3 +79,21 @@ it('keeps the fallback responsive until pending shaders can be validated without
     expect(gl.createProgram).toHaveBeenCalledTimes(3)
   } finally { renderer.dispose(); context.mockRestore() }
 })
+
+it('uses transparent artwork over the shared Glass material and reuses shaders when switching back', () => {
+  const { gl, context, renderer, frame, markLinked } = setup(true)
+  markLinked()
+  try {
+    expect(renderer.render(frame)).toBe(true)
+    const programs = vi.mocked(gl.createProgram).mock.calls.length
+    vi.mocked(gl.drawArrays).mockClear()
+    expect(renderer.render({ ...frame, material: 'glass' })).toBe(true)
+    expect(gl.drawArrays).toHaveBeenCalledTimes(1)
+    expect(gl.clearColor).toHaveBeenLastCalledWith(0, 0, 0, 0)
+    expect(gl.createProgram).toHaveBeenCalledTimes(programs)
+    vi.mocked(gl.drawArrays).mockClear()
+    expect(renderer.render({ ...frame, material: 'classic' })).toBe(true)
+    expect(gl.drawArrays).toHaveBeenCalledTimes(3)
+    expect(gl.createProgram).toHaveBeenCalledTimes(programs)
+  } finally { renderer.dispose(); context.mockRestore() }
+})

@@ -11,6 +11,7 @@ export type { IslandAppState, OverlayMode, UseIslandAppOptions } from './islandA
 export type { UsageController } from './usage/useUsageController'
 export { usePlaybackBass } from './media/usePlaybackBass'
 export { useSystemVolume } from './media/useSystemVolume'
+export { useNativeBackdrop } from './window/useNativeBackdrop'
 export { getUsagePreferences, withUsageProviderEnabled, enabledUsageProviders } from './usage/usagePreferences'
 
 export function useIslandApp({ mediaEnabled = true, timelineEnabled = true, windowEventsEnabled = true, includeConfigPreviews = true }: UseIslandAppOptions = {}): IslandAppState {

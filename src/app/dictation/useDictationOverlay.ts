@@ -5,6 +5,7 @@ import { getConfig, onConfigChanged } from '../tauriApi'
 import type { DictationStatus } from '../../shared/lib/dictationTypes'
 import type { AppConfig } from '../../shared/lib/types'
 import { defaultDictationAppearance, getDictationAppearance } from '../../shared/lib/dictationAppearance'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme } from '../../shared/lib/uiPrefs'
 export function useDictationOverlay() {
   const [status, setStatus] = useState<DictationStatus>({ revision: 0, operationId: 0, phase: 'idle', ready: false, text: '', error: null })
   const [visible, setVisible] = useState(false)
@@ -14,6 +15,8 @@ export function useDictationOverlay() {
   const [text, setText] = useState({ committed: '', tentative: '' })
   const [preferences, setPreferences] = useState({
     locale: 'ru' as 'ru' | 'en', reducedMotion: false, appearance: defaultDictationAppearance,
+    interfaceTheme: getInterfaceTheme(null), interfacePalette: getInterfacePalette(null),
+    paletteStyle: getInterfacePaletteStyle(null),
   })
   useEffect(() => {
     let alive = true
@@ -44,6 +47,8 @@ export function useDictationOverlay() {
       setPreferences({
         locale: config.appearance.locale, reducedMotion: config.appearance.reducedMotion,
         appearance: getDictationAppearance(config),
+        interfaceTheme: getInterfaceTheme(config), interfacePalette: getInterfacePalette(config),
+        paletteStyle: getInterfacePaletteStyle(config),
       })
     }
     // Subscribe before reading the store, so a theme changed during window startup

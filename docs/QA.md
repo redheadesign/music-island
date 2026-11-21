@@ -5,6 +5,13 @@
 - Windows 11: primary target.
 - Windows 10: best effort with WebView2 and SMTC support.
 
+## Windows glass surfaces
+
+- Open the island over a window with legible text or alternating stripes. In Glass, background detail softens inside the card and stays sharp outside its lower corners. The title and controls remain sharp. Click through the transparent area beside the island, then collapse it and verify the blur disappears.
+- Move the island between displays with different Windows scaling and open it again. The blurred silhouette should match the card on both displays.
+- Switch the island material during dictation. The recorder should keep its artwork, current text, active operation and finish button. Check a compact recording, the wider transcript, and a failed insertion with a copy action.
+- Turn off Windows transparency effects or enable high contrast during playback. The island and capsule should switch to a legible solid surface. Switch back and check that glass returns. On Windows 10, check the solid fallback.
+
 ## Windows folder opening
 
 - In Dictation → Models, expand Model storage and use Open folder. Explorer

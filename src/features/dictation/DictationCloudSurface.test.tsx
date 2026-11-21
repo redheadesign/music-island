@@ -26,8 +26,8 @@ function setup() {
   })
   vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(id => { callbacks.delete(id) })
   const container = document.createElement('div'), root = createRoot(container)
-  const render = (active = true, still = false) => act(async () => root.render(
-    <DictationCloudSurface appearance={{ ...defaultDictationAppearance, theme: 'pixels' }} phase="recording" levels={[.5]} active={active} still={still} />,
+  const render = (active = true, still = false, material: 'classic' | 'glass' = 'classic', accentColor = '#f76100') => act(async () => root.render(
+    <DictationCloudSurface appearance={{ ...defaultDictationAppearance, theme: 'pixels' }} phase="recording" levels={[.5]} active={active} still={still} material={material} accentColor={accentColor} />,
   ))
   const tick = (time: number) => act(async () => {
     const pending = [...callbacks.values()]
@@ -130,5 +130,28 @@ it('caps GPU frames on fast monitors and recovers a lost context without a recor
     await scene.tick(1216)
     expect(gpu.create).toHaveBeenCalledTimes(2)
     expect(canvas.dataset.fallback).toBeUndefined()
+  } finally { await act(async () => scene.root.unmount()) }
+})
+
+it('repaints live material and palette changes on the existing canvas without resetting its clock', async () => {
+  const scene = setup()
+  try {
+    await scene.render()
+    await scene.tick(100)
+    await scene.tick(116)
+    await scene.tick(160)
+    const canvas = scene.container.querySelector('canvas')
+    const previousTime = gpu.render.mock.calls.at(-1)?.[0].time
+    await scene.render(true, false, 'glass', '#70b9ee')
+    expect(scene.container.querySelector('canvas')).toBe(canvas)
+    expect(gpu.create).toHaveBeenCalledOnce()
+    expect(gpu.dispose).not.toHaveBeenCalled()
+    const frame = gpu.render.mock.calls.at(-1)?.[0]
+    expect(frame.material).toBe('glass')
+    expect(frame.accent).toEqual([112 / 255, 185 / 255, 238 / 255])
+    expect(frame.time).toBe(previousTime)
+    await scene.render(true, false, 'classic')
+    expect(gpu.render.mock.calls.at(-1)?.[0].material).toBe('classic')
+    expect(gpu.create).toHaveBeenCalledOnce()
   } finally { await act(async () => scene.root.unmount()) }
 })

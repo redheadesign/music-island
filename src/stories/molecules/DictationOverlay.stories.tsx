@@ -3,6 +3,8 @@ import { useState, type ComponentProps } from 'react'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { DictationOverlayView } from '../../features/dictation/DictationOverlay'
 import { defaultDictationAppearance } from '../../shared/lib/dictationAppearance'
+import { buildInterfacePaletteStyle } from '../../shared/lib/interfacePalette'
+import { Button } from '../../shared/ui/SettingsControls'
 const meta = { title: 'Molecules/DictationOverlay', component: DictationOverlayView,
   args: { appearance: { ...defaultDictationAppearance, theme: 'classic' }, visible: true, status: {revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null}, levels: [.3,.5,.7,.9,.4,.6,.3,.2], text: {committed: '', tentative: ''}, locale: 'ru', finish: fn(async () => {}), cancel: fn(async () => {}), copy: fn(async () => {}) },
   parameters: {workshop: {width: 550, height: 200}},
@@ -10,6 +12,71 @@ const meta = { title: 'Molecules/DictationOverlay', component: DictationOverlayV
 export default meta
 type Story = StoryObj<typeof meta>
 export const Recording: Story = {name: 'Запись'}
+export const GlassClassic: Story = {
+  name: 'Стекло · классическая капсула',
+  args: { interfaceTheme: 'glass', interfacePalette: 'silver-glass', paletteStyle: buildInterfacePaletteStyle('silver-glass', '#f76100') },
+}
+export const GlassWaves: Story = {
+  ...GlassClassic, name: 'Стекло · волны',
+  args: { ...GlassClassic.args, appearance: { ...defaultDictationAppearance, theme: 'wave', palette: 'lagoon' } },
+}
+export const GlassFox: Story = {
+  ...GlassClassic, name: 'Стекло · лиса',
+  args: { ...GlassClassic.args, appearance: { ...defaultDictationAppearance, theme: 'pixels', palette: 'ember' } },
+}
+export const GlassPreparing: Story = { ...GlassFox, name: 'Стекло · подготовка', args: { ...GlassFox.args, status: { ...meta.args.status, phase: 'preparing', ready: false } } }
+export const GlassTranscribing: Story = { ...GlassFox, name: 'Стекло · распознавание', args: { ...GlassFox.args, status: { ...meta.args.status, phase: 'transcribing' } } }
+export const GlassProcessing: Story = { ...GlassWaves, name: 'Стекло · обработка текста', args: { ...GlassWaves.args, status: { ...meta.args.status, phase: 'processing' } } }
+export const GlassCompleted: Story = { ...GlassFox, name: 'Стекло · готово', args: { ...GlassFox.args, status: { ...meta.args.status, phase: 'completed' } } }
+export const GlassCancelled: Story = { ...GlassWaves, name: 'Стекло · отмена', args: { ...GlassWaves.args, status: { ...meta.args.status, phase: 'cancelled' } } }
+export const GlassError: Story = {
+  ...GlassFox, name: 'Стекло · ошибка вставки',
+  args: { ...GlassFox.args, status: { ...meta.args.status, phase: 'error', text: 'Тестовая запись.', error: 'Target closed' } },
+  parameters: { workshop: { width: 256, height: 100 } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('alert')).toHaveTextContent('Не удалось вставить')
+    await userEvent.click(canvas.getByRole('button', { name: 'Скопировать текст' }))
+    await expect(args.copy).toHaveBeenCalledOnce()
+    await expect(canvas.getByRole('button', { name: 'Закрыть' })).toBeEnabled()
+  },
+}
+export const GlassProgress: Story = {
+  ...GlassFox, name: 'Стекло · обработанная длительность',
+  args: { ...GlassFox.args, status: { ...meta.args.status, phase: 'transcribing', progress: { completedAudioMs: 80000, totalAudioMs: 360000 } } },
+}
+export const GlassLiveText: Story = {
+  ...GlassWaves, name: 'Стекло · потоковый текст на английском',
+  args: { ...GlassWaves.args, locale: 'en', status: { ...meta.args.status, phase: 'streaming' }, text: { committed: 'The next meeting starts ', tentative: 'at ten' } },
+}
+
+function MaterialSwitchPreview(args: ComponentProps<typeof DictationOverlayView>) {
+  const [glass, setGlass] = useState(false)
+  return <>
+    <Button onClick={() => setGlass(value => !value)}>{glass ? 'Классический материал' : 'Стеклянный материал'}</Button>
+    <DictationOverlayView {...args} interfaceTheme={glass ? 'glass' : 'classic'} interfacePalette="ocean" paletteStyle={buildInterfacePaletteStyle('ocean', '#f76100')} />
+  </>
+}
+export const LiveMaterialSwitch: Story = {
+  ...GlassWaves, name: 'Смена материала во время записи',
+  render: args => <MaterialSwitchPreview {...args} />,
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    const overlay = canvasElement.querySelector('.dictation-overlay')!
+    const renderer = overlay.querySelector('.dictation-cloud-surface')
+    const finish = canvas.getByRole('button', { name: 'Завершить запись' })
+    await userEvent.click(canvas.getByRole('button', { name: 'Стеклянный материал' }))
+    await expect(overlay).toHaveAttribute('data-material', 'glass')
+    await expect(overlay).toHaveAttribute('data-theme', 'wave')
+    await expect(overlay.querySelector('.dictation-cloud-surface')).toBe(renderer)
+    await expect(finish).toBeEnabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Классический материал' }))
+    await expect(overlay).toHaveAttribute('data-material', 'classic')
+    await expect(overlay.querySelector('.dictation-cloud-surface')).toBe(renderer)
+    await expect(args.finish).not.toHaveBeenCalled()
+    await expect(args.cancel).not.toHaveBeenCalled()
+  },
+}
 export const Preparing: Story = {name: 'Подготовка', args: {status: {...meta.args.status, phase: 'preparing', ready: false}}}
 export const Transcribing: Story = {name: 'Распознавание', args: {status: {...meta.args.status, phase: 'transcribing'}}}
 export const LongTranscription: Story = {

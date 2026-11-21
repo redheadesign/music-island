@@ -21,6 +21,29 @@ import type {
   WaveSelectionResult,
 } from '../shared/lib/types'
 
+export interface NativeBackdropRegion {
+  left: number
+  top: number
+  width: number
+  height: number
+  radii: [number, number, number, number]
+  opacity: number
+}
+
+export interface NativeBackdropFrame {
+  generation: number
+  enabled: boolean
+  viewportWidth: number
+  viewportHeight: number
+  scale: number
+  regions: NativeBackdropRegion[]
+}
+
+export async function setOverlayBackdrop(frame: NativeBackdropFrame): Promise<boolean> {
+  if (!isTauriRuntime()) return false
+  return invoke<boolean>('set_overlay_backdrop', { frame })
+}
+
 interface PlaybackBassSample {
   request: number
   bass: number

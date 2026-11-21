@@ -5,9 +5,11 @@ import { expect, it, vi } from 'vitest'
 import type { DictationController } from '../../app/useIslandApp'
 import { DictationPreview } from './DictationPreview'
 import { defaultDictationAppearance, type DictationAppearance } from '../../shared/lib/dictationAppearance'
+import type { AppConfig } from '../../shared/lib/types'
 
 vi.mock('framer-motion', async importOriginal => ({ ...await importOriginal<typeof import('framer-motion')>(), useReducedMotion: () => false }))
 vi.mock('../../shared/ui/WarpSurface', () => ({ WarpSurface: () => null }))
+vi.mock('../../shared/ui/IslandGlassOptic', () => ({ IslandGlassOptic: () => null }))
 
 it('cycles a compact preview without changing saved style, and stops with reduced motion', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
@@ -92,4 +94,28 @@ it('keeps the material and artwork mounted through phases, repeated recordings a
     expect(container.querySelector('.dictation-cloud-surface')).toBe(material)
     expect(container.querySelector('[data-character="fox"]')).toBe(artwork)
   } finally { await act(async () => root.unmount()); raf.mockRestore(); container.remove(); vi.useRealTimers() }
+})
+
+it('updates the material from settings without restarting the preview phase', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  vi.useFakeTimers()
+  const container = document.createElement('div'), root = createRoot(container)
+  const controller = { enabled: true, busy: null } as DictationController
+  const render = (interfaceTheme: 'classic' | 'glass') => <DictationPreview
+    controller={controller} locale="ru" active reducedMotion={false} onEnable={async () => {}}
+    config={{ appearance: { accentColor: '#f76100' }, plugins: { settings: { ui: { interfaceTheme, interfacePalette: 'ocean' } } } } as unknown as AppConfig}
+    appearance={{ ...defaultDictationAppearance, theme: 'pixels', palette: 'white' }}
+  />
+  try {
+    await act(async () => root.render(render('classic')))
+    await act(async () => vi.advanceTimersByTime(4200))
+    const scene = container.querySelector('.dictation-preview__scene')
+    const canvas = container.querySelector('.dictation-cloud-surface')
+    expect(scene?.getAttribute('data-phase')).toBe('transcribing')
+    await act(async () => root.render(render('glass')))
+    expect(scene?.getAttribute('data-phase')).toBe('transcribing')
+    expect(container.querySelector('.dictation-cloud-surface')).toBe(canvas)
+    expect(container.querySelector('.dictation-overlay')?.getAttribute('data-interface-theme')).toBe('glass')
+    expect(container.querySelector('.dictation-overlay')?.getAttribute('data-theme')).toBe('pixels')
+  } finally { await act(async () => root.unmount()); vi.useRealTimers() }
 })

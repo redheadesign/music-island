@@ -3,13 +3,14 @@ import { DictationCloudRenderer, type CloudFrame } from './DictationCloudRendere
 import type { DictationAppearance } from '../../shared/lib/dictationAppearance'
 import { getCloudGeometry } from './cloudGeometry'
 
-export function DictationCloudSurface({ appearance, phase, levels, still = false, active = true, demo = false, coreRef, effectRef, expanded = false, singleControl = false, controlsVisible = true }: {
+export function DictationCloudSurface({ appearance, material = 'classic', accentColor, phase, levels, still = false, active = true, demo = false, coreRef, effectRef, expanded = false, singleControl = false, controlsVisible = true }: {
   appearance: DictationAppearance; phase: string; levels: number[]; still?: boolean; active?: boolean; demo?: boolean
   coreRef?: RefObject<HTMLElement | null>; effectRef?: RefObject<HTMLElement | null>; expanded?: boolean; singleControl?: boolean; controlsVisible?: boolean
+  material?: 'classic' | 'glass'; accentColor?: string
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
-  const input = useRef({ appearance, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still })
-  input.current = { appearance, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still }
+  const input = useRef({ appearance, material, accentColor, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still })
+  input.current = { appearance, material, accentColor, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still }
   const redraw = useRef<(() => void) | null>(null)
   // A cheap, visible material while WebGL is being prepared (or unavailable).
   const [ready, setReady] = useState(false)
@@ -42,7 +43,7 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
       const effectX = effectBounds ? (effectBounds.left - bounds.left) * scale + effectWidth / 2 : coreX
       const controls = next.controlsVisible && !next.expanded && next.coreRef ? Math.max(0,Math.min(1,(width-92)/(next.singleControl ? 40 : 80))) : 0
       const frame: CloudFrame = { time: still ? 0 : time, delta, level: envelope, phase: next.phase, instant: still || !active,
-        appearance: next.appearance, controls, coreWidth, coreX, effectWidth, effectX, singleControl: next.singleControl, coreHeight: next.expanded ? height-6 : 44,
+        appearance: next.appearance, material: next.material, controls, coreWidth, coreX, effectWidth, effectX, singleControl: next.singleControl, coreHeight: next.expanded ? height-6 : 44,
         coreY: next.expanded ? height/2 : height-25, accent }
       try { updateMaterialReady(renderer.render(frame)) }
       catch { updateMaterialReady(false); cancelAnimationFrame(raf); renderer.dispose(); renderer=null }
@@ -60,7 +61,7 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
       cancelAnimationFrame(raf); last=null
       const next = input.current
       if (!next.active || document.visibilityState !== 'visible') return
-      const match = getComputedStyle(surface).getPropertyValue('--accent').trim().match(/^#([\da-f]{6})$/i)
+      const match = (next.accentColor ?? getComputedStyle(surface).getPropertyValue('--accent')).trim().match(/^#([\da-f]{6})$/i)
       accent = match ? [0,2,4].map(at=>parseInt(match[1].slice(at,at+2),16)/255) : [94/255,106/255,210/255]
       if (renderer) {
         paint(0)
@@ -90,7 +91,7 @@ export function DictationCloudSurface({ appearance, phase, levels, still = false
       surface.removeEventListener('webglcontextlost',lost);surface.removeEventListener('webglcontextrestored',restored)
     }
   }, [])
-  useEffect(() => { redraw.current?.() }, [active,still,appearance,phase,expanded,singleControl,controlsVisible,effectRef])
+  useEffect(() => { redraw.current?.() }, [active,still,appearance,material,accentColor,phase,expanded,singleControl,controlsVisible,effectRef])
   useEffect(() => { if (active && still) redraw.current?.() }, [active,still,levels])
   return <canvas ref={canvas} className={'dictation-cloud-surface'+(appearance.theme==='wave'?' dictation-visual--wave':'')} data-fallback={!ready || undefined} aria-hidden="true" />
 }

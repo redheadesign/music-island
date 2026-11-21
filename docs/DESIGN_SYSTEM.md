@@ -1,6 +1,6 @@
 # Auxiliary interface foundations
 
-Settings, Better Voice, Dictation, onboarding, dialogs and taskbar controls use the graphite shell. The island material and palette apply to the live island and its production previews, including playback controls in the layout catalog. Settings previews share one animated fox backdrop.
+Settings pages, onboarding, dialogs and taskbar controls use the graphite shell. The island and floating dictation capsule share the selected material. Their production previews show the same material, including playback controls in the layout catalog. Settings previews share one animated fox backdrop.
 
 ## Token ownership
 

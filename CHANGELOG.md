@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The Glass island uses Glisse for optical edges and Windows 11 desktop blur behind the player. Track names, artwork and playback controls stay sharp. Windows 10 and reduced-transparency settings use a solid surface.
+- The recording capsule follows the island material as you switch between Glass and Classic. Your choice of recorder artwork and its palette is preserved, including during a recording.
+
 ## 3.2.1 — 2026-11-18
 
 - Glass and Classic change the top-edge island. Settings, Better Voice and Dictation use their regular dark surfaces, spacing and controls.

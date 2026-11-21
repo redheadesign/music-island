@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { chromium } from 'playwright-core'
 import { preview } from 'vite'
+import { checkGlassFrost, checkRecorderContrast } from './check-glass-frost.mjs'
 
 const criticalStories = [
   'foundations-interfacetheme--third-theme', 'screens-settings--retry-failed-save', 'screens-settings--unreadable-profile',
@@ -21,12 +22,15 @@ const criticalStories = [
   'screens-dictationcompute--background-recognition', 'screens-dictationcompute--other-engine',
   'screens-dictation--catalog-cards-narrow', 'molecules-modelcard--failed-retry', 'molecules-modelcard--downloading',
   'organisms-musicmodule--directional-progress', 'organisms-musicmodule--reduced-motion-progress', 'organisms-musicmodule--seek-gesture',
+  'molecules-dictationoverlay--glass-classic', 'molecules-dictationoverlay--glass-waves', 'molecules-dictationoverlay--glass-fox',
+  'molecules-dictationoverlay--glass-error', 'molecules-dictationoverlay--glass-progress', 'molecules-dictationoverlay--glass-live-text',
+  'molecules-dictationoverlay--live-material-switch',
   'organisms-musicmodule--system-volume', 'screens-dictation--floating-catalog', 'atoms-playbackfeedback--local-heart', 'molecules-dictationoverlay--fox-progress',
   'organisms-islandlayouteditor--inline-layout', 'organisms-islandlayouteditor--full-inline-layout',
   'molecules-dictationoverlay--long-transcription', 'screens-onboarding--custom-shortcut',
   'organisms-usagesettingssection--stale-limit',
   'screens-onboarding--save-error', 'screens-installnotice--running', 'screens-installnotice--open-failed',
-  'screens-island--glass-edge-gesture', 'screens-island--glass-reactive-wave', 'screens-island--glass-playback',
+  'screens-island--glass-optical-surface', 'screens-island--glass-control-lenses', 'screens-island--glass-edge-gesture', 'screens-island--glass-reactive-wave', 'screens-island--glass-playback',
   'screens-island--glass-cool-cover', 'screens-island--glass-without-cover',
   'screens-island--glass-background-off', 'screens-island--glass-widget-panels',
   'organisms-taskbarlayouteditor--glass-catalog', 'screens-bettervoice--signal-route', 'screens-bettervoice--signal-route-narrow',
@@ -64,6 +68,12 @@ try {
       if (phase !== 'finished') throw new Error('Render ended in ' + phase)
       if (!await page.locator('#storybook-root > *').count()) throw new Error('Empty story')
       await page.evaluate(() => document.fonts.ready)
+      if (id === 'screens-island--glass-without-cover') {
+        await checkGlassFrost(page)
+      }
+      if (id === 'molecules-dictationoverlay--glass-live-text') {
+        await checkRecorderContrast(page)
+      }
     } catch (error) {
       errors.push(error.message)
     } finally {

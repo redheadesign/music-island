@@ -1,0 +1,107 @@
+/* The recorder artwork and operation geometry are independent of its material. */
+.dictation-wave-fallback { display: none; }
+.dictation-overlay--cloud:has([data-fallback='true']) .dictation-wave-fallback { display: flex; }
+.dictation-overlay--cloud:has([data-fallback='true']) .dictation-wave-fallback + .dictation-cloud__fallback { display: none; }
+.dictation-overlay[data-material='glass'] {
+  --island-optic-blur: min(8px, var(--glass-blur));
+  --island-optic-bend: .25;
+  --island-optic-shine: .35;
+  --island-optic-fill: rgb(24 24 24 / .76);
+  --dictation-reading-ink: #f4f4f1;
+  color: var(--dictation-reading-ink);
+  background: transparent;
+  border-radius: var(--radius-pill);
+  isolation: isolate;
+  position: relative;
+  overflow: visible;
+}
+
+.dictation-overlay[data-material='glass'][data-expanded='true'] { border-radius: var(--glass-island-radius); }
+.dictation-overlay[data-material='glass']:is([data-theme='classic'], [data-expanded='true'], [data-phase='error']),
+.dictation-overlay[data-material='glass'][data-audio-progress='true'] .dictation-cloud__core {
+  --island-optic-fill: rgb(24 24 24 / .82);
+}
+.dictation-overlay[data-material='glass'] > .dictation-overlay__bar,
+.dictation-overlay[data-material='glass'] > .dictation-overlay__text {
+  position: relative;
+  z-index: 1;
+}
+.dictation-overlay[data-material='glass'] .dictation-overlay__text,
+.dictation-overlay[data-material='glass'] .dictation-cloud__duration,
+.dictation-overlay[data-material='glass'] .dictation-cloud__bar button {
+  color: var(--dictation-reading-ink);
+}
+.dictation-overlay[data-material='glass'] .dictation-overlay__text span { opacity: .86; }
+.dictation-overlay--cloud[data-material='glass'] .dictation-cloud__core {
+  background: transparent;
+  border-radius: var(--radius-pill);
+  box-shadow: none;
+}
+.dictation-overlay--cloud[data-material='glass'] .dictation-cloud__core > :not(.island-glass-optic) {
+  position: relative;
+  z-index: 1;
+}
+.dictation-overlay--cloud[data-material='glass'] .dictation-cloud__core > .dictation-cloud__interaction {
+  position: absolute;
+  z-index: 2;
+}
+.dictation-overlay--cloud[data-material='glass'] .dictation-cloud__satellite {
+  color: var(--dictation-reading-ink);
+  background: transparent;
+  box-shadow: none;
+}
+.dictation-overlay--cloud[data-material='glass'] .dictation-cloud__satellite svg { position: relative; z-index: 1; }
+.dictation-overlay--cloud[data-material='glass'][data-phase='error'] {
+  background: transparent;
+  color: var(--dictation-reading-ink);
+}
+.dictation-overlay[data-material='glass'] :is(.dictation-overlay__bar button, .dictation-cloud__copy, .dictation-cloud__dismiss) {
+  background-image: var(--glass-control-sheen);
+  box-shadow: var(--glass-control-rim);
+}
+.dictation-overlay[data-material='glass'] .dictation-cloud__interaction { background: transparent; box-shadow: none; }
+.dictation-overlay[data-material='glass'] .dictation-cloud__core:has(button):active { transform: none; }
+.dictation-overlay[data-material='glass'] button:focus-visible {
+  outline: 2px solid var(--dictation-reading-ink);
+  outline-offset: -2px;
+}
+@media (hover: hover) {
+  .dictation-overlay[data-material='glass'] :is(.dictation-overlay__bar button, .dictation-cloud__copy, .dictation-cloud__dismiss):enabled:hover {
+    background-color: rgb(255 255 255 / .14);
+  }
+}
+.dictation-overlay[data-material='glass'] button:enabled:active { background-color: rgb(0 0 0 / .35); }
+
+.dictation-overlay[data-material='glass'][data-native-backdrop='unavailable'] .island-glass-optic { display: none; }
+@media (forced-colors: none) {
+  .dictation-overlay[data-material='glass'][data-native-backdrop='unavailable']:not(.dictation-overlay--cloud),
+  .dictation-overlay--cloud[data-material='glass'][data-native-backdrop='unavailable']:is([data-expanded='true'], [data-phase='error']),
+  .dictation-overlay--cloud[data-material='glass'][data-native-backdrop='unavailable']:not([data-expanded='true'], [data-phase='error']) .dictation-cloud__core,
+  .dictation-overlay--cloud[data-material='glass'][data-native-backdrop='unavailable'] .dictation-cloud__satellite {
+    background: var(--glass-island-opaque, #242424);
+    box-shadow: var(--glass-control-rim);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .dictation-overlay[data-material='glass']:not(.dictation-overlay--cloud),
+  .dictation-overlay--cloud[data-material='glass']:is([data-expanded='true'], [data-phase='error']),
+  .dictation-overlay--cloud[data-material='glass']:not([data-expanded='true'], [data-phase='error']) .dictation-cloud__core,
+  .dictation-overlay--cloud[data-material='glass'] .dictation-cloud__satellite {
+    background: var(--glass-island-opaque, #242424);
+    box-shadow: var(--glass-control-rim);
+  }
+}
+@media (forced-colors: active) {
+  .dictation-overlay[data-material='glass']:not(.dictation-overlay--cloud),
+  .dictation-overlay--cloud[data-material='glass']:is([data-expanded='true'], [data-phase='error']),
+  .dictation-overlay--cloud[data-material='glass']:not([data-expanded='true'], [data-phase='error']) .dictation-cloud__core,
+  .dictation-overlay--cloud[data-material='glass'] .dictation-cloud__satellite {
+    color: CanvasText;
+    background: Canvas;
+    border: 1px solid CanvasText;
+  }
+  .dictation-overlay[data-material='glass'] { --dictation-reading-ink: CanvasText; }
+  .dictation-overlay[data-material='glass'] .dictation-cloud-surface { display: none; }
+  .dictation-overlay[data-material='glass'] .dictation-cloud__fallback { display: block; }
+}

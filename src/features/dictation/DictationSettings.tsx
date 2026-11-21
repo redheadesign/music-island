@@ -4,6 +4,7 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import type { DictationController } from '../../app/useIslandApp'
 import { createTranslator } from '../../shared/i18n/messages'
 import type { AppSettings, HistoryEntry } from '../../shared/lib/dictationTypes'
+import type { AppConfig } from '../../shared/lib/types'
 import { DictationPreview } from './DictationPreview'
 import { DictationThemePicker } from './DictationThemePicker'
 import { defaultDictationAppearance, type DictationAppearance } from '../../shared/lib/dictationAppearance'
@@ -21,10 +22,11 @@ import { DictionaryWordField } from './DictionaryWordField'
 import { useDictionaryDraft } from './useDictionaryDraft'
 import './dictation.css'
 
-export function DictationSettings({ controller: c, page, locale, onEnable, onDisable, onPage, active = true, reducedMotion = false, appearance = defaultDictationAppearance, onAppearanceChange = () => {}, showLatestMessage = false, onShowLatestMessage }: {
+export function DictationSettings({ controller: c, config, page, locale, onEnable, onDisable, onPage, active = true, reducedMotion = false, appearance = defaultDictationAppearance, onAppearanceChange = () => {}, showLatestMessage = false, onShowLatestMessage }: {
   active?: boolean; reducedMotion?: boolean; controller: DictationController; page: DictationPage; locale: 'ru' | 'en'; onEnable: () => Promise<void>; onDisable?: () => Promise<void>; onPage: (page: DictationPage) => void
   appearance?: DictationAppearance; onAppearanceChange?: (value: DictationAppearance) => void
   showLatestMessage?: boolean; onShowLatestMessage?: (enabled: boolean) => void
+  config?: AppConfig
 }) {
   const translate = createTranslator(locale)
   const ru = locale === 'ru'
@@ -77,7 +79,7 @@ export function DictationSettings({ controller: c, page, locale, onEnable, onDis
     {page !== 'models' ? <h2 tabIndex={-1} className="settings-page-heading">{dictationPages[page][ru ? 0 : 1]}</h2> : null}
     {page === 'processing' ? null : error}
     {page === 'general' ? <>
-<DictationPreview controller={c} locale={locale} active={active} reducedMotion={reducedMotion} appearance={appearance} onEnable={onEnable} onDisable={onDisable} />
+<DictationPreview controller={c} config={config} locale={locale} active={active} reducedMotion={reducedMotion} appearance={appearance} onEnable={onEnable} onDisable={onDisable} />
 <DictationThemePicker value={appearance} onChange={onAppearanceChange} locale={locale} />
 <section className="dictation-card" aria-label={t('Сочетания клавиш', 'Keyboard shortcuts')}>
         <DictationField label={t('Сочетание клавиш', 'Keyboard shortcut')}><DictationShortcut controller={c} id="transcribe" locale={locale} /></DictationField>

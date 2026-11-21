@@ -32,13 +32,16 @@
   backdrop-filter: var(--glass-filter);
 }
 
-[data-interface-theme='glass'] .island-card::before {
-  content: '';
-  position: absolute;
-  inset: -1px 0 auto;
-  height: 1px;
-  pointer-events: none;
-  background: rgb(255 255 255 / .15);
+/* One reading plane below the wave and one clear optical bezel above it.
+   Extend the lens past the top edge: Glisse fits a uniform corner radius,
+   while this window needs only its two lower corners rounded. */
+[data-interface-theme='glass'] .island-card[data-island-optical] {
+  --island-optic-radius: var(--glass-island-radius);
+  --island-optic-overhang: var(--glass-island-radius);
+  --island-optic-fill: transparent;
+  background: linear-gradient(115deg, var(--island-artwork-tint, transparent), transparent 76%) var(--glass-island-fill);
+  box-shadow: var(--glass-depth);
+  backdrop-filter: none;
 }
 
 /* Controls stay neutral. The plate, playback fill and light pick up the cover. */
@@ -195,7 +198,13 @@
   z-index: 1;
   opacity: 1;
 }
-.island-root[data-interface-theme='glass'] .island-actions .icon-button { mix-blend-mode: normal; }
+/* Detached actions sit directly over the desktop; their neutral reading fill
+   keeps the white glyph legible even over a bright window. */
+.island-root[data-interface-theme='glass'] .island-actions .icon-button {
+  --island-lens-fill: var(--glass-island-fill);
+  --island-lens-sheen: var(--glass-control-sheen);
+  mix-blend-mode: normal;
+}
 .island-root[data-interface-theme='glass'] .island-actions .icon-button svg { filter: none; }
 .island-root[data-interface-theme='glass'] .playback-mode-button.reaction-button--active {
   --island-lens-rim: inset 0 0 0 1px var(--palette-primary, #d4d4d1);
@@ -260,6 +269,11 @@
   }
 }
 .island-root[data-interface-theme='glass'] .island-actions .island-settings-button { box-shadow: none; }
+@media (hover: hover) {
+  .island-root[data-interface-theme='glass'] .island-actions .icon-button:enabled:hover {
+    --island-lens-sheen: var(--glass-selection-sheen);
+  }
+}
 .island-root[data-interface-theme='glass'] .island-actions .island-settings-button::before { content: none; }
 .island-root[data-interface-theme='glass'] .progress-track::before { background: none; }
 .island-root[data-interface-theme='glass'] .progress-fill {
@@ -311,6 +325,40 @@
     background: CanvasText;
     box-shadow: none;
     forced-color-adjust: none;
+  }
+}
+@media (forced-colors: none) {
+  .island-root[data-interface-theme='glass'][data-native-backdrop='unavailable'] .island-surface,
+  .island-root[data-interface-theme='glass'][data-native-backdrop='unavailable'] .island-actions .icon-button {
+    background: var(--glass-island-opaque);
+    backdrop-filter: none;
+    transition-property: transform, opacity;
+  }
+  .island-root[data-interface-theme='glass'][data-native-backdrop='unavailable'] .island-actions .icon-button:enabled:hover {
+    background: color-mix(in srgb, var(--glass-island-opaque) 86%, white);
+  }
+  .island-root[data-interface-theme='glass'][data-native-backdrop='unavailable'] .island-actions .icon-button:enabled:active {
+    background: color-mix(in srgb, var(--glass-island-opaque) 80%, black);
+  }
+}
+@media (prefers-contrast: more) and (forced-colors: none) {
+  .island-root[data-interface-theme='glass'] .island-actions .icon-button {
+    background: var(--glass-island-opaque);
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  [data-interface-theme='glass'] .island-card[data-island-optical] {
+    background: var(--glass-island-opaque);
+  }
+}
+@media (forced-colors: active) {
+  [data-interface-theme='glass'] .island-card[data-island-optical],
+  [data-interface-theme='glass'] .island-card > .island-glass-optic {
+    background: Canvas;
+  }
+  .island-root[data-interface-theme='glass'] .island-actions .island-settings-button {
+    box-shadow: inset 0 0 0 1px ButtonText;
   }
 }
 .island-root[data-interface-theme='glass'][data-reduced-transparency='true'] {

@@ -2,7 +2,15 @@
 
 Music Island has one graphite settings window. Appearance opens on the live island and its draggable controls. Below the catalog, choose Classic or Glass, then a color palette or a custom accent. The monitor and opening delay are available in the same panel. Glass adds a switch for the playback wave.
 
-The island material and palette apply to the native top-edge island, its attached controls and its previews. Settings, Better Voice, Dictation, onboarding chrome, dialogs and the taskbar player use the regular dark components, container padding and typography. Dictation's own recorder appearance is an independent setting. Existing profiles keep their chosen island material, palette and layout. The former settings color-scheme preference is removed on migration.
+The island material also applies to the floating dictation capsule. Both previews use the production surfaces. Classic, Waves and Fox in Dictation choose the recorder artwork independently, so switching the island material keeps the selected artwork and recording session. Settings pages, onboarding, dialogs and the taskbar player use the regular graphite controls and spacing. Existing profiles keep their chosen island material, palette and layout. The former settings color-scheme preference is removed on migration.
+
+## Glass
+
+The floating controls use one frosted surface behind the content. Artwork, text and buttons are drawn above it. This follows Apple's regular material for controls over unpredictable backgrounds. Smaller controls use local highlights and fills to keep labels, keyboard focus and playback state legible. [Materials](https://developer.apple.com/design/human-interface-guidelines/materials) · [Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/)
+
+Glisse supplies the optical edge in WebView2 and in the browser previews. The dependency is bundled with the app. [Glisse source](https://github.com/0kzh/glisse/tree/4922c852a6866ee9991d2f8c715bb1cfbe7aa2b9) · [Third-party notices](../THIRD_PARTY_NOTICES.md)
+
+On Windows 11, the transparent island and recorder windows report their visible surface geometry to Windows Composition. Its host backdrop brush samples and blurs the desktop inside those silhouettes. The WebView receives an availability flag. The browser preview uses its own page backdrop. With Windows transparency effects disabled, high contrast enabled, or on a Windows version without host backdrop support, the native windows use a solid reading surface. [Windows host backdrop brush](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute)
 
 ## Preview background
 

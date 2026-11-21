@@ -6,11 +6,14 @@ import { StatefulWarpSurface } from '../../shared/ui/StatefulWarpSurface'
 import { DictationOverlayView } from './DictationOverlay'
 import { defaultDictationAppearance, type DictationAppearance } from '../../shared/lib/dictationAppearance'
 import type { ShortcutActivation } from '../../shared/lib/dictationTypes'
+import type { AppConfig } from '../../shared/lib/types'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme } from '../../shared/lib/uiPrefs'
 
-export function DictationPreview({ controller: c, locale, active, reducedMotion, appearance = defaultDictationAppearance, onEnable, onDisable }: {
+export function DictationPreview({ controller: c, config, locale, active, reducedMotion, appearance = defaultDictationAppearance, onEnable, onDisable }: {
   controller: DictationController; locale: 'ru' | 'en'; active: boolean; reducedMotion: boolean
   onEnable: () => Promise<void>; onDisable?: () => Promise<void>
   appearance?: DictationAppearance
+  config?: AppConfig
 }) {
   const ru = locale === 'ru'
   const systemReducedMotion = useReducedMotion()
@@ -24,11 +27,11 @@ export function DictationPreview({ controller: c, locale, active, reducedMotion,
   return <section className="dictation-preview settings-preview" aria-label={ru ? 'Превью диктовки' : 'Dictation preview'}>
     <StatefulWarpSurface running={c.enabled} active={active} reducedMotion={reducedMotion} />
     <div className="settings-preview__header"><Switch label={ru ? 'Диктовка' : 'Dictation'} checked={c.enabled} disabled={Boolean(c.busy)} onChange={enabled => { void (enabled ? onEnable() : onDisable?.())?.catch(() => {}) }} /></div>
-    <PreviewCycle appearance={appearance} locale={locale} active={active && visible} still={still} shortcutActivation={c.data?.settings.shortcut_activation ?? 'toggle'} />
+    <PreviewCycle config={config} appearance={appearance} locale={locale} active={active && visible} still={still} shortcutActivation={c.data?.settings.shortcut_activation ?? 'toggle'} />
   </section>
 }
 
-function PreviewCycle({ appearance, locale, active, still, shortcutActivation }: { appearance: DictationAppearance; locale: 'ru' | 'en'; active: boolean; still: boolean; shortcutActivation: ShortcutActivation }) {
+function PreviewCycle({ appearance, config, locale, active, still, shortcutActivation }: { appearance: DictationAppearance; config?: AppConfig; locale: 'ru' | 'en'; active: boolean; still: boolean; shortcutActivation: ShortcutActivation }) {
   const appearanceKey = `${appearance.theme}:${appearance.palette}:${appearance.chromatic}`
   const [cycle, setCycle] = useState({ appearanceKey, step: 0 })
   // Replay a new choice without destroying the canvas, shaders or artwork clock.
@@ -42,6 +45,8 @@ function PreviewCycle({ appearance, locale, active, still, shortcutActivation }:
   }, [active, still, phase, appearanceKey])
   const state = (['recording', 'transcribing', 'completed'] as const)[still ? 0 : phase]
   return <div className="dictation-preview__scene" data-phase={state} data-static={still || !active} inert aria-hidden="true">
-    <DictationOverlayView visible locale={locale} appearance={appearance} active={active} demo reducedMotion={still} status={{ revision: 0, operationId: Math.floor(step / 3), phase: state, ready: true, text: '', error: null, shortcutActivation }} levels={[.2,.5,.8,.6,.9,.45,.3,.55]} text={{ committed: '', tentative: '' }} cancel={async () => {}} copy={async () => {}} />
+    <DictationOverlayView visible locale={locale} appearance={appearance}
+      interfaceTheme={getInterfaceTheme(config)} interfacePalette={getInterfacePalette(config)} paletteStyle={getInterfacePaletteStyle(config)}
+      active={active} demo reducedMotion={still} status={{ revision: 0, operationId: Math.floor(step / 3), phase: state, ready: true, text: '', error: null, shortcutActivation }} levels={[.2,.5,.8,.6,.9,.45,.3,.55]} text={{ committed: '', tentative: '' }} cancel={async () => {}} copy={async () => {}} />
   </div>
 }

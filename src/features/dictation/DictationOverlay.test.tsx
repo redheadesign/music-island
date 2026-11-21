@@ -4,10 +4,14 @@ import { createRoot } from 'react-dom/client'
 import { expect, it, vi } from 'vitest'
 import { DictationOverlayView } from './DictationOverlay'
 import { defaultDictationAppearance } from '../../shared/lib/dictationAppearance'
+import { buildInterfacePaletteStyle } from '../../shared/lib/interfacePalette'
 
+const native = vi.hoisted(() => ({ status: undefined as 'active' | 'unavailable' | undefined }))
+vi.mock('../../app/useIslandApp', () => ({ useDictationOverlay: vi.fn(), useNativeBackdrop: () => native.status }))
 vi.mock('framer-motion', () => ({ useReducedMotion: () => false }))
 vi.mock('./DictationCloudSurface', () => ({ DictationCloudSurface: () => <canvas /> }))
 vi.mock('./DictationVisual', () => ({ DictationVisual: () => <svg /> }))
+vi.mock('../../shared/ui/IslandGlassOptic', () => ({ IslandGlassOptic: ({ active }: { active: boolean }) => <span className="island-glass-optic" hidden={!active} /> }))
 
 it('uses release to finish in hold mode, and one finish action in toggle modes for every theme', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
@@ -118,5 +122,87 @@ it('reports copy failure on the current Fox error and clears it for a new record
     expect(alert()?.textContent).toBe('Не удалось вставить')
     await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Закрыть"]')?.click())
     expect(cancel).toHaveBeenCalledOnce()
+  } finally { await act(async () => root.unmount()) }
+})
+
+it('switches material and colors in every recorder state while keeping its renderer and controls', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  const container = document.createElement('div'), root = createRoot(container)
+  const finish = vi.fn(async () => {}), cancel = vi.fn(async () => {})
+  try {
+    for (const theme of ['classic', 'wave', 'pixels'] as const) {
+      for (const phase of ['preparing', 'recording', 'streaming', 'transcribing', 'processing', 'completed', 'cancelled', 'error'] as const) {
+        const status = { revision: 2, operationId: 12, phase, ready: true, text: 'Слова.', error: phase === 'error' ? 'Target closed' : null }
+        const render = (interfaceTheme: 'classic' | 'glass') => <DictationOverlayView visible reducedMotion
+          status={status} appearance={{ ...defaultDictationAppearance, theme, palette: 'white' }} interfaceTheme={interfaceTheme}
+          interfacePalette="ocean" paletteStyle={buildInterfacePaletteStyle('ocean', '#f76100')}
+          levels={[.3]} text={{ committed: '', tentative: '' }} finish={finish} cancel={cancel} copy={async () => {}} />
+        await act(async () => root.render(render('classic')))
+        const overlay = container.querySelector('.dictation-overlay')
+        const artwork = container.querySelector('canvas, svg')
+        const controls = [...container.querySelectorAll('button')]
+        await act(async () => root.render(render('glass')))
+        expect(container.querySelector('.dictation-overlay'), theme + '/' + phase).toBe(overlay)
+        expect(overlay?.getAttribute('data-material')).toBe('glass')
+        expect(overlay?.getAttribute('data-theme')).toBe(theme)
+        expect(container.querySelector('canvas, svg')).toBe(artwork)
+        expect([...container.querySelectorAll('button')]).toEqual(controls)
+        expect((overlay as HTMLElement).style.getPropertyValue('--accent')).toBe('#70b9ee')
+        expect(container.querySelector('.island-glass-optic:not([hidden])')).not.toBeNull()
+      }
+    }
+    expect(finish).not.toHaveBeenCalled()
+    expect(cancel).not.toHaveBeenCalled()
+  } finally { await act(async () => root.unmount()) }
+})
+
+it('keeps readable artwork and controls when native glass is unavailable', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  const container = document.createElement('div'), root = createRoot(container)
+  native.status = 'unavailable'
+  const finish = vi.fn(async () => {})
+  try {
+    await act(async () => root.render(<DictationOverlayView visible reducedMotion interfaceTheme="glass"
+      appearance={{ ...defaultDictationAppearance, theme: 'wave' }}
+      status={{ revision: 3, operationId: 7, phase: 'recording', ready: true, text: '', error: null }}
+      levels={[.8]} text={{ committed: '', tentative: '' }} finish={finish} cancel={async () => {}} copy={async () => {}} />))
+    expect(container.querySelector('.dictation-overlay')?.getAttribute('data-native-backdrop')).toBe('unavailable')
+    expect(container.querySelectorAll('.island-glass-optic:not([hidden])')).toHaveLength(0)
+    expect(container.querySelectorAll('[data-native-backdrop-surface]')).toHaveLength(2)
+    expect(container.querySelectorAll('.dictation-wave-fallback i')).toHaveLength(8)
+    const stop = container.querySelector<HTMLButtonElement>('[aria-label="Завершить запись"]')!
+    expect(stop.disabled).toBe(false)
+    await act(async () => stop.click())
+    expect(finish).toHaveBeenCalledOnce()
+  } finally { native.status = undefined; await act(async () => root.unmount()) }
+})
+
+it('fits the optical edge after a capsule resize while its artwork and recording keep running', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  const container = document.createElement('div'), root = createRoot(container)
+  const finish = vi.fn(async () => {}), cancel = vi.fn(async () => {})
+  try {
+    await act(async () => root.render(<DictationOverlayView visible reducedMotion interfaceTheme="glass"
+      appearance={{ ...defaultDictationAppearance, theme: 'wave' }}
+      status={{ revision: 3, operationId: 7, phase: 'recording', ready: true, text: '', error: null }}
+      levels={[.8]} text={{ committed: '', tentative: '' }} finish={finish} cancel={cancel} copy={async () => {}} />))
+    const overlay = container.querySelector('.dictation-overlay')!
+    const canvas = container.querySelector('canvas')
+    const transition = async (type: string, propertyName: string) => {
+      const event = new Event(type, { bubbles: true })
+      Object.defineProperty(event, 'propertyName', { value: propertyName })
+      await act(async () => overlay.dispatchEvent(event))
+    }
+    await transition('transitionrun', 'width')
+    await transition('transitionrun', 'height')
+    expect(container.querySelectorAll('.island-glass-optic:not([hidden])')).toHaveLength(0)
+    await transition('transitionend', 'width')
+    expect(container.querySelectorAll('.island-glass-optic:not([hidden])')).toHaveLength(0)
+    await transition('transitioncancel', 'height')
+    expect(container.querySelector('.island-glass-optic:not([hidden])')).not.toBeNull()
+    expect(container.querySelector('canvas')).toBe(canvas)
+    expect(overlay.getAttribute('data-phase')).toBe('recording')
+    expect(finish).not.toHaveBeenCalled()
+    expect(cancel).not.toHaveBeenCalled()
   } finally { await act(async () => root.unmount()) }
 })

@@ -15,6 +15,7 @@ export type CloudFrame = {
   time: number; delta: number; level: number; phase: string; appearance: DictationAppearance; instant: boolean
   effectX?: number; effectWidth?: number
   coreWidth: number; coreHeight: number; coreX: number; coreY: number; controls: number; singleControl: boolean; accent: number[]
+  material?: 'classic' | 'glass'
 }
 const palettes: Record<DictationAppearance['palette'], number[][]> = {
   accent: [], prism: [[.369,.416,.824],[.55,.522,.957],[.698,.718,.925]],
@@ -37,6 +38,7 @@ const waveDefaults = {
 const shaderSources = [wave, dots, background, composite, glass]
 const materialPasses = [2, 3, 4]
 const wavePasses = [0, 1, ...materialPasses]
+const glassArtworkPasses = [0, 1, 3]
 
 /** The source recorder's wave, diffuse material, refraction and bevel passes.
  * Native commands and window ownership remain in the existing app adapter. */
@@ -89,9 +91,9 @@ export class DictationCloudRenderer {
       if (fs) gl.deleteShader(fs)
     }
   }
-  private preparePrograms(theme: DictationAppearance['theme']) {
+  private preparePrograms(theme: DictationAppearance['theme'], material?: CloudFrame['material']) {
     const gl = this.gl
-    const passes = theme === 'wave' ? wavePasses : materialPasses
+    const passes = theme === 'wave' ? material === 'glass' ? glassArtworkPasses : wavePasses : materialPasses
     const completionStatus = this.parallelCompile?.COMPLETION_STATUS_KHR
     for (const index of passes) {
       if (this.programs.has(index)) continue
@@ -161,7 +163,7 @@ export class DictationCloudRenderer {
   }
   render(frame: CloudFrame) {
     const gl = this.gl, {appearance:a,level,time,phase} = frame
-    if (!this.preparePrograms(a.theme)) return false
+    if (!this.preparePrograms(a.theme, frame.material)) return false
     const dpr = getCloudPixelRatio({ width: this.canvas.clientWidth, height: this.canvas.clientHeight,
       bounds: this.canvas.getBoundingClientRect(), devicePixelRatio: window.devicePixelRatio,
     })
@@ -170,7 +172,7 @@ export class DictationCloudRenderer {
     const coreWidth=frame.coreWidth*dpr, coreHeight=frame.coreHeight*dpr, coreX=frame.coreX*dpr, coreY=frame.coreY*dpr
     const { waveBrightness, lightIntensity } = dictationArtworkDefaults
     const ew=Math.max(1,Math.round((frame.effectWidth ?? frame.coreWidth)*dpr*1.18)), eh=Math.max(1,Math.round(44*dpr*1.18))
-    const effect=this.target(0,ew,eh), scene=this.target(1,width,height)
+    const effect=this.target(0,ew,eh)
     const working=['preparing','transcribing','processing'].includes(phase)
     const result=['completed','error','cancelled'].includes(phase)
     const waveTarget=Number(a.theme === 'wave' && !working && !result)
@@ -218,6 +220,19 @@ export class DictationCloudRenderer {
       uAppear:dotsOpacity,uGather:0,uCharge:0,uFlash:0,uParticleTint:colors[0],uParticleNeutral:Number(a.chromatic),
       uSuccess:this.completion,uError:error,uCopied:0})
     gl.disable(gl.BLEND)
+    if (frame.material === 'glass') {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+      gl.viewport(0, 0, width, height)
+      gl.clearColor(0, 0, 0, 0)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      this.draw(3, { uResolution: [width, height], uCanvasSize: [width, height],
+        uEffectOrigin: [(frame.effectX ?? frame.coreX) * dpr - ew / 2, height - 25 * dpr - eh / 2],
+        uEffectSize: [ew, eh], uContainer: 0, uContainerBlack: 0, uContainerFade: 1,
+        uContainerGauss: 0, uContainerTint: [0, 0, 0], uAnger: 0,
+      }, [['uEffectTexture', effect.texture]])
+      return true
+    }
+    const scene = this.target(1, width, height)
     gl.bindFramebuffer(gl.FRAMEBUFFER,scene.framebuffer);gl.viewport(0,0,width,height)
     this.draw(2,material,[['uBackground',this.empty]])
     gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA)

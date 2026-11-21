@@ -469,6 +469,7 @@ pub fn run() {
             window::show_overlay_ready,
             set_overlay_bounds,
             window::set_overlay_widget_regions,
+            window::backdrop::set_overlay_backdrop,
             get_collapsed_gesture_state,
             open_settings_window,
             close_intro_window,
