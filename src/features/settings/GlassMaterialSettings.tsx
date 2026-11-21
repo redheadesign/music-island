@@ -19,12 +19,11 @@ interface GlassMaterialSettingsProps {
   material: GlassMaterial
   onChange: (material: GlassMaterial) => void
   onReset?: () => void
-  modified?: boolean
 }
 
-export function GlassMaterialSettings({ locale, material, onChange, onReset, modified }: GlassMaterialSettingsProps) {
+export function GlassMaterialSettings({ locale, material, onChange, onReset }: GlassMaterialSettingsProps) {
   const t = createTranslator(locale)
-  const custom = modified ?? controls.some(([key]) => material[key] !== DEFAULT_GLASS_MATERIAL[key])
+  const custom = controls.some(([key]) => material[key] !== DEFAULT_GLASS_MATERIAL[key])
   const title = t('settings.glassMaterial')
   return <SettingsDisclosure title={title} summary={t(custom ? 'settings.glassCustom' : 'settings.glassDefault')}>
     <div className="glass-material-settings" role="group" aria-label={title}>

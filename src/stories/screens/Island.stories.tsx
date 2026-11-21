@@ -691,15 +691,14 @@ export const GlassWidgetPanels: StoryObj<typeof meta> = {
     const { canvasElement } = context
     // The three widgets mount inside the animated drawer. Native data can
     // already be present in the first render, while its opacity is still zero.
-    const surfaces = await waitFor(() => {
-      const drawer = canvasElement.querySelector<HTMLElement>('.island-hover-zone')
-      if (!drawer || getComputedStyle(drawer).opacity !== '1') throw new Error('Waiting for the drawer entrance')
-      return ['.usage-chip__compact-provider', '.island-local-servers', '.island-latest-dictation'].map(selector => {
-        const surface = canvasElement.querySelector<HTMLElement>(selector)
-        if (!surface) throw new Error(`Waiting for ${selector}`)
-        return surface
-      })
-    })
+    const drawer = canvasElement.querySelector<HTMLElement>('.island-hover-zone')!
+    const deadline = performance.now() + 4000
+    while (getComputedStyle(drawer).opacity !== '1' && performance.now() < deadline) {
+      await new Promise(requestAnimationFrame)
+    }
+    await expect(drawer).toHaveStyle({ opacity: '1' })
+    const surfaces = ['.usage-chip__compact-provider', '.island-local-servers', '.island-latest-dictation']
+      .map(selector => canvasElement.querySelector<HTMLElement>(selector)!)
     for (const surface of surfaces) {
       await expect(surface).toBeVisible()
       await expect(surface).toHaveClass('island-surface')
