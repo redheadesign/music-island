@@ -6,6 +6,7 @@ import { OverlayShell } from '../../features/overlay/OverlayShell'
 import type { IslandAppState, OverlayMode } from '../../app/useIslandApp'
 import type { MediaSnapshot } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
+import type { AdvancedGlassOverrides } from '../../shared/lib/advancedGlass'
 import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { getUiPrefs } from '../../shared/lib/uiPrefs'
 import { media, health } from '../fixtures'
@@ -34,6 +35,7 @@ function IslandPreview({
   reducedMotion = false,
   startCollapsed = false,
   playbackWaveEnabled = true,
+  advancedGlass,
 }: {
   locale: 'ru' | 'en'
   accent: string
@@ -54,6 +56,7 @@ function IslandPreview({
   reducedMotion?: boolean
   startCollapsed?: boolean
   playbackWaveEnabled?: boolean
+  advancedGlass?: AdvancedGlassOverrides
 }) {
   const [config, setConfig] = useWorkshopConfig(locale, accent, !startCollapsed && localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed', interfaceTheme)
   const [localServers, setLocalServers] = useState(() => {
@@ -82,7 +85,7 @@ function IslandPreview({
         enabled: latestMessageMode ? ['dictation'] : config.plugins.enabled,
         settings: {
           ...config.plugins.settings,
-          ui: { ...ui, playbackWaveEnabled, localServersEnabled: ui.localServersEnabled ?? Boolean(localServersMode), localServersWidgetScale, showLatestDictationMessage: Boolean(latestMessageMode), forceIslandUpdateBanner: update && !ui.islandUpdateSnoozedUntil },
+          ui: { ...ui, ...(advancedGlass && { advancedGlass }), playbackWaveEnabled, localServersEnabled: ui.localServersEnabled ?? Boolean(localServersMode), localServersWidgetScale, showLatestDictationMessage: Boolean(latestMessageMode), forceIslandUpdateBanner: update && !ui.islandUpdateSnoozedUntil },
           usage: { codexEnabled: assistantLimits, claudeEnabled: false },
         },
       },
@@ -204,6 +207,37 @@ const meta = {
 export default meta
 export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый островок' }
 export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный островок', globals: { interfaceTheme: 'glass' } }
+export const AdvancedGlassSurfaces: StoryObj<typeof meta> = {
+  ...Glass,
+  name: 'Стекло · независимые поверхности',
+  args: {
+    advancedGlass: {
+      body: { transparency: 75, background: '#242c2c', bend: .45, dispersion: .4, frost: 6.5 },
+      transport: { rim: .23, bend: .45, dispersion: .4, frost: 1 },
+      progressTrack: { radius: 14, height: 48, text: '#fff0d0', textSize: 15 },
+      progressFill: { radius: 6, background: '#215d68', endColor: '#a9475b', angle: 68 },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('.island-root--open[data-glass-scope]:has(.progress-track .progress-fill)')
+      expect(element).toBeInTheDocument()
+      return element!
+    })
+    if (matchMedia('(prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)').matches) return
+    const track = root.querySelector<HTMLElement>('.progress-track')!
+    const fill = track.querySelector<HTMLElement>('.progress-fill')!
+    const lens = root.querySelector<HTMLElement>('.island-card .lg-glass')!
+    await expect(root.querySelectorAll('filter[id^="glass-optics-"]')).toHaveLength(1)
+    await expect(getComputedStyle(lens).boxShadow).toBe('none')
+    await expect(getComputedStyle(lens).backdropFilter).toContain('blur(6.5px)')
+    await expect(getComputedStyle(track).height).toBe('48px')
+    await expect(getComputedStyle(track).borderRadius).toBe('14px')
+    await expect(getComputedStyle(track.querySelector('.progress-content')!).color).toBe('rgb(255, 240, 208)')
+    await expect(getComputedStyle(fill).borderRadius).toBe('6px')
+    await expect(getComputedStyle(fill).backgroundImage).toContain('68deg')
+  },
+}
 export const GlassOpticalSurface: StoryObj<typeof meta> = {
   ...Glass,
   name: 'Стекло · оптический край островка',
@@ -216,6 +250,7 @@ export const GlassOpticalSurface: StoryObj<typeof meta> = {
       return element!
     })
     const frame = card.querySelector<HTMLElement>(':scope > .island-glass-optic')!
+    await expect(card.closest('.island-root')!.querySelector(':scope > style, filter[id^="glass-optics-"]')).toBeNull()
     await expect(frame).toHaveAttribute('aria-hidden', 'true')
     await expect(getComputedStyle(frame).pointerEvents).toBe('none')
     await expect(getComputedStyle(frame).overflow).toBe('hidden')
@@ -242,7 +277,10 @@ export const GlassOpticalSurface: StoryObj<typeof meta> = {
     )
     const edge = card.getBoundingClientRect()
     move(card, edge.left + 2, edge.top + edge.height / 2)
-    await waitFor(() => expect(card).toHaveAttribute('data-glass-edge', 'left'))
+    await new Promise(requestAnimationFrame)
+    await expect(card).not.toHaveAttribute('data-glass-light')
+    await expect(getComputedStyle(lens).boxShadow).toBe('none')
+    await expect(getComputedStyle(lens, '::before').content).toBe('none')
     for (const control of card.querySelectorAll<HTMLButtonElement>('button:enabled')) {
       const { left, top, width, height } = control.getBoundingClientRect()
       move(control.querySelector('svg, span') ?? control, left + width / 2, top + height / 2)
@@ -724,7 +762,7 @@ export const GlassWidgetPanels: StoryObj<typeof meta> = {
       const thin = getComputedStyle(surfaces[0]).backgroundSize
       root.style.setProperty('--glass-edge-strength', '1')
       for (const surface of surfaces) {
-        await expect(getComputedStyle(surface).backgroundSize).not.toBe(thin)
+        await expect(getComputedStyle(surface).backgroundSize).toBe(thin)
       }
     } finally {
       root.style.setProperty('--glass-edge-strength', previousEdge)

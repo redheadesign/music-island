@@ -34,8 +34,6 @@
   --glass-reading-secondary: #eeeee9;
   --glass-edge-width: calc(.5px + 1.5px * var(--glass-edge-strength, .5));
   --glass-reading-sheen:
-    linear-gradient(90deg, transparent, rgb(255 255 255 / calc(.44 * var(--glass-highlight))), transparent) top / 62% var(--glass-edge-width) no-repeat,
-    linear-gradient(90deg, transparent, rgb(255 255 255 / calc(.18 * var(--glass-highlight))), transparent) bottom / 72% var(--glass-edge-width) no-repeat,
     linear-gradient(180deg, transparent, rgb(8 8 8 / var(--glass-reading-veil)) var(--space-2), rgb(8 8 8 / var(--glass-reading-veil)) calc(100% - var(--space-2)), transparent);
   /* Buttons on a frosted plane only add tint and a specular edge. Cap the
      combined transmission behind labels, regardless of the desktop color. */

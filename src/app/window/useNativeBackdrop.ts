@@ -22,6 +22,7 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
   }
   if (opacity <= 0.001) return null
   const style = styles.get(surface)!
+  const override = parseFloat(style.getPropertyValue('--glass-region-frost'))
   const scale = Math.min(rect.width / Math.max(surface.offsetWidth, 1), rect.height / Math.max(surface.offsetHeight, 1))
   const radius = (value: string) => {
     const parsed = Number.parseFloat(value) || 0
@@ -31,20 +32,23 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
     left: rect.left, top: rect.top, width: rect.width, height: rect.height,
     radii: [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius].map(radius) as [number, number, number, number],
     opacity,
+    ...(Number.isFinite(override) && override >= 0 && { frost: Math.min(1, override) }),
   }
 }
 
 /** DWM owns the backdrop; this hook only publishes each surface's geometry. */
-export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost): NativeBackdropStatus {
+export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost, regionFrostKey = ''): NativeBackdropStatus {
   const [status, setStatus] = useState<NativeBackdropStatus>()
   const frostAmount = useRef(defaultFrost)
+  const individualFrost = useRef('')
   const changeFrost = useRef<((crossedZero: boolean) => void) | null>(null)
   useLayoutEffect(() => {
     const amount = Number.isFinite(frost) ? Math.min(1, Math.max(0, frost)) : defaultFrost
-    const crossedZero = (amount === 0) !== (frostAmount.current === 0)
+    const crossedZero = (amount === 0 && !regionFrostKey) !== (frostAmount.current === 0 && !individualFrost.current)
     frostAmount.current = amount
+    individualFrost.current = regionFrostKey
     changeFrost.current?.(crossedZero)
-  }, [frost])
+  }, [frost, regionFrostKey])
   useLayoutEffect(() => {
     if (!('__TAURI_INTERNALS__' in window)) return
     const node = root.current
@@ -65,7 +69,7 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
     const policy = matchMedia('(prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)')
     const resize = new ResizeObserver(() => refresh())
     const available = () => enabled && !document.hidden && !policy.matches && !unsupported
-    const measuring = () => available() && frostAmount.current > 0
+    const measuring = () => available() && (frostAmount.current > 0 || Boolean(individualFrost.current))
     const frame = (capture: boolean): NativeBackdropFrame => {
       const styles = new Map<HTMLElement, CSSStyleDeclaration>()
       return {
@@ -77,7 +81,7 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
         frost: frostAmount.current,
         regions: capture ? surfaces.flatMap(surface => {
           const region = measureNativeBackdropRegion(surface, node, styles)
-          return region ? [region] : []
+          return region && (region.frost ?? frostAmount.current) > 0 ? [region] : []
         }) : [],
       }
     }

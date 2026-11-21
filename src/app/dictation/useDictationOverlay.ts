@@ -5,7 +5,7 @@ import { getConfig, onConfigChanged } from '../tauriApi'
 import type { DictationStatus } from '../../shared/lib/dictationTypes'
 import type { AppConfig } from '../../shared/lib/types'
 import { defaultDictationAppearance, getDictationAppearance } from '../../shared/lib/dictationAppearance'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme } from '../../shared/lib/uiPrefs'
+import { getUiPrefs, getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme } from '../../shared/lib/uiPrefs'
 import { getGlassMaterial } from '../../shared/lib/glassMaterial'
 export function useDictationOverlay() {
   const [status, setStatus] = useState<DictationStatus>({ revision: 0, operationId: 0, phase: 'idle', ready: false, text: '', error: null })
@@ -18,7 +18,7 @@ export function useDictationOverlay() {
     locale: 'ru' as 'ru' | 'en', reducedMotion: false, appearance: defaultDictationAppearance,
     interfaceTheme: getInterfaceTheme(null), interfacePalette: getInterfacePalette(null),
     paletteStyle: getInterfacePaletteStyle(null),
-    glassMaterial: getGlassMaterial(null),
+    glassMaterial: getGlassMaterial(null), advancedGlass: getUiPrefs(null).advancedGlass,
   })
   useEffect(() => {
     let alive = true
@@ -51,7 +51,7 @@ export function useDictationOverlay() {
         appearance: getDictationAppearance(config),
         interfaceTheme: getInterfaceTheme(config), interfacePalette: getInterfacePalette(config),
         paletteStyle: getInterfacePaletteStyle(config),
-        glassMaterial: getGlassMaterial(config),
+        glassMaterial: getGlassMaterial(config), advancedGlass: getUiPrefs(config).advancedGlass,
       })
     }
     // Subscribe before reading the store, so a theme changed during window startup

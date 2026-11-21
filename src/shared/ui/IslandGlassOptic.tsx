@@ -4,7 +4,7 @@ import bezelField from './glisse-bezel.png?inline'
 import './IslandGlassOptic.css'
 
 /** Windows supplies the desktop frost. Browser previews use the original
- * Glisse field; the player rim is already baked at 2x for either renderer. */
+ * Glisse field with a separate optical layer for the player. */
 export const IslandGlassOptic = memo(function IslandGlassOptic({ active = true, refract = false }: {
   active?: boolean
   refract?: boolean

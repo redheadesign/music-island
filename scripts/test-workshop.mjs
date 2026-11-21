@@ -30,6 +30,7 @@ const criticalStories = [
   'molecules-dictationoverlay--long-transcription', 'screens-onboarding--custom-shortcut',
   'organisms-usagesettingssection--stale-limit',
   'screens-onboarding--save-error', 'screens-installnotice--running', 'screens-installnotice--open-failed',
+  'screens-island--advanced-glass-surfaces', 'screens-settings--advanced-surface-editor', 'screens-dictation--advanced-capsule-surface', 'screens-dictation--pinned-recorder-preview',
   'screens-island--glass-optical-surface', 'screens-island--glass-control-lenses', 'screens-island--glass-edge-gesture', 'screens-island--glass-reactive-wave', 'screens-island--glass-playback',
   'screens-island--glass-cool-cover', 'screens-island--glass-without-cover',
   'screens-island--glass-background-off', 'screens-island--glass-widget-panels',

@@ -1,24 +1,28 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatTime } from '../../shared/lib/format'
 import { useReducedMotion } from 'framer-motion'
 import { Check, Copy, LoaderCircle, Mic, Stop, X } from '../../shared/ui/SettingsIcons'
 import { useDictationOverlay, useNativeBackdrop } from '../../app/useIslandApp'
 import type { DictationStatus } from '../../shared/lib/dictationTypes'
 import { defaultDictationAppearance, dictationPaletteColors, type DictationAppearance } from '../../shared/lib/dictationAppearance'
+import { DEFAULT_DICTATION_SHADER, normalizeDictationShader } from '../../shared/lib/shaderTuning'
 import { getInterfaceThemeDefinition, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import type { InterfacePaletteId, buildInterfacePaletteStyle } from '../../shared/lib/interfacePalette'
 import { DEFAULT_GLASS_MATERIAL, glassMaterialStyle, type GlassMaterial } from '../../shared/lib/glassMaterial'
+import { useAdvancedGlass } from '../../shared/ui/useAdvancedGlass'
+import type { AdvancedGlassOverrides } from '../../shared/lib/advancedGlass'
 import { IslandGlassOptic } from '../../shared/ui/IslandGlassOptic'
 import { DictationVisual } from './DictationVisual'
 import { DictationCloudSurface } from './DictationCloudSurface'
 import './dictation.css'
 import './dictation-material.css'
 export function DictationOverlay() { return <DictationOverlayView {...useDictationOverlay()} desktop /> }
-export function DictationOverlayView({ status, visible, levels, text, locale = 'ru', reducedMotion, appearance = defaultDictationAppearance, interfaceTheme: islandTheme = 'classic', interfacePalette = 'custom', paletteStyle, glassMaterial: islandGlass = DEFAULT_GLASS_MATERIAL, active = true, demo = false, desktop = false, finish, cancel, copy }: {
+export function DictationOverlayView({ status, visible, levels, text, locale = 'ru', reducedMotion, appearance = defaultDictationAppearance, interfaceTheme: islandTheme = 'classic', interfacePalette = 'custom', paletteStyle, glassMaterial: islandGlass = DEFAULT_GLASS_MATERIAL, advancedGlass, active = true, demo = false, desktop = false, finish, cancel, copy }: {
   status: DictationStatus; visible: boolean; levels: number[]; text: { committed: string; tentative: string }; locale?: 'ru' | 'en'; reducedMotion?: boolean; cancel: () => Promise<unknown>; copy: () => Promise<unknown>
   appearance?: DictationAppearance; active?: boolean; demo?: boolean; desktop?: boolean
   interfaceTheme?: InterfaceThemeId; interfacePalette?: InterfacePaletteId
   paletteStyle?: ReturnType<typeof buildInterfacePaletteStyle>
+  advancedGlass?: AdvancedGlassOverrides
   glassMaterial?: GlassMaterial
   finish?: () => Promise<unknown>
 }) {
@@ -35,6 +39,7 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   const progressArt = useRef<HTMLSpanElement>(null)
   const systemReducedMotion = useReducedMotion()
   const still = Boolean(reducedMotion || systemReducedMotion || !active)
+  const tuning = useMemo(() => normalizeDictationShader(appearance.shaderTuning), [appearance.shaderTuning])
   const ru = locale === 'ru'
   const recording = status.phase === 'recording' || status.phase === 'streaming'
   const recordingControl = status.shortcutActivation !== 'push_to_talk'
@@ -62,9 +67,11 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   const interfaceTheme = appearance.materialTheme ?? islandTheme
   const glassMaterial = appearance.materialTheme === 'glass' ? appearance.glassMaterial ?? DEFAULT_GLASS_MATERIAL : islandGlass
   const material = getInterfaceThemeDefinition(interfaceTheme).material
-  const nativeBackdrop = useNativeBackdrop(desktop ? root : previewRoot, material === 'glass' && artworkActive, '[data-native-backdrop-surface]', glassMaterial.frost / 100)
+  const advanced = useAdvancedGlass(material === 'glass' ? advancedGlass : undefined, glassMaterial, true)
+  const nativeBackdrop = useNativeBackdrop(desktop ? root : previewRoot, material === 'glass' && artworkActive, '[data-native-backdrop-surface]', glassMaterial.frost / 100, advanced.regionFrostKey)
   const opticsActive = artworkActive && nativeBackdrop !== 'unavailable'
   const materialAttributes = {
+    ...advanced.attributes,
     'data-interface-theme': interfaceTheme,
     'data-interface-palette': interfacePalette,
     'data-material': material,
@@ -81,12 +88,19 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
     const end = () => { void finish?.().catch(() => {}) }
     const copyText = () => { setCopyFailure(null); void copy().catch(() => setCopyFailure(status.operationId)) }
     const visual = fox ? <DictationVisual appearance={appearance} phase={status.phase} levels={levels} still={still} active={artworkActive} demo={demo} operationId={status.operationId} /> : <>
-      {recording ? <div className="dictation-overlay__levels dictation-wave-fallback" aria-hidden="true" style={{ color: dictationPaletteColors[appearance.palette] }}>
-        {Array.from({ length: 8 }, (_, index) => <i key={index} style={{ height: `${Math.max(3, Math.min(23, (levels[index % Math.max(1, levels.length)] ?? 0) * 23))}px` }} />)}
+      {recording ? <div className="dictation-overlay__levels dictation-wave-fallback" aria-hidden="true" style={{
+        color: dictationPaletteColors[appearance.palette], opacity: Math.min(1, tuning.waveBrightness / DEFAULT_DICTATION_SHADER.waveBrightness),
+      }}>
+        {Array.from({ length: 8 }, (_, index) => {
+          const level = levels[index % Math.max(1, levels.length)] ?? 0
+          return <i key={index} style={{ width: 2 * tuning.thickness / DEFAULT_DICTATION_SHADER.thickness,
+            height: Math.max(3, Math.min(23, level * 23 * tuning.amplitude / DEFAULT_DICTATION_SHADER.amplitude)) }} />
+        })}
       </div> : null}
       <Icon className="dictation-cloud__fallback" size={18} aria-hidden="true" />
     </>
     return <div {...materialAttributes} ref={root} data-native-backdrop-surface={expanded || error || undefined} hidden={!visible} className="dictation-overlay dictation-overlay--cloud" data-theme={appearance.theme} data-phase={status.phase} data-audio-progress={progress ? true : undefined} data-recording-control={recordingControl || undefined} data-expanded={expanded || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
+      {advanced.layers}
       <DictationCloudSurface appearance={appearance} material={material} accentColor={paletteStyle?.['--accent']} phase={status.phase} levels={levels} still={still} active={artworkActive && !error && (material !== 'glass' || !fox)} demo={demo} coreRef={core} effectRef={progress ? progressArt : undefined} expanded={expanded} singleControl controlsVisible={recording && recordingControl} />
       {material === 'glass' && (expanded || error) ? <IslandGlassOptic active={opticsActive} /> : null}
       {previewText}
@@ -109,6 +123,7 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   }
   if (!visible) return null
   return <div {...materialAttributes} ref={root} data-native-backdrop-surface className="dictation-overlay" data-theme={appearance.theme} data-phase={status.phase} data-expanded={Boolean(previewText) || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
+    {advanced.layers}
     {material === 'glass' ? <IslandGlassOptic active={opticsActive} /> : null}
     <div className="dictation-overlay__bar">
       <div className="dictation-overlay__art"><DictationVisual key={`${appearance.theme}:${status.operationId}:${status.phase}`} appearance={appearance} phase={status.phase} levels={levels} still={still} active={active} demo={demo} operationId={status.operationId} /></div>

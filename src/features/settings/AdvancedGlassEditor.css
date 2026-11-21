@@ -1,0 +1,72 @@
+.glass-editor {
+  min-width: 0;
+  container-type: inline-size;
+}
+.glass-editor__section { margin-block-start: var(--space-5); }
+.glass-editor__section h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  color: var(--fg-primary);
+}
+.glass-editor__fields {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+  color: var(--fg-secondary);
+  font-size: var(--text-label);
+}
+.glass-editor__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(5ch, auto) var(--control-height-compact);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-compact);
+}
+.glass-editor__row .range-slider { min-width: 0; width: 100%; }
+.glass-editor__row output { text-align: end; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.glass-editor__color {
+  grid-column: 2 / 4;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  position: relative;
+  min-height: var(--control-height-compact);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--fg-primary);
+  background: var(--control-surface);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.glass-editor__color:hover { background: var(--control-surface-hover); }
+.glass-editor__color-swatch {
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: var(--radius-round);
+  box-shadow: inset 0 0 0 1px var(--surface-selected);
+}
+.glass-editor__color input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+.glass-editor__color:has(input:focus-visible) { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.glass-editor__reset:disabled { visibility: hidden; }
+.glass-editor__group-reset { justify-self: end; margin-top: var(--space-2); }
+.glass-editor__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.glass-editor__toolbar > .ui-setting-row { flex: 1 1 14rem; margin: 0; }
+.glass-editor__toolbar [role="status"] { color: var(--fg-secondary); font-size: var(--text-caption); }
+.glass-editor__copy-fallback { width: 100%; display: grid; gap: var(--space-2); color: var(--fg-secondary); font-size: var(--text-caption); }
+.glass-editor__export { width: 100%; box-sizing: border-box; font-family: var(--font-mono); }
+@container (max-width: 330px) {
+  .glass-editor__row { grid-template-columns: minmax(0, 1fr) auto var(--control-height-compact); gap: 0 var(--space-2); }
+  .glass-editor__row .range-slider { grid-row: 2; grid-column: 1 / -1; }
+  .glass-editor__row output, .glass-editor__color { grid-row: 1; grid-column: 2; }
+  .glass-editor__reset { grid-row: 1; grid-column: 3; }
+}

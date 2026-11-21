@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, type ReactNode } from 'react'
 import { ColorSwatches } from '../../shared/ui/ColorSwatches'
 import { Switch } from '../../shared/ui/SettingsControls'
 import { Check } from '../../shared/ui/SettingsIcons'
@@ -13,7 +13,7 @@ const themeNames = { classic: ['Классическая', 'Classic'], wave: ['�
 const paletteNames = { accent: ['Акцент', 'Accent'], white: ['Белый', 'White'], prism: ['Призма', 'Prism'], aurora: ['Аврора', 'Aurora'], lagoon: ['Лагуна', 'Lagoon'], sakura: ['Сакура', 'Sakura'], ember: ['Угли', 'Ember'], dune: ['Дюны', 'Dune'] }
 const previewLevels = [.65]
 
-export function DictationThemePicker({ value, islandGlass, onChange, locale }: { value: DictationAppearance; islandGlass: GlassMaterial; onChange: (value: DictationAppearance) => void; locale: 'ru' | 'en' }) {
+export function DictationThemePicker({ value, islandGlass, onChange, locale, children }: { value: DictationAppearance; islandGlass: GlassMaterial; onChange: (value: DictationAppearance) => void; locale: 'ru' | 'en'; children?: ReactNode }) {
   const ru = locale === 'ru', index = ru ? 0 : 1
   const id = useId()
   const t = (a: string, b: string) => ru ? a : b
@@ -50,6 +50,7 @@ export function DictationThemePicker({ value, islandGlass, onChange, locale }: {
         locale={locale} material={value.glassMaterial ?? DEFAULT_GLASS_MATERIAL}
         onChange={glassMaterial => patch({ glassMaterial })}
       />}
+      {children}
     </div>
   </>
 }

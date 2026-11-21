@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fireEvent, fn, userEvent, within } from 'storybook/test'
+import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
 import { DictationSettings } from '../../features/dictation/DictationSettings'
 import type { DictationController } from '../../app/useIslandApp'
 import { dictationApi } from '../mocks/dictationApi'
@@ -10,6 +10,7 @@ import { getDefaultConfig } from '../../app/tauriApi'
 import { withUiPrefs } from '../../shared/lib/uiPrefs'
 function DictationWorkshop({ args }: { args: ComponentProps<typeof DictationSettings> }) {
   const [appearance, setAppearance] = useState(args.appearance ?? defaultDictationAppearance)
+  const [config, setConfig] = useState(() => args.config ?? getDefaultConfig())
   const [showLatestMessage, setShowLatestMessage] = useState(args.showLatestMessage ?? false)
   const [words, setWords] = useState(args.controller.data?.settings.custom_words ?? [])
   const [threshold, setThreshold] = useState(args.controller.data?.settings.word_correction_threshold ?? .8)
@@ -26,7 +27,11 @@ function DictationWorkshop({ args }: { args: ComponentProps<typeof DictationSett
     },
   } : c
   return <div className="settings-panel" data-reduced-motion={args.reducedMotion || undefined} style={{ padding: 'var(--space-6-5)', background: 'var(--surface-canvas)' }}><DictationSettings {...args} controller={editable}
-    appearance={appearance} onAppearanceChange={setAppearance}
+    config={config} onConfigChange={setConfig}
+    appearance={appearance} onAppearanceChange={next => {
+      setAppearance(next)
+      setConfig(current => withUiPrefs(current, { dictationAppearance: next }))
+    }}
     showLatestMessage={showLatestMessage} onShowLatestMessage={args.onShowLatestMessage ? (checked) => { setShowLatestMessage(checked); args.onShowLatestMessage?.(checked) } : undefined} /></div>
 }
 const controller: DictationController = { enabled: true, api: dictationApi, busy: null, error: null, progress: {}, enable: fn(async () => {}), disable: fn(async () => {}), loadMoreHistory: fn(async () => {}), refresh: fn(async () => {}), run: fn(async (_id, action) => { await action() }), data: { settings: dictationSettings, models: [gigaamRnnt, parakeetEnglish, ...dictationModels], history: [], microphones: [{ index: '0', name: 'Microphone (USB Audio)', is_default: true }], path: 'C:\\Users\\User\\AppData\\Roaming\\Music Island\\dictation' } }
@@ -109,6 +114,57 @@ const readyController: DictationController = {
     settings: { ...dictationSettings, selected_model: gigaamRnnt.id } },
 }
 export const General: Story = { name: 'Микрофон и сочетание', args: { page: 'general', controller: readyController } }
+export const PinnedRecorderPreview: Story = {
+  name: 'Капсула при прокрутке · узкое окно',
+  args: { ...General.args, config: withUiPrefs(getDefaultConfig(), { interfaceTheme: 'classic' }) },
+  parameters: { workshop: { width: 420 } },
+  render: (args) => <div data-settings-scroll style={{ overflowY: 'auto', height: 380 }}>
+    <DictationWorkshop args={args} />
+  </div>,
+  play: async ({ canvasElement }) => {
+    const scroll = canvasElement.querySelector<HTMLElement>('[data-settings-scroll]')!
+    const dock = canvasElement.querySelector<HTMLElement>('.dictation-preview__dock')!
+    const capsule = dock.querySelector<HTMLElement>('.dictation-overlay')!
+    const renderer = dock.querySelector('canvas')
+    const glass = within(canvasElement).getByRole('radio', { name: 'Стекло' })
+    scroll.scrollTop += glass.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 90
+    await waitFor(() => expect(dock).toHaveAttribute('data-pinned'))
+    const top = scroll.getBoundingClientRect().top
+    await expect(capsule.getBoundingClientRect().top).toBeGreaterThanOrEqual(top)
+    await expect(capsule.getBoundingClientRect().bottom).toBeLessThanOrEqual(top + 72)
+    await expect(getComputedStyle(dock).pointerEvents).toBe('none')
+    const control = glass.getBoundingClientRect()
+    await expect(glass.contains(document.elementFromPoint(control.x + control.width / 2, control.y + control.height / 2))).toBe(true)
+    await userEvent.click(glass)
+    await expect(capsule).toHaveAttribute('data-material', 'glass')
+    await expect(dock.querySelector('canvas')).toBe(renderer)
+    scroll.scrollTop = 0
+    await waitFor(() => expect(dock).not.toHaveAttribute('data-pinned'))
+    await expect(dock.querySelector('.dictation-overlay')).toBe(capsule)
+  },
+}
+export const AdvancedCapsuleSurface: Story = {
+  name: 'Капсула · покомпонентная настройка',
+  args: { ...General.args, config: withUiPrefs(getDefaultConfig(), {
+    developerMode: true, glassAdvancedEnabled: true, interfaceTheme: 'glass',
+  }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('switch', { name: 'Продвинутые настройки' })).toBeChecked()
+    await expect(canvas.queryByText('Заливка прогресса')).toBeNull()
+    await userEvent.click(canvas.getByText('Кнопки капсулы'))
+    const controls = within(await canvas.findByRole('group', { name: 'Кнопки капсулы' }))
+    const frost = controls.getByRole('slider', { name: 'Размытие' })
+    await fireEvent.change(frost, { target: { value: '9.5' } })
+    await expect(frost).toHaveValue('9.5')
+    await userEvent.click(controls.getByRole('button', { name: 'Сбросить «Размытие»' }))
+    await expect(frost).toHaveValue('27.2')
+    await userEvent.click(canvas.getByText('Корпус капсулы'))
+    const body = within(await canvas.findByRole('group', { name: 'Корпус капсулы' }))
+    await expect(body.queryByRole('slider', { name: 'Толщина кромки' })).toBeNull()
+    body.getByRole('slider', { name: 'Размытие' }).scrollIntoView({ block: 'center' })
+  },
+}
 export const IndependentCapsuleMaterial: Story = {
   name: 'Лиса · независимое стекло капсулы',
   args: { ...General.args, reducedMotion: true, config: withUiPrefs(getDefaultConfig(), { interfaceTheme: 'classic', glassMaterial: { frost: 62 } }) },

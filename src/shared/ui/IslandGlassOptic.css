@@ -38,18 +38,12 @@
   transition: none;
 }
 
-/* Nine-slice the 2x original Glisse rim at its 36 CSS-pixel corner radius.
-   The tiny recorder gets only its antialiased vector line. */
-.island-glass-optic[data-glass-surface='player'] > .lg-glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 1px solid transparent;
-  border-image-source: url('./glisse-player-rim.png?inline');
-  border-image-slice: 72;
-  border-image-width: var(--glass-island-radius);
-  opacity: var(--optic-highlight);
+/* The housing is a reading surface. Only a button receives a resting rim. */
+.island-glass-optic[data-glass-surface='player'] > .lg-glass,
+:not(button) > .island-glass-optic[data-glass-surface='capsule'] > .lg-glass {
+  box-shadow: none;
 }
+.island-glass-optic > .lg-glass::before { content: none; }
 
 /* On the real overlay, DWM produces all background blur. A WebView-wide
    backdrop snapshot on top of that was the hot path during playback. */

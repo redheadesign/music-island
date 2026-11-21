@@ -51,7 +51,8 @@ export function createIslandBassEffect(layer: HTMLElement) {
     // corrected for elapsed time rather than assuming a fixed frame cadence.
     const retention = (level > drive ? .85 : .93) ** (30 * seconds)
     drive = drive * retention + level * (1 - retention)
-    const next = Math.round(drive * 500) / 500
+    const gain = Number(layer.dataset.bassGain ?? 1)
+    const next = Math.round(drive * gain * 500) / 500
     const needsFronts = next > 0 && (!fronts.length || fronts.some(front => front.playState === 'idle'))
     if (next !== appliedDrive || needsFronts) {
       if (next > 0) layer.style.setProperty('--island-wave-drive', String(next))

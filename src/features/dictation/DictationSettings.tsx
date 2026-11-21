@@ -8,7 +8,10 @@ import type { AppConfig } from '../../shared/lib/types'
 import { DictationPreview } from './DictationPreview'
 import { DictationThemePicker } from './DictationThemePicker'
 import { defaultDictationAppearance, type DictationAppearance } from '../../shared/lib/dictationAppearance'
-import { getGlassMaterial } from '../../shared/lib/glassMaterial'
+import { DEFAULT_GLASS_MATERIAL, getGlassMaterial } from '../../shared/lib/glassMaterial'
+import { getInterfaceTheme } from '../../shared/lib/uiPrefs'
+import { getInterfaceThemeDefinition } from '../../shared/lib/interfaceTheme'
+import { AdvancedGlassEditor } from '../settings/AdvancedGlassEditor'
 import { DictationModels } from './DictationModels'
 import { DictationAdvanced } from './DictationAdvanced'
 import { DictationProcessing } from './DictationProcessing'
@@ -23,11 +26,12 @@ import { DictionaryWordField } from './DictionaryWordField'
 import { useDictionaryDraft } from './useDictionaryDraft'
 import './dictation.css'
 
-export function DictationSettings({ controller: c, config, page, locale, onEnable, onDisable, onPage, active = true, reducedMotion = false, appearance = defaultDictationAppearance, onAppearanceChange = () => {}, showLatestMessage = false, onShowLatestMessage }: {
+export function DictationSettings({ controller: c, config, onConfigChange, page, locale, onEnable, onDisable, onPage, active = true, reducedMotion = false, appearance = defaultDictationAppearance, onAppearanceChange = () => {}, showLatestMessage = false, onShowLatestMessage }: {
   active?: boolean; reducedMotion?: boolean; controller: DictationController; page: DictationPage; locale: 'ru' | 'en'; onEnable: () => Promise<void>; onDisable?: () => Promise<void>; onPage: (page: DictationPage) => void
   appearance?: DictationAppearance; onAppearanceChange?: (value: DictationAppearance) => void
   showLatestMessage?: boolean; onShowLatestMessage?: (enabled: boolean) => void
   config?: AppConfig
+  onConfigChange?: (next: AppConfig) => void
 }) {
   const translate = createTranslator(locale)
   const ru = locale === 'ru'
@@ -73,6 +77,7 @@ export function DictationSettings({ controller: c, config, page, locale, onEnabl
   const error = c.error ? <Notice tone="danger" action={!data ? <Button onClick={() => { void c.run('refresh', c.refresh, 'none').catch(() => {}) }}>{t('Повторить', 'Retry')}</Button> : undefined}>{c.error}</Notice> : null
   if (!data) return <div className="dictation-page"><h2 className="settings-page-heading">{t('Диктовка', 'Dictation')}</h2><section className="dictation-welcome"><span className="dictation-welcome__icon"><Mic size={30} /></span><h3>{t('Настройка диктовки', 'Set up dictation')}</h3><p>{t('Выберите модель для распознавания на этом компьютере.', 'Choose a model to recognize speech on this computer.')}</p><Button type="button" variant="primary" disabled={Boolean(c.busy)} onClick={() => { void onEnable().then(() => onPage('models')).catch(() => undefined) }}>{c.busy ? t('Подготовка…', 'Preparing…') : t('Настроить диктовку', 'Set up dictation')}</Button></section>{error}</div>
   const s = data.settings
+  const islandGlass = getGlassMaterial(config)
   const recording = data.status?.phase === 'recording' || data.status?.phase === 'streaming'
   const toggle = (label: string, field: keyof AppSettings, action: (checked: boolean) => Promise<unknown>, hint?: string) => <DictationToggle label={label} checked={Boolean(s[field])} hint={hint} onChange={(checked) => run(String(field), () => action(checked))} />
   const select = (label: string, value: string | number, options: [string, string][], action: (value: string) => Promise<unknown>, hint?: string, after: Parameters<typeof c.run>[2] = 'settings') => <DictationField label={label} hint={hint}><Select ariaLabel={label} value={String(value)} onChange={(next) => run(label, () => action(next), after)} options={options.map(([value, label]) => ({ value, label }))} /></DictationField>
@@ -81,7 +86,11 @@ export function DictationSettings({ controller: c, config, page, locale, onEnabl
     {page === 'processing' ? null : error}
     {page === 'general' ? <>
 <DictationPreview controller={c} config={config} locale={locale} active={active} reducedMotion={reducedMotion} appearance={appearance} onEnable={onEnable} onDisable={onDisable} />
-<DictationThemePicker value={appearance} islandGlass={getGlassMaterial(config)} onChange={onAppearanceChange} locale={locale} />
+<DictationThemePicker value={appearance} islandGlass={islandGlass} onChange={onAppearanceChange} locale={locale}>
+  {config && onConfigChange && <AdvancedGlassEditor config={config} onChange={onConfigChange} locale={locale} scope="dictation"
+    hasGlass={getInterfaceThemeDefinition(appearance.materialTheme ?? getInterfaceTheme(config)).material === 'glass'}
+    base={appearance.materialTheme === 'glass' ? appearance.glassMaterial ?? DEFAULT_GLASS_MATERIAL : islandGlass} />}
+</DictationThemePicker>
 <section className="dictation-card" aria-label={t('Сочетания клавиш', 'Keyboard shortcuts')}>
         <DictationField label={t('Сочетание клавиш', 'Keyboard shortcut')}><DictationShortcut controller={c} id="transcribe" locale={locale} /></DictationField>
         <DictationField label={t('Отмена записи', 'Cancel recording')}><DictationShortcut controller={c} id="cancel" locale={locale} /></DictationField>

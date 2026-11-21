@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, useRef } from 'react'
+import { act, useRef, type CSSProperties } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { setOverlayBackdrop, type NativeBackdropFrame } from '../tauriApi'
@@ -24,6 +24,12 @@ function PreviewWithoutWindowOwner() {
   const ref = useRef<HTMLDivElement>(null)
   const status = useNativeBackdrop(ref, false, '[data-blur]')
   return <output>{status ?? 'preview'}</output>
+}
+
+function IndependentFrost({ global, local }: { global: number; local?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useNativeBackdrop(ref, true, '[data-blur]', global, local === undefined ? '' : 'usage:' + local)
+  return <div ref={ref}><div data-blur /><div data-blur style={{ '--glass-region-frost': local } as CSSProperties} /></div>
 }
 
 function Recording({ text }: { text: string }) {
@@ -169,4 +175,14 @@ it('adjusts frost on the same native target and skips measurements at zero', asy
     expect(observed > 0).toBe(amount > 0)
   }
   expect(vi.mocked(setOverlayBackdrop).mock.calls.some(([frame]) => !frame.enabled)).toBe(false)
+})
+
+it('updates an independent surface when the global frost is zero and restores inheritance on reset', async () => {
+  for (const [global, local, expected] of [
+    [0, undefined, []], [0, .5, [.5]], [.9, 0, [undefined]], [.9, undefined, [undefined, undefined]],
+  ] as const) {
+    await act(async () => root.render(<IndependentFrost global={global} local={local} />))
+    await act(async () => vi.advanceTimersByTimeAsync(500))
+    expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0].regions.map(region => region.frost)).toEqual(expected)
+  }
 })

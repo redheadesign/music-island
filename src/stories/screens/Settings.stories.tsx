@@ -138,6 +138,49 @@ export const UnreadableProfile: Story = {
 export const Default: Story = { name: 'Настройки приложения' }
 export const Classic: Story = { name: 'Классическая · тёмное оформление', globals: { interfaceTheme: 'classic' } }
 export const Glass: Story = { name: 'Стекло · тёмное оформление', globals: { interfaceTheme: 'glass' } }
+export const AdvancedSurfaceEditor: Story = {
+  ...Glass, name: 'Стекло · редактор поверхностей',
+  globals: { interfaceTheme: 'glass', locale: 'ru' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('switch', { name: 'Продвинутые настройки' })).toBeNull()
+    await userEvent.click(canvas.getByRole('button', { name: 'О программе' }))
+    await userEvent.click(canvas.getByRole('switch', { name: 'Режим разработчика' }))
+    await userEvent.click(canvas.getByRole('switch', { name: 'Продвинутые настройки' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Внешний вид' }))
+    const editor = within(canvasElement.querySelector<HTMLElement>('.settings-appearance .glass-editor')!)
+    await expect(editor.getByRole('switch', { name: 'Продвинутые настройки' })).toBeChecked()
+    await expect(editor.getByRole('button', { name: 'Скопировать JSON' })).toBeEnabled()
+    await userEvent.click(editor.getByText('Корпус островка'))
+    const body = within(await editor.findByRole('group', { name: 'Корпус островка' }))
+    await expect(body.queryByRole('slider', { name: 'Интенсивность кромки' })).toBeNull()
+    await userEvent.click(editor.getByText('Корпус островка'))
+    await userEvent.click(editor.getByText('Заливка прогресса'))
+    const group = await editor.findByRole('group', { name: 'Заливка прогресса' })
+    const controls = within(group)
+    const angle = controls.getByRole('slider', { name: 'Угол градиента' })
+    const start = controls.getByLabelText('Начало градиента')
+    await fireEvent.change(angle, { target: { value: '135' } })
+    await fireEvent.change(start, { target: { value: '#ff9950' } })
+    await expect(angle).toHaveValue('135')
+    await expect(start).toHaveValue('#ff9950')
+    await userEvent.click(controls.getByRole('button', { name: 'Сбросить «Угол градиента»' }))
+    await expect(angle).toHaveValue('90')
+    await expect(start).toHaveValue('#ff9950')
+    const toggle = editor.getByRole('switch', { name: 'Продвинутые настройки' })
+    await userEvent.click(toggle)
+    await expect(editor.queryByText('Заливка прогресса')).toBeNull()
+    await userEvent.click(toggle)
+    await userEvent.click(editor.getByText('Заливка прогресса'))
+    const reopened = await editor.findByRole('group', { name: 'Заливка прогресса' })
+    await expect(within(reopened).getByLabelText('Начало градиента')).toHaveValue('#ff9950')
+    const reset = within(reopened).getByRole('button', { name: 'Сбросить группу' })
+    await userEvent.click(reset)
+    await expect(reset).toBeDisabled()
+    await expect(editor.queryByText('Кнопки капсулы')).toBeNull()
+    reopened.scrollIntoView({ block: 'center' })
+  },
+}
 export const MaterialAtMinimumSize: Story = {
   name: 'Выбор темы · минимальное окно Windows',
   globals: { interfaceTheme: 'glass', locale: 'ru' },
@@ -214,7 +257,7 @@ export const GlassMaterialTuning: Story = {
     await expect(canvas.getByRole('slider', { name: 'Размытие фона' })).toHaveValue('85')
     await expect(canvas.getByRole('slider', { name: 'Параллакс' })).toHaveValue('91')
     await expect(canvas.getByRole('slider', { name: 'Яркость блика' })).toHaveValue('42')
-    await expect(canvas.getByRole('slider', { name: 'Толщина кромки' })).toHaveValue('50')
+    await expect(canvas.getByRole('slider', { name: 'Толщина кромки кнопок' })).toHaveValue('50')
     canvas.getByRole('group', { name: 'Параметры стекла' }).scrollIntoView({ block: 'center' })
   },
 }

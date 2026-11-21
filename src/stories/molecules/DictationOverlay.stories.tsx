@@ -32,20 +32,25 @@ export const GlassFox: Story = {
     await expect(getComputedStyle(rim).backgroundImage).toBe('none')
     await expect(getComputedStyle(rim).borderRadius).toBe(getComputedStyle(core).borderRadius)
     if (matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)').matches) return
-    const move = () => {
-      const { right, top, height } = core.getBoundingClientRect()
-      core.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse', clientX: right - 1, clientY: top + height / 2 }))
+    const move = (target: HTMLElement) => {
+      const { right, top, height } = target.getBoundingClientRect()
+      target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse', clientX: right - 1, clientY: top + height / 2 }))
     }
+    move(core)
+    await new Promise(requestAnimationFrame)
+    await expect(core).not.toHaveAttribute('data-glass-light')
+    const control = core.closest('.dictation-overlay')!.querySelector<HTMLButtonElement>('button:enabled')
+    if (!control) return
     try {
-      core.style.setProperty('--glass-parallax-strength', '1')
-      move()
-      await waitFor(() => expect(core).toHaveAttribute('data-glass-light'))
-      await expect(parseFloat(core.style.getPropertyValue('--glass-light-x'))).toBeGreaterThan(90)
-      core.style.setProperty('--glass-parallax-strength', '0')
-      move()
-      await waitFor(() => expect(core).not.toHaveAttribute('data-glass-light'))
+      control.style.setProperty('--glass-parallax-strength', '1')
+      move(control)
+      await waitFor(() => expect(control).toHaveAttribute('data-glass-light'))
+      await expect(parseFloat(control.style.getPropertyValue('--glass-light-x'))).toBeGreaterThan(90)
+      control.style.setProperty('--glass-parallax-strength', '0')
+      move(control)
+      await waitFor(() => expect(control).not.toHaveAttribute('data-glass-light'))
     } finally {
-      core.style.removeProperty('--glass-parallax-strength')
+      control.style.removeProperty('--glass-parallax-strength')
     }
   },
 }

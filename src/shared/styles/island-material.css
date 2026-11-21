@@ -56,7 +56,7 @@
 [data-interface-theme='glass'] .island-card {
   background: var(--island-player-fill, var(--glass-island-fill));
   border-radius: 0 0 var(--glass-island-radius) var(--glass-island-radius);
-  box-shadow: inset 1px 0 rgb(255 255 255 / .16), inset -1px -1px rgb(255 255 255 / .12), var(--glass-depth);
+  box-shadow: var(--glass-depth);
   backdrop-filter: var(--glass-filter);
   transition: none;
 }
@@ -146,11 +146,11 @@
     transparent 16%, var(--island-wave-trough) 34%, var(--island-wave-crest) 53%,
     var(--island-wave-trough) 67%, transparent 89%);
   transform-origin: center;
-  filter: blur(4px);
+  filter: blur(var(--wave-softness, 4px));
 }
 .island-feedback__ambient[data-playback-wave]::before {
   content: '';
-  opacity: .7;
+  opacity: min(1, calc(var(--wave-intensity, .32) * 2.1875));
 }
 @media (prefers-reduced-motion: no-preference) {
   .island-feedback__ambient[data-playback-wave]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before,
@@ -168,9 +168,9 @@
 }
 @keyframes island-glass-wave-out {
   from { opacity: 0; transform: scale(0); }
-  21%, 57% { opacity: .32; }
+  21%, 57% { opacity: var(--wave-intensity, .32); }
   94% { opacity: 0; }
-  to { opacity: 0; transform: scale(2.68); }
+  to { opacity: 0; transform: scale(var(--wave-reach, 2.68)); }
 }
 @media (forced-colors: active), (prefers-reduced-transparency: reduce) {
   .island-feedback__ambient { display: none; transition: none; }
@@ -187,19 +187,19 @@
   .island-particles > i {
     position: absolute;
     inset: calc(-1 * var(--space-1)) auto auto var(--particle-x);
-    inline-size: var(--particle-size);
-    block-size: var(--particle-size);
+    inline-size: calc(var(--particle-size) * var(--particle-scale, 1));
+    block-size: calc(var(--particle-size) * var(--particle-scale, 1));
     border-radius: var(--radius-round);
     background: var(--island-particle-ink);
-    animation: island-particle-fall var(--particle-time) var(--particle-delay) linear infinite;
+    animation: island-particle-fall calc(var(--particle-time) / var(--particle-speed, 1)) calc(var(--particle-delay) / var(--particle-speed, 1)) linear infinite;
   }
   .island-particles > i:nth-child(even) { background: var(--island-particle-soft-ink); }
   :is(.reduced-motion, [data-reduced-motion='true']) .island-particles { display: none !important; }
 }
 @keyframes island-particle-fall {
   0% { opacity: 0; transform: translateY(0); }
-  16%, 66% { opacity: .65; }
-  100% { opacity: 0; transform: translateY(var(--particle-fall)); }
+  16%, 66% { opacity: var(--particle-brightness, .65); }
+  100% { opacity: 0; transform: translateY(calc(var(--particle-fall) * var(--particle-distance, 1))); }
 }
 .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button) {
   color: var(--island-glass-ink);

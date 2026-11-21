@@ -10,6 +10,8 @@ pub struct BackdropRegion {
     /// Clockwise from top-left. Radii are in the same viewport coordinate space.
     pub radii: [f64; 4],
     pub opacity: f64,
+    #[serde(default)]
+    pub frost: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -56,6 +58,7 @@ impl BackdropRegion {
             && self.left < frame.viewport_width
             && self.top < frame.viewport_height
             && (0.0..=1.0).contains(&self.opacity)
+            && self.frost.is_none_or(|frost| (0.0..=1.0).contains(&frost))
             && self
                 .radii
                 .into_iter()
@@ -70,7 +73,8 @@ impl BackdropRegion {
             width: self.width * scale,
             height: self.height * scale,
             radii: self.radii.map(|radius| radius.min(limit) * scale),
-            opacity: self.opacity * frost,
+            opacity: self.opacity * self.frost.unwrap_or(frost),
+            frost: None,
         }
     }
 }
@@ -100,6 +104,7 @@ mod tests {
             height: 200.0,
             radii: [0.0, 0.0, 36.0, 36.0],
             opacity: 0.6,
+            frost: None,
         };
         let physical = region.physical(1.5, 0.5);
         assert_eq!(
@@ -111,6 +116,16 @@ mod tests {
         assert_eq!(physical.opacity, 0.3);
         assert_eq!(region.physical(1.0, 0.0).opacity, 0.0);
         assert_eq!(region.physical(1.0, 1.0).opacity, region.opacity);
+        let individual = BackdropRegion {
+            frost: Some(1.0),
+            ..region
+        };
+        assert_eq!(individual.physical(1.0, 0.0).opacity, 0.6);
+        assert!(!BackdropRegion {
+            frost: Some(f64::NAN),
+            ..individual
+        }
+        .is_valid(&frame()));
     }
 
     #[test]
@@ -136,7 +151,8 @@ mod tests {
                 width: 1.0,
                 height: 1.0,
                 radii: [0.0; 4],
-                opacity: 1.0
+                opacity: 1.0,
+                frost: None,
             };
             25
         ];

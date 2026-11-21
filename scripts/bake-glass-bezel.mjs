@@ -29,7 +29,7 @@ const result = await build({
 })
 const script = result.output.find(file => file.type === 'chunk')
 const browser = await chromium.launch({ channel: 'msedge' })
-let maps, rim
+let maps
 try {
   const page = await browser.newPage({ deviceScaleFactor: 1 })
   await page.addScriptTag({ content: script.code })
@@ -42,11 +42,6 @@ try {
     const image = sharp(Buffer.from(uri.split(',')[1], 'base64'))
     return image.extractChannel('red').raw().toBuffer()
   }))
-  const retina = await browser.newPage({ deviceScaleFactor: 2 })
-  await retina.addScriptTag({ content: script.code })
-  const glass = retina.locator('.lg-glass[data-rim]')
-  const reference = await glass.evaluate(element => element.style.getPropertyValue('--lg-rim'))
-  rim = Buffer.from(reference.match(/base64,([^"]+)/)[1], 'base64')
 } finally {
   await browser.close()
 }
@@ -60,7 +55,3 @@ for (let pixel = 0; pixel < across.length; pixel++) {
 }
 const asset = fileURLToPath(new URL('../src/shared/ui/glisse-bezel.png', import.meta.url))
 await sharp(pixels, { raw: { width, height, channels: 3 } }).png({ compressionLevel: 9 }).toFile(asset)
-// Two physical pixels per CSS pixel. CSS nine-slicing preserves both corners
-// and the even edge at every layout width, without re-fitting at runtime.
-const rimFile = fileURLToPath(new URL('../src/shared/ui/glisse-player-rim.png', import.meta.url))
-await sharp(rim).png({ compressionLevel: 9 }).toFile(rimFile)

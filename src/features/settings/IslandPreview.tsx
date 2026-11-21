@@ -1,5 +1,6 @@
 import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
+import { useAdvancedGlass } from '../../shared/ui/useAdvancedGlass'
 import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMaterial'
 import { SettingsFilled, SquareTerminal } from '../../shared/ui/SettingsIcons'
 import { Mic, Pin } from 'lucide-react'
@@ -9,7 +10,7 @@ import type { AppConfig } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
 import { islandArrangement, getIslandLayout, inlineActionsWidth, type IslandLayoutElement, type IslandLayoutZone } from '../../shared/lib/islandLayout'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, getLocalServersWidgetScale, getPlaybackWaveEnabled, usesGlassMaterial, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
+import { getUiPrefs, getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, getLocalServersWidgetScale, getPlaybackWaveEnabled, usesGlassMaterial, getUsageWidgetCompact, getUsageWidgetScale, LOCAL_SERVERS_WIDGET_SCALE_RANGE } from '../../shared/lib/uiPrefs'
 import { createTranslator } from '../../shared/i18n/messages'
 import { MusicModule } from '../music/MusicModule'
 import { LocalServersPanel } from '../overlay/LocalServersPanel'
@@ -158,11 +159,13 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
       'data-resize-active': (dimensions !== null && gesture.current?.dimension === dimension && gesture.current.direction === direction) || undefined,
     }
   }
+  const material = getGlassMaterial(config)
+  const advanced = useAdvancedGlass(usesGlassMaterial(config) ? getUiPrefs(config).advancedGlass : undefined, material)
   const playbackWave = getPlaybackWaveEnabled(config)
   const paletteStyle = getInterfacePaletteStyle(config)
   const style: CSSProperties & Record<`--${string}`, string | number | undefined> = {
     ...paletteStyle,
-    ...glassMaterialStyle(getGlassMaterial(config)),
+    ...glassMaterialStyle(material),
     '--drag-indicator': paletteStyle['--accent'],
     '--preview-render-scale': scale,
     '--drop-zone-ready': 'color-mix(in srgb, var(--drag-indicator) 12%, transparent)',
@@ -179,10 +182,11 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
   return <div className="island-preview-section"><div ref={host} className="island-preview" role="group" aria-label={label} data-resizable={Boolean(onResize) || undefined} data-resizing={dimensions ? gesture.current?.dimension : undefined} data-reduced-motion={config.appearance.reducedMotion || undefined}>
     {active ? <WarpSurface className="preview-warp-material" reducedMotion={config.appearance.reducedMotion} /> : null}
     <div className="island-preview__camera" style={{ width: sceneWidth * scale, height: frameHeight * scale }}>
-    <div ref={frame} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-island-arrangement={arrangement} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={reducedTransparency || undefined} style={style}>
+    <div ref={frame} {...advanced.attributes} className={`island-preview__frame island-root theme-${config.appearance.theme}`} data-interface-theme={getInterfaceTheme(config)} data-island-arrangement={arrangement} data-interface-palette={getInterfacePalette(config)} data-cover-art={Boolean(media.thumbnailDataUrl) || undefined} data-reduced-transparency={reducedTransparency || undefined} style={style}>
+      {advanced.layers}
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
-        <IslandFeedback className="island-card island-surface" glassOptic={usesGlassMaterial(config)} opticActive={active && dimensions === null} particles={active && usesGlassMaterial(config)} playbackWave={active && playbackWave}>
+        <IslandFeedback shaderTuning={getUiPrefs(config).islandShader} className="island-card island-surface" glassOptic={usesGlassMaterial(config)} opticActive={active && dimensions === null} particles={active && usesGlassMaterial(config)} playbackWave={active && playbackWave}>
           <MusicModule media={media} layout={layout} progressMs={media.positionMs} progressPercent={34} density={config.layout.density} showArtwork={config.layout.showArtwork} showTitle={config.layout.showTitle} showArtist={config.layout.showArtist} showProgress={config.layout.showProgress} showSource={config.layout.showSource} showPreviousNext={config.layout.showPreviousNext} locale={config.appearance.locale} reducedMotion onCommand={() => undefined} renderElement={renderElement} renderZone={renderZone} />
         </IslandFeedback>
         <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => <Fragment key={element}>{renderElement(element, <button type="button" className={`icon-button${element === 'settings' ? ' island-settings-button' : ''}`} aria-label={element === 'settings' ? 'Open settings' : element === 'microphone' ? 'Dictation' : 'Pin island'}>{element === 'settings' ? <SettingsFilled weight="fill" size={16} /> : element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>)}</Fragment>))}</header>

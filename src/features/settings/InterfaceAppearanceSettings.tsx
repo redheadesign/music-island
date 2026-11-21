@@ -6,6 +6,7 @@ import { getInterfaceTheme, getPlaybackWaveEnabled, withUiPrefs } from '../../sh
 import { AppearanceChoices } from './AppearanceChoices'
 import { Switch } from '../../shared/ui/SettingsControls'
 import { GlassMaterialSettings } from './GlassMaterialSettings'
+import { AdvancedGlassEditor } from './AdvancedGlassEditor'
 
 type AppearanceProps = {
   config: AppConfig
@@ -16,6 +17,8 @@ type AppearanceProps = {
 export function InterfaceThemeSettings({ config, locale, onChange }: AppearanceProps) {
   const t = createTranslator(locale)
   const theme = getInterfaceTheme(config)
+  const material = getGlassMaterial(config)
+  const hasGlass = getInterfaceThemeDefinition(theme).material === 'glass'
   return <>
     <AppearanceChoices
       label={t('settings.interfaceTheme')}
@@ -27,12 +30,14 @@ export function InterfaceThemeSettings({ config, locale, onChange }: AppearanceP
       }))}
       onChange={interfaceTheme => onChange(withUiPrefs(config, { interfaceTheme }))}
     />
-    {getInterfaceThemeDefinition(theme).material === 'glass' && <GlassMaterialSettings
+    {hasGlass && <GlassMaterialSettings
       locale={locale}
-      material={getGlassMaterial(config)}
+      material={material}
       onChange={glassMaterial => onChange(withUiPrefs(config, { glassMaterial }))}
       onReset={() => onChange(withUiPrefs(config, { glassMaterial: undefined }))}
     />}
+    <AdvancedGlassEditor config={config} locale={locale} onChange={onChange} scope="island"
+      base={material} hasGlass={hasGlass} />
   </>
 }
 

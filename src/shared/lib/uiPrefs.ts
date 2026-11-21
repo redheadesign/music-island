@@ -2,6 +2,8 @@ import type { AppConfig } from './types'
 import type { TaskbarLayoutV1 } from './taskbarLayout'
 import type { DictationAppearance } from './dictationAppearance'
 import type { GlassMaterial } from './glassMaterial'
+import type { AdvancedGlassOverrides } from './advancedGlass'
+import type { IslandShaderTuning } from './shaderTuning'
 import { getInterfaceThemeDefinition, normalizeInterfaceTheme, type InterfaceThemeId } from './interfaceTheme'
 import { DEFAULT_ACCENT } from './accentTheme'
 import { buildInterfacePaletteStyle, normalizeInterfacePalette, type InterfacePaletteId } from './interfacePalette'
@@ -25,8 +27,12 @@ export interface UiPrefs {
   localServersWidgetScale?: number
   interfaceTheme?: InterfaceThemeId
   glassMaterial?: Partial<GlassMaterial>
+  /** Per-surface appearance persists independently of the developer editor. */
+  advancedGlass?: AdvancedGlassOverrides
+  glassAdvancedEnabled?: boolean
   interfacePalette?: InterfacePaletteId
   playbackWaveEnabled?: boolean
+  islandShader?: Partial<IslandShaderTuning>
   /** Settings update banner dismissed for this latest version */
   dismissedUpdateVersion?: string | null
   /** @deprecated Prefer islandUpdateSnoozedUntil — kept for migration */

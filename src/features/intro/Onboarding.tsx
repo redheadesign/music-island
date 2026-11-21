@@ -3,13 +3,16 @@ import { useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Notice } from '../../shared/ui/SettingsControls'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
+import { normalizeIslandShader } from '../../shared/lib/shaderTuning'
+import { WARP_SPEED } from '../../shared/ui/warpPreset'
 import { WarpMaterial } from '../../shared/ui/WarpMaterial'
 import { ArrowLeft, ArrowRight, Mouse } from '../../shared/ui/SettingsIcons'
 import { IslandLayoutEditor } from '../settings/IslandLayoutEditor'
 import { MusicModule } from '../music/MusicModule'
 import { getPreviewArtworkStyle, APPEARANCE_PREVIEW_MEDIA } from '../settings/previewMedia'
 import { DictationOverlayView } from '../dictation/DictationOverlay'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, getPlaybackWaveEnabled, usesGlassMaterial } from '../../shared/lib/uiPrefs'
+import { getUiPrefs, getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, getPlaybackWaveEnabled, usesGlassMaterial } from '../../shared/lib/uiPrefs'
+import { useAdvancedGlass } from '../../shared/ui/useAdvancedGlass'
 import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMaterial'
 import { getDictationAppearance } from '../../shared/lib/dictationAppearance'
 import type { AppConfig } from '../../shared/lib/types'
@@ -37,6 +40,7 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
   const reduced = Boolean(config.appearance.reducedMotion || systemReduced)
   const reducedTransparency = useSystemReducedTransparency()
   const interfaceTheme = getInterfaceTheme(config)
+  const shader = normalizeIslandShader(getUiPrefs(demoConfig).islandShader)
   const playbackWave = getPlaybackWaveEnabled(demoConfig)
   const material = {
     'data-interface-theme': interfaceTheme,
@@ -44,6 +48,8 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
     'data-reduced-transparency': reducedTransparency || undefined,
   }
   const glass = usesGlassMaterial(config)
+  const advancedGlass = getUiPrefs(config).advancedGlass
+  const advanced = useAdvancedGlass(glass ? advancedGlass : undefined, getGlassMaterial(config))
   const islandStyle = { ...getInterfacePaletteStyle(config), ...glassMaterialStyle(getGlassMaterial(config)) }
   const autostart = config.behavior.launchAtStartup
   const titles = ru ? ['Музыка', 'Настройка островка', 'Диктовка', 'Запуск вместе с Windows'] : ['Music', 'Customize the island', 'Dictation', 'Launch with Windows']
@@ -68,22 +74,24 @@ export function Onboarding({ config, onFinish, exePath, dictationShortcut, initi
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={step} className="onboarding__page" initial={{ opacity: 0, y: reduced ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .18 }}>
           <div className={`onboarding__visual onboarding__visual--${step}`}>
-            {step < 2 ? <WarpMaterial reducedMotion={reduced} /> : null}
+            {step < 2 ? <WarpMaterial speed={WARP_SPEED.resting * shader.foxSpeed} style={{ opacity: shader.foxOpacity / 100 }} reducedMotion={reduced} /> : null}
             {step === 0 ? <>
               <div
                 className="onboarding__music island-root"
                 {...material}
+                {...advanced.attributes}
                 data-cover-art="true"
                 style={{ ...islandStyle, ...getPreviewArtworkStyle(glass) } as CSSProperties}
               >
-                <IslandFeedback className="island-card island-surface" glassOptic={glass} particles={glass} playbackWave={playbackWave} playbackMotion={playing}>
+                {advanced.layers}
+                <IslandFeedback shaderTuning={shader} className="island-card island-surface" glassOptic={glass} particles={glass} playbackWave={playbackWave} playbackMotion={playing}>
                   <MusicModule media={{ ...APPEARANCE_PREVIEW_MEDIA, playbackStatus: playing ? 'playing' : 'paused' }} progressMs={APPEARANCE_PREVIEW_MEDIA.positionMs} progressPercent={34} density="balanced" showArtwork showTitle showArtist showProgress showSource={false} showPreviousNext locale={locale} reducedMotion={reduced} onCommand={command => setPlaying(command === 'play-pause' ? !playing : true)} />
                 </IslandFeedback>
               </div>
               <Mouse className="onboarding__mouse" size={27} aria-hidden="true" />
             </> : null}
             {step === 1 ? <div className="onboarding__layout settings-panel"><IslandLayoutEditor config={demoConfig} onChange={setDemoConfig} active={false} showHeading={false} /></div> : null}
-            {step === 2 ? <div className="onboarding__dictation"><div className="onboarding__note"><span>{ru ? 'Новая заметка' : 'New note'}</span><p>{ru ? 'Встреча в четверг в десять.' : 'Meeting on Thursday at ten.'}</p></div><div inert aria-hidden="true"><DictationOverlayView demo appearance={getDictationAppearance(config)} interfaceTheme={interfaceTheme} interfacePalette={getInterfacePalette(config)} paletteStyle={getInterfacePaletteStyle(config)} glassMaterial={getGlassMaterial(config)} status={{ revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null, shortcutActivation: activation === 'push_to_talk' || activation === 'toggle' ? activation : 'hold_or_toggle' }} visible levels={[.2,.6,.4,.8,.9,.5,.35,.65]} text={{ committed: '', tentative: '' }} locale={locale} reducedMotion={reduced} cancel={async () => {}} copy={async () => {}} /></div>{binding ? <kbd>{binding.split('+').join(' + ')}</kbd> : null}</div> : null}
+            {step === 2 ? <div className="onboarding__dictation"><div className="onboarding__note"><span>{ru ? 'Новая заметка' : 'New note'}</span><p>{ru ? 'Встреча в четверг в десять.' : 'Meeting on Thursday at ten.'}</p></div><div inert aria-hidden="true"><DictationOverlayView demo advancedGlass={advancedGlass} appearance={getDictationAppearance(config)} interfaceTheme={interfaceTheme} interfacePalette={getInterfacePalette(config)} paletteStyle={getInterfacePaletteStyle(config)} glassMaterial={getGlassMaterial(config)} status={{ revision: 1, operationId: 1, phase: 'recording', ready: true, text: '', error: null, shortcutActivation: activation === 'push_to_talk' || activation === 'toggle' ? activation : 'hold_or_toggle' }} visible levels={[.2,.6,.4,.8,.9,.5,.35,.65]} text={{ committed: '', tentative: '' }} locale={locale} reducedMotion={reduced} cancel={async () => {}} copy={async () => {}} /></div>{binding ? <kbd>{binding.split('+').join(' + ')}</kbd> : null}</div> : null}
             {step === 3 ? <div className="onboarding__startup"><AppLogo size={112} alt="Music Island" /></div> : null}
           </div>
           <h1>{titles[step]}</h1>{descriptions[step] ? <p>{descriptions[step]}</p> : null}

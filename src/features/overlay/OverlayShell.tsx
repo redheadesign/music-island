@@ -1,5 +1,6 @@
 import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTransparency'
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
+import { useAdvancedGlass } from '../../shared/ui/useAdvancedGlass'
 import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMaterial'
 import { progressTrackKey } from '../music/progressTransition'
 import { createIslandBassEffect } from '../../shared/ui/islandBassEffect'
@@ -159,7 +160,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const playbackMotion = hasSession && media?.playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
   const glassMaterial = useMemo(() => getGlassMaterial(config), [config])
-  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency, '.island-surface, .island-actions > .icon-button, .island-plugin-button', glassMaterial.frost / 100)
+  const advanced = useAdvancedGlass(usesGlassMaterial(config) ? uiPrefs.advancedGlass : undefined, glassMaterial)
+  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency, '.island-surface, .island-actions > .icon-button, .island-plugin-button', glassMaterial.frost / 100, advanced.regionFrostKey)
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -915,12 +917,14 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
         reducedMotion ? 'reduced-motion' : '',
       ].join(' ')}
       data-island-arrangement={arrangement}
+      {...advanced.attributes}
       data-interface-theme={getInterfaceTheme(config)}
       data-interface-palette={getInterfacePalette(config)}
       data-cover-art={artworkPalette !== null || undefined}
       data-reduced-transparency={reducedTransparency || undefined}
       style={style}
     >
+      {advanced.layers}
       <div className="island-stage">
       {hoverCoachActive && windowPhase === 'collapsed' ? (
         <HoverCoach label={t('island.hoverCoach')} />
@@ -980,6 +984,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
               opticActive={!reducedTransparency && !isTauriRuntime()}
               particles={hasSession && usesGlassMaterial(config)}
               ambientRef={ambientRef}
+              shaderTuning={uiPrefs.islandShader}
               playbackWave={hasPlaybackWave}
               playbackMotion={playbackMotion}
             >

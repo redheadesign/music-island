@@ -291,13 +291,14 @@ material, refraction and full bevel. The central 84 × 44 capsule leaves generou
 horizontal space around the artwork in every phase; detached controls are 32 px.
 Recognition crossfades the wave into fluid particles; completion changes the material
 and indicator to green. The palette includes White; colored edges are
-adjustable. Wave brightness and material lighting use the fixed artwork defaults.
+adjustable. Developer mode exposes wave, processing particle and lighting controls in Advanced settings.
+The pinned preview follows the settings scroll area and uses the same renderer as the recording window.
 
 Fox is the only pixel character, with tall, outward-tilted ears. Expressions and
 recognition games (Pong, Starship, Snake, Breakout) change automatically.
 Gaze, blinking, speech and expression gestures drive the ears together with the
 face. Games and delivery indicators have no ears. Voice visualization is always
-enabled; there are no expression, game, character, brightness or lighting controls.
+enabled. Developer mode provides a separate brightness control for the fox.
 Older saved values for those removed options are ignored by normalization.
 During recording every theme has one Finish button in toggle/combined mode;
 hold-to-record has no recording buttons and finishes on key release. Fox and

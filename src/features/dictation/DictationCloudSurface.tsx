@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { DictationCloudRenderer, type CloudFrame } from './DictationCloudRenderer'
 import type { DictationAppearance } from '../../shared/lib/dictationAppearance'
+import { normalizeDictationShader } from '../../shared/lib/shaderTuning'
 import { getCloudGeometry } from './cloudGeometry'
 
 export function DictationCloudSurface({ appearance, material = 'classic', accentColor, phase, levels, still = false, active = true, demo = false, coreRef, effectRef, expanded = false, singleControl = false, controlsVisible = true }: {
@@ -9,8 +10,9 @@ export function DictationCloudSurface({ appearance, material = 'classic', accent
   material?: 'classic' | 'glass'; accentColor?: string
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
-  const input = useRef({ appearance, material, accentColor, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still })
-  input.current = { appearance, material, accentColor, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still }
+  const tuning = useMemo(() => normalizeDictationShader(appearance.shaderTuning), [appearance.shaderTuning])
+  const input = useRef({ appearance, tuning, material, accentColor, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still })
+  input.current = { appearance, tuning, material, accentColor, phase, levels, demo, coreRef, effectRef, expanded, singleControl, controlsVisible, active, still }
   const redraw = useRef<(() => void) | null>(null)
   // A cheap, visible material while WebGL is being prepared (or unavailable).
   const [ready, setReady] = useState(false)
@@ -43,7 +45,7 @@ export function DictationCloudSurface({ appearance, material = 'classic', accent
       const effectX = effectBounds ? (effectBounds.left - bounds.left) * scale + effectWidth / 2 : coreX
       const controls = next.controlsVisible && !next.expanded && next.coreRef ? Math.max(0,Math.min(1,(width-92)/(next.singleControl ? 40 : 80))) : 0
       const frame: CloudFrame = { time: still ? 0 : time, delta, level: envelope, phase: next.phase, instant: still || !active,
-        appearance: next.appearance, material: next.material, controls, coreWidth, coreX, effectWidth, effectX, singleControl: next.singleControl, coreHeight: next.expanded ? height-6 : 44,
+        appearance: next.appearance, tuning: next.tuning, material: next.material, controls, coreWidth, coreX, effectWidth, effectX, singleControl: next.singleControl, coreHeight: next.expanded ? height-6 : 44,
         coreY: next.expanded ? height/2 : height-25, accent }
       try { updateMaterialReady(renderer.render(frame)) }
       catch { updateMaterialReady(false); cancelAnimationFrame(raf); renderer.dispose(); renderer=null }

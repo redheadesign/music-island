@@ -96,6 +96,45 @@ it('keeps the material and artwork mounted through phases, repeated recordings a
   } finally { await act(async () => root.unmount()); raf.mockRestore(); container.remove(); vi.useRealTimers() }
 })
 
+it('keeps the running recorder and phase when pinning, adjusting brightness and scrolling back', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+  vi.useFakeTimers()
+  const observe = vi.fn(), disconnect = vi.fn()
+  let notify!: (entries: Partial<IntersectionObserverEntry>[]) => void
+  vi.stubGlobal('IntersectionObserver', class {
+    constructor(callback: typeof notify) { notify = callback }
+    observe = observe
+    disconnect = disconnect
+  })
+  const container = document.createElement('div'), root = createRoot(container)
+  container.setAttribute('data-settings-scroll', '')
+  const controller = { enabled: true, busy: null } as DictationController
+  const render = (foxBrightness: number) => <DictationPreview controller={controller} locale="ru" active reducedMotion={false}
+    appearance={{ ...defaultDictationAppearance, shaderTuning: { foxBrightness } }} onEnable={async () => {}} />
+  try {
+    await act(async () => root.render(render(80)))
+    const scene = container.querySelector('.dictation-preview__scene')
+    const canvas = container.querySelector('.dictation-cloud-surface')
+    const fox = container.querySelector<SVGElement>('[data-character="fox"]')!
+    expect(observe).toHaveBeenCalledWith(container.querySelector('.dictation-preview__anchor'))
+    await act(async () => vi.advanceTimersByTime(4200))
+    await act(async () => notify([{ isIntersecting: false, boundingClientRect: new DOMRect(0, -4, 1, 1) }]))
+    expect(container.querySelector('.dictation-preview__dock')?.hasAttribute('data-pinned')).toBe(true)
+    await act(async () => root.render(render(30)))
+    expect(scene?.getAttribute('data-phase')).toBe('transcribing')
+    expect(container.querySelector('[data-character="fox"]')).toBe(fox)
+    expect(Number(fox.style.getPropertyValue('--dictation-brightness'))).toBeCloseTo(.58)
+    await act(async () => notify([{ isIntersecting: true }]))
+    expect(container.querySelector('.dictation-preview__dock')?.hasAttribute('data-pinned')).toBe(false)
+    expect(container.querySelector('.dictation-cloud-surface')).toBe(canvas)
+  } finally {
+    await act(async () => root.unmount())
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  }
+  expect(disconnect).toHaveBeenCalledOnce()
+})
+
 it('updates the material from settings without restarting the preview phase', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   vi.useFakeTimers()

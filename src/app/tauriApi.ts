@@ -28,6 +28,8 @@ export interface NativeBackdropRegion {
   height: number
   radii: [number, number, number, number]
   opacity: number
+  /** Per-surface strength of Windows' frosted desktop brush, 0–1. */
+  frost?: number
 }
 
 export interface NativeBackdropFrame {

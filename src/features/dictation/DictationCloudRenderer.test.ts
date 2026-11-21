@@ -2,6 +2,7 @@
 import { expect, it, vi } from 'vitest'
 import { DictationCloudRenderer, type CloudFrame } from './DictationCloudRenderer'
 import { defaultDictationAppearance } from '../../shared/lib/dictationAppearance'
+import { normalizeDictationShader } from '../../shared/lib/shaderTuning'
 
 const completionStatus = 0x91b1
 const linkStatus = 0x8b82
@@ -60,6 +61,37 @@ it('splits synchronous links across frames when the driver lacks the extension',
     expect(gl.createProgram).toHaveBeenCalledTimes(2)
     expect(renderer.render(frame)).toBe(true)
     expect(gl.createProgram).toHaveBeenCalledTimes(3)
+  } finally { renderer.dispose(); context.mockRestore() }
+})
+
+it('writes live wave and dot tuning into existing programs without jumping the animation clock', () => {
+  const { gl, context, renderer, frame, markLinked } = setup(true)
+  markLinked()
+  vi.mocked(gl.getUniformLocation).mockImplementation((_program, name) => ({ name }) as WebGLUniformLocation)
+  const value = (name: string) => vi.mocked(gl.uniform1f).mock.calls.findLast(
+    ([location]) => (location as { name: string } | null)?.name === name,
+  )?.[1]
+  const wave = { ...frame, appearance: { ...frame.appearance, theme: 'wave' as const } }
+  const tuning = normalizeDictationShader({ amplitude: .54, frequency: 2.3, thickness: 5, speed: 0,
+    lightIntensity: 72, waveBrightness: 20, dotRadius: .2, dotGlow: .17 })
+  try {
+    renderer.render(wave)
+    renderer.render({ ...wave, instant: false })
+    const phase = value('uWavePhase')
+    expect(phase).toBeLessThan(0)
+    renderer.render({ ...wave, tuning, instant: false })
+    expect(value('uWavePhase')).toBe(phase)
+    expect(value('uAmplitude')).toBe(.54)
+    expect(value('uFreq')).toBe(2.3)
+    expect(value('uThickness')).toBe(5)
+    expect(value('uLightIntensity')).toBe(.72)
+    expect(value('uWaveBrightness')).toBe(.8)
+    renderer.render({ ...wave, tuning: { ...tuning, speed: 2 }, instant: false })
+    expect(value('uWavePhase')).toBeCloseTo(phase! * 3)
+    renderer.render({ ...wave, tuning, phase: 'transcribing', material: 'glass' })
+    expect(value('uDotRadius')).toBe(.2)
+    expect(value('uGlowIntensity')).toBe(.17)
+    expect(gl.createProgram).toHaveBeenCalledTimes(5)
   } finally { renderer.dispose(); context.mockRestore() }
 })
 

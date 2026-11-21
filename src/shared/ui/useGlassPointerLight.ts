@@ -3,9 +3,8 @@ import { DEFAULT_GLASS_MATERIAL } from '../lib/glassMaterial'
 import { getInterfaceThemeDefinition, isInterfaceThemeId } from '../lib/interfaceTheme'
 
 const controlSelector = [
-  '.ui-button', '.island-surface',
+  '.ui-button',
   ':is(.island-root, .dictation-overlay) :is(button, a[href], input, [role="button"], [role="slider"])',
-  '.dictation-overlay[data-native-backdrop-surface]', '.dictation-overlay [data-native-backdrop-surface]',
   '.media-button', '.play-button', '.reaction-button', '.island-plugin-button',
 ].join(', ')
 const quietSelector = '[data-reduced-motion="true"], [data-reduced-transparency="true"], .reduced-motion'
@@ -28,7 +27,6 @@ export function useGlassPointerLight(enabled: boolean) {
 
     const removeLight = () => {
       active?.removeAttribute('data-glass-light')
-      active?.removeAttribute('data-glass-edge')
       active?.style.removeProperty('--glass-light-x')
       active?.style.removeProperty('--glass-light-y')
       active = null
@@ -51,14 +49,6 @@ export function useGlassPointerLight(enabled: boolean) {
       if (!(strength > 0)) return reset()
       const rect = next.control.getBoundingClientRect()
       if (!rect.width || !rect.height) return reset()
-      if (next.control.classList.contains('island-card')) {
-        // Only the exposed edge beneath the pointer reflects it. Passing
-        // through the gaps between playback controls leaves the bezel at rest.
-        const left = next.x - rect.left, right = rect.right - next.x, bottom = rect.bottom - next.y
-        const distance = Math.min(left, right, bottom)
-        if (distance < 0 || distance > 12) return reset()
-        next.control.dataset.glassEdge = distance === bottom ? 'bottom' : distance === left ? 'left' : 'right'
-      }
       const percent = (fraction: number) => `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%`
       const clamp = Math.min(strength, 1)
       next.control.style.setProperty('--glass-light-x', percent(.5 + (((next.x - rect.left) / rect.width) - .5) * clamp))

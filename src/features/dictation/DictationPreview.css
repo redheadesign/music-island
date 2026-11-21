@@ -1,0 +1,51 @@
+/* The switch and its backdrop scroll away. The capsule stays in the same
+   mounted scene, including when the dock reaches the top of the scrollport. */
+.dictation-preview {
+  display: contents;
+  --dictation-preview-stage: 136px;
+  --dictation-preview-dock: 64px;
+  --dictation-preview-inset: calc((var(--dictation-preview-stage) - var(--dictation-preview-dock)) / 2);
+}
+.dictation-preview__header.settings-preview {
+  overflow: visible;
+  padding-block-end: var(--space-4);
+  background: transparent;
+}
+.dictation-preview__header > .stateful-warp-surface {
+  inset-block-end: calc(-1 * var(--dictation-preview-stage));
+}
+.dictation-preview__anchor {
+  position: absolute;
+  inset-block-start: calc(100% + var(--dictation-preview-inset));
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.dictation-preview__dock {
+  position: sticky;
+  top: calc(-1 * var(--dictation-preview-inset));
+  z-index: 2;
+  margin-block-start: calc(-1 * var(--space-5));
+  pointer-events: none;
+}
+.dictation-preview__dock > .dictation-preview__scene {
+  min-height: var(--dictation-preview-stage);
+}
+.dictation-preview__dock[data-pinned]::before {
+  content: '';
+  position: absolute;
+  inset: var(--dictation-preview-inset) 0 auto;
+  height: calc(var(--dictation-preview-dock) + var(--space-2));
+  background: color-mix(in srgb, var(--surface-canvas) 78%, transparent);
+  backdrop-filter: blur(8px);
+  mask-image: linear-gradient(to bottom, black 55%, transparent);
+}
+[data-settings-scroll]:has(.dictation-preview) { scroll-padding-block-start: 72px; }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
+  .dictation-preview__dock[data-pinned]::before {
+    height: var(--dictation-preview-dock);
+    background: var(--surface-canvas);
+    backdrop-filter: none;
+    mask-image: none;
+  }
+}

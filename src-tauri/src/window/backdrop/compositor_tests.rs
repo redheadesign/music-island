@@ -129,6 +129,7 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
                 height: 180.0,
                 radii: [0.0, 0.0, 35.0, 35.0],
                 opacity: 1.0,
+                frost: None,
             },
             BackdropRegion {
                 left: 20.0,
@@ -137,6 +138,7 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
                 height: 40.0,
                 radii: [20.0; 4],
                 opacity: 1.0,
+                frost: None,
             },
         ];
         let regions = |frost| {
@@ -175,6 +177,31 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
             println!("checker contrast at frost {frost}: {delta}");
             assert!(expected.contains(&delta));
             assert_eq!(compositor.regions[0].tiles[0].2, fitted_mask);
+        }
+        for global in [0.0, 1.0] {
+            let mut mixed = surfaces.clone();
+            mixed[1].frost = Some(1.0 - global);
+            compositor.update(
+                640.0,
+                400.0,
+                &mixed.map(|surface| surface.physical(1.0, global)),
+            )?;
+            pump();
+            let dc = GetDC(None);
+            let contrast = |x, y| {
+                ((GetPixel(dc, 100 + x, 100 + y).0 & 255) as i32
+                    - (GetPixel(dc, 104 + x, 100 + y).0 & 255) as i32)
+                    .abs()
+            };
+            let (player, satellite) = (contrast(200, 140), contrast(64, 96));
+            ReleaseDC(None, dc);
+            println!("independent frost global={global}: player={player}, satellite={satellite}");
+            let (clear, frosted) = if global == 0.0 {
+                (player, satellite)
+            } else {
+                (satellite, player)
+            };
+            assert!(clear >= 240 && frosted <= 20);
         }
         compositor.clear();
         pump();

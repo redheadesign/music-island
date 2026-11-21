@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useRef, type ButtonHTMLAttributes, type HTMLAttributes, type Ref } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, type ButtonHTMLAttributes, type CSSProperties, type HTMLAttributes, type Ref } from 'react'
+import { normalizeIslandShader, type IslandShaderTuning } from '../lib/shaderTuning'
 import { IslandGlassOptic } from './IslandGlassOptic'
 import { IslandParticles } from './IslandParticles'
 import './PressFeedback.css'
@@ -18,10 +19,12 @@ type IslandFeedbackProps = HTMLAttributes<HTMLElement> & {
   playbackMotion?: boolean
   playbackWave?: boolean
   ambientRef?: Ref<HTMLSpanElement>
+  shaderTuning?: Partial<IslandShaderTuning>
 }
 
 /** The ripple belongs to the surface, never to a moving button. */
-export function IslandFeedback({ children, className = '', glassOptic = false, opticActive = true, particles = false, playbackMotion, playbackWave = false, ambientRef, ...props }: IslandFeedbackProps) {
+export function IslandFeedback({ children, className = '', glassOptic = false, opticActive = true, particles = false, playbackMotion, playbackWave = false, ambientRef, shaderTuning, ...props }: IslandFeedbackProps) {
+  const shader = useMemo(() => normalizeIslandShader(shaderTuning), [shaderTuning])
   const surface = useRef<HTMLElement>(null)
   const layer = useRef<HTMLSpanElement>(null)
   const animations = useRef<Animation[]>([])
@@ -60,10 +63,21 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
           <span
             ref={ambientRef}
             className="island-feedback__ambient"
+            data-bass-gain={shader.bassGain}
+            style={{
+              '--island-wave-duration': `calc(var(--motion-unit) * ${420 / shader.waveSpeed})`,
+              '--wave-softness': `${shader.waveBlur}px`, '--wave-reach': shader.waveReach,
+              '--wave-intensity': shader.waveIntensity / 100, '--particle-brightness': shader.particleBrightness / 100,
+              '--particle-speed': shader.particleSpeed, '--particle-scale': shader.particleSize,
+              '--particle-distance': shader.particleFall,
+              ...(shader.waveColor && { '--island-wave-crest': `color-mix(in srgb, ${shader.waveColor} 50%, transparent)`,
+                '--island-wave-trough': `color-mix(in srgb, ${shader.waveColor} 21%, transparent)` }),
+              ...(shader.particleColor && { '--island-particle-ink': shader.particleColor, '--island-particle-soft-ink': shader.particleColor }),
+            } as CSSProperties}
             data-playback-wave={playbackWave || undefined}
             data-playback-motion={playbackMotion === false ? 'paused' : 'playing'}
           >
-            {particles ? <IslandParticles /> : null}
+            {particles && shader.particleCount > 0 ? <IslandParticles count={shader.particleCount} /> : null}
           </span>
         ) : null}
       </span>

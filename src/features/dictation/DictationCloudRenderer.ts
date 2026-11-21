@@ -4,7 +4,8 @@ import dots from './shaders/cloudDots.glsl?raw'
 import background from './shaders/cloudBackground.glsl?raw'
 import composite from './shaders/cloudComposite.glsl?raw'
 import glass from './shaders/cloudGlass.glsl?raw'
-import { dictationArtworkDefaults, type DictationAppearance } from '../../shared/lib/dictationAppearance'
+import type { DictationAppearance } from '../../shared/lib/dictationAppearance'
+import { DEFAULT_DICTATION_SHADER, type DictationShaderTuning } from '../../shared/lib/shaderTuning'
 import { DictationSpring } from './dictationSpring'
 import { getCloudPixelRatio } from './cloudGeometry'
 
@@ -16,6 +17,7 @@ export type CloudFrame = {
   effectX?: number; effectWidth?: number
   coreWidth: number; coreHeight: number; coreX: number; coreY: number; controls: number; singleControl: boolean; accent: number[]
   material?: 'classic' | 'glass'
+  tuning?: DictationShaderTuning
 }
 const palettes: Record<DictationAppearance['palette'], number[][]> = {
   accent: [], prism: [[.369,.416,.824],[.55,.522,.957],[.698,.718,.925]],
@@ -27,9 +29,9 @@ const palettes: Record<DictationAppearance['palette'], number[][]> = {
   white: [[1,1,1],[1,1,1],[1,1,1]],
 }
 const waveDefaults = {
-  uWhiteClip: 1, uUnresolvedScale: .14, uAmplitude: .22, uFreq: 1.1,
+  uWhiteClip: 1, uUnresolvedScale: .14,
   uAberrationFreq: 1, uWaveSpeed: -1, uWaveScale: .9, uAberration: 2.6,
-  uThickness: 3, uIntensity: 2, uFalloff: 1.7, uEdgeMask: .4, uEdgeMaskInset: 0,
+  uIntensity: 2, uFalloff: 1.7, uEdgeMask: .4, uEdgeMaskInset: 0,
   uBandFill: 12000, uBandFillThickness: .08, uSoftness: 2.5,
   uLowAmplitude: 20, uLowIntensity: .9, uMidAberration: .8,
   uMidAberrationAmplitude: .085, uMidBandFill: 0, uMidSoftness: .4,
@@ -170,7 +172,8 @@ export class DictationCloudRenderer {
     const width = Math.max(1,Math.round(this.canvas.clientWidth*dpr)), height = Math.max(1,Math.round(this.canvas.clientHeight*dpr))
     if (this.canvas.width !== width || this.canvas.height !== height) { this.canvas.width=width; this.canvas.height=height }
     const coreWidth=frame.coreWidth*dpr, coreHeight=frame.coreHeight*dpr, coreX=frame.coreX*dpr, coreY=frame.coreY*dpr
-    const { waveBrightness, lightIntensity } = dictationArtworkDefaults
+    const tuning = frame.tuning ?? DEFAULT_DICTATION_SHADER
+    const { waveBrightness, lightIntensity } = tuning
     const ew=Math.max(1,Math.round((frame.effectWidth ?? frame.coreWidth)*dpr*1.18)), eh=Math.max(1,Math.round(44*dpr*1.18))
     const effect=this.target(0,ew,eh)
     const working=['preparing','transcribing','processing'].includes(phase)
@@ -187,8 +190,9 @@ export class DictationCloudRenderer {
     const t=Math.min(1,this.completionElapsed/(result?.32:.28)), eased=t*t*t*(t*(t*6-15)+10)
     this.completion=frame.instant?Number(result):this.completionFrom+(this.completionTarget-this.completionFrom)*eased
     const landing=Math.max(0,Math.min(1,(this.completion-.78)/.22))
-    this.dotTime+=frame.delta*(1-landing*landing*(3-2*landing))
-    this.wavePhase=(this.wavePhase+(-2.5-12*Math.min(1,level*.4))*frame.delta) % 62.831848
+    const motionDelta = frame.instant ? 0 : frame.delta * tuning.speed
+    this.dotTime+=motionDelta*(1-landing*landing*(3-2*landing))
+    this.wavePhase=(this.wavePhase+(-2.5-12*Math.min(1,level*.4))*motionDelta) % 62.831848
     const targetColors = a.palette === 'accent' ? [frame.accent,frame.accent.map(v=>.35+.65*v),frame.accent.map(v=>.6+.4*v)] : palettes[a.palette]
     const colorResponse=frame.instant || !this.colors ? 1 : 1-Math.exp(-frame.delta/.12)
     const previousColors=this.colors ?? targetColors
@@ -209,13 +213,14 @@ export class DictationCloudRenderer {
     const ink: Record<string,Uniform> = {}
     colors.forEach((color,i)=>{ink['uWaveColor'+i]=color;ink['uWaveHighlightColor'+i]=color.map(v=>.76+.24*v)})
     if (waveOpacity > .001) this.draw(0,{...base,...waveDefaults,...ink,uResolved:1,uLayerOpacity:waveOpacity*.98,uEffectScale:1,
+      uAmplitude:tuning.amplitude,uFreq:tuning.frequency,uThickness:tuning.thickness,
       uWavePhase:this.wavePhase,uLow:level,uMid:level*.75,uHigh:level*.45,uBrightnessLow:level,
       uWaveCount:3,uAudioBrightnessResponse:1,uChromatic:Number(a.chromatic),uWaveBrightness:waveBrightness/25})
     const progress: Record<string,Uniform> = {}
     for(let i=0;i<6;i++) progress['uProgress'+i]=.5+.5*Math.sin(this.dotTime*2.5-i*.52)
     if (dotsOpacity > .001) this.draw(1,{...base,...progress,uTime:this.dotTime,uDotsResolved:1,uEffectScale:2/3,uRotation:1.4,uRingRadius:.45,
-      uDotRadius:.1,uPairOffset:.085,uPairSmoothness:.2,uSmoothness:.2,uScaleDuration:2,
-      uScaleStagger:.167,uScaleMin:.001,uScaleMax:.65,uGlowIntensity:.04,uFalloffPower:.7,
+      uDotRadius:tuning.dotRadius,uPairOffset:.085,uPairSmoothness:.2,uSmoothness:.2,uScaleDuration:2,
+      uScaleStagger:.167,uScaleMin:.001,uScaleMax:.65,uGlowIntensity:tuning.dotGlow,uFalloffPower:.7,
       uGlowFadeStart:0,uGlowFadeEnd:.7,uDotsAberration:-.05,uCenterCore:.5,uDotsScale:1,
       uAppear:dotsOpacity,uGather:0,uCharge:0,uFlash:0,uParticleTint:colors[0],uParticleNeutral:Number(a.chromatic),
       uSuccess:this.completion,uError:error,uCopied:0})

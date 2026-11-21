@@ -1,3 +1,9 @@
+@property --glass-region-frost {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: -1;
+}
+
 [data-interface-theme='glass'] :where(.ui-button, .media-button, .play-button:not(.artwork-play-button), .reaction-button, .island-actions .icon-button, .island-plugin-button) {
   position: relative;
 }
@@ -24,22 +30,6 @@
   background:
     radial-gradient(ellipse 54% 110% at var(--glass-light-x, 50%) var(--glass-light-y, 0%), var(--glass-light-peak), transparent 76%),
     var(--glass-contour);
-}
-
-.island-card[data-glass-edge] > .island-glass-optic .lg-glass::after {
-  background: radial-gradient(ellipse at var(--glass-rim-light), white, transparent 48%) var(--glass-rim-side) / var(--glass-rim-size) no-repeat;
-  opacity: calc(var(--glass-highlight-strength, .42) * var(--glass-parallax-strength, .91));
-}
-.island-card:is([data-glass-edge='left'], [data-glass-edge='right']) {
-  --glass-rim-size: var(--glass-edge-width) 100%;
-  --glass-rim-light: 50% var(--glass-light-y, 50%);
-}
-.island-card[data-glass-edge='left'] { --glass-rim-side: left; }
-.island-card[data-glass-edge='right'] { --glass-rim-side: right; }
-.island-card[data-glass-edge='bottom'] {
-  --glass-rim-size: 100% var(--glass-edge-width);
-  --glass-rim-side: bottom;
-  --glass-rim-light: var(--glass-light-x, 50%) 50%;
 }
 
 [data-native-backdrop-surface][data-glass-light] > .island-glass-optic .lg-glass::after {

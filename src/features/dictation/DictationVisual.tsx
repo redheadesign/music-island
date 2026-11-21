@@ -1,7 +1,8 @@
-import { memo, type CSSProperties } from 'react'
+import { memo, useMemo, type CSSProperties } from 'react'
 import { AnimatePresence, motion as animated } from 'framer-motion'
 import { Check, LoaderCircle, Mic, X } from '../../shared/ui/SettingsIcons'
-import { dictationArtworkDefaults, dictationPaletteColors, type DictationAppearance } from '../../shared/lib/dictationAppearance'
+import { dictationPaletteColors, type DictationAppearance } from '../../shared/lib/dictationAppearance'
+import { normalizeDictationShader } from '../../shared/lib/shaderTuning'
 import { useDictationMotion } from './useDictationMotion'
 import { DictationCloudSurface } from './DictationCloudSurface'
 import { dictationFoxPose } from './dictationFoxPose'
@@ -63,7 +64,8 @@ export function DictationVisual({ appearance, phase, levels, still = false, acti
   const animate = !terminal && appearance.theme === 'pixels'
   const motion = useDictationMotion(active && animate, still, recording ? level : 0, demo && recording)
   const time = motion.time
-  const style = { '--dictation-ink': dictationPaletteColors[appearance.palette], '--dictation-brightness': .4 + dictationArtworkDefaults.brightness * .006 } as CSSProperties
+  const tuning = useMemo(() => normalizeDictationShader(appearance.shaderTuning), [appearance.shaderTuning])
+  const style = { '--dictation-ink': dictationPaletteColors[appearance.palette], '--dictation-brightness': .4 + tuning.foxBrightness * .006 } as CSSProperties
   const Icon = phase === 'completed' ? Check : terminal ? X : recording ? Mic : LoaderCircle
   if (appearance.theme === 'wave') return <DictationCloudSurface appearance={appearance} phase={phase} levels={levels} still={still} active={active} demo={demo} />
   if (appearance.theme === 'classic') {

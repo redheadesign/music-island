@@ -26,6 +26,7 @@ import { SegmentedControl } from '../../shared/ui/SegmentedControl'
 import { getIslandLayout, getLegacyIslandLayout, withIslandLayout } from '../../shared/lib/islandLayout'
 import { getDictationAppearance } from '../../shared/lib/dictationAppearance'
 import { BrandLogo } from '../../shared/ui/BrandLogo'
+import { normalizeIslandShader } from '../../shared/lib/shaderTuning'
 import { WarpSurface, WarpSurfaceProvider } from '../../shared/ui/WarpSurface'
 import { PreviewScale } from '../../shared/ui/PreviewScale'
 import { UsageStatusChip } from '../usage/UsageStatusChip'
@@ -35,6 +36,7 @@ import type { UsageProvider } from '../../shared/lib/usageTypes'
 import { AccentColorPicker } from './AccentColorPicker'
 import { MonitorSetting } from './MonitorSetting'
 import { InterfaceThemeSettings, PlaybackBackgroundSetting } from './InterfaceAppearanceSettings'
+import { AdvancedGlassSwitch } from './AdvancedGlassEditor'
 import { InterfacePalettePicker } from './InterfacePalettePicker'
 import { DirectConnectionDialog } from './DirectConnectionDialog'
 import { useAppUpdater } from './useAppUpdater'
@@ -106,6 +108,7 @@ export function SettingsPanel({
   const prefersReducedMotion = useReducedMotion()
   const reducedMotion = Boolean(draft.appearance.reducedMotion || prefersReducedMotion)
   const uiPrefs = getUiPrefs(draft)
+  const previewShader = useMemo(() => normalizeIslandShader(uiPrefs.islandShader), [uiPrefs.islandShader])
   const interfacePalette = getInterfacePalette(draft)
   const usageCompact = getUsageWidgetCompact(draft)
   const usageScale = getUsageWidgetScale(draft)
@@ -396,7 +399,7 @@ export function SettingsPanel({
   const directMessage = directStatusMessage(directStatus.state, directStatus.message, t)
 
   return (
-    <WarpSurfaceProvider>
+    <WarpSurfaceProvider tuning={previewShader}>
     <section
       ref={panelRef}
       className="settings-panel"
@@ -495,7 +498,7 @@ export function SettingsPanel({
           const Icon = { general: Mic, models: Database, history: ClockCounterClockwise, dictionary: BookOpen, processing: TextAa, advanced: SlidersHorizontal }[id]
           return { id, label: dictationPages[id][locale === 'ru' ? 0 : 1], icon: (active: boolean) => <Icon size={20} weight={active ? 'fill' : 'regular'} /> }
         })} />
-        <div className="settings-content" data-settings-scroll><DictationSettings config={draft} appearance={getDictationAppearance(draft)} onAppearanceChange={dictationAppearance => previewAndSave(withUiPrefs(draft, { dictationAppearance }))}
+        <div className="settings-content" data-settings-scroll><DictationSettings config={draft} onConfigChange={previewAndSave} appearance={getDictationAppearance(draft)} onAppearanceChange={dictationAppearance => previewAndSave(withUiPrefs(draft, { dictationAppearance }))}
           showLatestMessage={uiPrefs.showLatestDictationMessage === true}
           onShowLatestMessage={showLatestDictationMessage => previewAndSave(withUiPrefs(draft, { showLatestDictationMessage }))}
           active={settingsVisible} reducedMotion={reducedMotion} controller={dictation} page={dictationPage} locale={locale} onPage={setDictationPage} onDisable={async () => {
@@ -877,8 +880,9 @@ export function SettingsPanel({
       <SettingsSection className="settings-about-actions" hidden={settingsPage !== 'about'} title={locale === 'ru' ? 'Приложение' : 'Application'} showTitle={false}>
         <div className="ui-setting-row"><span className="ui-setting-row__copy"><strong>{locale === 'ru' ? 'Знакомство с Music Island' : 'Meet Music Island'}</strong></span><Button disabled={launchBusy} onClick={() => void replayLaunch(true)}>{locale === 'ru' ? 'Открыть' : 'Open'}</Button></div>
         <Switch label={t('settings.devMode')} checked={Boolean(uiPrefs.developerMode)} onChange={(developerMode) => previewAndSave(withUiPrefs(draft, { developerMode,
-          ...(!developerMode ? { forceSettingsUpdateBanner: false, forceIslandUpdateBanner: false, forceVoiceExperimentalBanner: false, forceSameVersionUpdate: false } : {}),
+          ...(!developerMode ? { glassAdvancedEnabled: false, forceSettingsUpdateBanner: false, forceIslandUpdateBanner: false, forceVoiceExperimentalBanner: false, forceSameVersionUpdate: false } : {}),
         }))} />
+        <AdvancedGlassSwitch config={draft} locale={locale} onChange={previewAndSave} />
         {launchError ? <Notice tone="danger">{launchError}</Notice> : null}
       </SettingsSection>
       {uiPrefs.developerMode ? (

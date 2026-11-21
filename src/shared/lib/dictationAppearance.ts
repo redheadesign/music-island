@@ -2,6 +2,7 @@ import type { AppConfig } from './types'
 import { normalizeGlassMaterial, type GlassMaterial } from './glassMaterial'
 import { isInterfaceThemeId, type InterfaceThemeId } from './interfaceTheme'
 import { getUiPrefs } from './uiPrefs'
+import { normalizeDictationShader, shaderOverrides, type DictationShaderTuning } from './shaderTuning'
 
 export const dictationThemes = ['pixels', 'wave', 'classic'] as const
 export const dictationPalettes = ['accent', 'white', 'prism', 'aurora', 'lagoon', 'sakura', 'ember', 'dune'] as const
@@ -13,14 +14,12 @@ export interface DictationAppearance {
   /** No override means that the recording capsule follows the island. */
   materialTheme?: InterfaceThemeId
   glassMaterial?: GlassMaterial
+  shaderTuning?: Partial<DictationShaderTuning>
 }
 
 export const defaultDictationAppearance: DictationAppearance = {
   theme: 'pixels', palette: 'accent', chromatic: false,
 }
-
-/** Fixed artwork tuning; old per-profile controls no longer affect the recorder. */
-export const dictationArtworkDefaults = { brightness: 80, waveBrightness: 9, lightIntensity: 28 } as const
 
 function choice<T extends string>(value: unknown, options: readonly T[], fallback: T): T {
   return options.includes(value as T) ? value as T : fallback
@@ -28,10 +27,12 @@ function choice<T extends string>(value: unknown, options: readonly T[], fallbac
 
 export function normalizeDictationAppearance(value: unknown): DictationAppearance {
   const raw = value && typeof value === 'object' ? value as Partial<DictationAppearance> : {}
+  const shader = shaderOverrides(raw.shaderTuning, normalizeDictationShader(raw.shaderTuning))
   return {
     theme: choice(raw.theme, dictationThemes, defaultDictationAppearance.theme),
     palette: choice(raw.palette, dictationPalettes, 'accent'),
     chromatic: raw.chromatic === true,
+    ...(Object.keys(shader).length && { shaderTuning: shader }),
     ...(isInterfaceThemeId(raw.materialTheme) && { materialTheme: raw.materialTheme }),
     ...(raw.glassMaterial && typeof raw.glassMaterial === 'object' && !Array.isArray(raw.glassMaterial)
       && { glassMaterial: normalizeGlassMaterial(raw.glassMaterial) }),
