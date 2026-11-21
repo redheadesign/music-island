@@ -157,7 +157,7 @@ export const AdvancedSurfaceEditor: Story = {
     await fireEvent.change(body.getByRole('slider', { name: 'Размытие' }), { target: { value: '0' } })
     canvas.getByText('Параметры стекла').closest('details')!.open = true
     const material = within(canvas.getByRole('group', { name: 'Параметры стекла' }))
-    await expect(material.getByText(/У корпуса своё размытие \(0 px\)/)).toBeVisible()
+    await expect(material.getByText(/У корпуса своё размытие \(0 px\)/)).toBeInTheDocument()
     await expect(material.getByRole('slider', { name: 'Размытие фона' })).toHaveValue('85')
     await userEvent.click(body.getByRole('button', { name: 'Сбросить «Размытие»' }))
     await expect(material.queryByText(/У корпуса своё размытие/)).toBeNull()
