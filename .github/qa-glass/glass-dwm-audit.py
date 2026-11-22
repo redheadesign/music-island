@@ -40,6 +40,11 @@ env['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = (
     f'--remote-debugging-port={port} --remote-debugging-address=127.0.0.1 '
     f'--enable-logging --log-file="{out / "webview-runtime.log"}"'
 )
+webview_policy = r'Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+# Registered only on the disposable runner, scoped to this binary. Runtime
+# versions differ in how they combine host arguments and browser defaults.
+with winreg.CreateKey(winreg.HKEY_CURRENT_USER, webview_policy) as key:
+    winreg.SetValueEx(key, exe.name, 0, winreg.REG_SZ, env['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'])
 env.update(HTTPS_PROXY='http://127.0.0.1:9', HTTP_PROXY='http://127.0.0.1:9', NO_PROXY='localhost,127.0.0.1')
 user32=ct.WinDLL('user32',use_last_error=True)
 user32.SetWindowPos.argtypes=[wt.HWND,wt.HWND,ct.c_int,ct.c_int,ct.c_int,ct.c_int,wt.UINT]
@@ -218,6 +223,8 @@ finally:
     print(f'Candidate status at test completion: {app.poll()}; JS driver: {qa.poll()}', flush=True)
     if qa.poll() is None: qa.terminate()
     if app.poll() is None: app.terminate();app.wait(timeout=10)
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, webview_policy, 0, winreg.KEY_SET_VALUE) as key:
+        winreg.DeleteValue(key, exe.name)
     root.destroy();log.close();appout.close();apperr.close()
     for diagnostic in ['app.stderr.log', 'profile/roaming/Music Island/logs/app.log', 'webview-runtime.log']:
         file = out/diagnostic
