@@ -42,7 +42,7 @@ int wmain(int argc,wchar_t** argv) {
   updater.MusicProperties().Title(L"Island QA "+nonce);
   updater.MusicProperties().Artist(L"Native fixture");
   updater.Update();
-  controls.PlaybackStatus(MediaPlaybackStatus::Paused);timeline(controls);
+  controls.PlaybackStatus(MediaPlaybackStatus::Playing);timeline(controls);
   auto buttons=controls.ButtonPressed([](const SystemMediaTransportControls& sender,const SystemMediaTransportControlsButtonPressedEventArgs& e){
    if(e.Button()==SystemMediaTransportControlsButton::Play){sender.PlaybackStatus(MediaPlaybackStatus::Playing);timeline(sender);record_event("play");}
    if(e.Button()==SystemMediaTransportControlsButton::Pause){sender.PlaybackStatus(MediaPlaybackStatus::Paused);timeline(sender);record_event("pause");}
@@ -54,6 +54,7 @@ int wmain(int argc,wchar_t** argv) {
   record_event("ready");
   auto stopAt=std::chrono::steady_clock::now()+180s;
   while(std::chrono::steady_clock::now()<stopAt && GetFileAttributesW(L"fixture-stop") == INVALID_FILE_ATTRIBUTES){
+   if(DeleteFileW(L"fixture-pause")) { controls.PlaybackStatus(MediaPlaybackStatus::Paused);timeline(controls); }
    MSG msg;while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){TranslateMessage(&msg);DispatchMessageW(&msg);} Sleep(40);
   }
   controls.ButtonPressed(buttons);controls.PlaybackPositionChangeRequested(seek);controls.IsEnabled(false);DestroyWindow(hwnd);return 0;

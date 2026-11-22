@@ -47,6 +47,7 @@ const pages = async () => Object.fromEntries(await Promise.all(browser.contexts(
   .map(async page => [await page.evaluate(() => window.__TAURI_INTERNALS__?.metadata?.currentWindow?.label), page])))
 const main = await until(async () => (await pages()).main)
 const settings = await until(async () => (await pages()).settings)
+await main.emulateMedia({ reducedMotion: 'no-preference', contrast: 'no-preference' })
 const invoke = (command, args = {}) => main.evaluate(([command, args]) => window.__TAURI_INTERNALS__.invoke(command, args), [command, args])
 const preview = config => invoke('plugin:event|emit', { event: 'config:preview', payload: config })
 const errors = []
@@ -106,6 +107,12 @@ try {
       }
       const ambient = card.locator('.island-feedback__ambient')
       const mode = () => ambient.getAttribute('data-playback-motion')
+      await main.evaluate(() => {
+        window.glassClickTrace = []
+        for (const type of ['pointerdown', 'click']) document.addEventListener(type, event => {
+          if (event.target.closest?.('.play-button')) window.glassClickTrace.push(type)
+        }, true)
+      })
       const ring = () => ambient.evaluate(el => ({
         name: getComputedStyle(el, '::before').animationName,
         opacity: Number(getComputedStyle(el, '::before').opacity),
@@ -121,10 +128,14 @@ try {
         assert.equal(state.sourceAppId, pinned.media.preferredSourceAppId)
         return state
       }
+      if (!synthetic) {
+        await fs.writeFile(path.join(evidence, 'fixture-pause'), 'pause test fixture')
+        await until(async () => (await media()).playbackStatus === 'paused' && (await mode()) === 'paused')
+      }
       assert.equal((await media()).playbackStatus, 'paused')
       await play.click()
       if (synthetic) {
-        await until(async () => (await mode()) === 'playing')
+        assert.ok((await main.evaluate(() => window.glassClickTrace)).includes('click'))
         await emitFixture({ playbackStatus: 'playing' })
       }
       await until(async () => (await media()).playbackStatus === 'playing' && (await mode()) === 'playing')
@@ -133,7 +144,7 @@ try {
       await media()
       await play.click()
       if (synthetic) {
-        await until(async () => (await mode()) === 'paused')
+        assert.equal((await main.evaluate(() => window.glassClickTrace)).filter(event => event === 'click').length, 2)
         await emitFixture({ playbackStatus: 'paused' })
       }
       await until(async () => (await media()).playbackStatus === 'paused' && (await mode()) === 'paused')
@@ -236,6 +247,20 @@ try {
   assert.deepEqual(errors, [])
   await fs.writeFile(path.join(evidence, 'native-acceptance.json'), JSON.stringify(log, null, 2))
   console.log(JSON.stringify(log))
+} catch (error) {
+  console.log('Playback diagnostics', await main.evaluate(() => {
+    const ambient = document.querySelector('.island-card .island-feedback__ambient')
+    return {
+      hidden: document.hidden,
+      reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      wave: ambient?.dataset.playbackWave,
+      motion: ambient?.dataset.playbackMotion,
+      animation: ambient && getComputedStyle(ambient, '::before').animationName,
+      clicks: window.glassClickTrace,
+      time: document.querySelector('.progress-content--time')?.textContent,
+    }
+  }).catch(() => null))
+  throw error
 } finally {
   await browser.close()
 }
