@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { DEFAULT_INTERFACE_THEME } from '../shared/lib/interfaceTheme'
+import defaultAppearance from '../shared/lib/defaultAppearance.json'
 import type { SystemVolumeAction, SystemVolumeSnapshot } from '../shared/lib/systemVolume'
 import type {
   AutostartSyncEvent,
@@ -596,8 +596,8 @@ const defaultConfig: AppConfig = {
   },
   layout: {
     size: 'medium',
-    width: 100,
-    scale: 100,
+    width: defaultAppearance.width,
+    scale: defaultAppearance.scale,
     density: 'balanced',
     showArtwork: true,
     showTitle: true,
@@ -632,6 +632,6 @@ const defaultConfig: AppConfig = {
   },
   plugins: {
     enabled: [],
-    settings: { ui: { interfaceTheme: DEFAULT_INTERFACE_THEME } },
+    settings: { ui: defaultAppearance.ui },
   },
 }

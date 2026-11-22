@@ -20,20 +20,20 @@
 }
 
 @keyframes music-progress-next-fill-out {
-  from { opacity: 1; transform: scaleX(var(--progress, 0)); }
-  75% { opacity: 1; transform: scaleX(1); }
-  to { opacity: 0; transform: scaleX(1); }
+  from { opacity: 1; width: calc(var(--progress, 0) * 100%); }
+  75% { opacity: 1; width: 100%; }
+  to { opacity: 0; width: 100%; }
 }
 
 @keyframes music-progress-previous-fill-out {
-  from { opacity: 1; transform: scaleX(var(--progress, 0)); }
-  75% { opacity: 1; transform: scaleX(0); }
-  to { opacity: 0; transform: scaleX(0); }
+  from { opacity: 1; width: calc(var(--progress, 0) * 100%); }
+  75% { opacity: 1; width: 0%; }
+  to { opacity: 0; width: 0%; }
 }
 
 @keyframes music-progress-fill-in {
-  from { opacity: 0; transform: scaleX(var(--progress, 0)); }
-  to { opacity: 1; transform: scaleX(var(--progress, 0)); }
+  from { opacity: 0; width: calc(var(--progress, 0) * 100%); }
+  to { opacity: 1; width: calc(var(--progress, 0) * 100%); }
 }
 
 .progress-visual[data-reduced-motion='true'],

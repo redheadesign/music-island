@@ -9,12 +9,18 @@ export function useWorkshopConfig(
   accent: string,
   pinned = false,
   interfaceTheme: InterfaceThemeId = DEFAULT_INTERFACE_THEME,
+  factoryAppearance = false,
 ) {
   const [config, setConfig] = useState(() => {
     const base = structuredClone(getDefaultConfig())
     base.appearance.locale = locale
     base.appearance.accentColor = accent
     base.behavior.pinExpanded = pinned
+    if (!factoryAppearance) {
+      // Component scenarios select their own material and control layout.
+      base.layout.width = base.layout.scale = 100
+      base.plugins.settings.ui = {}
+    }
     return withUiPrefs(base, { hoverCoachCompleted: true, interfaceTheme })
   })
   useEffect(() => {

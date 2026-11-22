@@ -748,15 +748,13 @@
   top: 0;
   left: 0;
   display: block;
-  width: 100%;
+  width: calc(var(--progress, 0) * 100%);
   height: 100%;
   border-radius: inherit;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.22)),
     rgba(var(--artwork-primary), 0.54);
-  transform-origin: left center;
-  transform: scaleX(var(--progress, 0));
-  transition: transform calc(var(--motion-unit) * 45) linear;
+  transition: width calc(var(--motion-unit) * 45) linear;
 }
 
 .progress-track--scrubbing .progress-fill {

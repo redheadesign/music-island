@@ -19,7 +19,7 @@ export function serializeAppearancePreset(config: AppConfig): string {
     const base = getSurfaceDefaults(id, id === 'dictation' || id === 'dictationActions' ? capsuleGlass : glass)
     return [id, Object.fromEntries(GLASS_SURFACE_FIELDS[id].map(field => {
       // Artwork, track placement and compact mode resolve these at paint time.
-      const automatic = ['background', 'text', 'endColor', 'height', 'textSize', 'radius'].includes(field)
+      const automatic = ['background', 'text', 'height', 'textSize', 'radius'].includes(field)
       const inherited = automatic ? 'auto' : base[field]
       return [field, advanced[id]?.[field] ?? inherited]
     }))]

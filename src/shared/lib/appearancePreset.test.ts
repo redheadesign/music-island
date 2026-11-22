@@ -29,7 +29,7 @@ it('exports one deterministic visual preset with active and inherited settings f
     island: { palette: 'ocean', colors: { customAccent: '#ffee99' }, glass: { frost: 0 },
       shaders: { playbackWaveEnabled: false, overrides: { particleCount: 0 }, effective: { waveSpeed: 1, particleCount: 0 } } },
     surfaces: { overrides: { transport: { bend: 0, background: '#ab12cd' } },
-      effective: { body: { frost: 0 }, transport: { bend: 0, background: '#ab12cd' }, progressFill: { endColor: 'auto' } } },
+      effective: { body: { frost: 0 }, transport: { bend: 0, background: '#ab12cd' }, progressFill: { brightness: 100 } } },
     dictation: { material: 'glass', effectiveGlass: { frost: 85 }, shaders: { overrides: { speed: 0 }, effective: { speed: 0, lightIntensity: 28 } } },
     taskbar: { enabled: true, scale: 1.15 },
   })

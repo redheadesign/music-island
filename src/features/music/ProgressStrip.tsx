@@ -36,7 +36,7 @@ export function ProgressStrip({ frame, navigation, reducedMotion = false, scrubb
 
   return (
     <span key={state.generation}
-      className={`progress-visual ${state.phase === 'exiting' ? 'progress-visual--exiting' : state.generation ? 'progress-visual--entering' : ''}`}
+      className={`progress-visual ${state.phase === 'exiting' ? 'progress-visual--exiting' : state.entering ? 'progress-visual--entering' : ''}`}
       data-progress-phase={state.phase} data-progress-direction={state.direction}
       data-progress-track={state.visible.trackKey} data-reduced-motion={skipMotion || undefined}
       style={{
@@ -45,8 +45,12 @@ export function ProgressStrip({ frame, navigation, reducedMotion = false, scrubb
         '--progress-enter-duration': `${PROGRESS_ENTER_DURATION_MS}ms`,
       } as CSSProperties}
     >
-      <span ref={fillRef} className="progress-fill" onAnimationEnd={() => {
-        if (state.phase === 'exiting') setState(completeProgressTransition)
+      <span ref={fillRef} className="progress-fill" onAnimationEnd={(event) => {
+        if (event.animationName === 'music-progress-fill-in') {
+          setState(current => current.generation === state.generation ? { ...current, entering: false } : current)
+        } else if (state.phase === 'exiting') {
+          setState(completeProgressTransition)
+        }
       }} />
       <span className="progress-content progress-content--track" title={state.visible.label}>
         <MarqueeText text={state.visible.label} />

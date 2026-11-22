@@ -1,0 +1,129 @@
+{
+  "width": 117,
+  "scale": 82,
+  "ui": {
+    "interfaceTheme": "glass",
+    "interfacePalette": "grove",
+    "islandLayout": {
+      "version": 4,
+      "zones": {
+        "left": [
+          "codex"
+        ],
+        "player": [
+          "previous",
+          "artwork",
+          "transport",
+          "next"
+        ],
+        "playerLower": [
+          "dislike",
+          "progress",
+          "like"
+        ],
+        "right": [],
+        "actions": [
+          "settings",
+          "pin"
+        ],
+        "bottom": [
+          "localServers"
+        ]
+      }
+    },
+    "usageWidgetScale": 0.75,
+    "usageWidgetCompact": true,
+    "localServersWidgetScale": 85,
+    "localServersEnabled": true,
+    "showLatestDictationMessage": true,
+    "glassMaterial": {
+      "transparency": 90,
+      "frost": 86,
+      "parallax": 91,
+      "highlight": 40,
+      "edge": 61
+    },
+    "advancedGlass": {
+      "body": {
+        "frost": 11.7,
+        "transparency": 69,
+        "background": "#828282",
+        "text": "#ffffff"
+      },
+      "transport": {
+        "bend": 0,
+        "dispersion": 0,
+        "frost": 5.7,
+        "transparency": 81,
+        "background": "#000000"
+      },
+      "usage": {
+        "frost": 32,
+        "transparency": 31,
+        "background": "#787878"
+      },
+      "localServers": {
+        "frost": 32,
+        "transparency": 31,
+        "background": "#787878"
+      },
+      "latestDictation": {
+        "frost": 32,
+        "transparency": 31,
+        "background": "#787878"
+      },
+      "notices": {
+        "frost": 32,
+        "transparency": 31,
+        "background": "#787878"
+      },
+      "progressTrack": {
+        "bend": 0.28,
+        "dispersion": 0.08,
+        "frost": 19.7,
+        "transparency": 72,
+        "parallax": 0,
+        "highlight": 42,
+        "edge": 0,
+        "background": "#808080"
+      },
+      "buttons": {
+        "background": "#000000",
+        "frost": 7.5,
+        "transparency": 75
+      }
+    },
+    "desktopGlassMode": "lens",
+    "desktopLens": {
+      "bend": 1,
+      "dispersion": 0.47
+    },
+    "playbackWaveEnabled": true,
+    "islandShader": {
+      "waveIntensity": 59,
+      "bassGain": 3
+    },
+    "dictationAppearance": {
+      "theme": "pixels",
+      "palette": "ember",
+      "chromatic": false,
+      "materialTheme": "glass",
+      "glassMaterial": {
+        "transparency": 38,
+        "frost": 77,
+        "parallax": 91,
+        "highlight": 73,
+        "edge": 0
+      }
+    },
+    "taskbarLayout": {
+      "version": 1,
+      "elements": [
+        "previous",
+        "transport",
+        "next",
+        "cover"
+      ]
+    }
+  }
+}

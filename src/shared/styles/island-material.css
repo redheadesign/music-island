@@ -111,20 +111,6 @@
   z-index: 0;
 }
 
-.island-feedback__ambient[data-playback-motion='paused'] {
-  display: none;
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .island-feedback__ambient {
-    transition: opacity var(--motion-slow) ease, display var(--motion-slow) allow-discrete, --island-wave-drive calc(var(--motion-unit) * 8) linear;
-  }
-  @starting-style {
-    .island-feedback__ambient[data-playback-motion='playing'] { opacity: 0; }
-  }
-}
-
 .island-card[data-document-hidden] .island-feedback__ambient,
 [data-reduced-transparency='true'] .island-feedback__ambient {
   display: none;
@@ -136,7 +122,7 @@
   .island-feedback__ambient[data-playback-motion='playing'] { opacity: .42; }
 }
 
-/* Two wave fronts leave the same center in sequence and fade before resetting. */
+/* Share the same two rings between playback feedback and the steady shader. */
 .island-feedback__ambient[data-playback-wave]::before,
 .island-feedback__ambient[data-playback-wave]::after {
   position: absolute;
@@ -148,29 +134,51 @@
   transform-origin: center;
   filter: blur(var(--wave-softness, 4px));
 }
-.island-feedback__ambient[data-playback-wave]::before {
+
+.island-feedback__ambient[data-playback-wave][data-playback-motion='playing']::before {
   content: '';
   opacity: min(1, calc(var(--wave-intensity, .32) * 2.1875));
 }
 @media (prefers-reduced-motion: no-preference) {
-  .island-feedback__ambient[data-playback-wave]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before,
-  .island-feedback__ambient[data-playback-wave]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::after {
-    content: '';
-    scale: 1 calc(1 + var(--island-wave-drive, 0) * .015);
-    animation: island-glass-wave-out var(--island-wave-duration) var(--island-front-delay, 0s) linear infinite;
+  .island-feedback__ambient[data-playback-wave]:not(:is(.reduced-motion, [data-reduced-motion='true']) *) {
+    --ring-start: calc(var(--motion-slow) * 1.6);
+    --ring-return: calc(var(--motion-slow) * 1.25);
+    --ring-feedback-offset: 0ms;
+    --ring-steady-offset: 0ms;
   }
   .island-feedback__ambient[data-playback-wave]::after {
-    --island-front-delay: calc(var(--island-wave-duration) / -2);
+    --ring-feedback-offset: var(--motion-fast);
+    --ring-steady-offset: calc(var(--island-wave-duration) * .5);
   }
-  :is(.reduced-motion, [data-reduced-motion='true']) .island-feedback__ambient {
-    transition: none;
+  .island-feedback__ambient[data-playback-wave][data-playback-motion='playing']:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before,
+  .island-feedback__ambient[data-playback-wave][data-playback-motion='playing']:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::after {
+    content: '';
+    scale: 1 calc(1 + var(--island-wave-drive, 0) * .015);
+    animation:
+      island-glass-wave-launch var(--ring-start) var(--ring-feedback-offset) cubic-bezier(.12,.38,.3,1) 1 backwards,
+      island-glass-wave-out var(--island-wave-duration) calc(var(--ring-start) + var(--ring-steady-offset)) linear infinite;
   }
+  .island-feedback__ambient[data-playback-wave][data-wave-return]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before,
+  .island-feedback__ambient[data-playback-wave][data-wave-return]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::after {
+    content: '';
+    animation: island-glass-wave-in var(--ring-return) calc(var(--ring-feedback-offset) * .35) cubic-bezier(.65,0,.95,.4) both;
+  }
+}
+@keyframes island-glass-wave-launch {
+  from { opacity: 0; transform: scale(0); }
+  17%, 48% { opacity: var(--wave-intensity, .32); }
+  to { opacity: 0; transform: scale(var(--wave-reach, 2.68)); }
 }
 @keyframes island-glass-wave-out {
   from { opacity: 0; transform: scale(0); }
   21%, 57% { opacity: var(--wave-intensity, .32); }
   94% { opacity: 0; }
   to { opacity: 0; transform: scale(var(--wave-reach, 2.68)); }
+}
+@keyframes island-glass-wave-in {
+  from { opacity: 0; transform: scale(var(--wave-reach, 2.68)); }
+  36% { opacity: var(--wave-intensity, .32); }
+  to { opacity: 0; transform: scale(0); }
 }
 @media (forced-colors: active), (prefers-reduced-transparency: reduce) {
   .island-feedback__ambient { display: none; transition: none; }
@@ -201,13 +209,28 @@
   16%, 66% { opacity: var(--particle-brightness, .65); }
   100% { opacity: 0; transform: translateY(calc(var(--particle-fall) * var(--particle-distance, 1))); }
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button) {
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button) {
   color: var(--island-glass-ink);
   background: var(--island-lens-sheen, var(--glass-sheen)) var(--island-lens-state, var(--island-lens-fill));
   box-shadow: var(--island-lens-shadow, var(--island-lens-rim, var(--glass-control-rim)), var(--shadow-control-depth));
-  /* These controls sit on an already frosted card. */
-  backdrop-filter: none;
+  backdrop-filter: var(--island-control-filter, none);
 }
+/* Text inside player controls is a label. Keep selection in actual fields. */
+.island-root { user-select: none; }
+.island-root :is(input, textarea, [contenteditable='true']) { user-select: text; }
+
+.island-root[data-interface-theme='glass'] .music-module .reaction-button {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+}
+
+.island-root[data-interface-theme='glass'] .music-module :is([data-compact], [data-arrangement='inline'] .player-row) .reaction-button {
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
+}
+
 .island-root[data-interface-theme='glass'] .progress-track {
   --island-lens-sheen: var(--glass-sheen);
   --island-lens-shadow: var(--glass-control-rim);
@@ -220,32 +243,27 @@
 /* Detached actions sit directly over the desktop; their neutral reading fill
    keeps the white glyph legible even over a bright window. */
 .island-root[data-interface-theme='glass'] :is(.island-actions .icon-button, .island-plugin-button) {
-  --island-lens-fill: var(--glass-reading-fill);
-  --island-lens-sheen: var(--glass-control-sheen);
-  backdrop-filter: var(--island-detached-filter, var(--glass-filter));
+  backdrop-filter: var(--island-control-filter, var(--island-detached-filter, var(--glass-filter)));
   mix-blend-mode: normal;
 }
 .island-root[data-interface-theme='glass'] .island-actions .icon-button svg { filter: none; }
-.island-root[data-interface-theme='glass'] .playback-mode-button.reaction-button--active {
-  --island-lens-rim: inset 0 0 0 1px var(--palette-primary, #d4d4d1);
-}
-.island-root[data-interface-theme='glass'] .reaction-button--active:not(.playback-mode-button) {
+.island-root[data-interface-theme='glass'] :is(.reaction-button.reaction-button--active, .icon-button[aria-pressed='true']) {
   color: var(--accent);
 }
 
 @media (hover: hover) {
-  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button):enabled:hover {
+  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button):enabled:hover {
     --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 82%, var(--island-lens-hover-tint));
     --island-lens-sheen: var(--island-lens-hover-sheen);
   }
   .island-root[data-interface-theme='glass'] .reaction-button:hover { transform: none; }
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button):enabled:active {
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button):enabled:active {
   --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 70%, var(--island-lens-pressed-tint));
   --island-lens-sheen: var(--glass-sheen);
   --island-lens-rim: inset 0 1px 4px rgb(0 0 0 / .35);
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button):focus-visible {
+.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button):focus-visible {
   outline: var(--focus-ring);
   outline-offset: -2px;
 }
@@ -278,19 +296,11 @@
     --island-lens-shadow: none;
   }
 }
-.island-root[data-interface-theme='glass'] .island-actions .island-settings-button { box-shadow: none; }
-@media (hover: hover) {
-  .island-root[data-interface-theme='glass'] .island-actions .icon-button:enabled:hover {
-    --island-lens-sheen: var(--glass-selection-sheen);
-  }
-}
-.island-root[data-interface-theme='glass'] .island-actions .island-settings-button::before { content: none; }
-.island-root[data-interface-theme='glass'] .island-actions .island-settings-button[data-glass-light] {
-  --island-lens-sheen: radial-gradient(ellipse at var(--glass-light-x,50%) var(--glass-light-y,50%), rgb(255 255 255 / calc(.23 * var(--glass-highlight))), transparent 70%);
-}
 .island-root[data-interface-theme='glass'] .progress-track::before { background: none; }
 .island-root[data-interface-theme='glass'] .progress-fill {
-  background: linear-gradient(90deg, var(--island-progress-start), var(--island-progress-end));
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--island-progress-start), var(--progress-fill-tone, white) var(--progress-fill-tone-weight, 0%)),
+    color-mix(in srgb, var(--island-progress-end), var(--progress-fill-tone, white) var(--progress-fill-tone-weight, 0%)));
   box-shadow: inset -1px 0 rgb(255 255 255 / .18);
 }
 .island-root[data-interface-theme='glass'] .progress-content {
@@ -304,7 +314,9 @@
   }
 }
 .island-root[data-interface-theme='glass'] .collapsed-progress__fill {
-  background: linear-gradient(90deg, var(--island-particle-soft-ink), var(--island-particle-ink));
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--island-particle-soft-ink), var(--progress-fill-tone, white) var(--progress-fill-tone-weight, 0%)),
+    color-mix(in srgb, var(--island-particle-ink), var(--progress-fill-tone, white) var(--progress-fill-tone-weight, 0%)));
 }
 
 /* Keep the cue flush with the top edge as the existing hover pressure builds. */

@@ -8,6 +8,7 @@ import type { MediaSnapshot } from '../../shared/lib/types'
 import type { LocalServer } from '../../shared/lib/localServerTypes'
 import type { AdvancedGlassOverrides } from '../../shared/lib/advancedGlass'
 import { normalizeInterfaceTheme, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
+import { getIslandLayout, moveIslandElement, withIslandLayout } from '../../shared/lib/islandLayout'
 import { getUiPrefs } from '../../shared/lib/uiPrefs'
 import { media, health } from '../fixtures'
 import { emitPreviewPlaybackBass, getPreviewPlaybackBassRequest } from '../mocks/tauriApi'
@@ -36,6 +37,8 @@ function IslandPreview({
   startCollapsed = false,
   playbackWaveEnabled = true,
   advancedGlass,
+  factoryAppearance = false,
+  includeSeek = false,
 }: {
   locale: 'ru' | 'en'
   accent: string
@@ -57,8 +60,10 @@ function IslandPreview({
   startCollapsed?: boolean
   playbackWaveEnabled?: boolean
   advancedGlass?: AdvancedGlassOverrides
+  factoryAppearance?: boolean
+  includeSeek?: boolean
 }) {
-  const [config, setConfig] = useWorkshopConfig(locale, accent, !startCollapsed && localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed', interfaceTheme)
+  const [config, setConfig] = useWorkshopConfig(locale, accent, !startCollapsed && localServersMode !== 'collapsed' && latestMessageMode !== 'collapsed', interfaceTheme, factoryAppearance)
   const [localServers, setLocalServers] = useState(() => {
     if (localServersMode === 'empty') return []
     if (localServersMode === 'stoppable') return demoLocalServers.map((server) => ({ ...server, canStop: true }))
@@ -73,7 +78,9 @@ function IslandPreview({
     hasSession: !empty,
     thumbnailDataUrl: artwork === 'missing' ? null : artwork === 'warm' ? media.thumbnailDataUrl : alternateCovers[artwork],
   })
-  const ui = getUiPrefs(config)
+  const composition = includeSeek ? withIslandLayout(config,
+    moveIslandElement(moveIslandElement(getIslandLayout(config), 'seekBack', 'player'), 'seekForward', 'player')) : config
+  const ui = getUiPrefs(composition)
   const app: IslandAppState = {
     config: {
       ...config,
@@ -207,15 +214,30 @@ const meta = {
 export default meta
 export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый островок' }
 export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный островок', globals: { interfaceTheme: 'glass' } }
+export const FactoryGlass: StoryObj<typeof meta> = {
+  ...Glass, name: 'Стекло · заводской пресет', args: { factoryAppearance: true, width: 117, scale: 82, localServersMode: 'expanded' },
+  play: async ({ canvasElement }) => {
+    const surface = await waitFor(() => {
+      const node = canvasElement.querySelector<HTMLElement>('.island-root[data-interface-palette="grove"]')
+      expect(node).toBeInTheDocument()
+      return node!
+    })
+    await expect(surface.style.getPropertyValue('--glass-frost-strength')).toBe('0.86')
+    await waitFor(() => expect(canvasElement.querySelector('.island-local-servers')).toBeInTheDocument())
+    await waitFor(() => expect(canvasElement.querySelector('.island-feedback__ambient')).toHaveAttribute('data-bass-gain', '3'))
+  },
+}
 export const AdvancedGlassSurfaces: StoryObj<typeof meta> = {
   ...Glass,
   name: 'Стекло · независимые поверхности',
   args: {
+    includeSeek: true,
     advancedGlass: {
       body: { transparency: 75, background: '#242c2c', bend: .45, dispersion: .4, frost: 6.5 },
       transport: { rim: .23, bend: .45, dispersion: .4, frost: 1 },
-      progressTrack: { radius: 14, height: 48, text: '#fff0d0', textSize: 15 },
-      progressFill: { radius: 6, background: '#215d68', endColor: '#a9475b', angle: 68 },
+      buttons: { bend: .45, dispersion: .4, frost: 7.5 },
+      progressTrack: { radius: 14, height: 48, text: '#fff0d0', textSize: 15, frost: 12 },
+      progressFill: { radius: 6, brightness: 135 },
     },
   },
   play: async ({ canvasElement }) => {
@@ -238,12 +260,25 @@ export const AdvancedGlassSurfaces: StoryObj<typeof meta> = {
     root.dataset.nativeBackdrop = 'active'
     await expect(getComputedStyle(lens, '::after').backgroundImage).toBe('none')
     await expect(getComputedStyle(lens).backdropFilter).toBe('none')
+    const innerButtons = [...card.querySelectorAll('.media-button, .reaction-button')]
+    await expect(innerButtons.length).toBeGreaterThanOrEqual(3)
+    await expect(card.querySelectorAll('.seek-step-button')).toHaveLength(2)
+    await expect(card.querySelectorAll('.reaction-button')).toHaveLength(2)
+    for (const button of innerButtons) {
+      await expect(getComputedStyle(button).backdropFilter).toContain('blur(7.5px)')
+      await expect(getComputedStyle(button).backdropFilter).toContain('glass-optics-')
+    }
+    const detached = root.querySelector('.island-actions .icon-button')
+    if (detached) await expect(getComputedStyle(detached).backdropFilter).toBe('none')
+    await expect(getComputedStyle(track).backdropFilter).toContain('blur(12px)')
+    await expect(getComputedStyle(fill).userSelect).toBe('none')
     delete root.dataset.nativeBackdrop
+    await expect(getComputedStyle(track).backdropFilter).toContain('blur(12px)')
     await expect(getComputedStyle(track).height).toBe('48px')
     await expect(getComputedStyle(track).borderRadius).toBe('14px')
     await expect(getComputedStyle(track.querySelector('.progress-content')!).color).toBe('rgb(255, 240, 208)')
     await expect(getComputedStyle(fill).borderRadius).toBe('6px')
-    await expect(getComputedStyle(fill).backgroundImage).toContain('68deg')
+    await expect(getComputedStyle(fill).getPropertyValue('--progress-fill-tone-weight').trim()).toBe('35%')
   },
 }
 export const GlassOpticalSurface: StoryObj<typeof meta> = {
@@ -336,11 +371,9 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
       const codex = canvasElement.querySelector('.usage-chip__compact-provider[data-usage-provider="codex"]')!
       await expect(documentView.getComputedStyle(codex).boxShadow).not.toContain('inset')
     }
-    await expect(documentView.getComputedStyle(settings, '::before').content).toBe('none')
-    if (forcedColors) {
-      await expect(documentView.getComputedStyle(settings).boxShadow).not.toBe('none')
-    } else {
-      await expect(documentView.getComputedStyle(settings).boxShadow).toBe('none')
+    await expect(documentView.getComputedStyle(settings).boxShadow).not.toBe('none')
+    if (!forcedColors && !documentView.matchMedia('(prefers-reduced-transparency: reduce)').matches) {
+      await expect(documentView.getComputedStyle(settings).backgroundColor).toBe(documentView.getComputedStyle(previous).backgroundColor)
     }
     await userEvent.click(previous)
     await expect(onCommand).toHaveBeenLastCalledWith('previous')
@@ -416,9 +449,9 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
         const front = getComputedStyle(backdrop, '::before')
         const following = getComputedStyle(backdrop, '::after')
-        await expect(front.animationDirection).toBe('normal')
+        await expect(front.animationName).toContain('island-glass-wave-launch')
         await expect(following.transformOrigin).toBe(front.transformOrigin)
-        await expect(Number.parseFloat(following.animationDelay)).toBeLessThan(0)
+        await expect(Number.parseFloat(following.animationDelay)).toBeGreaterThan(0)
       }
     }
     if (!forcedColors && !matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
@@ -479,9 +512,12 @@ export const GlassReactiveWave: StoryObj<typeof meta> = {
 
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ }))
     await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeUndefined())
-    await waitFor(() => expect(getComputedStyle(layer).display).toBe('none'))
+    await expect(layer).toHaveAttribute('data-playback-motion', 'paused')
+    await expect(getComputedStyle(layer, '::before').animationName).toBe('island-glass-wave-in')
+    await expect(getComputedStyle(layer.querySelector('.island-particles')!).display).toBe('block')
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ }))
     const resumed = await nextRequest(recovered)
+    await expect(getComputedStyle(layer, '::before').animationName).toContain('island-glass-wave-launch')
     emitPreviewPlaybackBass(1, recovered)
     await expect(layer.style.getPropertyValue('--island-wave-drive')).toBe('')
     await checkMotion(resumed)
@@ -582,18 +618,15 @@ export const GlassPlayback: StoryObj<typeof meta> = {
     }
     await userEvent.click(button)
     await waitFor(() => expect(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ })).toBeVisible())
-    if (!quiet && CSS.supports('transition-behavior: allow-discrete')) {
-      await waitFor(() => {
-        const { display, opacity } = getComputedStyle(ambient)
-        expect(display).not.toBe('none')
-        expect(Number(opacity)).toBeGreaterThan(0)
-        expect(Number(opacity)).toBeLessThan(Number(playingOpacity))
-        expect(animations().length).toBeGreaterThan(2)
-      }, { interval: 16 })
+    if (!quiet) {
+      await expect(getComputedStyle(ambient, '::before').animationName).toBe('island-glass-wave-in')
+      const returning = animations().filter(a => a instanceof CSSAnimation && a.animationName === 'island-glass-wave-in')
+      await expect(returning).toHaveLength(2)
+      await Promise.all(returning.map(animation => animation.finished))
+      await expect(getComputedStyle(ambient, '::before').opacity).toBe('0')
+      await expect(getComputedStyle(ambient, '::after').opacity).toBe('0')
+      await expect(getComputedStyle(ambient.querySelector('.island-particles')!).display).toBe('block')
     }
-    await waitFor(() => expect(getComputedStyle(ambient).opacity).toBe('0'))
-    await expect(getComputedStyle(ambient).display).toBe('none')
-    await expect(animations()).toHaveLength(0)
     await userEvent.keyboard(' ')
     await waitFor(() => expect(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ })).toBeVisible())
     if (!quiet) {

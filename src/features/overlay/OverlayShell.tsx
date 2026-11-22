@@ -988,7 +988,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
               className="island-card island-surface"
               glassOptic={usesGlassMaterial(config)}
               opticActive={!reducedTransparency && !isTauriRuntime()}
-              particles={hasSession && usesGlassMaterial(config)}
+              particles={usesGlassMaterial(config)}
               ambientRef={ambientRef}
               shaderTuning={uiPrefs.islandShader}
               playbackWave={hasPlaybackWave}

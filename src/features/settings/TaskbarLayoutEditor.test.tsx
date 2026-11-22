@@ -4,6 +4,7 @@ import { act, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
 import { getDefaultConfig } from '../../app/tauriApi'
+import { normalizeTaskbarLayout, withTaskbarLayout } from '../../shared/lib/taskbarLayout'
 import type { AppConfig } from '../../shared/lib/types'
 import { TaskbarLayoutEditor } from './TaskbarLayoutEditor'
 
@@ -55,7 +56,7 @@ async function mountEditor() {
   const root = createRoot(container)
   const changes = vi.fn()
   function Harness() {
-    const [config, setConfig] = useState<AppConfig>(() => getDefaultConfig())
+    const [config, setConfig] = useState<AppConfig>(() => withTaskbarLayout(getDefaultConfig(), normalizeTaskbarLayout(null)))
     return <TaskbarLayoutEditor config={config} onChange={(next) => { changes(next); setConfig(next) }} />
   }
   await act(async () => root.render(<Harness />))

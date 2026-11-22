@@ -136,6 +136,10 @@ export function MusicModule({
       ? Math.round(media.durationMs * scrubRatio)
       : progressMs
   const trackKey = progressTrackKey(media)
+  const seekTo = (positionMs: number) => {
+    setNavigation(null)
+    onCommand({ seek: { positionMs } })
+  }
   const navigate = (direction: 'next' | 'previous') => {
     setNavigation({ id: ++navigationId.current, direction, fromTrackKey: trackKey, fromPositionMs: progressMs, requestedAt: Date.now() })
     onCommand(direction)
@@ -168,7 +172,7 @@ export function MusicModule({
     if (commit && seekTrackRef.current === trackKey && !seekSentRef.current && media.durationMs && media.canSeek) {
       seekSentRef.current = true
       const ratio = ratioFromPointer(event)
-      onCommand({ seek: { positionMs: Math.round(media.durationMs * ratio) } })
+      seekTo(Math.round(media.durationMs * ratio))
     }
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -190,6 +194,7 @@ export function MusicModule({
     event.currentTarget.setPointerCapture(event.pointerId)
     scrubbingRef.current = true
     seekTrackRef.current = trackKey
+    setNavigation(null)
     seekSentRef.current = false
     seekGestureIdRef.current = event.pointerId
     setScrubRatio(ratioFromPointer(event))
@@ -229,7 +234,7 @@ export function MusicModule({
     }
     event.preventDefault()
     event.stopPropagation()
-    onCommand({ seek: { positionMs: Math.min(duration, Math.max(0, target)) } })
+    seekTo(Math.min(duration, Math.max(0, target)))
   }
 
   const player: IslandMusicElement[] = layout?.zones.player ?? ['previous', 'artwork', 'transport', 'next']
@@ -245,7 +250,7 @@ export function MusicModule({
       const position = progressMs ?? media.positionMs
       const target = position == null ? null : Math.max(0, Math.min(duration, position + (element === 'seekBack' ? -10_000 : 10_000)))
       return <SeekStepButton direction={element} locale={locale} disabled={!media.canSeek || !duration || target == null || target === position}
-        onClick={() => { if (target != null) onCommand({ seek: { positionMs: target } }) }} />
+        onClick={() => { if (target != null) seekTo(target) }} />
     }
     if (element === 'artwork') return hasArtwork ? <MediaArtwork locale={locale} reducedMotion={reducedMotion} src={media.thumbnailDataUrl} title={title} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} /> : null
     if (element === 'transport') return hasArtwork ? null : <PlaybackButton locale={locale} reducedMotion={reducedMotion} playing={isPlaying} onClick={() => onCommand('play-pause')} disabled={!media.canPlay && !media.canPause} />

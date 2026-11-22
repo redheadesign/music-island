@@ -266,9 +266,18 @@ impl AppConfig {
 
 impl Default for AppConfig {
     fn default() -> Self {
+        #[derive(Deserialize)]
+        struct AppearanceDefaults {
+            width: u8,
+            scale: u8,
+            ui: Map<String, Value>,
+        }
+        let defaults: AppearanceDefaults =
+            serde_json::from_str(include_str!("../../../src/shared/lib/defaultAppearance.json"))
+                .expect("bundled appearance defaults");
         let mut plugins = PluginsConfig::default();
         plugins.apply_glass_default_once();
-        plugins.ui_preferences_mut().insert(PLAYBACK_WAVE_KEY.into(), true.into());
+        plugins.ui_preferences_mut().extend(defaults.ui);
         Self {
             schema_version: 2,
             taskbar: TaskbarConfig::default(),
@@ -283,8 +292,8 @@ impl Default for AppConfig {
             },
             layout: LayoutConfig {
                 size: WidgetSize::Medium,
-                width: default_width_percent(),
-                scale: 100,
+                width: defaults.width,
+                scale: defaults.scale,
                 density: Density::Balanced,
                 show_artwork: true,
                 show_title: true,

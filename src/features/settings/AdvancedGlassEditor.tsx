@@ -23,12 +23,8 @@ type PageProps = { config: AppConfig; locale: Locale; onChange: (next: AppConfig
 
 const surfaceNames = {
   body: { ru: 'Корпус островка', en: 'Island body' },
-  transport: { ru: 'Воспроизведение и смена трека', en: 'Playback and track changes' },
-  seek: { ru: 'Перемотка', en: 'Skip forward and back' },
-  reactions: { ru: 'Лайк и дизлайк', en: 'Like and dislike' },
-  modes: { ru: 'Перемешивание и повтор', en: 'Shuffle and repeat' },
-  volume: { ru: 'Громкость', en: 'Volume' },
-  actions: { ru: 'Кнопки островка и виджетов', en: 'Island and widget actions' },
+  transport: { ru: 'Воспроизведение и пауза', en: 'Play and pause' },
+  buttons: { ru: 'Кнопки островка', en: 'Island buttons' },
   usage: { ru: 'Лимиты ИИ', en: 'Assistant limits' },
   localServers: { ru: 'Локальные серверы', en: 'Local servers' },
   latestDictation: { ru: 'Последняя диктовка', en: 'Latest dictation' },
@@ -40,9 +36,9 @@ const surfaceNames = {
 } satisfies Record<GlassSurfaceId, Names>
 
 const islandSections: { title: Names; surfaces: GlassSurfaceId[] }[] = [
-  { title: { ru: 'Плеер', en: 'Player' }, surfaces: ['body', 'transport', 'seek', 'reactions', 'modes', 'volume'] },
+  { title: { ru: 'Плеер', en: 'Player' }, surfaces: ['body', 'transport', 'buttons'] },
   { title: { ru: 'Строка проигрывания', en: 'Playback bar' }, surfaces: ['progressTrack', 'progressFill'] },
-  { title: { ru: 'Кнопки и виджеты', en: 'Actions and widgets' }, surfaces: ['actions', 'usage', 'localServers', 'latestDictation', 'notices'] },
+  { title: { ru: 'Виджеты', en: 'Widgets' }, surfaces: ['usage', 'localServers', 'latestDictation', 'notices'] },
 ]
 const capsuleSections: typeof islandSections = [
   { title: { ru: 'Капсула диктовки', en: 'Dictation capsule' }, surfaces: ['dictation', 'dictationActions'] },
@@ -59,8 +55,7 @@ const fieldNames = {
   edge: { ru: 'Толщина кромки', en: 'Edge thickness' },
   background: { ru: 'Цвет подложки', en: 'Background color' },
   text: { ru: 'Текст и значки', en: 'Text and icons' },
-  endColor: { ru: 'Конец градиента', en: 'Gradient end' },
-  angle: { ru: 'Угол градиента', en: 'Gradient angle' },
+  brightness: { ru: 'Яркость заливки', en: 'Fill brightness' },
   radius: { ru: 'Скругление', en: 'Corner radius' },
   height: { ru: 'Высота', en: 'Height' },
   textSize: { ru: 'Размер текста', en: 'Text size' },
@@ -158,11 +153,10 @@ function SurfaceEditor({ surface, base, locale, saved = {}, onChange, children }
       {children}
       {GLASS_SURFACE_FIELDS[surface].map(field => {
         const inputId = id + field
-        const label = surface === 'progressFill' && field === 'background'
-          ? (ru ? 'Начало градиента' : 'Gradient start') : fieldNames[field][locale]
+        const label = fieldNames[field][locale]
         const reset = ru ? `Сбросить «${label}»` : `Reset ${label}`
         const changed = saved[field] !== undefined
-        const color = field === 'background' || field === 'text' || field === 'endColor'
+        const color = field === 'background' || field === 'text'
         let editor
         if (color) {
           const value = saved[field] ?? defaults[field]

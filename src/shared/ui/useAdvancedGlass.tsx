@@ -7,12 +7,8 @@ import field from './glisse-bezel.png?inline'
 // stay with the production component, including in the layout editor.
 const surfaces: Record<GlassSurfaceId, string[]> = {
   body: ['.island-card'],
-  transport: ['.play-button', '.media-button:not(.seek-step-button, .system-volume__button)'],
-  seek: ['.seek-step-button'],
-  reactions: ['.reaction-button:not(.playback-mode-button)'],
-  modes: ['.playback-mode-button'],
-  volume: ['.system-volume__button', '.system-volume__panel'],
-  actions: ['.island-actions .icon-button', '.island-plugin-button', '.island-local-servers button', '.island-latest-dictation button', '.island-update-rail button', '.wave-selection-chip button', '.direct-reload-button'],
+  transport: ['.play-button'],
+  buttons: ['.media-button:not(.play-button)', '.reaction-button', '.island-actions .icon-button', '.island-plugin-button', '.island-local-servers button', '.island-latest-dictation button', '.island-update-rail button', '.wave-selection-chip button', '.direct-reload-button'],
   usage: ['.usage-chip__compact-provider', '.usage-chip__provider'],
   localServers: ['.island-local-servers', '.island-preview__widget'],
   latestDictation: ['.island-latest-dictation'],
@@ -39,11 +35,12 @@ function paint(group: GlassSurfaceId, values: GlassSurfaceSettings, changed: Fie
     const transmission = Math.min(t, .55) * .91 + Math.max(t - .55, 0) * .55
     const reading = transmission * (1 - .62 * transmission)
     const top = 1 - Math.max(.14, 1 - .40 / Math.max(.01, transmission))
-    const detached = group === 'actions' || group === 'dictationActions'
+    const detached = group === 'dictationActions'
     const defaultAlpha = group === 'body' || group === 'dictation' || readingSurface.has(group) ? 1 - transmission : 1 - (detached ? reading : top)
     const alpha = changed.transparency !== undefined ? 1 - t : defaultAlpha
     const fill = `color-mix(in srgb, ${values.background} ${(alpha * 100).toFixed(3)}%, transparent)`
-    if (group !== 'progressFill') declarations.push(`background-color:${fill}`, `--island-lens-fill:${fill}`)
+    if (group === 'buttons' || group === 'transport' || group === 'progressTrack') declarations.push(`--island-lens-fill:${fill}`)
+    else declarations.push(`background-color:${fill}`)
     if (readingSurface.has(group)) declarations.push('background-image:none')
     if (group === 'dictation' || group === 'dictationActions') {
       declarations.push('background-color:transparent', `--island-optic-fill:${fill}`, `--advanced-recorder-fill:${fill}`)
@@ -68,11 +65,9 @@ function paint(group: GlassSurfaceId, values: GlassSurfaceSettings, changed: Fie
   if (group === 'progressFill' || group === 'progressTrack') {
     if (changed.radius !== undefined) declarations.push('border-radius:' + values.radius + 'px')
   }
-  if (group === 'progressFill' && (changed.background || changed.endColor || changed.angle !== undefined || changed.transparency !== undefined)) {
-    const start = changed.background ?? 'var(--island-progress-start)'
-    const end = changed.endColor ?? (changed.background ? `color-mix(in srgb,${start} 96%,black)` : 'var(--island-progress-end)')
-    const mix = (color: string) => `color-mix(in srgb,${color} ${100 - values.transparency}%,transparent)`
-    declarations.push(`background:linear-gradient(${values.angle}deg,${mix(start)},${mix(end)})`)
+  if (group === 'progressFill' && changed.brightness !== undefined) {
+    const amount = Math.abs(values.brightness - 100)
+    declarations.push('--progress-fill-tone:' + (values.brightness < 100 ? 'black' : 'white'), '--progress-fill-tone-weight:' + amount + '%')
   }
   return declarations
 }
@@ -139,34 +134,24 @@ export function useAdvancedGlass(raw: AdvancedGlassOverrides | undefined, base: 
           // while retaining the stock player's field until bend is edited.
           if (customOptic) rules.push(browser + ' > .island-glass-optic[data-active] > .lg-glass{backdrop-filter:' + filter + '}')
           if (group === 'dictationActions') rules.push(browser + ':not(:has(> .island-glass-optic)){backdrop-filter:' + filter + '}')
-        } else if (readingSurface.has(group) || group === 'actions') {
-          rules.push(browser + '{backdrop-filter:' + filter + '}')
-          if (group === 'actions') rules.push(selector + ':is(.island-surface button){backdrop-filter:' + filter + '}')
-        } else if (group === 'progressFill') {
-          // The fill can be completely opaque. Frost its artwork directly,
-          // keeping the overlaid time and title sharp at every transmission.
-          if (changed.frost !== undefined) declarations.push('filter:blur(' + values.frost + 'px)')
-          declarations.push('backdrop-filter:' + (refraction || 'none'))
+        } else if (readingSurface.has(group)) {
+          rules.push(browser + ',' + selector + ':is(.island-card *){backdrop-filter:' + filter + '}')
+        } else if (group === 'buttons' || group === 'transport' || group === 'progressTrack') {
+          declarations.push('--island-control-filter:' + filter)
+          if (group === 'buttons') {
+            const detached = selector.replaceAll(root, root + '[data-native-backdrop]')
+            rules.push(detached + ':not(.island-card *){--island-control-filter:none}')
+          }
         } else {
           declarations.push('backdrop-filter:' + filter)
         }
-        if (refraction) {
-          // HostBackdropBrush never exposes other apps’ pixels to WebView2.
-          // Refract our own broad material reflection there. Both the artwork
-          // and text stay outside this layer. No desktop capture or render loop.
+        if (refraction && isRecorder(group)) {
           const native = selector.replaceAll(root, root + '[data-native-backdrop]')
           const reflection = '{content:"";position:absolute;pointer-events:none;inset:0;border-radius:inherit;'
             + 'background:linear-gradient(165deg,transparent 46%,rgb(210 223 239 / .13) 75%,rgb(242 245 249 / .25) 82%,transparent 95%);'
             + 'opacity:1;filter:' + refraction + ';}'
-          if (isRecorder(group)) {
-            rules.push(native + ' > .island-glass-optic > .lg-glass::after' + reflection)
-            if (group === 'dictationActions') rules.push(native + ':not(:has(> .island-glass-optic))::after' + reflection)
-          } else if (readingSurface.has(group) || group === 'actions') {
-            rules.push(native + '::after' + reflection)
-          } else if (group === 'progressFill') {
-            // Even a fully opaque fill has a surface of its own to refract.
-            rules.push(selector + '::after' + reflection)
-          }
+          rules.push(native + ' > .island-glass-optic > .lg-glass::after' + reflection)
+          if (group === 'dictationActions') rules.push(native + ':not(:has(> .island-glass-optic))::after' + reflection)
         }
       }
       if (declarations.length) rules.push(selector + '{' + declarations.join(';') + '}')
@@ -182,7 +167,7 @@ export function useAdvancedGlass(raw: AdvancedGlassOverrides | undefined, base: 
     }
     const key = JSON.stringify(groups.map(id => [id, settings[id]]))
     const regionFrostKey = groups
-      .filter(id => settings[id]?.frost !== undefined && (['body','actions'].includes(id) || readingSurface.has(id) || isRecorder(id)))
+      .filter(id => settings[id]?.frost !== undefined && (['body','buttons'].includes(id) || readingSurface.has(id) || isRecorder(id)))
       .map(id => id + ':' + settings[id]!.frost).join(',')
     return {
       attributes: { 'data-advanced-glass-key': key, 'data-glass-scope': scopeId },

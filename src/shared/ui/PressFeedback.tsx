@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, type ButtonHTMLAttributes, type CSSProperties, type HTMLAttributes, type Ref } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type HTMLAttributes, type Ref } from 'react'
 import { normalizeIslandShader, type IslandShaderTuning } from '../lib/shaderTuning'
 import { IslandGlassOptic } from './IslandGlassOptic'
 import { IslandParticles } from './IslandParticles'
@@ -28,6 +28,22 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
   const surface = useRef<HTMLElement>(null)
   const layer = useRef<HTMLSpanElement>(null)
   const animations = useRef<Animation[]>([])
+  const [waveIntent, setWaveIntent] = useState<boolean | null>(null)
+  const wavePlaying = waveIntent ?? (playbackMotion !== false)
+  const hasPlayed = useRef(false)
+  useLayoutEffect(() => {
+    if (!playbackWave) hasPlayed.current = false
+    else if (wavePlaying) hasPlayed.current = true
+  }, [playbackWave, wavePlaying])
+  useEffect(() => {
+    if (waveIntent == null) return
+    if (!playbackWave || waveIntent === playbackMotion) {
+      setWaveIntent(null)
+      return
+    }
+    const timeout = window.setTimeout(() => setWaveIntent(null), 900)
+    return () => window.clearTimeout(timeout)
+  }, [playbackMotion, playbackWave, waveIntent])
   const clear = () => { animations.current.forEach((animation) => animation.cancel()); animations.current = [] }
   useEffect(() => {
     const onVisibility = () => {
@@ -41,6 +57,10 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
   const ripple = (x: number, y: number, direction: RippleDirection) => {
     const node = surface.current
     if (!node || !layer.current || document.hidden || !node.animate) return
+    if (glassOptic && playbackWave && playbackMotion !== undefined) {
+      setWaveIntent(direction === 'outward')
+      return
+    }
     const rect = node.getBoundingClientRect()
     if (!rect.width || !rect.height) return
     const cx = (x - rect.left) * node.clientWidth / rect.width
@@ -75,7 +95,8 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
               ...(shader.particleColor && { '--island-particle-ink': shader.particleColor, '--island-particle-soft-ink': shader.particleColor }),
             } as CSSProperties}
             data-playback-wave={playbackWave || undefined}
-            data-playback-motion={playbackMotion === false ? 'paused' : 'playing'}
+            data-playback-motion={wavePlaying ? 'playing' : 'paused'}
+            data-wave-return={(!wavePlaying && hasPlayed.current) || undefined}
           >
             {particles && shader.particleCount > 0 ? <IslandParticles count={shader.particleCount} /> : null}
           </span>

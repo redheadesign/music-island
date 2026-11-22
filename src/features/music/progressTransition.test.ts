@@ -90,6 +90,18 @@ describe('progress visual transition', () => {
     expect(state.visible.ratio).toBe(.05)
   })
 
+  it('cancels a track entry fade for a seek and does not restart it on release', () => {
+    const entering = completeProgressTransition(
+      reconcileProgressTransition(initialProgressTransition(frame()), frame('b', .04, 4_000), null, false),
+    )
+    expect(entering.entering).toBe(true)
+    const scrubbed = reconcileProgressTransition(entering, frame('b', .72, 72_000), null, true)
+    const released = reconcileProgressTransition(scrubbed, frame('b', .72, 72_000), null, false)
+    expect(released.entering).toBe(false)
+    expect(released.generation).toBe(entering.generation)
+    expect(released.visible.ratio).toBe(.72)
+  })
+
   it('does not animate on a command until the provider confirms a change', () => {
     const state = reconcileProgressTransition(initialProgressTransition(frame()), frame(), navigation('next'), false, 1_100)
     expect(state.phase).toBe('stable')

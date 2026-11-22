@@ -20,6 +20,7 @@ export interface ProgressTransition {
   visible: ProgressFrame
   pending: ProgressFrame | null
   phase: 'stable' | 'exiting'
+  entering: boolean
   direction: 'next' | 'previous'
   consumedNavigation: number | null
   awaitingIdentityNavigation: number | null
@@ -38,6 +39,7 @@ export function initialProgressTransition(frame: ProgressFrame): ProgressTransit
     visible: frame,
     pending: null,
     phase: 'stable',
+    entering: false,
     direction: 'next',
     consumedNavigation: null,
     awaitingIdentityNavigation: null,
@@ -58,6 +60,7 @@ export function reconcileProgressTransition(
       visible: frame,
       pending: null,
       phase: 'stable',
+      entering: false,
       consumedNavigation: navigation?.id ?? state.consumedNavigation,
       awaitingIdentityNavigation: null,
     }
@@ -90,6 +93,7 @@ export function reconcileProgressTransition(
   if (frame.trackKey !== state.visible.trackKey || restartedPrevious) {
     return {
       ...state, pending: frame, phase: 'exiting',
+      entering: false,
       direction: freshNavigation?.direction ?? 'next',
       consumedNavigation: navigation?.id ?? state.consumedNavigation,
       awaitingIdentityNavigation: restartedPrevious
@@ -111,6 +115,7 @@ export function completeProgressTransition(state: ProgressTransition): ProgressT
     visible: state.pending,
     pending: null,
     phase: 'stable',
+    entering: true,
     awaitingIdentityNavigation,
     generation: state.generation + 1,
   }
