@@ -445,8 +445,11 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
     const fill = canvasElement.querySelector('.progress-fill')!
     const frame = canvasElement.querySelector('.progress-visual')!
     const backdrop = canvasElement.querySelector('.island-card .island-feedback__ambient')!
-    await expect(fill.getBoundingClientRect().height).toBeCloseTo(frame.getBoundingClientRect().height)
-    await expect(getComputedStyle(frame, '::before').content).toBe('none')
+    const groove = getComputedStyle(frame, '::before')
+    const fillStyle = getComputedStyle(fill)
+    await expect(groove.height).toBe(fillStyle.height)
+    await expect(groove.top).toBe(fillStyle.top)
+    await expect(fill.getBoundingClientRect().height).toBeLessThan(frame.getBoundingClientRect().height / 4)
     await expect(getComputedStyle(frame, '::after').content).toBe('none')
     if (!forcedColors && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
       await expect(getComputedStyle(backdrop, '::before').backgroundImage).toContain('radial-gradient')
