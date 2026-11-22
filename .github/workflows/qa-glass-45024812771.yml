@@ -2,7 +2,7 @@ name: Windows acceptance for packaged glass
 
 on:
   push:
-    branches: ['codex/qa-island-45024261038']
+    branches: ['codex/qa-island-45024812771']
 
 permissions:
   contents: read

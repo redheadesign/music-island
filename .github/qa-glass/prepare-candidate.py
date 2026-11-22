@@ -7,14 +7,14 @@ import subprocess
 import zipfile
 
 source = 'repos/redheadesign/music-island/actions'
-run = 45024261038
+run = 45024812771
 listing = json.loads(subprocess.check_output(['gh', 'api', f'{source}/runs/{run}/artifacts']))
 entry, = [item for item in listing['artifacts']
           if item['name'].startswith('music-island-windows-x64-') and not item['expired']]
 artifact_number = entry['id']
 artifact = json.loads(subprocess.check_output(['gh', 'api', f'{source}/artifacts/{artifact_number}']))
 assert artifact['workflow_run']['id'] == run
-assert artifact['workflow_run']['head_sha'] == 'cbf9095bc3b52326880d691a73234f6cc345f75d'
+assert artifact['workflow_run']['head_sha'] == 'd430620db41a8fb9344936a6f46c01c8a88584d4'
 assert re.fullmatch(r'sha256:[a-f0-9]{64}', artifact['digest'])
 destination = Path('.local/candidate').resolve()
 with TemporaryFile() as stream:
