@@ -1,7 +1,7 @@
 """Run an exact portable build against a bounded, synthetic Windows background."""
 import ctypes as ct
 from ctypes import wintypes as wt
-import hashlib, json, os, socket, sqlite3, subprocess, sys, threading, time, winreg
+import hashlib, json, os, random, socket, sqlite3, subprocess, sys, threading, time, winreg
 from pathlib import Path
 import tkinter as tk
 from PIL import Image, ImageDraw, ImageGrab, ImageOps, ImageTk, ImageChops, ImageStat
@@ -26,9 +26,20 @@ appdir.mkdir(parents=True)
 for d in ['webview','local','temp']: (profile/d).mkdir()
 env = dict(os.environ, APPDATA=str(profile/'roaming'), LOCALAPPDATA=str(profile/'local'), TEMP=str(profile/'temp'),TMP=str(profile/'temp'),
     WEBVIEW2_USER_DATA_FOLDER=str(profile/'webview'))
-with socket.socket() as s:
-    s.bind(('127.0.0.1',0)); port=s.getsockname()[1]
-env['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS']=f'--remote-debugging-port={port} --remote-debugging-address=127.0.0.1'
+port = None
+for proposed_port in random.sample(range(42001, 48000), 16):
+    try:
+        with socket.socket() as reserve:
+            reserve.bind(('127.0.0.1', proposed_port))
+        port = proposed_port
+        break
+    except OSError:
+        continue
+assert port
+env['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = (
+    f'--remote-debugging-port={port} --remote-debugging-address=127.0.0.1 '
+    f'--enable-logging --log-file="{out / "webview-runtime.log"}"'
+)
 env.update(HTTPS_PROXY='http://127.0.0.1:9', HTTP_PROXY='http://127.0.0.1:9', NO_PROXY='localhost,127.0.0.1')
 user32=ct.WinDLL('user32',use_last_error=True)
 user32.SetWindowPos.argtypes=[wt.HWND,wt.HWND,ct.c_int,ct.c_int,ct.c_int,ct.c_int,wt.UINT]
@@ -65,7 +76,10 @@ paint('photo');root.update();root.lift()
 cmdline=subprocess.check_output(['tasklist','/fi','imagename eq music-island.exe','/fo','csv','/nh'],text=True,errors='replace')
 assert '"music-island.exe"' not in cmdline.lower(), 'Another running instance owns the desktop'
 start=subprocess.STARTUPINFO();start.dwFlags |= subprocess.STARTF_USESHOWWINDOW;start.wShowWindow=0
-app=subprocess.Popen([str(exe),'--startup'],cwd=exe.parent,env=env,startupinfo=start)
+appout=(out/'app.stdout.log').open('wb')
+apperr=(out/'app.stderr.log').open('wb')
+app=subprocess.Popen([str(exe),'--startup'],cwd=exe.parent,env=env,startupinfo=start,
+                     stdout=appout,stderr=apperr,creationflags=subprocess.CREATE_NO_WINDOW)
 script=work/'.github/qa-glass/check-native-glass-controls.mjs'
 log=(out/'webview.log').open('w',encoding='utf-8')
 qa=subprocess.Popen(['node',str(script),str(port),str(out),str(app.pid),*sys.argv[4:]],cwd=work,stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
@@ -201,8 +215,13 @@ def tick():
 root.after(40,tick)
 try: root.mainloop()
 finally:
+    print(f'Candidate status at test completion: {app.poll()}; JS driver: {qa.poll()}', flush=True)
     if qa.poll() is None: qa.terminate()
     if app.poll() is None: app.terminate();app.wait(timeout=10)
-    root.destroy();log.close()
+    root.destroy();log.close();appout.close();apperr.close()
+    for diagnostic in ['app.stderr.log', 'profile/roaming/Music Island/logs/app.log', 'webview-runtime.log']:
+        file = out/diagnostic
+        if file.exists():
+            print(diagnostic, *file.read_text('utf-8',errors='replace').splitlines()[-16:], sep='\n')
 print((out/'webview.log').read_text('utf-8'),flush=True)
 sys.exit(qa.wait(timeout=10))

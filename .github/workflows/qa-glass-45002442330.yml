@@ -70,4 +70,7 @@ jobs:
             .local/glass-session-*/webview.log
             .local/glass-session-*/native-acceptance.json
             .local/glass-session-*/fixture-events.txt
+            .local/glass-session-*/profile/roaming/Music Island/logs/app.log
+            .local/glass-session-*/*.stderr.log
+            .local/glass-session-*/webview-runtime.log
             .local/candidate/release/SHA256.txt

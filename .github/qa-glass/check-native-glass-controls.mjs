@@ -36,7 +36,12 @@ async function fixture(message) {
     return response === message
   }, 3500)
 }
-const browser = await until(() => chromium.connectOverCDP('http://127.0.0.1:' + port, { timeout: 1500 }), 35000)
+const browser = await until(async () => {
+  for (const host of ['127.0.0.1', '[::1]']) {
+    try { return await chromium.connectOverCDP('http://' + host + ':' + port, { timeout: 1200 }) } catch {}
+  }
+  return null
+}, 50000)
 const pages = async () => Object.fromEntries(await Promise.all(browser.contexts()[0].pages()
   .filter(page => /^https?:\/\/tauri\.localhost(?:\/|$)/.test(page.url()))
   .map(async page => [await page.evaluate(() => window.__TAURI_INTERNALS__?.metadata?.currentWindow?.label), page])))
