@@ -46,8 +46,6 @@ export interface GlassSurfaceSettings {
 
 export type AdvancedGlassOverrides = Partial<Record<GlassSurfaceId, Partial<GlassSurfaceSettings>>>
 
-const progressFillRadius = { min: 0, max: 2, step: .25, unit: 'px' }
-
 export function getSurfaceDefaults(id: GlassSurfaceId, base: GlassMaterial): GlassSurfaceSettings {
   const nested = ['transport', 'buttons', 'progressTrack', 'progressFill'].includes(id)
   return {
@@ -55,7 +53,7 @@ export function getSurfaceDefaults(id: GlassSurfaceId, base: GlassMaterial): Gla
     rim: .13, transparency: id === 'progressFill' ? 0 : base.transparency,
     parallax: base.parallax, highlight: base.highlight, edge: base.edge,
     background: id === 'progressFill' ? '#6d6d69' : '#080808', text: '#f4f4f1',
-    height: 64, radius: id === 'progressFill' ? progressFillRadius.max : 32, textSize: 18, brightness: 100,
+    height: 64, radius: 32, textSize: 18, brightness: 100,
   }
 }
 
@@ -82,10 +80,6 @@ export const GLASS_NUMERIC_RANGES = {
   brightness: { min: 20, max: 180, step: 1, unit: '%' },
 }
 
-export function getGlassNumericRange(surface: GlassSurfaceId, field: keyof typeof GLASS_NUMERIC_RANGES) {
-  return surface === 'progressFill' && field === 'radius' ? progressFillRadius : GLASS_NUMERIC_RANGES[field]
-}
-
 /** Only finite bounded numbers and opaque sRGB colors enter CSS or the compositor. */
 export function normalizeAdvancedGlass(value: unknown): AdvancedGlassOverrides {
   const result: AdvancedGlassOverrides = {}
@@ -106,7 +100,7 @@ export function normalizeAdvancedGlass(value: unknown): AdvancedGlassOverrides {
         continue
       }
       if (typeof input !== 'number' || !Number.isFinite(input)) continue
-      const { min, max, step } = getGlassNumericRange(group, key)
+      const { min, max, step } = GLASS_NUMERIC_RANGES[key]
       fields[key] = Number((Math.round(Math.min(max, Math.max(min, input)) / step) * step).toFixed(2))
     }
     if (Object.keys(fields).length) result[group] = fields

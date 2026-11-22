@@ -216,7 +216,6 @@ export const Pinned: StoryObj<typeof meta> = { name: 'Закреплённый �
 export const Glass: StoryObj<typeof meta> = { name: 'Стеклянный островок', globals: { interfaceTheme: 'glass' } }
 export const FactoryGlass: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · заводской пресет', args: { factoryAppearance: true, width: 117, scale: 82, localServersMode: 'expanded' },
-  parameters: { workshop: { backdrop: seaStack } },
   play: async ({ canvasElement }) => {
     const surface = await waitFor(() => {
       const node = canvasElement.querySelector<HTMLElement>('.island-root[data-interface-palette="grove"]')
@@ -238,7 +237,7 @@ export const AdvancedGlassSurfaces: StoryObj<typeof meta> = {
       transport: { rim: .23, bend: .45, dispersion: .4, frost: 1 },
       buttons: { bend: .45, dispersion: .4, frost: 7.5 },
       progressTrack: { radius: 14, height: 48, text: '#fff0d0', textSize: 15, frost: 12 },
-      progressFill: { radius: 1.25, brightness: 135 },
+      progressFill: { radius: 6, brightness: 135 },
     },
   },
   play: async ({ canvasElement }) => {
@@ -278,7 +277,7 @@ export const AdvancedGlassSurfaces: StoryObj<typeof meta> = {
     await expect(getComputedStyle(track).height).toBe('48px')
     await expect(getComputedStyle(track).borderRadius).toBe('14px')
     await expect(getComputedStyle(track.querySelector('.progress-content')!).color).toBe('rgb(255, 240, 208)')
-    await expect(getComputedStyle(fill).borderRadius).toBe('1.25px')
+    await expect(getComputedStyle(fill).borderRadius).toBe('6px')
     await expect(getComputedStyle(fill).getPropertyValue('--progress-fill-tone-weight').trim()).toBe('35%')
   },
 }
@@ -364,10 +363,7 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
         await expect(documentView.getComputedStyle(button).backdropFilter).toBe('none')
       }
       await expect(documentView.getComputedStyle(settings).backdropFilter).toContain('blur(')
-      await expect(documentView.getComputedStyle(seek).backgroundColor).not.toBe(documentView.getComputedStyle(next).backgroundColor)
-      await expect(documentView.getComputedStyle(pause).backgroundColor).not.toBe(documentView.getComputedStyle(next).backgroundColor)
-      const fill = seek.querySelector('.progress-fill')!
-      await expect(parseFloat(documentView.getComputedStyle(fill).height)).toBeLessThan(seek.getBoundingClientRect().height / 4)
+      await expect(documentView.getComputedStyle(next).backgroundColor).toBe(documentView.getComputedStyle(seek).backgroundColor)
       for (const reaction of [like, dislike]) {
         await expect(documentView.getComputedStyle(reaction).backdropFilter).toBe(documentView.getComputedStyle(previous).backdropFilter)
         await expect(documentView.getComputedStyle(reaction).backgroundColor).toBe(documentView.getComputedStyle(previous).backgroundColor)
@@ -377,7 +373,7 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
     }
     await expect(documentView.getComputedStyle(settings).boxShadow).not.toBe('none')
     if (!forcedColors && !documentView.matchMedia('(prefers-reduced-transparency: reduce)').matches) {
-      await expect(documentView.getComputedStyle(settings).backgroundColor).not.toBe(documentView.getComputedStyle(previous).backgroundColor)
+      await expect(documentView.getComputedStyle(settings).backgroundColor).toBe(documentView.getComputedStyle(previous).backgroundColor)
     }
     await userEvent.click(previous)
     await expect(onCommand).toHaveBeenLastCalledWith('previous')
@@ -445,11 +441,8 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
     const fill = canvasElement.querySelector('.progress-fill')!
     const frame = canvasElement.querySelector('.progress-visual')!
     const backdrop = canvasElement.querySelector('.island-card .island-feedback__ambient')!
-    const groove = getComputedStyle(frame, '::before')
-    const fillStyle = getComputedStyle(fill)
-    await expect(groove.height).toBe(fillStyle.height)
-    await expect(groove.top).toBe(fillStyle.top)
-    await expect(fill.getBoundingClientRect().height).toBeLessThan(frame.getBoundingClientRect().height / 4)
+    await expect(fill.getBoundingClientRect().height).toBeCloseTo(frame.getBoundingClientRect().height)
+    await expect(getComputedStyle(frame, '::before').content).toBe('none')
     await expect(getComputedStyle(frame, '::after').content).toBe('none')
     if (!forcedColors && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
       await expect(getComputedStyle(backdrop, '::before').backgroundImage).toContain('radial-gradient')

@@ -353,7 +353,7 @@ export const SeekGesture: Story = {
       releasePointerCapture: { configurable: true, value: (id: number) => captured.delete(id) },
     })
     const pointer = (type: string, ratio: number) => {
-      const rect = seek.querySelector('.progress-visual')!.getBoundingClientRect()
+      const rect = seek.getBoundingClientRect()
       seek.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 41, pointerType: 'mouse', button: 0, clientX: rect.left + rect.width * ratio, clientY: rect.top + rect.height / 2 }))
     }
     try {

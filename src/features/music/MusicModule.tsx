@@ -160,10 +160,7 @@ export function MusicModule({
   ) : null
 
   const ratioFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
-    // The visible rail may have an inset while the entire button handles input.
-    const rail = event.currentTarget.querySelector('.progress-visual')?.getBoundingClientRect()
-    const rect = rail?.width ? rail : event.currentTarget.getBoundingClientRect()
-    if (!rect.width) return 0
+    const rect = event.currentTarget.getBoundingClientRect()
     return Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1)
   }
 

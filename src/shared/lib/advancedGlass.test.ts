@@ -23,7 +23,7 @@ describe('per-surface glass', () => {
       localServers: { frost: 32, dispersion: .8 }, progressFill: { radius: 7, dispersion: .4 },
     })).toEqual({
       transport: { frost: 5.7 }, buttons: { bend: .25, frost: 7.5 },
-      localServers: { frost: 32 }, progressFill: { radius: 2 },
+      localServers: { frost: 32 }, progressFill: { radius: 7 },
     })
     expect(normalizeAdvancedGlass({ reactions: { frost: 7.5 }, buttons: { frost: 0 } })).toEqual({ buttons: { frost: 0 } })
   })

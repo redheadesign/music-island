@@ -1,9 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises'
-import assert from 'node:assert/strict'
 import path from 'node:path'
 import { chromium } from 'playwright-core'
 import { preview } from 'vite'
-import { checkGlassFrost, checkIslandMaterialContrast, checkIslandWidgetTransmission, checkRecorderContrast } from './check-glass-frost.mjs'
+import { checkGlassFrost, checkIslandWidgetTransmission, checkRecorderContrast } from './check-glass-frost.mjs'
 
 const criticalStories = [
   'foundations-interfacetheme--third-theme', 'screens-settings--retry-failed-save', 'screens-settings--unreadable-profile',
@@ -81,21 +80,6 @@ try {
       }
       if (id === 'screens-island--glass-without-cover') {
         await checkGlassFrost(page)
-      }
-      if (id === 'screens-island--factory-glass') {
-        await checkIslandMaterialContrast(page)
-        const target = page.locator('.progress-track')
-        const initial = Number(await target.getAttribute('aria-valuenow'))
-        const duration = Number(await target.getAttribute('aria-valuemax'))
-        const rail = await target.locator('.progress-visual').boundingBox()
-        assert.ok(rail && duration > 0, 'Expected a seekable glass rail')
-        await page.mouse.click(Math.floor(rail.x), rail.y + rail.height / 2)
-        await page.waitForFunction(() => document.querySelector('.progress-track')?.getAttribute('aria-valuenow') === '0')
-        await page.mouse.click(Math.ceil(rail.x + rail.width), rail.y + rail.height / 2)
-        await page.waitForFunction(end => Number(document.querySelector('.progress-track')?.getAttribute('aria-valuenow')) === end, duration)
-        await page.mouse.click(rail.x + rail.width * initial / duration, rail.y + rail.height / 2)
-        await page.mouse.move(2, 2)
-        await page.waitForFunction(() => getComputedStyle(document.querySelector('.progress-content--track')).opacity === '1')
       }
       if (id === 'screens-island--glass-widget-panels') {
         await checkIslandWidgetTransmission(page)
