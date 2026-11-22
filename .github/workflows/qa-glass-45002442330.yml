@@ -1,0 +1,73 @@
+name: Windows acceptance for packaged glass
+
+on:
+  push:
+    branches: ['codex/qa-island-45002442330']
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.15.0'
+          package-manager-cache: false
+      - name: Download and verify the exact candidate
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/qa-glass/prepare-candidate.py
+          if ($LASTEXITCODE) { throw 'Candidate integrity check failed' }
+      - name: Prepare the desktop test tools
+        shell: pwsh
+        run: |
+          npm ci
+          if ($LASTEXITCODE) { throw 'Frontend test dependencies could not be installed' }
+          python -m pip install --disable-pip-version-check Pillow
+          if ($LASTEXITCODE) { throw 'Screen capture dependencies could not be installed' }
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          Import-Module (Join-Path $vs 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
+          Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          Push-Location '.github/qa-glass'
+          try {
+            cl.exe /nologo /std:c++20 /EHsc /O2 /Fe:smtc-fixture.exe smtc.cpp runtimeobject.lib windowsapp.lib user32.lib shell32.lib
+            if ($LASTEXITCODE) { throw 'The SMTC fixture could not compile' }
+          } finally { Pop-Location }
+      - name: Native playback and glass acceptance
+        id: native
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path '.local' -Force | Out-Null
+          python .github/qa-glass/glass-dwm-audit.py '.local/candidate/release/music-island.exe' '85bf5267a3f2967646c9a9e946201f2de5baef0ddda02e30b6a7d7f394d0a5ae' '.local/glass-session-real-smtc'
+          if ($LASTEXITCODE) { throw 'Native playback or rendering check failed' }
+      - name: Native rendering with controlled media events
+        if: steps.native.outcome == 'failure'
+        shell: pwsh
+        run: |
+          python .github/qa-glass/glass-dwm-audit.py '.local/candidate/release/music-island.exe' '85bf5267a3f2967646c9a9e946201f2de5baef0ddda02e30b6a7d7f394d0a5ae' '.local/glass-session-simulated-smtc' --synthetic
+          if ($LASTEXITCODE) { throw 'Packaged UI acceptance failed' }
+      - name: Upload Windows acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: windows-glass-acceptance
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            .local/glass-session-*/*.png
+            .local/glass-session-*/webview.log
+            .local/glass-session-*/native-acceptance.json
+            .local/glass-session-*/fixture-events.txt
+            .local/candidate/release/SHA256.txt
