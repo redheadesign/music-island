@@ -105,6 +105,9 @@ try {
       try {
         await fixture('paint photo')
         await fixture('capture native-factory')
+        await fixture('paint white')
+        await fixture('capture native-over-white')
+        await fixture('paint photo')
         log.desktopCapture = true
       } catch (error) {
         log.desktopCapture = error.message
@@ -190,7 +193,7 @@ try {
         islandShader: { particleCount: 11, particleSpeed: 1.35, particleSize: 1.35, particleColor: '#77bbff' },
         advancedGlass: { ...factory.ui.advancedGlass,
           buttons: { frost: 8, bend: 0.35, dispersion: 0.36 },
-          progressTrack: { frost: 17, radius: 14 }, progressFill: { radius: 5, brightness: 128 },
+          progressTrack: { frost: 17, radius: 14 }, progressFill: { radius: 1.25, brightness: 128 },
         },
       })
       await preview(custom)
@@ -198,7 +201,7 @@ try {
       const glass = await island.evaluate(el => {
         const read = selector => {
           const css = getComputedStyle(el.querySelector(selector))
-          return { filter: css.backdropFilter, frost: css.getPropertyValue('--glass-region-frost'), radius: css.borderRadius }
+          return { filter: css.backdropFilter, frost: css.getPropertyValue('--glass-region-frost'), radius: css.borderRadius, height: css.height }
         }
         return { seek: read('.seek-step-button'), track: read('.progress-track'),
           fill: read('.progress-fill'), outside: read('.island-actions .icon-button') }
@@ -206,7 +209,8 @@ try {
       assert.match(glass.seek.filter, /^blur\(8px\) url/)
       assert.equal(glass.track.filter, 'blur(17px)')
       assert.equal(glass.track.radius, '14px')
-      assert.equal(glass.fill.radius, '5px')
+      assert.equal(glass.fill.radius, '1.25px')
+      assert.equal(glass.fill.height, '4px')
       assert.equal(glass.outside.filter, 'none')
       assert.equal(Number(glass.outside.frost), 0.25)
       if (log.desktopCapture === true) await fixture('capture native-adjusted')

@@ -58,7 +58,9 @@ root.geometry(f'{w}x{h}+{x}+{y}')
 photo=ImageOps.fit(Image.open(work/'src/assets/preview-sea-stack.webp').convert('RGB'),(w,h))
 def pattern(kind):
     im=photo.copy()
-    if kind.startswith('fine'):
+    if kind=='white':
+        im = Image.new('RGB', (w,h), 'white')
+    elif kind.startswith('fine'):
         draw=ImageDraw.Draw(im)
         for n in range(0,w,4):
             col=(219,219,219) if (n//4+(kind=='fineB'))%2 else (34,34,34)

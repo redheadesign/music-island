@@ -2,7 +2,7 @@ name: Windows acceptance for packaged glass
 
 on:
   push:
-    branches: ['codex/qa-island-45002442330']
+    branches: ['codex/qa-island-45024261038']
 
 permissions:
   contents: read
@@ -49,13 +49,15 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path '.local' -Force | Out-Null
-          python .github/qa-glass/glass-dwm-audit.py '.local/candidate/release/music-island.exe' '85bf5267a3f2967646c9a9e946201f2de5baef0ddda02e30b6a7d7f394d0a5ae' '.local/glass-session-real-smtc'
+          $candidateSha = ((Get-Content -LiteralPath '.local/candidate/release/SHA256.txt' -Raw).Trim() -split '\s+')[0]
+          python .github/qa-glass/glass-dwm-audit.py '.local/candidate/release/music-island.exe' $candidateSha '.local/glass-session-real-smtc'
           if ($LASTEXITCODE) { throw 'Native playback or rendering check failed' }
       - name: Native rendering with controlled media events
         if: steps.native.outcome == 'failure'
         shell: pwsh
         run: |
-          python .github/qa-glass/glass-dwm-audit.py '.local/candidate/release/music-island.exe' '85bf5267a3f2967646c9a9e946201f2de5baef0ddda02e30b6a7d7f394d0a5ae' '.local/glass-session-simulated-smtc' --synthetic
+          $candidateSha = ((Get-Content -LiteralPath '.local/candidate/release/SHA256.txt' -Raw).Trim() -split '\s+')[0]
+          python .github/qa-glass/glass-dwm-audit.py '.local/candidate/release/music-island.exe' $candidateSha '.local/glass-session-simulated-smtc' --synthetic
           if ($LASTEXITCODE) { throw 'Packaged UI acceptance failed' }
       - name: Upload Windows acceptance evidence
         if: always()
