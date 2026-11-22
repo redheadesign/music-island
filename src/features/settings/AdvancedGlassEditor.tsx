@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import {
-  GLASS_NUMERIC_RANGES, GLASS_SURFACE_FIELDS, getSurfaceDefaults, normalizeAdvancedGlass, type AdvancedGlassOverrides,
+  GLASS_SURFACE_FIELDS, getGlassNumericRange, getSurfaceDefaults, normalizeAdvancedGlass, type AdvancedGlassOverrides,
   type GlassSurfaceId, type GlassSurfaceSettings,
 } from '../../shared/lib/advancedGlass'
 import type { GlassMaterial } from '../../shared/lib/glassMaterial'
@@ -167,7 +167,7 @@ function SurfaceEditor({ surface, base, locale, saved = {}, onChange, children }
               onChange={event => onChange({ ...saved, [field]: event.currentTarget.value })} />
           </label>
         } else {
-          const { min, max, step, unit } = GLASS_NUMERIC_RANGES[field]
+          const { min, max, step, unit } = getGlassNumericRange(surface, field)
           const value = saved[field] ?? defaults[field]
           const displayed = value.toLocaleString(locale, { maximumFractionDigits: 2 }) + (unit === 'px' ? ' px' : unit)
           editor = <>

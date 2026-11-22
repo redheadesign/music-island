@@ -45,47 +45,47 @@
     },
     "advancedGlass": {
       "body": {
-        "frost": 11.7,
+        "frost": 18,
         "transparency": 69,
-        "background": "#828282",
+        "background": "#14171b",
         "text": "#ffffff"
       },
       "transport": {
         "bend": 0,
         "dispersion": 0,
         "frost": 5.7,
-        "transparency": 81,
-        "background": "#000000"
+        "transparency": 82,
+        "background": "#495259"
       },
       "usage": {
         "frost": 32,
-        "transparency": 31,
-        "background": "#787878"
+        "transparency": 34,
+        "background": "#15181b"
       },
       "localServers": {
         "frost": 32,
-        "transparency": 31,
-        "background": "#787878"
+        "transparency": 34,
+        "background": "#15181b"
       },
       "latestDictation": {
         "frost": 32,
-        "transparency": 31,
-        "background": "#787878"
+        "transparency": 34,
+        "background": "#15181b"
       },
       "notices": {
         "frost": 32,
-        "transparency": 31,
-        "background": "#787878"
+        "transparency": 34,
+        "background": "#15181b"
       },
       "progressTrack": {
         "bend": 0.28,
         "dispersion": 0.08,
         "frost": 19.7,
-        "transparency": 72,
+        "transparency": 56,
         "parallax": 0,
         "highlight": 42,
         "edge": 0,
-        "background": "#808080"
+        "background": "#121417"
       },
       "buttons": {
         "background": "#000000",

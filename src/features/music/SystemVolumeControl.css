@@ -24,15 +24,17 @@
 }
 .system-volume__panel[data-side='right'] { left: 100%; transform-origin: left center; }
 .system-volume__panel[data-side='left'] { right: 100%; transform-origin: right center; }
+.system-volume__panel:is(:focus-within, :hover) {
+  --control-value: color-mix(in srgb, var(--accent) 80%, white);
+}
 [data-interface-theme='glass'] .system-volume__panel {
-  background: var(--glass-control-sheen) var(--island-lens-fill, var(--glass-reading-fill));
+  background: var(--glass-sheen) var(--island-rail-fill, var(--glass-reading-fill));
+  --control-track: var(--island-rail-track, var(--control-off));
+  --control-value: var(--island-rail-ink, var(--fg-primary));
 }
 .system-volume__panel input.range-slider.range-slider[type='range'] {
   --range-thumb-size: var(--space-3);
   --range-track-size: var(--space-1);
-}
-.system-volume__panel:focus-within, .system-volume__panel:hover {
-  --control-value: color-mix(in srgb, var(--accent) 80%, white);
 }
 
 @media (prefers-reduced-motion: no-preference) {

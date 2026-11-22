@@ -106,6 +106,47 @@ function luminance(rgb) {
   }).reduce((sum, channel) => sum + channel, 0)
 }
 
+export async function checkIslandMaterialContrast(page) {
+  const region = page.locator('.workshop-stage')
+  const original = await region.getAttribute('style')
+  const targets = ['.progress-content--track', '.island-settings-button', '.island-local-servers__address span']
+  const patches = await Promise.all(targets.map(async selector => {
+    const target = page.locator(selector).first()
+    const rect = await target.boundingBox()
+    assert.ok(rect, 'Missing ' + selector)
+    const ink = await target.evaluate(el => getComputedStyle(el).color.match(/[\d.]+/g).slice(0, 3).map(Number))
+    return { selector, ink, clip: { x: Math.floor(rect.x + rect.width / 2), y: Math.floor(rect.y + rect.height / 2), width: 3, height: 3 } }
+  }))
+  const mask = await page.addStyleTag({ content: `
+    .progress-content--track .marquee, .island-settings-button svg { visibility: hidden !important; }
+    .island-local-servers__address span { opacity: 0 !important; }
+    .island-feedback__ambient { visibility: hidden !important; }
+  ` })
+  async function sample(background) {
+    await region.evaluate((el, value) => el.style.setProperty('background', value, 'important'), background)
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    const screenshot = await page.screenshot()
+    return Promise.all(patches.map(({ clip }) => sharp(screenshot)
+      .extract({ left: clip.x, top: clip.y, width: clip.width, height: clip.height })
+      .resize(1, 1).removeAlpha().raw().toBuffer()))
+  }
+  try {
+    const bright = await sample('#fff')
+    const dark = await sample('#141414')
+    for (const [i, { ink, selector }] of patches.entries()) {
+      const ratio = (luminance(ink) + .05) / (luminance(bright[i]) + .05)
+      assert.ok(ratio >= 4.5, `${selector} contrast over white: ${ratio.toFixed(2)}:1`)
+      assert.ok(bright[i][0] - dark[i][0] > 18, `${selector} no longer transmits the backdrop`)
+    }
+  } finally {
+    await region.evaluate((el, style) => {
+      if (style === null) el.removeAttribute('style')
+      else el.setAttribute('style', style)
+    }, original)
+    await mask.evaluate(el => el.remove())
+  }
+}
+
 // Small dictated text must remain readable over a bright document, including
 // the tentative words that are drawn with a different emphasis.
 export async function checkRecorderContrast(page) {

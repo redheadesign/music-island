@@ -66,6 +66,10 @@ float4 pixel(float4 position : SV_POSITION) : SV_TARGET {
     float2 displaced = position.xy + bodyOrigin - normal * (strength * bend * rim * rim);
     float2 fringe = normal * (strength * dispersion * rim);
     float3 color = spectralSample(displaced, fringe);
+    // Compress bright content under the player while preserving its hue.
+    // Reuse the sample already fetched for the lens.
+    float luma = dot(color, float3(.2126, .7152, .0722));
+    color *= 1. - .24 * smoothstep(.38, 1., luma);
     float alpha = opacity * coverage;
     return float4(color * alpha, alpha);
 }
