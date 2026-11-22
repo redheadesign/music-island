@@ -48,6 +48,9 @@ const pages = async () => Object.fromEntries(await Promise.all(browser.contexts(
 const main = await until(async () => (await pages()).main)
 const settings = await until(async () => (await pages()).settings)
 await main.emulateMedia({ reducedMotion: 'no-preference', contrast: 'no-preference' })
+// The packaged React app can read the runner's original accessibility setting
+// before the debugger attaches. Start its frontend with the test setting in place.
+await main.reload({ waitUntil: 'domcontentloaded' })
 const invoke = (command, args = {}) => main.evaluate(([command, args]) => window.__TAURI_INTERNALS__.invoke(command, args), [command, args])
 const preview = config => invoke('plugin:event|emit', { event: 'config:preview', payload: config })
 const errors = []
@@ -92,6 +95,7 @@ try {
       const strip = card.locator('.progress-track')
       const play = card.locator('.play-button').first()
       await card.waitFor({ timeout: 12000 })
+      assert.equal(await card.evaluate(el => Boolean(el.closest('.reduced-motion,[data-reduced-motion="true"]'))), false)
       await until(async () => (await island.getAttribute('data-native-backdrop')) === 'active')
       console.log('Native backdrop active')
       if (synthetic) {
@@ -256,6 +260,7 @@ try {
       wave: ambient?.dataset.playbackWave,
       motion: ambient?.dataset.playbackMotion,
       animation: ambient && getComputedStyle(ambient, '::before').animationName,
+      reducedMotionAncestor: ambient?.closest('.reduced-motion,[data-reduced-motion="true"]')?.className,
       clicks: window.glassClickTrace,
       time: document.querySelector('.progress-content--time')?.textContent,
     }

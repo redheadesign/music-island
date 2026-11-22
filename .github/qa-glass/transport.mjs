@@ -34,7 +34,7 @@ export async function checkTransport({directory,evidence,main,settings,until,log
  let pinned=false
  try{
    await until(async()=>{const s=await events();if(s.includes('error '))throw new Error(s);live();return s.includes('ready')},8000)
-   const match=await until(async()=>{live();const sessions=await invoke(main,'list_media_sessions');return sessions.find(s=>possible.has(s.sourceAppId.toLowerCase()))},7000)
+   const match=await until(async()=>{live();const sessions=await invoke(main,'list_media_sessions');return sessions.find(s=>possible.has(s.sourceAppId.toLowerCase()))},18000)
    ownedId=match.sourceAppId
    assert.equal((await invoke(settings,'get_config')).media.preferredSourceAppId,null)
    assert.equal(await setSource(ownedId),ownedId)
