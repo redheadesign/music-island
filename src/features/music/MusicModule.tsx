@@ -280,11 +280,14 @@ export function MusicModule({
     </button>
   }
   const renderRow = (zone: 'player' | 'playerLower', order: readonly IslandMusicElement[]) => {
+    let hasProgress = false
     const contents = order.flatMap(element => {
       const node = control(element)
+      if (node && element === 'progress') hasProgress = true
       return node ? [<Fragment key={element}>{renderElement(element, node)}</Fragment>] : []
     })
-    const row = contents.length ? <div className={`media-controls media-controls--island player-row${order.includes('progress') ? ' progress-row' : ''}`}
+    const row = contents.length ? <div className={`media-controls media-controls--island player-row${hasProgress ? ' progress-row' : ''}`}
+      style={hasProgress ? { '--player-row-neighbors': contents.length - 1 } as CSSProperties : undefined}
       data-compact={contents.length > 5 || undefined} aria-label={t('music.controls')}>{contents}</div> : null
     return renderZone(zone, row)
   }

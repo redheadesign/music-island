@@ -2,4 +2,25 @@
 .island-feedback__layer { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 0; }
 .island-feedback__wave { position: absolute; border-radius: var(--radius-round); background: #fff; pointer-events: none; }
 .island-feedback > :not(.island-feedback__layer, .island-glass-optic) { position: relative; z-index: 1; }
-.playback-morph { overflow: visible; flex-shrink: 0; }
+.playback-morph { overflow: visible; flex-shrink: 0; max-width: 86%; height: auto; }
+
+[data-interface-theme='glass'] .playback-morph {
+  fill: var(--playback-glass-fill);
+  stroke: color-mix(in srgb, currentColor 58%, transparent);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / .58));
+}
+@media (hover: hover) {
+  [data-interface-theme='glass'] .play-button:enabled:hover .playback-morph__shade { stop-opacity: .82; }
+}
+[data-interface-theme='glass'][data-reduced-transparency='true'] .playback-morph {
+  fill: currentColor;
+  stroke: currentColor;
+  filter: none;
+}
+@media (forced-colors: active), (prefers-reduced-transparency: reduce) {
+  [data-interface-theme='glass'] .playback-morph {
+    fill: currentColor;
+    stroke: currentColor;
+    filter: none;
+  }
+}

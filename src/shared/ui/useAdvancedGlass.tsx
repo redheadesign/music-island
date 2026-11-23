@@ -8,7 +8,7 @@ import field from './glisse-bezel.png?inline'
 const surfaces: Record<GlassSurfaceId, string[]> = {
   body: ['.island-card'],
   transport: ['.play-button'],
-  buttons: ['.media-button:not(.play-button)', '.reaction-button', '.island-actions .icon-button', '.island-plugin-button', '.island-local-servers button', '.island-latest-dictation button', '.island-update-rail button', '.wave-selection-chip button', '.direct-reload-button'],
+  buttons: ['.media-button:not(.play-button, .media-navigation-button)', '.reaction-button', '.island-actions .icon-button', '.island-plugin-button', '.island-local-servers button', '.island-latest-dictation button', '.island-update-rail button', '.wave-selection-chip button', '.direct-reload-button'],
   usage: ['.usage-chip__compact-provider', '.usage-chip__provider'],
   localServers: ['.island-local-servers', '.island-preview__widget'],
   latestDictation: ['.island-latest-dictation'],
@@ -36,7 +36,8 @@ function paint(group: GlassSurfaceId, values: GlassSurfaceSettings, changed: Fie
     const reading = transmission * (1 - .62 * transmission)
     const top = 1 - Math.max(.14, 1 - .40 / Math.max(.01, transmission))
     const detached = group === 'dictationActions'
-    const defaultAlpha = group === 'body' || group === 'dictation' || readingSurface.has(group) ? 1 - transmission : 1 - (detached ? reading : top)
+    const defaultAlpha = group === 'body' ? 1 - reading
+      : group === 'dictation' || readingSurface.has(group) ? 1 - transmission : 1 - (detached ? reading : top)
     const alpha = changed.transparency !== undefined ? 1 - t : defaultAlpha
     const fill = `color-mix(in srgb, ${values.background} ${(alpha * 100).toFixed(3)}%, transparent)`
     if (group === 'buttons' || group === 'transport' || group === 'progressTrack') declarations.push(`--island-lens-fill:${fill}`)
@@ -59,7 +60,6 @@ function paint(group: GlassSurfaceId, values: GlassSurfaceSettings, changed: Fie
     declarations.push(`--glass-control-rim:${line}`, `--island-lens-rim:${line}`, 'box-shadow:var(--glass-control-rim)')
   }
   if (group === 'progressTrack') {
-    if (changed.height !== undefined) declarations.push('height:' + values.height + 'px')
     if (changed.textSize !== undefined) declarations.push('--advanced-track-type:' + values.textSize + 'px')
   }
   if (group === 'progressFill' || group === 'progressTrack') {
@@ -109,6 +109,9 @@ export function useAdvancedGlass(raw: AdvancedGlassOverrides | undefined, base: 
       const values = { ...getSurfaceDefaults(group, material), ...changed }
       const selector = ':is(' + surfaces[group].map(s => s.startsWith('&') ? root + s.slice(1) : root + ' ' + s).join(',') + ')'
       const declarations = paint(group, values, changed)
+      if (group === 'progressTrack' && changed.height !== undefined) {
+        rules.push(root + '{--advanced-track-height:' + values.height + 'px}')
+      }
       const customOptic = changed.bend !== undefined || changed.dispersion !== undefined
       if (customOptic || changed.frost !== undefined) {
         const parts: string[] = []

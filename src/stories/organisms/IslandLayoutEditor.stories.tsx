@@ -437,6 +437,7 @@ export const FullInlineLayout: Story = {
       await expect(bounds.left).toBeGreaterThanOrEqual(card.left)
       await expect(bounds.right).toBeLessThanOrEqual(card.right)
       await expect(Math.abs((bounds.top + bounds.bottom - bar.top - bar.bottom) / 2)).toBeLessThan(2)
+      if (id !== 'progress') await expect(bounds.height).toBeLessThan(bar.height)
     }
     const settings = element(zone(canvasElement, 'actions'), 'settings').getBoundingClientRect()
     await expect(settings.left).toBeGreaterThan(card.right)

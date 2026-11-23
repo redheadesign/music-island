@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type HTMLAttributes, type Ref } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type HTMLAttributes, type Ref } from 'react'
 import { normalizeIslandShader, type IslandShaderTuning } from '../lib/shaderTuning'
 import { IslandGlassOptic } from './IslandGlassOptic'
 import { IslandParticles } from './IslandParticles'
@@ -22,6 +22,8 @@ type IslandFeedbackProps = HTMLAttributes<HTMLElement> & {
   shaderTuning?: Partial<IslandShaderTuning>
 }
 
+type WavePhase = 'idle' | 'steady' | 'launch' | 'return'
+
 /** The ripple belongs to the surface, never to a moving button. */
 export function IslandFeedback({ children, className = '', glassOptic = false, opticActive = true, particles = false, playbackMotion, playbackWave = false, ambientRef, shaderTuning, ...props }: IslandFeedbackProps) {
   const shader = useMemo(() => normalizeIslandShader(shaderTuning), [shaderTuning])
@@ -30,11 +32,19 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
   const animations = useRef<Animation[]>([])
   const [waveIntent, setWaveIntent] = useState<boolean | null>(null)
   const wavePlaying = waveIntent ?? (playbackMotion !== false)
-  const hasPlayed = useRef(false)
-  useLayoutEffect(() => {
-    if (!playbackWave) hasPlayed.current = false
-    else if (wavePlaying) hasPlayed.current = true
-  }, [playbackWave, wavePlaying])
+  const [wave, setWave] = useState(() => ({
+    enabled: playbackWave, playing: wavePlaying, phase: (wavePlaying ? 'steady' : 'idle') as WavePhase,
+  }))
+  // Opening the island mounts at the current playback state. Only a change
+  // while the rings are enabled creates an outward or inward gesture.
+  if (wave.playing !== wavePlaying || wave.enabled !== playbackWave) {
+    const transitioning = wave.enabled && playbackWave && !document.hidden
+    setWave({
+      enabled: playbackWave,
+      playing: wavePlaying,
+      phase: wavePlaying ? (transitioning ? 'launch' : 'steady') : (transitioning ? 'return' : 'idle'),
+    })
+  }
   useEffect(() => {
     if (waveIntent == null) return
     if (!playbackWave || waveIntent === playbackMotion) {
@@ -48,7 +58,13 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
   useEffect(() => {
     const onVisibility = () => {
       surface.current?.toggleAttribute('data-document-hidden', document.hidden)
-      if (document.hidden) clear()
+      if (document.hidden) {
+        clear()
+        setWave(current => {
+          const phase = current.playing ? 'steady' : 'idle'
+          return current.phase === phase ? current : { ...current, phase }
+        })
+      }
     }
     onVisibility()
     document.addEventListener('visibilitychange', onVisibility)
@@ -56,11 +72,12 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
   }, [])
   const ripple = (x: number, y: number, direction: RippleDirection) => {
     const node = surface.current
-    if (!node || !layer.current || document.hidden || !node.animate) return
+    if (!node || !layer.current || document.hidden) return
     if (glassOptic && playbackWave && playbackMotion !== undefined) {
       setWaveIntent(direction === 'outward')
       return
     }
+    if (!node.animate) return
     const rect = node.getBoundingClientRect()
     if (!rect.width || !rect.height) return
     const cx = (x - rect.left) * node.clientWidth / rect.width
@@ -85,7 +102,7 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
             className="island-feedback__ambient"
             data-bass-gain={shader.bassGain}
             style={{
-              '--island-wave-duration': `calc(var(--motion-unit) * ${420 / shader.waveSpeed})`,
+              '--island-wave-duration': `calc(var(--motion-unit) * ${210 / shader.waveSpeed})`,
               '--wave-softness': `${shader.waveBlur}px`, '--wave-reach': shader.waveReach,
               '--wave-intensity': shader.waveIntensity / 100, '--particle-brightness': shader.particleBrightness / 100,
               '--particle-speed': shader.particleSpeed, '--particle-scale': shader.particleSize,
@@ -96,8 +113,14 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
             } as CSSProperties}
             data-playback-wave={playbackWave || undefined}
             data-playback-motion={wavePlaying ? 'playing' : 'paused'}
-            data-wave-return={(!wavePlaying && hasPlayed.current) || undefined}
+            data-wave-phase={playbackWave ? wave.phase : undefined}
           >
+            {playbackWave ? <span className="island-feedback__rings" onAnimationEnd={event => {
+              if (event.animationName === 'island-glass-wave-settle') {
+                setWave(current => current.phase === 'launch' ? { ...current, phase: 'steady' } : current)
+              }
+            }} /> : null}
+            {playbackWave && wave.phase === 'launch' ? <span className="island-feedback__launch" /> : null}
             {particles && shader.particleCount > 0 ? <IslandParticles count={shader.particleCount} /> : null}
           </span>
         ) : null}
@@ -109,18 +132,16 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
 }
 
 /** Controlled icon state and command dispatch remain the caller's responsibility. */
-export function PressFeedback({ children, onClick, onPointerDown, reducedMotion = false, direction = 'outward', className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { reducedMotion?: boolean; direction?: RippleDirection }) {
+export function PressFeedback({ children, onClick, reducedMotion = false, direction = 'outward', className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { reducedMotion?: boolean; direction?: RippleDirection }) {
   const ripple = useContext(Feedback)
   const feedback = (node: HTMLButtonElement, x?: number, y?: number) => {
     if (props.disabled || reducedMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches || node.closest('.reduced-motion,[data-reduced-motion="true"]')) return
     const rect = node.getBoundingClientRect()
     ripple(x ?? rect.left + rect.width / 2, y ?? rect.top + rect.height / 2, direction)
   }
-  return <button {...props} data-reduced-motion={reducedMotion || undefined} className={`press-feedback ${className}`} onPointerDown={(event) => {
-    onPointerDown?.(event)
-    if (!event.defaultPrevented && event.button === 0) feedback(event.currentTarget, event.clientX, event.clientY)
-  }} onClick={(event) => {
+  return <button {...props} data-reduced-motion={reducedMotion || undefined} className={`press-feedback ${className}`} onClick={(event) => {
     if (event.detail === 0) feedback(event.currentTarget)
+    else feedback(event.currentTarget, event.clientX, event.clientY)
     onClick?.(event)
   }}>{children}</button>
 }

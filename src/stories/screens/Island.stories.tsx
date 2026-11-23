@@ -260,13 +260,18 @@ export const AdvancedGlassSurfaces: StoryObj<typeof meta> = {
     root.dataset.nativeBackdrop = 'active'
     await expect(getComputedStyle(lens, '::after').backgroundImage).toBe('none')
     await expect(getComputedStyle(lens).backdropFilter).toBe('none')
-    const innerButtons = [...card.querySelectorAll('.media-button, .reaction-button')]
-    await expect(innerButtons.length).toBeGreaterThanOrEqual(3)
+    const innerButtons = [...card.querySelectorAll('.media-button:not(.media-navigation-button), .reaction-button')]
+    await expect(innerButtons.length).toBeGreaterThanOrEqual(2)
     await expect(card.querySelectorAll('.seek-step-button')).toHaveLength(2)
     await expect(card.querySelectorAll('.reaction-button')).toHaveLength(2)
     for (const button of innerButtons) {
       await expect(getComputedStyle(button).backdropFilter).toContain('blur(7.5px)')
       await expect(getComputedStyle(button).backdropFilter).toContain('glass-optics-')
+    }
+    for (const button of card.querySelectorAll('.media-navigation-button')) {
+      await expect(getComputedStyle(button).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+      await expect(getComputedStyle(button).boxShadow).toBe('none')
+      await expect(getComputedStyle(button).backdropFilter).toBe('none')
     }
     const detached = root.querySelector('.island-actions .icon-button')
     if (detached) await expect(getComputedStyle(detached).backdropFilter).toBe('none')
@@ -275,6 +280,9 @@ export const AdvancedGlassSurfaces: StoryObj<typeof meta> = {
     delete root.dataset.nativeBackdrop
     await expect(getComputedStyle(track).backdropFilter).toContain('blur(12px)')
     await expect(getComputedStyle(track).height).toBe('48px')
+    for (const button of track.parentElement!.querySelectorAll('.reaction-button')) {
+      await expect(getComputedStyle(button).height).toBe('36px')
+    }
     await expect(getComputedStyle(track).borderRadius).toBe('14px')
     await expect(getComputedStyle(track.querySelector('.progress-content')!).color).toBe('rgb(255, 240, 208)')
     await expect(getComputedStyle(fill).borderRadius).toBe('6px')
@@ -324,7 +332,7 @@ export const GlassOpticalSurface: StoryObj<typeof meta> = {
     await expect(card).not.toHaveAttribute('data-glass-light')
     await expect(getComputedStyle(lens).boxShadow).toBe('none')
     await expect(getComputedStyle(lens, '::before').content).toBe('none')
-    for (const control of card.querySelectorAll<HTMLButtonElement>('button:enabled')) {
+    for (const control of card.querySelectorAll<HTMLButtonElement>('button:enabled:not(.media-navigation-button, .play-button)')) {
       const { left, top, width, height } = control.getBoundingClientRect()
       move(control.querySelector('svg, span') ?? control, left + width / 2, top + height / 2)
       await waitFor(() => expect(control).toHaveAttribute('data-glass-light'))
@@ -363,17 +371,23 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
         await expect(documentView.getComputedStyle(button).backdropFilter).toBe('none')
       }
       await expect(documentView.getComputedStyle(settings).backdropFilter).toContain('blur(')
-      await expect(documentView.getComputedStyle(next).backgroundColor).toBe(documentView.getComputedStyle(seek).backgroundColor)
+      for (const button of [previous, next]) {
+        await expect(documentView.getComputedStyle(button).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+        await expect(documentView.getComputedStyle(button).backgroundImage).toBe('none')
+        await expect(documentView.getComputedStyle(button).boxShadow).toBe('none')
+        await expect(documentView.getComputedStyle(button, '::before').content).toBe('none')
+        await expect(button.querySelector('svg')!.getBoundingClientRect().width).toBeGreaterThan(22)
+      }
       for (const reaction of [like, dislike]) {
-        await expect(documentView.getComputedStyle(reaction).backdropFilter).toBe(documentView.getComputedStyle(previous).backdropFilter)
-        await expect(documentView.getComputedStyle(reaction).backgroundColor).toBe(documentView.getComputedStyle(previous).backgroundColor)
+        await expect(documentView.getComputedStyle(reaction).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+        await expect(reaction.getBoundingClientRect().height / seek.getBoundingClientRect().height).toBeCloseTo(.75)
       }
       const codex = canvasElement.querySelector('.usage-chip__compact-provider[data-usage-provider="codex"]')!
       await expect(documentView.getComputedStyle(codex).boxShadow).not.toContain('inset')
     }
     await expect(documentView.getComputedStyle(settings).boxShadow).not.toBe('none')
     if (!forcedColors && !documentView.matchMedia('(prefers-reduced-transparency: reduce)').matches) {
-      await expect(documentView.getComputedStyle(settings).backgroundColor).toBe(documentView.getComputedStyle(previous).backgroundColor)
+      await expect(documentView.getComputedStyle(settings).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
     }
     await userEvent.click(previous)
     await expect(onCommand).toHaveBeenLastCalledWith('previous')
@@ -440,7 +454,7 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
     })
     const fill = canvasElement.querySelector('.progress-fill')!
     const frame = canvasElement.querySelector('.progress-visual')!
-    const backdrop = canvasElement.querySelector('.island-card .island-feedback__ambient')!
+    const backdrop = canvasElement.querySelector('.island-card .island-feedback__rings')!
     await expect(fill.getBoundingClientRect().height).toBeCloseTo(frame.getBoundingClientRect().height)
     await expect(getComputedStyle(frame, '::before').content).toBe('none')
     await expect(getComputedStyle(frame, '::after').content).toBe('none')
@@ -449,9 +463,10 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
         const front = getComputedStyle(backdrop, '::before')
         const following = getComputedStyle(backdrop, '::after')
-        await expect(front.animationName).toContain('island-glass-wave-launch')
+        await expect(front.animationName).toBe('island-glass-wave-out')
         await expect(following.transformOrigin).toBe(front.transformOrigin)
-        await expect(Number.parseFloat(following.animationDelay)).toBeGreaterThan(0)
+        await expect(Number.parseFloat(following.animationDelay)).toBeLessThan(Number.parseFloat(front.animationDelay))
+        await expect(Number.parseFloat(front.animationDelay)).toBeLessThan(0)
       }
     }
     if (!forcedColors && !matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(prefers-reduced-transparency: reduce)').matches) {
@@ -481,6 +496,7 @@ export const GlassReactiveWave: StoryObj<typeof meta> = {
     }, { timeout: 4000 })
     const initial = await nextRequest()
     const canvas = within(canvasElement)
+    const rings = layer.querySelector('.island-feedback__rings')!
     const fronts = () => layer.getAnimations({ subtree: true }).filter(
       animation => animation instanceof CSSAnimation && animation.animationName === 'island-glass-wave-out',
     )
@@ -513,11 +529,10 @@ export const GlassReactiveWave: StoryObj<typeof meta> = {
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ }))
     await waitFor(() => expect(getPreviewPlaybackBassRequest()).toBeUndefined())
     await expect(layer).toHaveAttribute('data-playback-motion', 'paused')
-    await expect(getComputedStyle(layer, '::before').animationName).toBe('island-glass-wave-in')
+    await expect(getComputedStyle(rings, '::before').animationName).toBe('island-glass-wave-in')
     await expect(getComputedStyle(layer.querySelector('.island-particles')!).display).toBe('block')
     await userEvent.click(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ }))
     const resumed = await nextRequest(recovered)
-    await expect(getComputedStyle(layer, '::before').animationName).toContain('island-glass-wave-launch')
     emitPreviewPlaybackBass(1, recovered)
     await expect(layer.style.getPropertyValue('--island-wave-drive')).toBe('')
     await checkMotion(resumed)
@@ -530,7 +545,7 @@ export const GlassBackgroundOff: StoryObj<typeof meta> = {
     await waitFor(() => expect(canvasElement.querySelector('.island-card')).toBeVisible())
     const ambient = canvasElement.querySelector<HTMLElement>('.island-feedback__ambient')!
     await expect(ambient).not.toHaveAttribute('data-playback-wave')
-    await expect(getComputedStyle(ambient, '::before').content).toBe('none')
+    await expect(ambient.querySelector('.island-feedback__rings')).toBeNull()
     await expect(ambient.querySelector('.island-particles')).toBeInTheDocument()
     await expect(getPreviewPlaybackBassRequest()).toBeUndefined()
     await waitFor(() => expect(canvasElement.querySelector('.island-root')).toHaveAttribute('data-cover-art', 'true'))
@@ -574,6 +589,8 @@ export const GlassEdgeGesture: StoryObj<typeof meta> = {
     await waitFor(() => expect(cue).toBeVisible())
     await waitFor(() => expect(island).toHaveClass('island-root--open'), { timeout: 2000 })
     await expect(within(canvasElement).getByRole('button', { name: /^(?:Pause|Пауза)$/ })).toBeInTheDocument()
+    await expect(island.querySelector('.island-feedback__ambient')).toHaveAttribute('data-wave-phase', 'steady')
+    await expect(island.querySelector('.island-feedback__launch')).toBeNull()
   },
 }
 export const GlassEdgeReducedMotion: StoryObj<typeof meta> = {
@@ -588,8 +605,9 @@ export const GlassReducedMotion: StoryObj<typeof meta> = {
       return node!
     })
     await expect(backdrop.querySelector('.island-particles')).not.toBeVisible()
-    await expect(getComputedStyle(backdrop, '::before').animationName).toBe('none')
-    await expect(getComputedStyle(backdrop, '::after').content).toBe('none')
+    const rings = backdrop.querySelector('.island-feedback__rings')!
+    await expect(getComputedStyle(rings, '::before').animationName).toBe('none')
+    await expect(getComputedStyle(rings, '::after').content).toBe('none')
   },
 }
 export const GlassPlayback: StoryObj<typeof meta> = {
@@ -608,10 +626,22 @@ export const GlassPlayback: StoryObj<typeof meta> = {
     await expect(center.x).toBeCloseTo(artworkRect.left + artworkRect.width / 2, 0)
     await expect(center.y).toBeCloseTo(artworkRect.top + artworkRect.height / 2, 0)
     await expect(button.contains(canvasElement.ownerDocument.elementFromPoint(center.x, center.y))).toBe(true)
+    const glyph = button.querySelector('svg')!
+    await expect(glyph.getBoundingClientRect().width).toBeGreaterThan(18)
+    await userEvent.hover(button)
+    await expect(getComputedStyle(button).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    await expect(getComputedStyle(button).backgroundImage).toBe('none')
+    await expect(getComputedStyle(button).boxShadow).toBe('none')
+    await expect(getComputedStyle(button, '::before').content).toBe('none')
+    if (!matchMedia('(prefers-reduced-transparency: reduce), (forced-colors: active)').matches) {
+      await expect(getComputedStyle(glyph).fill).toContain('url(')
+    }
     const ambient = canvasElement.querySelector<HTMLElement>('.island-card .island-feedback__ambient')!
+    const rings = ambient.querySelector('.island-feedback__rings')!
     const quiet = matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches
     const playingOpacity = matchMedia('(prefers-contrast: more)').matches ? '0.42' : '1'
     const animations = () => ambient.getAnimations({ subtree: true }).filter((animation) => animation instanceof CSSAnimation)
+    const loops = () => animations().filter(animation => animation.animationName === 'island-glass-wave-out')
     if (!quiet) {
       await waitFor(() => expect(getComputedStyle(ambient).opacity).toBe(playingOpacity))
       await expect(animations().length).toBeGreaterThan(2)
@@ -619,19 +649,27 @@ export const GlassPlayback: StoryObj<typeof meta> = {
     await userEvent.click(button)
     await waitFor(() => expect(canvas.getByRole('button', { name: /^(?:Play|Воспроизвести)$/ })).toBeVisible())
     if (!quiet) {
-      await expect(getComputedStyle(ambient, '::before').animationName).toBe('island-glass-wave-in')
+      await expect(getComputedStyle(rings, '::before').animationName).toBe('island-glass-wave-in')
       const returning = animations().filter(a => a instanceof CSSAnimation && a.animationName === 'island-glass-wave-in')
       await expect(returning).toHaveLength(2)
       await Promise.all(returning.map(animation => animation.finished))
-      await expect(getComputedStyle(ambient, '::before').opacity).toBe('0')
-      await expect(getComputedStyle(ambient, '::after').opacity).toBe('0')
+      await expect(getComputedStyle(rings, '::before').opacity).toBe('0')
+      await expect(getComputedStyle(rings, '::after').opacity).toBe('0')
       await expect(getComputedStyle(ambient.querySelector('.island-particles')!).display).toBe('block')
     }
     await userEvent.keyboard(' ')
     await waitFor(() => expect(canvas.getByRole('button', { name: /^(?:Pause|Пауза)$/ })).toBeVisible())
     if (!quiet) {
-      await waitFor(() => expect(getComputedStyle(ambient).opacity).toBe(playingOpacity))
-      await expect(animations().length).toBeGreaterThan(2)
+      await expect(ambient).toHaveAttribute('data-wave-phase', 'launch')
+      const launch = ambient.querySelector('.island-feedback__launch')!
+      await expect(getComputedStyle(launch, '::before').animationName).toBe('island-glass-wave-launch')
+      const running = loops()
+      await expect(running).toHaveLength(2)
+      await waitFor(() => expect(ambient).toHaveAttribute('data-wave-phase', 'steady'), { timeout: 2000 })
+      await expect(ambient.querySelector('.island-feedback__launch')).toBeNull()
+      await expect(loops()).toEqual(running)
+      const before = getComputedStyle(rings, '::before').transform
+      await waitFor(() => expect(getComputedStyle(rings, '::before').transform).not.toBe(before))
     }
   },
 }

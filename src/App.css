@@ -681,10 +681,11 @@
 }
 
 .reaction-button {
+  --player-default-button-size: var(--player-reaction-size, 54px);
   display: grid;
-  width: 54px;
-  height: 54px;
-  flex: 0 0 54px;
+  width: var(--player-default-button-size);
+  height: var(--player-default-button-size);
+  flex: 0 0 var(--player-default-button-size);
   place-items: center;
   border-radius: var(--radius-round);
   color: rgba(255, 255, 255, 0.58);
@@ -724,7 +725,7 @@
   padding: 0;
   border: 0;
   width: min(100%, calc(460px * var(--island-scale, 1)));
-  height: 64px;
+  height: var(--player-progress-size, var(--advanced-track-height, 64px));
   overflow: hidden;
   border-radius: var(--radius-pill);
   color: rgba(255, 255, 255, 0.88);

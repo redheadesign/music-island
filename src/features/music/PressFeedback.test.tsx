@@ -8,6 +8,47 @@ import { PlaybackButton, ReactionButton } from './MusicControls'
 
 afterEach(() => { document.body.innerHTML = ''; vi.restoreAllMocks(); vi.unstubAllGlobals() })
 describe('island feedback commands', () => {
+  it('opens in steady motion and only launches or retracts on playback changes', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+    const host = document.body.appendChild(document.createElement('div'))
+    const root = createRoot(host)
+    const command = vi.fn()
+    const render = async (playing: boolean, open = true, enabled = true) => {
+      await act(async () => root.render(open ? (
+        <IslandFeedback glassOptic opticActive={false} playbackWave={enabled} playbackMotion={playing}>
+          <PlaybackButton playing={playing} onClick={command} />
+        </IslandFeedback>
+      ) : null))
+    }
+    const phase = () => host.querySelector('.island-feedback__ambient')?.getAttribute('data-wave-phase')
+    try {
+      await render(true)
+      expect(phase()).toBe('steady')
+      await render(false)
+      expect(phase()).toBe('return')
+      await render(false, false)
+      await render(false)
+      expect(phase()).toBe('idle')
+
+      const play = host.querySelector('button')!
+      await act(async () => play.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 })))
+      expect(phase()).toBe('idle')
+      await act(async () => play.click())
+      expect(phase()).toBe('launch')
+      expect(command).toHaveBeenCalledOnce()
+      await render(true)
+      expect(phase()).toBe('launch')
+      await render(true, false)
+      await render(true)
+      expect(phase()).toBe('steady')
+      await render(true, true, false)
+      await render(true)
+      expect(phase()).toBe('steady')
+    } finally {
+      await act(async () => root.unmount())
+    }
+  })
+
   it('dispatches immediately, keeps transport feedback centered and reaction feedback inside the button', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
     const animations: Keyframe[][] = []

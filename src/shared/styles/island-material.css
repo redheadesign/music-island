@@ -73,12 +73,14 @@
   backdrop-filter: none;
 }
 
-/* Controls stay neutral. The plate, playback fill and light pick up the cover. */
+/* The desktop supplies the plate's color. Reserve intentional tint for playback
+   progress, the ambient effect and selected glyphs. */
 .island-root[data-interface-theme='glass'] {
+  --island-player-fill: var(--glass-reading-fill);
   --island-lens-fill: var(--glass-upper-fill);
   --island-lens-sheen: var(--glass-control-sheen);
-  --island-lens-hover-tint: rgb(62 62 61 / calc(1 - var(--glass-reading-transmission)));
-  --island-lens-pressed-tint: rgb(12 12 12 / calc(1 - var(--glass-reading-transmission)));
+  --island-lens-hover-tint: rgb(255 255 255 / .28);
+  --island-lens-pressed-tint: rgb(0 0 0 / .48);
   --island-lens-hover-sheen: var(--glass-selection-sheen);
   --island-cover-primary: #a6a6a2;
   --island-cover-secondary: #777774;
@@ -86,15 +88,14 @@
   --island-progress-end: color-mix(in srgb, var(--island-progress-start) 96%, black);
   --island-particle-ink: color-mix(in srgb, var(--island-cover-primary) 65%, #fff);
   --island-particle-soft-ink: color-mix(in srgb, var(--island-cover-secondary) 52%, #fff);
-  --island-glass-ink: #f4f4f1;
+  --island-glass-ink: var(--fg-on-glass);
   --island-wave-crest: rgb(209 216 220 / .13);
   --island-wave-trough: rgb(177 185 194 / .06);
-  --island-wave-duration: calc(var(--motion-unit) * 420);
 }
+.island-root[data-interface-theme='glass'] .music-module { --player-reaction-size: 46px; }
 .island-root[data-interface-theme='glass'][data-cover-art='true'] {
   --island-cover-primary: rgb(var(--artwork-primary));
   --island-cover-secondary: rgb(var(--artwork-secondary));
-  --island-player-fill: color-mix(in srgb, var(--island-cover-primary) 4%, var(--glass-island-fill));
   --island-wave-crest: color-mix(in srgb, var(--island-cover-primary) 50%, transparent);
   --island-wave-trough: color-mix(in srgb, var(--island-cover-secondary) 21%, transparent);
 }
@@ -111,7 +112,7 @@
   z-index: 0;
 }
 
-.island-card[data-document-hidden] .island-feedback__ambient,
+.island-feedback[data-document-hidden] .island-feedback__ambient,
 [data-reduced-transparency='true'] .island-feedback__ambient {
   display: none;
   transition: none;
@@ -122,12 +123,17 @@
   .island-feedback__ambient[data-playback-motion='playing'] { opacity: .42; }
 }
 
-/* Share the same two rings between playback feedback and the steady shader. */
-.island-feedback__ambient[data-playback-wave]::before,
-.island-feedback__ambient[data-playback-wave]::after {
+.island-feedback__rings,
+.island-feedback__launch {
   position: absolute;
   inset: 0;
   z-index: -1;
+}
+
+:is(.island-feedback__rings, .island-feedback__launch)::before,
+:is(.island-feedback__rings, .island-feedback__launch)::after {
+  position: absolute;
+  inset: 0;
   background: radial-gradient(ellipse closest-side at center,
     transparent 16%, var(--island-wave-trough) 34%, var(--island-wave-crest) 53%,
     var(--island-wave-trough) 67%, transparent 89%);
@@ -135,7 +141,7 @@
   filter: blur(var(--wave-softness, 4px));
 }
 
-.island-feedback__ambient[data-playback-wave][data-playback-motion='playing']::before {
+.island-feedback__ambient[data-playback-motion='playing'] .island-feedback__rings::before {
   content: '';
   opacity: min(1, calc(var(--wave-intensity, .32) * 2.1875));
 }
@@ -143,26 +149,38 @@
   .island-feedback__ambient[data-playback-wave]:not(:is(.reduced-motion, [data-reduced-motion='true']) *) {
     --ring-start: calc(var(--motion-slow) * 1.6);
     --ring-return: calc(var(--motion-slow) * 1.25);
-    --ring-feedback-offset: 0ms;
-    --ring-steady-offset: 0ms;
+    --ring-stagger: calc(var(--motion-fast) * .65);
   }
-  .island-feedback__ambient[data-playback-wave]::after {
-    --ring-feedback-offset: var(--motion-fast);
-    --ring-steady-offset: calc(var(--island-wave-duration) * .5);
+  .island-feedback__rings::before { --ring-phase: -.24; }
+  .island-feedback__rings::after { --ring-phase: -.74; }
+  :is(.island-feedback__rings, .island-feedback__launch)::after {
+    --ring-feedback-offset: var(--ring-stagger);
   }
-  .island-feedback__ambient[data-playback-wave][data-playback-motion='playing']:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before,
-  .island-feedback__ambient[data-playback-wave][data-playback-motion='playing']:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::after {
+  /* Phased loops are already moving when revealed. The separate Play gesture
+     can crossfade into these same loops without replacing their timelines. */
+  .island-feedback__ambient[data-playback-motion='playing']:not(:is(.reduced-motion, [data-reduced-motion='true']) *) .island-feedback__rings::before,
+  .island-feedback__ambient[data-playback-motion='playing']:not(:is(.reduced-motion, [data-reduced-motion='true']) *) .island-feedback__rings::after {
     content: '';
     scale: 1 calc(1 + var(--island-wave-drive, 0) * .015);
-    animation:
-      island-glass-wave-launch var(--ring-start) var(--ring-feedback-offset) cubic-bezier(.12,.38,.3,1) 1 backwards,
-      island-glass-wave-out var(--island-wave-duration) calc(var(--ring-start) + var(--ring-steady-offset)) linear infinite;
+    animation: island-glass-wave-out var(--island-wave-duration) calc(var(--island-wave-duration) * var(--ring-phase)) linear infinite;
   }
-  .island-feedback__ambient[data-playback-wave][data-wave-return]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::before,
-  .island-feedback__ambient[data-playback-wave][data-wave-return]:not(:is(.reduced-motion, [data-reduced-motion='true']) *)::after {
+  .island-feedback__ambient[data-wave-phase='launch']:not(:is(.reduced-motion, [data-reduced-motion='true']) *) .island-feedback__rings {
+    animation: island-glass-wave-settle calc(var(--ring-start) + var(--ring-stagger)) ease-out;
+  }
+  .island-feedback__ambient[data-wave-phase='launch']:not(:is(.reduced-motion, [data-reduced-motion='true']) *) .island-feedback__launch::before,
+  .island-feedback__ambient[data-wave-phase='launch']:not(:is(.reduced-motion, [data-reduced-motion='true']) *) .island-feedback__launch::after {
     content: '';
-    animation: island-glass-wave-in var(--ring-return) calc(var(--ring-feedback-offset) * .35) cubic-bezier(.65,0,.95,.4) both;
+    animation: island-glass-wave-launch var(--ring-start) var(--ring-feedback-offset, 0ms) cubic-bezier(.12,.38,.3,1) both;
   }
+  .island-feedback__ambient[data-wave-phase='return']:not(:is(.reduced-motion, [data-reduced-motion='true']) *) .island-feedback__rings::before,
+  .island-feedback__ambient[data-wave-phase='return']:not(:is(.reduced-motion, [data-reduced-motion='true']) *) .island-feedback__rings::after {
+    content: '';
+    animation: island-glass-wave-in var(--ring-return) calc(var(--ring-feedback-offset, 0ms) * .35) cubic-bezier(.65,0,.95,.4) both;
+  }
+}
+@keyframes island-glass-wave-settle {
+  from { opacity: .25; }
+  to { opacity: 1; }
 }
 @keyframes island-glass-wave-launch {
   from { opacity: 0; transform: scale(0); }
@@ -171,8 +189,7 @@
 }
 @keyframes island-glass-wave-out {
   from { opacity: 0; transform: scale(0); }
-  21%, 57% { opacity: var(--wave-intensity, .32); }
-  94% { opacity: 0; }
+  16%, 63% { opacity: var(--wave-intensity, .32); }
   to { opacity: 0; transform: scale(var(--wave-reach, 2.68)); }
 }
 @keyframes island-glass-wave-in {
@@ -209,7 +226,7 @@
   16%, 66% { opacity: var(--particle-brightness, .65); }
   100% { opacity: 0; transform: translateY(calc(var(--particle-fall) * var(--particle-distance, 1))); }
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button) {
+.island-root[data-interface-theme='glass'] :is(.media-button:not(.media-navigation-button), .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button) {
   color: var(--island-glass-ink);
   background: var(--island-lens-sheen, var(--glass-sheen)) var(--island-lens-state, var(--island-lens-fill));
   box-shadow: var(--island-lens-shadow, var(--island-lens-rim, var(--glass-control-rim)), var(--shadow-control-depth));
@@ -218,18 +235,6 @@
 /* Text inside player controls is a label. Keep selection in actual fields. */
 .island-root { user-select: none; }
 .island-root :is(input, textarea, [contenteditable='true']) { user-select: text; }
-
-.island-root[data-interface-theme='glass'] .music-module .reaction-button {
-  width: 46px;
-  height: 46px;
-  flex-basis: 46px;
-}
-
-.island-root[data-interface-theme='glass'] .music-module :is([data-compact], [data-arrangement='inline'] .player-row) .reaction-button {
-  width: 32px;
-  height: 32px;
-  flex-basis: 32px;
-}
 
 .island-root[data-interface-theme='glass'] .progress-track {
   --island-lens-sheen: var(--glass-sheen);
@@ -240,6 +245,13 @@
   z-index: 1;
   opacity: 1;
 }
+.island-root[data-interface-theme='glass'] button.play-button {
+  color: var(--island-glass-ink);
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.island-root[data-interface-theme='glass'] .play-button:enabled:active { opacity: .78; }
 /* Detached actions sit directly over the desktop; their neutral reading fill
    keeps the white glyph legible even over a bright window. */
 .island-root[data-interface-theme='glass'] :is(.island-actions .icon-button, .island-plugin-button) {
@@ -252,42 +264,43 @@
 }
 
 @media (hover: hover) {
-  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button):enabled:hover {
+  .island-root[data-interface-theme='glass'] :is(.media-button:not(.media-navigation-button), .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button):enabled:hover {
     --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 82%, var(--island-lens-hover-tint));
     --island-lens-sheen: var(--island-lens-hover-sheen);
   }
   .island-root[data-interface-theme='glass'] .reaction-button:hover { transform: none; }
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button):enabled:active {
+.island-root[data-interface-theme='glass'] :is(.media-button:not(.media-navigation-button), .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button):enabled:active {
   --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 70%, var(--island-lens-pressed-tint));
   --island-lens-sheen: var(--glass-sheen);
   --island-lens-rim: inset 0 1px 4px rgb(0 0 0 / .35);
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button):focus-visible {
+.island-root[data-interface-theme='glass'] :is(.media-button:not(.media-navigation-button), .play-button, .reaction-button, .progress-track, .island-actions .icon-button, .island-plugin-button, .island-local-servers button, .island-latest-dictation button, .island-update-rail button, .wave-selection-chip button, .direct-reload-button):focus-visible {
   outline: var(--focus-ring);
   outline-offset: -2px;
 }
-.island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button):disabled {
+.island-root[data-interface-theme='glass'] :is(.media-button:not(.media-navigation-button), .play-button, .reaction-button, .island-actions .icon-button, .island-plugin-button):disabled {
   opacity: .42;
   color: var(--island-glass-ink);
   cursor: default;
 }
 @media (forced-colors: active) {
-  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .island-actions .icon-button) {
+  .island-root[data-interface-theme='glass'] button.play-button { color: ButtonText; }
+  .island-root[data-interface-theme='glass'] :is(.media-button:not(.media-navigation-button), .reaction-button, .island-actions .icon-button) {
     color: ButtonText;
     background: ButtonFace;
     box-shadow: inset 0 0 0 1px ButtonText;
     backdrop-filter: none;
     forced-color-adjust: none;
   }
-  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .island-actions .icon-button):is([aria-pressed='true'], :enabled:active) {
+  .island-root[data-interface-theme='glass'] :is(.media-button:not(.media-navigation-button), .reaction-button, .island-actions .icon-button):is([aria-pressed='true'], :enabled:active) {
     color: HighlightText;
     background: Highlight;
   }
-  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .island-actions .icon-button):focus-visible {
+  .island-root[data-interface-theme='glass'] :is(.media-button:not(.media-navigation-button), .play-button, .reaction-button, .island-actions .icon-button):focus-visible {
     outline: 2px solid ButtonText;
   }
-  .island-root[data-interface-theme='glass'] :is(.media-button, .play-button, .reaction-button, .island-actions .icon-button):disabled {
+  .island-root[data-interface-theme='glass'] :is(.media-button:not(.media-navigation-button), .play-button, .reaction-button, .island-actions .icon-button):disabled {
     color: GrayText;
     opacity: 1;
     box-shadow: inset 0 0 0 1px GrayText;

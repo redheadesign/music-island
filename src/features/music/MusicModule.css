@@ -104,41 +104,83 @@
 }
 
 
-.progress-row:empty { display: none; }
-.progress-row:not(:has(.progress-track)) { justify-content: center; }
 .playback-mode-button { position: relative; }
 .playback-mode-button__dot { position: absolute; width: 3px; height: 3px; border-radius: var(--radius-round); bottom: 8px; background: currentColor; }
 
 .seek-step-button { position: relative; }
-.seek-step-button span { position: absolute; font-size: calc(var(--type-unit) * 8); font-weight: var(--weight-bold); line-height: var(--leading-tight); }
+.seek-step-button span { position: absolute; font-size: calc(var(--type-unit) * 9); font-weight: var(--weight-bold); line-height: var(--leading-tight); }
+.media-navigation-button > svg {
+  width: var(--space-8);
+  height: auto;
+  max-width: 88%;
+}
+[data-interface-theme='glass'] .media-navigation-button {
+  color: var(--island-glass-ink);
+}
+@media (hover: hover) {
+  [data-interface-theme='glass'] .media-navigation-button:enabled:hover { color: white; }
+}
+[data-interface-theme='glass'] .media-navigation-button:enabled:active { opacity: .72; }
+[data-interface-theme='glass'] .media-navigation-button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+@media (forced-colors: active) {
+  [data-interface-theme='glass'] .media-navigation-button { color: ButtonText; }
+  [data-interface-theme='glass'] .media-navigation-button:disabled { color: GrayText; opacity: 1; }
+}
 /* Row order comes from the persisted canvas and stays the same in the editor. */
 .music-module[data-arrangement] { container: island-player / inline-size; }
 .music-module .player-row {
+  --player-row-gap: var(--space-4-5);
+  --player-track-height: 64px;
   width: 100%;
   min-width: 0;
   order: initial;
   justify-content: center;
+  gap: var(--player-row-gap);
 }
-.music-module .player-row.progress-row { gap: var(--space-2-5); }
+.music-module .player-row.progress-row { --player-row-gap: var(--space-2-5); }
 .music-module[data-arrangement='inline'] { display: block; }
 .island-card:has(.music-module[data-arrangement='inline']) { padding: var(--space-2) var(--space-3); }
 .music-module[data-arrangement='inline'] .player-row,
-.music-module .player-row[data-compact] { gap: var(--space-1); }
-.music-module :is([data-compact], [data-arrangement='inline'] .player-row) :is(.media-button, .play-button, .reaction-button) {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+.music-module .player-row[data-compact] {
+  --player-row-gap: var(--space-1);
+  --player-track-height: 36px;
+  --player-button-size: 32px;
+  --player-artwork-size: 40px;
+  --player-artwork-radius: var(--radius-md);
 }
-.music-module :is([data-compact], [data-arrangement='inline'] .player-row) :is(.artwork-shell, .artwork-placeholder) {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
+.music-module .player-row.progress-row {
+  /* Leave a usable seek target when the user puts every control in one row. */
+  --player-row-cap: calc((100cqi - 56px) / max(1, var(--player-row-neighbors)) - var(--player-row-gap));
+  --player-progress-size: var(--advanced-track-height, var(--player-track-height));
+  --player-button-size: min(
+    max(22px, var(--player-row-cap)),
+    calc(var(--player-progress-size) - var(--space-1)),
+    max(32px, calc(var(--player-progress-size) * .75))
+  );
+  --player-artwork-size: var(--player-button-size);
+  --player-artwork-radius: var(--radius-md);
 }
-.music-module :is([data-compact], [data-arrangement='inline'] .player-row) .progress-track { height: 36px; }
+.music-module .player-row :is(.media-button, .play-button:not(.artwork-play-button), .reaction-button) {
+  width: var(--player-button-size, var(--player-default-button-size, 46px));
+  height: var(--player-button-size, var(--player-default-button-size, 46px));
+  flex: 0 0 auto;
+}
+.music-module .player-row :is(.artwork-shell, .artwork-placeholder) {
+  width: var(--player-artwork-size, 82px);
+  height: var(--player-artwork-size, 82px);
+  border-radius: var(--player-artwork-radius, calc(var(--radius-unit) * 6.5));
+}
+.music-module .player-row .artwork-play-button {
+  width: min(46px, var(--player-button-size, 46px));
+  height: min(46px, var(--player-button-size, 46px));
+}
 .music-module :is([data-compact], [data-arrangement='inline'] .player-row) .progress-content { inset-inline: var(--space-2); font-size: var(--text-label); }
 .music-module[data-arrangement='inline'] .direct-reload-banner { margin-bottom: var(--space-2); }
 @container island-player (max-width: 390px) {
-  .music-module[data-arrangement='inline'] .player-row, .music-module .player-row[data-compact] { gap: var(--space-half); }
+  .music-module[data-arrangement='inline'] .player-row, .music-module .player-row[data-compact] { --player-row-gap: var(--space-half); }
 }
 
 .island-root[data-island-arrangement='inline'] .island-actions {
