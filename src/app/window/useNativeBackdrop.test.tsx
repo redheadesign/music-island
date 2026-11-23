@@ -217,6 +217,29 @@ it('publishes an optical scene only when the island body exists, even with frost
   expect(frame?.prewarmLens).toBeUndefined()
 })
 
+it('waits for a prepared hidden body and ignores a completion from an older opening', async () => {
+  const ready = vi.fn()
+  let complete: (active: boolean) => void = () => {}
+  vi.mocked(setOverlayBackdrop).mockImplementationOnce(() => new Promise(resolve => { complete = resolve }))
+  vi.mocked(setOverlayBackdrop).mockResolvedValueOnce(null)
+  const stage = (id: number) => <Staged id={id} />
+  function Staged({ id }: { id: number }) {
+    const ref = useRef<HTMLDivElement>(null)
+    useNativeBackdrop(ref, true, '[data-blur]', .56, '', previewOptics, .56, { id, onReady: ready })
+    return <div ref={ref}><div data-lens-staging style={{ opacity: 0 }}><div data-blur className="island-card" /></div></div>
+  }
+
+  await act(async () => root.render(stage(10)))
+  await act(async () => vi.advanceTimersByTimeAsync(20))
+  expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]).toMatchObject({
+    stageLens: 10, regions: [{ opacity: 1 }], lens: { region: 0 },
+  })
+  await act(async () => root.render(stage(11)))
+  await act(async () => { complete(true); await vi.advanceTimersByTimeAsync(75) })
+  expect(ready.mock.calls).toEqual([[11]])
+  expect(vi.mocked(setOverlayBackdrop).mock.calls.filter(([frame]) => frame.stageLens === 11)).toHaveLength(2)
+})
+
 it('identifies the island body for system frost even if GPU optics are disabled', async () => {
   await act(async () => root.render(<IndependentFrost global={1} />))
   await act(async () => vi.advanceTimersByTimeAsync(20))

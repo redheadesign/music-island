@@ -438,6 +438,10 @@ impl DesktopLens {
             validate_size(layout)?;
             renderer.configure(layout)?;
             fit_visual(&self.visual, layout)?;
+        } else if !renderer.submitted {
+            // Retry a busy swap chain even if the desktop is static and the
+            // prepared layout has not changed between requests.
+            renderer.present_cached()?;
         }
         let submitted = renderer.submitted;
         drop(renderer);
@@ -463,7 +467,9 @@ impl DesktopLens {
         if submitted && snapshot {
             self.capture = None;
         }
-        Ok(submitted)
+        // A geometry update can briefly await another crop or Present.
+        // Retain the already selected backend unless it reports an error.
+        Ok(self.visible)
     }
 }
 

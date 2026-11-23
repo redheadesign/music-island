@@ -153,9 +153,13 @@ pub(super) fn apply(
         let shown =
             unsafe { IsWindowVisible(hwnd) }.as_bool() && !unsafe { IsIconic(hwnd) }.as_bool();
         let settings = (label == "main").then_some(frame.lens).flatten();
-        let pending_frost = frame
-            .prepare_frost
-            .filter(|_| shown && label == "main" && frame.prewarm_lens && settings.is_none());
+        let stage = (label == "main").then_some(frame.stage_lens).flatten();
+        let pending_frost = frame.prepare_frost.filter(|_| {
+            shown
+                && label == "main"
+                && frame.prewarm_lens
+                && (settings.is_none() || stage.is_some())
+        });
         if let Some(frost) = pending_frost {
             compositor.prepare_capture(LensLayout::capture_band(
                 frame.viewport_width,
@@ -204,9 +208,12 @@ pub(super) fn apply(
             )
         });
         let geometry_changed = state.frame.as_ref() != Some(&geometry);
+        if stage.is_some() {
+            compositor.hide_visuals();
+        }
         if geometry_changed {
             if compositor
-                .update(geometry.0 as f32, geometry.1 as f32, &geometry.2)
+                .update_regions(geometry.0 as f32, geometry.1 as f32, &geometry.2)
                 .is_err()
             {
                 compositor.clear();
@@ -216,13 +223,20 @@ pub(super) fn apply(
             state.frame = Some(geometry);
         }
         if let Some((index, layout)) = lens {
-            if geometry_changed || lens != state.lens {
-                compositor.configure_lens(index, layout);
+            if (stage.is_some() || geometry_changed || lens != state.lens)
+                && !compositor.configure_lens(index, layout, stage)
+            {
+                return Ok(None);
             }
         } else if !preparing {
             compositor.clear_lens();
         }
         state.lens = lens;
+        if stage.is_none() && compositor.show_visuals().is_err() {
+            compositor.clear();
+            state.frame = None;
+            return Ok(Some(false));
+        }
         Ok(Some(true))
     })
 }

@@ -35,6 +35,8 @@ pub struct BackdropFrame {
     pub prewarm_lens: bool,
     #[serde(default)]
     pub prepare_frost: Option<f64>,
+    #[serde(default)]
+    pub stage_lens: Option<u64>,
 }
 
 /// Select once per opening. A failed GPU path can fall back, but a late
@@ -48,11 +50,15 @@ pub(super) enum LensOpening {
 }
 
 impl LensOpening {
-    pub(super) fn select(&mut self, ready: bool) -> bool {
-        if *self != Self::System {
-            *self = if ready { Self::Live } else { Self::System };
+    pub(super) fn select(&mut self, ready: bool, wait: bool) -> Option<bool> {
+        if *self == Self::System {
+            return Some(false);
         }
-        *self == Self::Live
+        if !ready && wait && *self == Self::Pending {
+            return None;
+        }
+        *self = if ready { Self::Live } else { Self::System };
+        Some(ready)
     }
 }
 
@@ -178,6 +184,7 @@ mod tests {
             island_body: None,
             prewarm_lens: false,
             prepare_frost: None,
+            stage_lens: None,
         }
     }
 
@@ -234,6 +241,7 @@ mod tests {
             island_body: None,
             prewarm_lens: false,
             prepare_frost: None,
+            stage_lens: None,
         };
         frame.regions = vec![
             BackdropRegion {
@@ -254,14 +262,20 @@ mod tests {
     #[test]
     fn a_late_lens_frame_cannot_change_the_open_island_material() {
         let mut opening = LensOpening::default();
-        assert!(!opening.select(false));
-        assert!(!opening.select(true));
+        assert_eq!(opening.select(false, false), Some(false));
+        assert_eq!(opening.select(true, true), Some(false));
         assert_eq!(opening, LensOpening::System);
-        opening = LensOpening::default();
-        assert!(opening.select(true));
-        assert!(opening.select(true));
-        assert!(!opening.select(false));
-        assert!(!opening.select(true));
+    }
+
+    #[test]
+    fn transient_misses_are_retried_while_the_island_is_hidden() {
+        let mut opening = LensOpening::default();
+        for _ in 0..8 {
+            assert_eq!(opening.select(false, true), None);
+        }
+        assert_eq!(opening, LensOpening::Pending);
+        assert_eq!(opening.select(true, true), Some(true));
+        assert_eq!(opening.select(true, false), Some(true));
     }
 
     #[test]

@@ -165,6 +165,10 @@
   transition: transform calc(var(--motion-unit) * 30) linear;
 }
 
+.island-hover-zone[data-lens-staging] {
+  opacity: 0 !important;
+}
+
 .island-hover-zone {
   position: relative;
   top: 0;

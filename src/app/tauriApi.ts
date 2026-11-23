@@ -46,6 +46,8 @@ export interface NativeBackdropFrame {
   lens?: { region: number } & NativeDesktopLens
   prewarmLens?: boolean
   prepareFrost?: number
+  /** Prepare the exact body geometry before this opening becomes visible. */
+  stageLens?: number
 }
 
 export interface NativeDesktopLens {

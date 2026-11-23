@@ -72,6 +72,16 @@ fn pump() {
     }
 }
 
+fn update_visible(
+    compositor: &mut HostBackdrop,
+    width: f32,
+    height: f32,
+    regions: &[BackdropRegion],
+) -> windows::core::Result<()> {
+    compositor.update_regions(width, height, regions)?;
+    compositor.show_visuals()
+}
+
 struct TestWindows(Vec<HWND>);
 impl Drop for TestWindows {
     fn drop(&mut self) {
@@ -158,7 +168,7 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
                 .each_ref()
                 .map(|surface| surface.physical(1.0, frost))
         };
-        compositor.update(640.0, 400.0, &regions(0.72))?;
+        update_visible(&mut compositor, 640.0, 400.0, &regions(0.72))?;
         let _ = ShowWindow(overlay, SW_SHOWNOACTIVATE);
         pump();
         let dc = GetDC(None);
@@ -179,7 +189,7 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
         );
         let fitted_mask = compositor.regions[0].tiles[0].2.clone();
         for (frost, expected) in [(0.0, 240..=255), (1.0, 0..=20)] {
-            compositor.update(640.0, 400.0, &regions(frost))?;
+            update_visible(&mut compositor, 640.0, 400.0, &regions(frost))?;
             pump();
             let dc = GetDC(None);
             let delta = ((GetPixel(dc, 300, 240).0 & 255) as i32
@@ -193,7 +203,8 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
         for global in [0.0, 1.0] {
             let mut mixed = surfaces.clone();
             mixed[1].frost = Some(1.0 - global);
-            compositor.update(
+            update_visible(
+                &mut compositor,
                 640.0,
                 400.0,
                 &mixed.map(|surface| surface.physical(1.0, global)),
@@ -239,8 +250,14 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
             island_body: Some(0),
             prewarm_lens: false,
             prepare_frost: None,
+            stage_lens: None,
         };
-        compositor.update(640.0, 400.0, &first_frame.host_regions(first_frame.lens))?;
+        update_visible(
+            &mut compositor,
+            640.0,
+            400.0,
+            &first_frame.host_regions(first_frame.lens),
+        )?;
         let mut opening_contrast = cleared;
         for _ in 0..6 {
             pump_messages();
@@ -259,7 +276,12 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
             "system blur at maximum did not attenuate the stripes: contrast={opening_contrast}"
         );
         first_frame.frost = 0.0;
-        compositor.update(640.0, 400.0, &first_frame.host_regions(None))?;
+        update_visible(
+            &mut compositor,
+            640.0,
+            400.0,
+            &first_frame.host_regions(None),
+        )?;
         pump();
         let dc = GetDC(None);
         let system_clear = ((GetPixel(dc, 300, 240).0 & 255) as i32
@@ -275,7 +297,7 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
         SetWindowLongPtrW(checker, GWLP_USERDATA, 2);
         let _ = RedrawWindow(Some(checker), None, None, RDW_INVALIDATE | RDW_UPDATENOW);
         DwmFlush()?;
-        compositor.update(640.0, 400.0, &regions(1.0)[..1])?;
+        update_visible(&mut compositor, 640.0, 400.0, &regions(1.0)[..1])?;
         pump();
         let profile = || {
             let dc = GetDC(None);
@@ -289,7 +311,7 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
         let native = profile();
         let mut body = regions(1.0)[0].clone();
         body.blur_radius = Some(24.0);
-        compositor.update(640.0, 400.0, std::slice::from_ref(&body))?;
+        update_visible(&mut compositor, 640.0, 400.0, std::slice::from_ref(&body))?;
         pump();
         let stronger = profile();
         let detail = |samples: &[u32]| {
@@ -305,10 +327,10 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
         assert!(detail(&stronger) * 4 < detail(&native) * 3);
         let brush = compositor.regions[0].frost.clone();
         body.blur_radius = Some(12.0);
-        compositor.update(640.0, 400.0, std::slice::from_ref(&body))?;
+        update_visible(&mut compositor, 640.0, 400.0, std::slice::from_ref(&body))?;
         assert_eq!(compositor.regions[0].frost, brush);
         body.blur_radius = None;
-        compositor.update(640.0, 400.0, &[body])?;
+        update_visible(&mut compositor, 640.0, 400.0, &[body])?;
         pump();
         assert_eq!(profile(), native);
         assert!(compositor.regions[0].frost.is_none());

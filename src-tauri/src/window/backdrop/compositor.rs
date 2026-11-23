@@ -6,6 +6,7 @@ use std::{
         mpsc::{self, Receiver, TryRecvError},
         Arc, Weak,
     },
+    time::{Duration, Instant},
 };
 use windows::{
     core::Interface,
@@ -33,6 +34,8 @@ mod optics;
 use desktop_lens::{DesktopLens, LensDevice};
 pub(super) use desktop_lens::{LensLayout, LENS_FRAME, LENS_PRESENT_TIMER, LENS_RETRY};
 
+const REVEAL_BUDGET: Duration = Duration::from_millis(220);
+
 /// One visual tree behind the HWND's child WebView2. HostBackdropBrush samples
 /// the desktop inside DWM, and the app has no access to those source pixels.
 pub(super) struct HostBackdrop {
@@ -44,6 +47,7 @@ pub(super) struct HostBackdrop {
     lens_region: Option<usize>,
     lens_lease: Weak<()>,
     opening: LensOpening,
+    pending_reveal: Option<(u64, Instant)>,
     capture_band: Option<LensLayout>,
     lens_device: Option<LensDevice>,
     device_unavailable: bool,
@@ -134,6 +138,7 @@ impl HostBackdrop {
                 lens_region: None,
                 lens_lease: Weak::new(),
                 opening: LensOpening::default(),
+                pending_reveal: None,
                 capture_band: None,
                 lens_device: None,
                 device_unavailable: false,
@@ -168,6 +173,7 @@ impl HostBackdrop {
     pub(super) fn clear_lens(&mut self) {
         self.capture_band = None;
         self.opening = LensOpening::default();
+        self.pending_reveal = None;
         self.stop_lens();
     }
 
@@ -197,32 +203,61 @@ impl HostBackdrop {
         }
     }
 
-    pub(super) fn configure_lens(&mut self, index: usize, layout: LensLayout) {
-        if self.opening == LensOpening::System {
-            return;
+    /// True once the hidden reveal has selected a backend. A transient
+    /// capture or DXGI miss may be retried until the reveal budget is spent.
+    pub(super) fn configure_lens(
+        &mut self,
+        index: usize,
+        layout: LensLayout,
+        stage: Option<u64>,
+    ) -> bool {
+        if self.opening == LensOpening::System || self.device_unavailable {
+            return true;
         }
-        // Make the first eligible paint the only decision point. There is no
-        // later DWM-to-GPU handoff, even if the worker delivers a frame then.
-        self.capture_band = None;
-        let result = self
+        if let Err(error) = self.poll_preparation() {
+            self.lens_error(error);
+            return true;
+        }
+        let wait = stage.is_some_and(|id| {
+            if self.pending_reveal.is_none_or(|(current, _)| current != id) {
+                self.pending_reveal = Some((id, Instant::now()));
+            }
+            self.pending_reveal
+                .is_some_and(|(_, start)| start.elapsed() < REVEAL_BUDGET)
+        });
+        let ready = match self
             .lens
             .as_mut()
-            .map_or(Ok(false), |lens| lens.configure(layout));
-        match result {
-            Ok(ready) if self.opening.select(ready) => {
-                if self.lens_region != Some(index) {
-                    if let Some(previous) = self.lens_region.and_then(|old| self.regions.get(old)) {
-                        let _ = previous.group.SetIsVisible(true);
-                    }
-                    self.lens_region = Some(index);
-                }
-                if let Some(region) = self.regions.get(index) {
-                    let _ = region.group.SetIsVisible(false);
-                }
+            .map_or(Ok(false), |lens| lens.configure(layout))
+        {
+            Ok(ready) => ready,
+            Err(error) => {
+                self.lens_error(error);
+                return true;
             }
-            Ok(_) => self.stop_lens(),
-            Err(error) => self.lens_error(error),
+        };
+        let Some(use_lens) = self.opening.select(ready, wait) else {
+            return false;
+        };
+        self.capture_band = None;
+        self.pending_reveal = None;
+        if use_lens {
+            if self.lens_region != Some(index) {
+                if let Some(previous) = self.lens_region.and_then(|old| self.regions.get(old)) {
+                    let _ = previous.group.SetIsVisible(true);
+                }
+                self.lens_region = Some(index);
+            }
+            if let Some(region) = self.regions.get(index) {
+                let _ = region.group.SetIsVisible(false);
+            }
+        } else {
+            self.stop_lens();
+            if stage.is_some() {
+                log::debug!("Desktop lens was not ready within the hidden reveal budget");
+            }
         }
+        true
     }
 
     pub(super) fn draw_lens(&mut self) {
@@ -314,12 +349,13 @@ impl HostBackdrop {
     }
 
     fn lens_error(&mut self, error: windows::core::Error) {
-        self.opening.select(false);
+        self.opening = LensOpening::System;
+        self.pending_reveal = None;
         self.stop_lens();
         crate::logging::append_event(&format!("desktop glass lens unavailable: {error}"));
     }
 
-    pub(super) fn update(
+    pub(super) fn update_regions(
         &mut self,
         width: f32,
         height: f32,
@@ -358,6 +394,10 @@ impl HostBackdrop {
                 });
             self.regions[index].update(&self.compositor, &self.brush, factory, region)?;
         }
+        Ok(())
+    }
+
+    pub(super) fn show_visuals(&mut self) -> windows::core::Result<()> {
         if !self.visible {
             self.root.SetOpacity(1.0)?;
             self.visible = true;

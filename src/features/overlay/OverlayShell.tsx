@@ -154,6 +154,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const transitionRef = useRef(transition)
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
+  const [stagedGeneration, setStagedGeneration] = useState<number>()
   const [edgeContact, setEdgeContact] = useState(false)
   const hasSession = media?.hasSession === true
   const reducedTransparency = useSystemReducedTransparency()
@@ -168,10 +169,17 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const desktopLens = useMemo(() => glassMode === 'system' ? undefined : {
     ...normalizeDesktopLens(uiPrefs.desktopLens), snapshot: glassMode === 'snapshot',
   }, [glassMode, uiPrefs.desktopLens])
-  const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency,
+  const glassBackdrop = usesGlassMaterial(config) && !reducedTransparency
+  const prepareLensOnOpen = isTauriRuntime() && glassBackdrop && desktopLens !== undefined
+  const stagingLens = expandedVisible && prepareLensOnOpen && stagedGeneration === transition.generation
+  const showPreparedLens = useCallback((generation: number) => {
+    setStagedGeneration(current => current === generation ? undefined : current)
+  }, [])
+  const nativeBackdrop = useNativeBackdrop(overlay, glassBackdrop,
     '.island-surface, [data-island-control="floating"]', glassMaterial.frost / 100, advanced.regionFrostKey, desktopLens,
     windowPhase === 'opening' || windowPhase === 'open' || (windowPhase === 'collapsed' && edgeContact)
-      ? advanced.nativeBodyFrost : undefined)
+      ? advanced.nativeBodyFrost : undefined,
+    stagingLens ? { id: transition.generation, onReady: showPreparedLens } : undefined)
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -210,6 +218,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     transitionRef.current = next
     windowPhaseRef.current = next.phase
     setTransition(next)
+    return next
   }, [])
   const [, setIsHoveringIsland] = useState(false)
   const [hoverCoachActive, setHoverCoachActive] = useState(false)
@@ -362,7 +371,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
           setMode('expanded')
         }
 
-        setWindowPhase('open', generation)
+        const opened = setWindowPhase('open', generation)
+        if (prepareLensOnOpen) setStagedGeneration(opened.generation)
       }
     }).catch(() => {
       if (cancelled || generation !== transitionRef.current.generation) return
@@ -373,7 +383,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     return () => {
       cancelled = true
     }
-  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, arrangement, islandLayout.zones.actions.length, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
+  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, arrangement, islandLayout.zones.actions.length, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase, prepareLensOnOpen])
 
   useEffect(() => {
     if ((!showLocalServers && !showLatestMessage) || !isTauriRuntime()) return
@@ -977,15 +987,16 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
 
       <AnimatePresence>
         {expandedVisible ? (
-          <div className="island-expanded-layer">
+          <div className="island-expanded-layer" inert={stagingLens || undefined}>
             <motion.div
               ref={hoverZoneRef}
               className="island-hover-zone"
               key="island-expanded"
               onPointerEnter={handleExpandedHoverEnter}
               onPointerLeave={handleExpandedHoverLeave}
-              initial={reducedMotion ? false : { opacity: 0, y: -18 }}
-              animate={{ opacity: 1, y: 0 }}
+              data-lens-staging={stagingLens || undefined}
+              initial={stagingLens ? { opacity: 0, y: reducedMotion ? 0 : -18 } : reducedMotion ? false : { opacity: 0, y: -18 }}
+              animate={stagingLens ? { opacity: 0, y: reducedMotion ? 0 : -18 } : { opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               onAnimationComplete={publishWidgetRegions}
               transition={{
