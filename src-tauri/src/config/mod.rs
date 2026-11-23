@@ -41,6 +41,7 @@ fn update_stock_glass(ui: &mut Map<String, Value>) -> bool {
         // Replace a complete old factory surface. A partial or edited group
         // stays explicit, even if some of its values match the old preset.
         for (surface, old) in [
+            ("body", json!({ "frost": 24 })),
             ("body", json!({ "frost": 18, "transparency": 69, "background": "#14171b", "text": "#ffffff" })),
             ("buttons", json!({ "background": "#000000", "frost": 7.5, "transparency": 75 })),
             ("progressTrack", json!({
@@ -618,6 +619,22 @@ mod tests {
         assert_eq!(saved["advancedGlass"]["body"], appearance_defaults().ui["advancedGlass"]["body"]);
         assert_eq!(saved["advancedGlass"]["buttons"], custom);
         assert!(!config.migrate_interface_preferences());
+    }
+
+    #[test]
+    fn softens_only_the_previous_default_island_frost() {
+        use serde_json::json;
+        for (body, expected) in [
+            (json!({ "frost": 24 }), json!({ "frost": 18 })),
+            (json!({ "frost": 24, "transparency": 84 }), json!({ "frost": 24, "transparency": 84 })),
+            (json!({ "frost": 27 }), json!({ "frost": 27 })),
+        ] {
+            let mut config = AppConfig::default();
+            config.plugins.ui_preferences_mut().get_mut("advancedGlass").unwrap()["body"] = body;
+            config.migrate_interface_preferences();
+            assert_eq!(config.plugins.settings[UI_PREFS_KEY]["advancedGlass"]["body"], expected);
+            assert!(!config.migrate_interface_preferences());
+        }
     }
 
     #[test]

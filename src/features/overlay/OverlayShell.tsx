@@ -154,6 +154,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const transitionRef = useRef(transition)
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
+  const [edgeContact, setEdgeContact] = useState(false)
   const hasSession = media?.hasSession === true
   const reducedTransparency = useSystemReducedTransparency()
   const hasPlaybackWave = hasSession && getPlaybackWaveEnabled(config)
@@ -165,10 +166,11 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const advanced = useAdvancedGlass(usesGlassMaterial(config) ? uiPrefs.advancedGlass : undefined, glassMaterial)
   const glassMode = normalizeDesktopGlassMode(uiPrefs.desktopGlassMode)
   const desktopLens = useMemo(() => glassMode === 'system' ? undefined : {
-    ...normalizeDesktopLens(uiPrefs.desktopLens), snapshot: glassMode === 'snapshot', reducedMotion,
-  }, [glassMode, uiPrefs.desktopLens, reducedMotion])
+    ...normalizeDesktopLens(uiPrefs.desktopLens), snapshot: glassMode === 'snapshot',
+  }, [glassMode, uiPrefs.desktopLens])
   const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency,
-    '.island-surface, [data-island-control="floating"]', glassMaterial.frost / 100, advanced.regionFrostKey, desktopLens)
+    '.island-surface, [data-island-control="floating"]', glassMaterial.frost / 100, advanced.regionFrostKey, desktopLens,
+    windowPhase === 'opening' || windowPhase === 'open' || (windowPhase === 'collapsed' && edgeContact))
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -631,6 +633,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     lastPointerYRef.current = null
     lastLocalYRef.current = null
     topContactRef.current = false
+    setEdgeContact(false)
     topEdgeContactAtRef.current = null
     postTopPullRef.current = 0
     openCommittedRef.current = false
@@ -703,6 +706,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     })
     setHideCollapsedProgress(true)
     setWindowPhase('opening')
+    setEdgeContact(false)
   }
 
   const requestOpenIsland = () => {
@@ -768,12 +772,14 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     if (distanceToTop <= 3) {
       if (!topContactRef.current) {
         topEdgeContactAtRef.current = performance.now()
+        setEdgeContact(true)
       }
       topContactRef.current = true
       clearPeekResetTimer()
       startEdgePressure()
-    } else if (distanceToTop > 12) {
+    } else if (distanceToTop > 12 && topContactRef.current) {
       topContactRef.current = false
+      setEdgeContact(false)
       topEdgeContactAtRef.current = null
       postTopPullRef.current = 0
       stopEdgePressure()
@@ -801,6 +807,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     lastPointerYRef.current = clientY
     lastLocalYRef.current = null
     topContactRef.current = false
+    setEdgeContact(false)
     topEdgeContactAtRef.current = null
     postTopPullRef.current = 0
     edgeProximityRef.current = 0

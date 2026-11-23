@@ -2,8 +2,8 @@
 //! and its sampling margin are copied. The copy and shader both stay on GPU.
 use super::super::geometry::{BackdropRegion, DesktopLensSettings};
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
+    mpsc::{self, Sender},
+    Arc, Mutex, Weak,
 };
 use windows::{
     core::{self, s, Interface, Result},
@@ -31,20 +31,17 @@ use windows::{
             },
         },
         System::WinRT::{
-            RoInitialize, RoUninitialize, RO_INIT_MULTITHREADED,
             Composition::ICompositorInterop,
             Direct3D11::{CreateDirect3D11DeviceFromDXGIDevice, IDirect3DDxgiInterfaceAccess},
             Graphics::Capture::IGraphicsCaptureItemInterop,
+            RoInitialize, RoUninitialize, RO_INIT_MULTITHREADED,
         },
         UI::WindowsAndMessaging::{
             GetWindowDisplayAffinity, KillTimer, PostMessageW, SetWindowDisplayAffinity,
             WDA_EXCLUDEFROMCAPTURE, WINDOW_DISPLAY_AFFINITY, WM_APP,
         },
     },
-    UI::Composition::{
-        AnimationStopBehavior, CompositionBatchTypes, CompositionScopedBatch, Compositor,
-        ContainerVisual, SpriteVisual,
-    },
+    UI::Composition::{Compositor, ContainerVisual, SpriteVisual},
 };
 use windows_numerics::{Vector2, Vector3};
 
@@ -57,7 +54,6 @@ pub(crate) const LENS_RETRY: u32 = WM_APP + 0x47;
 pub(crate) const LENS_PRESENT_TIMER: usize = 0x4d49_4c50;
 const CAPTURE_BUFFERS: i32 = 2;
 const FRAME_INTERVAL: i64 = 160_000; // 16 ms, in 100 ns ticks
-const REVEAL_DURATION: i64 = 2_800_000; // 280 ms
 const FORMAT: DXGI_FORMAT = DXGI_FORMAT_B8G8R8A8_UNORM;
 const SAMPLE: DXGI_SAMPLE_DESC = DXGI_SAMPLE_DESC {
     Count: 1,
@@ -94,10 +90,29 @@ pub(crate) struct LensLayout {
     pub frost: f32,
     pub opacity: f32,
     pub snapshot: bool,
-    pub reduced_motion: bool,
 }
 
 impl LensLayout {
+    pub(super) fn capture_band(width: f64, height: f64, scale: f64) -> Self {
+        let viewport_width = (width * scale).round() as i32;
+        // The body is centered at the top edge. Limit the speculative copy
+        // to this band; the native layout still supplies the exact crop.
+        let band_width = (1400.0 * scale).min(4096.0).round() as i32;
+        let band_width = viewport_width.min(band_width).max(1);
+        Self {
+            left: (viewport_width - band_width) / 2,
+            top: 0,
+            width: band_width as u32,
+            height: (height.min(320.0) * scale).round().clamp(1.0, 1024.0) as u32,
+            radii: [0.0; 4],
+            bend: 0.0,
+            dispersion: 0.0,
+            frost: 0.0,
+            opacity: 0.0,
+            snapshot: false,
+        }
+    }
+
     pub(crate) fn new(
         region: &BackdropRegion,
         scale: f64,
@@ -116,7 +131,6 @@ impl LensLayout {
             frost: region.lens_blur_sigma(scale, global_frost),
             opacity: region.opacity as f32,
             snapshot: lens.snapshot,
-            reduced_motion: lens.reduced_motion,
         }
     }
 }
@@ -155,43 +169,11 @@ impl LensDevice {
 
 pub(super) struct DesktopLens {
     hwnd: HWND,
-    capture: Option<CaptureStream>,
-    snapshot: bool,
+    capture: Option<(Sender<()>, CaptureExclusion)>,
     renderer: Arc<Mutex<LensRenderer>>,
     root: ContainerVisual,
     visual: SpriteVisual,
-    compositor: Compositor,
-    revealed: Arc<AtomicBool>,
-    reveal_batch: Option<CompositionScopedBatch>,
     visible: bool,
-}
-
-/// The DWM backdrop remains below the lens until this animation is complete.
-/// Explicitly start from zero before the swap chain can become visible.
-pub(super) fn fade_in(
-    compositor: &Compositor,
-    visual: &SpriteVisual,
-    on_complete: impl Fn() + Send + 'static,
-) -> Result<CompositionScopedBatch> {
-    let opacity = compositor.CreateScalarKeyFrameAnimation()?;
-    let easing = compositor.CreateCubicBezierEasingFunction(
-        Vector2 { X: 0.35, Y: 0.0 },
-        Vector2 { X: 0.45, Y: 1.0 },
-    )?;
-    opacity.InsertKeyFrame(0.0, 0.0)?;
-    opacity.InsertKeyFrameWithEasingFunction(1.0, 1.0, &easing)?;
-    opacity.SetDuration(TimeSpan { Duration: REVEAL_DURATION })?;
-    opacity.SetStopBehavior(AnimationStopBehavior::SetToFinalValue)?;
-    let batch = compositor.CreateScopedBatch(CompositionBatchTypes::Animation)?;
-    batch.Completed(&TypedEventHandler::new(move |_, _| {
-        on_complete();
-        Ok(())
-    }))?;
-    visual.SetOpacity(0.0)?;
-    visual.StartAnimation(&"Opacity".into(), &opacity)?;
-    visual.SetIsVisible(true)?;
-    batch.End()?;
-    Ok(batch)
 }
 
 /// Owns the immediate GPU context. The capture callback and occasional UI
@@ -205,6 +187,7 @@ struct LensRenderer {
     swapchain: IDXGISwapChain1,
     target: Option<ID3D11RenderTargetView>,
     layout: LensLayout,
+    preparing: bool,
     source: Option<InputTexture>,
     gaussian: Option<Gaussian>,
     last_frame_time: Option<i64>,
@@ -220,67 +203,136 @@ struct CaptureStream {
     item: GraphicsCaptureItem,
     pool: Direct3D11CaptureFramePool,
     session: GraphicsCaptureSession,
-    token: i64,
-    closed_token: i64,
-    closed: Arc<AtomicBool>,
-    _exclusion: CaptureExclusion,
+    frame_token: Option<i64>,
+    closed_token: Option<i64>,
 }
 
 impl Drop for CaptureStream {
     fn drop(&mut self) {
-        self.closed.store(true, Ordering::Release);
-        let _ = self.item.RemoveClosed(self.closed_token);
-        let _ = self.pool.RemoveFrameArrived(self.token);
+        if let Some(token) = self.closed_token {
+            let _ = self.item.RemoveClosed(token);
+        }
+        if let Some(token) = self.frame_token {
+            let _ = self.pool.RemoveFrameArrived(token);
+        }
         let _ = self.session.Close();
         let _ = self.pool.Close();
     }
 }
 
-impl DesktopLens {
-    pub(super) fn start(
-        hwnd: HWND,
-        compositor: &Compositor,
-        root: &ContainerVisual,
-        layout: LensLayout,
-        gpu: LensDevice,
+fn notify_capture_failure(renderer: &Weak<Mutex<LensRenderer>>, error: windows::core::Error) {
+    let Some(renderer) = renderer.upgrade() else {
+        return;
+    };
+    let Ok(mut renderer) = renderer.lock() else {
+        return;
+    };
+    if !renderer.stopped {
+        renderer.failure = Some(error);
+        renderer.stopped = true;
+        let _ = unsafe { PostMessageW(Some(renderer.hwnd()), LENS_FRAME, WPARAM(0), LPARAM(0)) };
+    }
+}
+
+impl CaptureStream {
+    fn new(
+        monitor: HMONITOR,
+        device: &ID3D11Device,
+        renderer: &Weak<Mutex<LensRenderer>>,
     ) -> Result<Self> {
-        validate_size(layout)?;
         if !GraphicsCaptureSession::IsSupported()? {
             return Err(E_FAIL.into());
         }
-        let exclusion = CaptureExclusion::for_window(hwnd)?;
-        let monitor = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
         let interop: IGraphicsCaptureItemInterop = core::factory::<GraphicsCaptureItem, _>()?;
         let item: GraphicsCaptureItem = unsafe { interop.CreateForMonitor(monitor)? };
-        let source_size = item.Size()?;
-        let dxgi: IDXGIDevice = gpu.device.cast()?;
-        if let Ok(device) = dxgi.cast::<IDXGIDevice1>() {
-            let _ = unsafe { device.SetMaximumFrameLatency(1) };
+        let size = item.Size()?;
+        {
+            let active = renderer.upgrade().ok_or(E_FAIL)?;
+            let mut active = active.lock().map_err(|_| E_FAIL)?;
+            if active.stopped {
+                return Err(E_FAIL.into());
+            }
+            active.source_size = size;
         }
+        let dxgi: IDXGIDevice = device.cast()?;
         let projected: IDirect3DDevice =
             unsafe { CreateDirect3D11DeviceFromDXGIDevice(&dxgi)?.cast()? };
         let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
             &projected,
             DirectXPixelFormat::B8G8R8A8UIntNormalized,
             CAPTURE_BUFFERS,
-            source_size,
+            size,
         )?;
         let session = pool.CreateCaptureSession(&item)?;
-        let _ = session.SetIsCursorCaptureEnabled(false);
-        // DWM still enforces the user's OS preference and capture permissions.
-        // This is the same public session property used by Windhawk and OBS.
-        let _ = session.SetIsBorderRequired(false);
-        let dirty_tracking = session
+        let mut capture = Self {
+            item,
+            pool,
+            session,
+            frame_token: None,
+            closed_token: None,
+        };
+        let _ = capture.session.SetIsCursorCaptureEnabled(false);
+        let _ = capture.session.SetIsBorderRequired(false);
+        let dirty_tracking = capture
+            .session
             .SetDirtyRegionMode(GraphicsCaptureDirtyRegionMode::ReportOnly)
             .is_ok();
-        session.SetMinUpdateInterval(TimeSpan {
+        capture.session.SetMinUpdateInterval(TimeSpan {
             Duration: FRAME_INTERVAL,
         })?;
+        let render_target = renderer.clone();
+        capture.frame_token =
+            Some(capture.pool.FrameArrived(
+                &TypedEventHandler::<Direct3D11CaptureFramePool, _>::new(move |sender, _| {
+                    if let (Some(renderer), Some(pool)) = (render_target.upgrade(), sender.as_ref())
+                    {
+                        let mut renderer = renderer.lock().map_err(|_| E_FAIL)?;
+                        if !renderer.stopped && !(renderer.layout.snapshot && renderer.submitted) {
+                            if let Err(error) = renderer.process(pool, dirty_tracking) {
+                                renderer.failure = Some(error);
+                                renderer.stopped = true;
+                                let _ = unsafe {
+                                    PostMessageW(
+                                        Some(renderer.hwnd()),
+                                        LENS_FRAME,
+                                        WPARAM(0),
+                                        LPARAM(0),
+                                    )
+                                };
+                            }
+                        }
+                    }
+                    Ok(())
+                }),
+            )?);
+        let target = renderer.clone();
+        capture.closed_token =
+            Some(capture.item.Closed(&TypedEventHandler::new(move |_, _| {
+                notify_capture_failure(&target, E_FAIL.into());
+                Ok(())
+            }))?);
+        Ok(capture)
+    }
+}
 
+impl DesktopLens {
+    pub(super) fn prepare(
+        hwnd: HWND,
+        compositor: &Compositor,
+        root: &ContainerVisual,
+        band: LensLayout,
+        gpu: LensDevice,
+    ) -> Result<Self> {
+        let exclusion = CaptureExclusion::for_window(hwnd)?;
+        let monitor = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
+        let dxgi: IDXGIDevice = gpu.device.cast()?;
+        if let Ok(device) = dxgi.cast::<IDXGIDevice1>() {
+            let _ = unsafe { device.SetMaximumFrameLatency(1) };
+        }
         let factory: IDXGIFactory2 = unsafe { dxgi.GetAdapter()?.GetParent()? };
         let desc = DXGI_SWAP_CHAIN_DESC1 {
-            Width: layout.width,
-            Height: layout.height,
+            Width: 1,
+            Height: 1,
             Format: FORMAT,
             SampleDesc: SAMPLE,
             BufferCount: 2,
@@ -291,7 +343,6 @@ impl DesktopLens {
             ..Default::default()
         };
         let swapchain = unsafe { factory.CreateSwapChainForComposition(&gpu.device, &desc, None)? };
-        let target = Some(render_target(&gpu.device, &swapchain)?);
         let surface = unsafe {
             compositor
                 .cast::<ICompositorInterop>()?
@@ -299,17 +350,18 @@ impl DesktopLens {
         };
         let visual = compositor.CreateSpriteVisual()?;
         visual.SetBrush(&compositor.CreateSurfaceBrushWithSurface(&surface)?)?;
-        visual.SetOpacity(0.0)?;
         visual.SetIsVisible(false)?;
-        fit_visual(&visual, layout)?;
+        let device = gpu.device.clone();
+        let monitor_id = monitor.0 as usize;
         let renderer = Arc::new(Mutex::new(LensRenderer {
             window: hwnd.0 as usize,
-            monitor_id: monitor.0 as usize,
-            source_size,
+            monitor_id,
+            source_size: SizeInt32::default(),
             gpu,
             swapchain,
-            target,
-            layout,
+            target: None,
+            layout: band,
+            preparing: true,
             source: None,
             gaussian: None,
             last_frame_time: None,
@@ -320,158 +372,64 @@ impl DesktopLens {
             stopped: false,
             failure: None,
         }));
-        let render_target = Arc::downgrade(&renderer);
-        let window_id = hwnd.0 as usize;
-        let token = pool.FrameArrived(&TypedEventHandler::<Direct3D11CaptureFramePool, _>::new(
-            move |sender, _| {
-                if let (Some(renderer), Some(pool)) = (render_target.upgrade(), sender.as_ref()) {
-                    let mut renderer = renderer.lock().map_err(|_| E_FAIL)?;
-                    if !renderer.stopped && !(renderer.layout.snapshot && renderer.submitted) {
-                        let previously_submitted = renderer.submitted;
-                        if let Err(error) = renderer.process(pool, dirty_tracking) {
-                            renderer.failure = Some(error);
-                            renderer.stopped = true;
-                        }
-                        if (!previously_submitted && renderer.submitted)
-                            || renderer.failure.is_some()
-                        {
-                            let _ = unsafe {
-                                PostMessageW(
-                                    Some(HWND(window_id as _)),
-                                    LENS_FRAME,
-                                    WPARAM(0),
-                                    LPARAM(0),
-                                )
-                            };
-                        }
-                    }
-                }
-                Ok(())
-            },
-        ))?;
-        let closed = Arc::new(AtomicBool::new(false));
-        let stop = closed.clone();
-        let closed_token = item.Closed(&TypedEventHandler::new(move |_, _| {
-            stop.store(true, Ordering::Release);
-            let _ = unsafe {
-                PostMessageW(Some(HWND(window_id as _)), LENS_FRAME, WPARAM(0), LPARAM(0))
-            };
-            Ok(())
-        }))?;
-        let capture = CaptureStream {
-            item,
-            pool,
-            session,
-            token,
-            closed_token,
-            closed,
-            _exclusion: exclusion,
-        };
+        let target = Arc::downgrade(&renderer);
+        let (stop, stopped) = mpsc::channel();
         let lens = Self {
             hwnd,
-            capture: Some(capture),
-            snapshot: layout.snapshot,
+            capture: Some((stop, exclusion)),
             renderer,
             root: root.clone(),
             visual,
-            compositor: compositor.clone(),
-            revealed: Arc::new(AtomicBool::new(false)),
-            reveal_batch: None,
             visible: false,
         };
         root.Children()?.InsertAtTop(&lens.visual)?;
-        let capture = lens.capture.as_ref().ok_or(E_FAIL)?;
-        let session = capture.session.clone();
-        let cancelled = capture.closed.clone();
-        let renderer = Arc::downgrade(&lens.renderer);
-        // Even a prewarmed device can block in StartCapture. Let DWM paint the
-        // opening and keep the WebView responsive while the session starts.
+        // This worker owns the WGC session, including Close, so cancelling a
+        // hover never waits on capture initialization or teardown.
         std::thread::Builder::new()
-            .name("desktop-glass-start".into())
+            .name("desktop-glass-capture".into())
             .spawn(move || {
-                if cancelled.load(Ordering::Acquire) {
-                    return;
-                }
                 let result = unsafe { RoInitialize(RO_INIT_MULTITHREADED) }.and_then(|()| {
-                    let result = session.StartCapture();
-                    drop(session);
+                    let result = (|| {
+                        if !matches!(stopped.try_recv(), Err(mpsc::TryRecvError::Empty)) {
+                            return Ok(());
+                        }
+                        let capture =
+                            CaptureStream::new(HMONITOR(monitor_id as _), &device, &target)?;
+                        if matches!(stopped.try_recv(), Err(mpsc::TryRecvError::Empty)) {
+                            capture.session.StartCapture()?;
+                            let _ = stopped.recv();
+                        }
+                        Ok(())
+                    })();
                     unsafe { RoUninitialize() };
                     result
                 });
-                let Err(error) = result else { return };
-                let Some(renderer) = renderer.upgrade() else { return };
-                let Ok(mut renderer) = renderer.lock() else { return };
-                if !renderer.stopped && !cancelled.load(Ordering::Acquire) {
-                    renderer.failure = Some(error);
-                    renderer.stopped = true;
-                    drop(renderer);
-                    let _ = unsafe {
-                        PostMessageW(Some(HWND(window_id as _)), LENS_FRAME, WPARAM(0), LPARAM(0))
-                    };
+                if let Err(error) = result {
+                    notify_capture_failure(&target, error);
                 }
             })
             .map_err(|_| E_FAIL)?;
         Ok(lens)
     }
 
-    pub(super) fn is_snapshot(&self) -> bool {
-        self.snapshot
-    }
-
-    fn present_visual(&mut self, reduced_motion: bool) -> Result<()> {
-        if self.visible {
-            return Ok(());
-        }
-        if reduced_motion {
-            self.visual.SetOpacity(1.0)?;
-            self.visual.SetIsVisible(true)?;
-            self.revealed.store(true, Ordering::Release);
-        } else {
-            let done = self.revealed.clone();
-            let window_id = self.hwnd.0 as usize;
-            self.reveal_batch = Some(fade_in(&self.compositor, &self.visual, move || {
-                done.store(true, Ordering::Release);
-                let _ = unsafe {
-                    PostMessageW(Some(HWND(window_id as _)), LENS_FRAME, WPARAM(0), LPARAM(0))
-                };
-            })?);
-        }
-        self.visible = true;
-        Ok(())
-    }
-
     pub(super) fn configure(&mut self, layout: LensLayout) -> Result<()> {
         let mut renderer = self.renderer.lock().map_err(|_| E_FAIL)?;
-        if layout == renderer.layout {
+        if let Some(error) = renderer.failure.take() {
+            return Err(error);
+        }
+        if renderer.preparing && renderer.source.is_none() {
             return Ok(());
         }
-        validate_size(layout)?;
-        renderer.configure(layout)?;
-        if !renderer.submitted && self.visible {
-            // A cached frame that already fits should keep blending. When
-            // there is no replacement, discard this reveal's completion.
-            self.visual.SetIsVisible(false)?;
-            self.visual.StopAnimation(&"Opacity".into())?;
-            self.revealed = Arc::new(AtomicBool::new(false));
-            self.reveal_batch = None;
-            self.visible = false;
+        if renderer.preparing || layout != renderer.layout {
+            validate_size(layout)?;
+            renderer.configure(layout)?;
+            fit_visual(&self.visual, layout)?;
         }
-        fit_visual(&self.visual, layout)?;
         Ok(())
     }
 
     pub(super) fn draw(&mut self, retry: bool) -> Result<bool> {
-        if self.revealed.load(Ordering::Acquire) {
-            self.reveal_batch = None;
-        }
-        if self
-            .capture
-            .as_ref()
-            .is_some_and(|capture| capture.closed.load(Ordering::Acquire))
-        {
-            return Err(E_FAIL.into());
-        }
-        let (submitted, reduced_motion) = {
+        let (submitted, snapshot) = {
             let mut renderer = self.renderer.lock().map_err(|_| E_FAIL)?;
             if let Some(error) = renderer.failure.take() {
                 return Err(error);
@@ -479,15 +437,16 @@ impl DesktopLens {
             if retry && std::mem::take(&mut renderer.retry_pending) && renderer.redraw {
                 renderer.present_cached()?;
             }
-            (renderer.submitted, renderer.layout.reduced_motion)
+            (renderer.submitted, renderer.layout.snapshot)
         };
-        if submitted {
-            if self.snapshot {
-                self.capture = None;
-            }
-            self.present_visual(reduced_motion)?;
+        if submitted && !self.visible {
+            self.visual.SetIsVisible(true)?;
+            self.visible = true;
         }
-        Ok(self.visible && self.revealed.load(Ordering::Acquire))
+        if submitted && snapshot {
+            self.capture = None;
+        }
+        Ok(submitted)
     }
 }
 
@@ -503,7 +462,8 @@ impl LensRenderer {
     fn configure(&mut self, layout: LensLayout) -> Result<()> {
         let previous = self.layout;
         let moved = (layout.left, layout.top) != (previous.left, previous.top);
-        let resized = (layout.width, layout.height) != (previous.width, previous.height);
+        let resized =
+            self.preparing || (layout.width, layout.height) != (previous.width, previous.height);
         if resized {
             unsafe {
                 self.gpu.context.OMSetRenderTargets(None, None);
@@ -519,6 +479,7 @@ impl LensRenderer {
             self.target = Some(render_target(&self.gpu.device, &self.swapchain)?);
         }
         self.layout = layout;
+        self.preparing = false;
         self.redraw = true;
         self.present_attempts = 0;
         if moved || resized {
@@ -636,6 +597,10 @@ impl LensRenderer {
             input.revision = input.revision.wrapping_add(1);
         }
         let _ = frame.Close();
+        if self.preparing {
+            self.redraw = false;
+            return Ok(());
+        }
         if crosses_crop {
             self.present_attempts = 0;
         }

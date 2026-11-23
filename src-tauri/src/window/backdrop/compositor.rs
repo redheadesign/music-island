@@ -1,4 +1,4 @@
-use super::geometry::BackdropRegion;
+use super::geometry::{BackdropRegion, LensOpening};
 use std::{
     cell::{OnceCell, RefCell},
     rc::Rc,
@@ -37,11 +37,12 @@ pub(super) struct HostBackdrop {
     root: ContainerVisual,
     brush: CompositionBackdropBrush,
     frost_factory: OnceCell<Option<CompositionEffectFactory>>,
-    lens: Option<(usize, DesktopLens)>,
-    lens_failed: bool,
-    lens_ready: bool,
-    lens_request: Option<(usize, LensLayout)>,
+    lens: Option<DesktopLens>,
+    lens_region: Option<usize>,
+    opening: LensOpening,
+    capture_band: Option<LensLayout>,
     lens_device: Option<LensDevice>,
+    device_unavailable: bool,
     lens_preparing: Option<Receiver<windows::core::Result<LensDevice>>>,
     compositor: Compositor,
     hwnd: HWND,
@@ -126,10 +127,11 @@ impl HostBackdrop {
                 brush,
                 frost_factory: OnceCell::new(),
                 lens: None,
-                lens_failed: false,
-                lens_ready: false,
-                lens_request: None,
+                lens_region: None,
+                opening: LensOpening::default(),
+                capture_band: None,
                 lens_device: None,
+                device_unavailable: false,
                 lens_preparing: None,
                 compositor,
                 hwnd,
@@ -154,9 +156,14 @@ impl HostBackdrop {
     }
 
     pub(super) fn clear(&mut self) {
-        self.lens_request = None;
-        self.stop_lens();
+        self.clear_lens();
         self.hide_visuals();
+    }
+
+    pub(super) fn clear_lens(&mut self) {
+        self.capture_band = None;
+        self.opening = LensOpening::default();
+        self.stop_lens();
     }
 
     pub(super) fn hide_visuals(&mut self) {
@@ -167,107 +174,114 @@ impl HostBackdrop {
     }
 
     fn stop_lens(&mut self) {
-        self.lens_ready = false;
-        if let Some((index, lens)) = self.lens.take() {
-            drop(lens);
-            if let Some(region) = self.regions.get(index) {
-                let _ = region.group.SetIsVisible(true);
-            }
+        self.lens = None;
+        if let Some(region) = self
+            .lens_region
+            .take()
+            .and_then(|index| self.regions.get(index))
+        {
+            let _ = region.group.SetIsVisible(true);
         }
     }
 
-    pub(super) fn configure_lens(&mut self, request: Option<(usize, LensLayout)>) {
-        self.lens_request = request;
-        let Some((index, layout)) = request else {
+    pub(super) fn prepare_capture(&mut self, band: LensLayout) {
+        if self.opening == LensOpening::Pending && self.capture_band != Some(band) {
             self.stop_lens();
-            self.lens_failed = false;
-            return;
-        };
-        if self.lens_failed {
-            return;
+            self.capture_band = Some(band);
+            self.draw_lens();
         }
-        if self.lens.as_ref().is_some_and(|(previous, lens)| {
-            *previous != index || lens.is_snapshot() != layout.snapshot
-        }) {
-            self.stop_lens();
-        }
-        self.draw_lens();
     }
 
-    pub(super) fn draw_lens(&mut self) {
-        self.refresh_lens(false);
-    }
-
-    pub(super) fn retry_lens(&mut self) {
-        self.refresh_lens(true);
-    }
-
-    fn refresh_lens(&mut self, retry: bool) {
-        if let Err(error) = self.prepare_lens() {
-            self.lens_error(error);
+    pub(super) fn configure_lens(&mut self, index: usize, layout: LensLayout) {
+        if self.opening == LensOpening::System {
             return;
         }
-        let Some((index, lens)) = &mut self.lens else {
-            return;
-        };
-        match lens.draw(retry) {
-            Ok(visible) => {
-                if self.lens_ready != visible {
-                    if let Some(region) = self.regions.get(*index) {
-                        let _ = region.group.SetIsVisible(!visible);
+        // Make the first eligible paint the only decision point. There is no
+        // later DWM-to-GPU handoff, even if the worker delivers a frame then.
+        self.capture_band = None;
+        let result = self.lens.as_mut().map_or(Ok(false), |lens| {
+            lens.configure(layout)?;
+            lens.draw(false)
+        });
+        match result {
+            Ok(ready) if self.opening.select(ready) => {
+                if self.lens_region != Some(index) {
+                    if let Some(previous) = self.lens_region.and_then(|old| self.regions.get(old)) {
+                        let _ = previous.group.SetIsVisible(true);
                     }
-                    self.lens_ready = visible;
+                    self.lens_region = Some(index);
+                }
+                if let Some(region) = self.regions.get(index) {
+                    let _ = region.group.SetIsVisible(false);
                 }
             }
+            Ok(_) => self.stop_lens(),
             Err(error) => self.lens_error(error),
         }
     }
 
-    fn prepare_lens(&mut self) -> windows::core::Result<()> {
+    pub(super) fn draw_lens(&mut self) {
+        if let Err(error) = self.poll_preparation() {
+            self.lens_error(error);
+        }
+        if self.opening == LensOpening::Live {
+            self.refresh_lens(false);
+        }
+    }
+
+    pub(super) fn retry_lens(&mut self) {
+        if self.opening == LensOpening::Live {
+            self.refresh_lens(true);
+        }
+    }
+
+    fn refresh_lens(&mut self, retry: bool) {
+        if let Some(lens) = &mut self.lens {
+            if let Err(error) = lens.draw(retry) {
+                self.lens_error(error);
+            }
+        }
+    }
+
+    fn poll_preparation(&mut self) -> windows::core::Result<()> {
         if let Some(receiver) = &self.lens_preparing {
             match receiver.try_recv() {
                 Ok(result) => {
                     self.lens_preparing = None;
+                    self.device_unavailable = result.is_err();
                     self.lens_device = Some(result?);
                 }
                 Err(TryRecvError::Empty) => return Ok(()),
                 Err(TryRecvError::Disconnected) => {
                     self.lens_preparing = None;
+                    self.device_unavailable = true;
                     return Err(E_FAIL.into());
                 }
             }
         }
-        let Some((index, layout)) = self.lens_request.filter(|_| !self.lens_failed) else {
-            return Ok(());
-        };
-        if let Some((_, lens)) = &mut self.lens {
-            return lens.configure(layout);
+        if let (LensOpening::Pending, None, Some(band), Some(device)) = (
+            &self.opening,
+            &self.lens,
+            self.capture_band,
+            &self.lens_device,
+        ) {
+            self.lens = Some(DesktopLens::prepare(
+                self.hwnd,
+                &self.compositor,
+                &self.root,
+                band,
+                device.clone(),
+            )?);
         }
-        if let Some(device) = &self.lens_device {
-            self.lens = Some((
-                index,
-                DesktopLens::start(
-                    self.hwnd,
-                    &self.compositor,
-                    &self.root,
-                    layout,
-                    device.clone(),
-                )?,
-            ));
-            return Ok(());
-        }
-        self.prewarm_lens();
         Ok(())
     }
 
-    // Setup of D3D11 and the shaders starts while the island is collapsed.
-    // The first frame request is still what starts desktop capture.
+    // Create D3D11 and compile the shaders while the overlay is still idle.
+    // Capture itself starts only when the user contacts the top edge.
     pub(super) fn prewarm_lens(&mut self) {
-        // The host brush paints the first frame before WGC can supply pixels.
-        // Prepare its effect graph while the top-edge window has no regions.
         self.frost_factory
             .get_or_init(|| optics::blur_factory(&self.compositor).ok());
-        if self.lens_preparing.is_some() || self.lens_device.is_some() || self.lens_failed {
+        if self.lens_preparing.is_some() || self.lens_device.is_some() || self.device_unavailable {
             return;
         }
         let (send, receive) = mpsc::channel();
@@ -284,13 +298,14 @@ impl HostBackdrop {
         if worker.is_ok() {
             self.lens_preparing = Some(receive);
         } else {
+            self.device_unavailable = true;
             self.lens_error(E_FAIL.into());
         }
     }
 
     fn lens_error(&mut self, error: windows::core::Error) {
+        self.opening.select(false);
         self.stop_lens();
-        self.lens_failed = true;
         crate::logging::append_event(&format!("desktop glass lens unavailable: {error}"));
     }
 

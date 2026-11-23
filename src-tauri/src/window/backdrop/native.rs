@@ -152,10 +152,27 @@ pub(super) fn apply(
         let mut bounds = RECT::default();
         let shown =
             unsafe { IsWindowVisible(hwnd) }.as_bool() && !unsafe { IsIconic(hwnd) }.as_bool();
+        let settings = (label == "main").then_some(frame.lens).flatten();
+        let preparing = shown
+            && label == "main"
+            && frame.prewarm_lens
+            && frame.prepare_capture
+            && settings.is_none();
+        if preparing {
+            compositor.prepare_capture(LensLayout::capture_band(
+                frame.viewport_width,
+                frame.viewport_height,
+                frame.scale,
+            ));
+        }
         if frame.regions.is_empty() || !shown {
             state.frame = None;
             state.lens = None;
-            compositor.clear();
+            if preparing {
+                compositor.hide_visuals();
+            } else {
+                compositor.clear();
+            }
             // A missing surface or a show/resize race is not a policy denial.
             return Ok(if frame.regions.is_empty() {
                 Some(true)
@@ -170,7 +187,6 @@ pub(super) fn apply(
             state.frame = None;
             return Ok(None);
         }
-        let settings = (label == "main").then_some(frame.lens).flatten();
         let geometry = (
             frame.viewport_width * frame.scale,
             frame.viewport_height * frame.scale,
@@ -199,10 +215,14 @@ pub(super) fn apply(
             }
             state.frame = Some(geometry);
         }
-        if geometry_changed || lens != state.lens {
-            compositor.configure_lens(lens);
-            state.lens = lens;
+        if let Some((index, layout)) = lens {
+            if geometry_changed || lens != state.lens {
+                compositor.configure_lens(index, layout);
+            }
+        } else if !preparing {
+            compositor.clear_lens();
         }
+        state.lens = lens;
         Ok(Some(true))
     })
 }

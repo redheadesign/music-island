@@ -44,13 +44,13 @@ export interface NativeBackdropFrame {
   regions: NativeBackdropRegion[]
   lens?: { region: number } & NativeDesktopLens
   prewarmLens?: boolean
+  prepareCapture?: boolean
 }
 
 export interface NativeDesktopLens {
   bend: number
   dispersion: number
   snapshot?: boolean
-  reducedMotion?: boolean
 }
 
 /** A null response means the native viewport is still changing. */

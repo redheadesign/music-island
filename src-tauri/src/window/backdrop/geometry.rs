@@ -31,6 +31,27 @@ pub struct BackdropFrame {
     pub lens: Option<DesktopLensSettings>,
     #[serde(default)]
     pub prewarm_lens: bool,
+    #[serde(default)]
+    pub prepare_capture: bool,
+}
+
+/// Select once per opening. A failed GPU path can fall back, but a late
+/// frame cannot replace the surface the user already sees.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(super) enum LensOpening {
+    #[default]
+    Pending,
+    Live,
+    System,
+}
+
+impl LensOpening {
+    pub(super) fn select(&mut self, ready: bool) -> bool {
+        if *self != Self::System {
+            *self = if ready { Self::Live } else { Self::System };
+        }
+        *self == Self::Live
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
@@ -41,8 +62,6 @@ pub struct DesktopLensSettings {
     pub dispersion: f32,
     #[serde(default)]
     pub snapshot: bool,
-    #[serde(default)]
-    pub reduced_motion: bool,
 }
 
 impl BackdropFrame {
@@ -145,6 +164,7 @@ mod tests {
             regions: vec![],
             lens: None,
             prewarm_lens: false,
+            prepare_capture: false,
         }
     }
 
@@ -199,6 +219,7 @@ mod tests {
             regions: vec![],
             lens: None,
             prewarm_lens: false,
+            prepare_capture: false,
         };
         frame.regions = vec![
             BackdropRegion {
@@ -214,6 +235,19 @@ mod tests {
             25
         ];
         assert!(!frame.is_valid());
+    }
+
+    #[test]
+    fn a_late_lens_frame_cannot_change_the_open_island_material() {
+        let mut opening = LensOpening::default();
+        assert!(!opening.select(false));
+        assert!(!opening.select(true));
+        assert_eq!(opening, LensOpening::System);
+        opening = LensOpening::default();
+        assert!(opening.select(true));
+        assert!(opening.select(true));
+        assert!(!opening.select(false));
+        assert!(!opening.select(true));
     }
 
     #[test]
@@ -235,7 +269,6 @@ mod tests {
             bend: 0.4,
             dispersion: 0.1,
             snapshot: false,
-            reduced_motion: false,
         };
         let stock = frame.host_regions(None);
         assert_eq!(stock[0].blur_radius, None);
@@ -243,8 +276,14 @@ mod tests {
             frame.regions[0].frost = amount;
             let prepared = frame.host_regions(Some(lens));
             let sigma = frame.regions[0].lens_blur_sigma(frame.scale, frame.frost);
-            assert_eq!(prepared[0].blur_radius, (sigma > 0.0).then_some(f64::from(sigma)));
-            assert_eq!(prepared[0].opacity, if sigma > 0.0 { card.opacity } else { 0.0 });
+            assert_eq!(
+                prepared[0].blur_radius,
+                (sigma > 0.0).then_some(f64::from(sigma))
+            );
+            assert_eq!(
+                prepared[0].opacity,
+                if sigma > 0.0 { card.opacity } else { 0.0 }
+            );
             assert_eq!(prepared[0].radii, stock[0].radii);
             assert_eq!(prepared[1], stock[1]);
         }

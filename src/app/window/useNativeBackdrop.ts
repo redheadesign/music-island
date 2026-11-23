@@ -40,11 +40,12 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
 }
 
 /** DWM owns the backdrop; this hook only publishes each surface's geometry. */
-export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost, regionFrostKey = '', optics?: NativeDesktopLens): NativeBackdropStatus {
+export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost, regionFrostKey = '', optics?: NativeDesktopLens, prepareCapture = false): NativeBackdropStatus {
   const [status, setStatus] = useState<NativeBackdropStatus>()
   const frostAmount = useRef(defaultFrost)
   const individualFrost = useRef('')
   const lens = useRef<NativeDesktopLens | undefined>(undefined)
+  const capturing = useRef(false)
   const changeFrost = useRef<((crossedZero: boolean) => void) | null>(null)
   useLayoutEffect(() => {
     const amount = Number.isFinite(frost) ? Math.min(1, Math.max(0, frost)) : defaultFrost
@@ -52,8 +53,9 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
     frostAmount.current = amount
     individualFrost.current = regionFrostKey
     lens.current = optics
+    capturing.current = prepareCapture
     changeFrost.current?.(crossedZero)
-  }, [frost, regionFrostKey, optics])
+  }, [frost, regionFrostKey, optics, prepareCapture])
   useLayoutEffect(() => {
     if (!('__TAURI_INTERNALS__' in window)) return
     const node = root.current
@@ -95,7 +97,7 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
         scale: window.devicePixelRatio || 1,
         frost: frostAmount.current,
         regions,
-        ...(capture && lens.current && { prewarmLens: true }),
+        ...(capture && lens.current && { prewarmLens: true, ...(capturing.current && { prepareCapture: true }) }),
         ...(desktopLens && { lens: desktopLens }),
       }
     }

@@ -241,9 +241,9 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
                 bend: 0.5,
                 dispersion: 0.14,
                 snapshot: false,
-                reduced_motion: false,
             }),
             prewarm_lens: false,
+            prepare_capture: false,
         };
         compositor.update(640.0, 400.0, &first_frame.host_regions(first_frame.lens))?;
         let mut opening_contrast = cleared;
@@ -305,45 +305,6 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
         assert_eq!(profile(), native);
         assert!(compositor.regions[0].frost.is_none());
 
-        // A synthetic replacement frame exercises the same native reveal as
-        // WGC without needing to capture the user's desktop. It starts well
-        // after the first layer to reproduce a slow first capture.
-        let plate = compositor.compositor.CreateSpriteVisual()?;
-        plate.SetSize(Vector2 { X: 80.0, Y: 40.0 })?;
-        plate.SetOffset(Vector3 { X: 180.0, Y: 120.0, Z: 0.0 })?;
-        plate.SetBrush(&compositor.compositor.CreateColorBrushWithColor(windows::UI::Color {
-            A: 255, R: 0, G: 0, B: 0,
-        })?)?;
-        let incoming = compositor.compositor.CreateSpriteVisual()?;
-        incoming.SetSize(plate.Size()?)?;
-        incoming.SetOffset(plate.Offset()?)?;
-        incoming.SetBrush(&compositor.compositor.CreateColorBrushWithColor(windows::UI::Color {
-            A: 255, R: 255, G: 255, B: 255,
-        })?)?;
-        incoming.SetIsVisible(false)?;
-        let children = compositor.root.Children()?;
-        children.InsertAtTop(&plate)?;
-        children.InsertAtTop(&incoming)?;
-        pump();
-        let done = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let callback = done.clone();
-        let _batch = desktop_lens::fade_in(&compositor.compositor, &incoming, move || {
-            callback.store(true, std::sync::atomic::Ordering::Release);
-        })?;
-        let start = std::time::Instant::now();
-        let mut values = Vec::new();
-        let dc = GetDC(None);
-        while start.elapsed() < std::time::Duration::from_millis(550) {
-            pump_messages();
-            DwmFlush()?;
-            values.push((GetPixel(dc, 300, 240).0 & 255) as i32);
-            std::thread::sleep(std::time::Duration::from_millis(8));
-        }
-        ReleaseDC(None, dc);
-        let first = values[0];
-        let jump = values.windows(2).map(|pair| (pair[1] - pair[0]).abs()).max().unwrap();
-        assert!(first < 100 && jump < 110, "late GPU reveal flashed: first={first}, max step={jump}");
-        assert!(values.contains(&255) && done.load(std::sync::atomic::Ordering::Acquire), "GPU reveal did not settle");
         drop(compositor);
         Ok(())
     }
