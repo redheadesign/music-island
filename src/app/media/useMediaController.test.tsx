@@ -103,6 +103,22 @@ describe('media controller timeline lifecycle', () => {
     expect(current.media?.positionMs).toBeLessThan(1_000)
   })
 
+  it('holds a seek to the start through a transient gap and a stale same-track poll', async () => {
+    const oldTrack = { ...snapshot, positionMs: 60_000, generation: 1 }
+    vi.mocked(api.getMediaSnapshot).mockResolvedValue(oldTrack)
+    await render()
+    await act(async () => { await current.sendCommand({ seek: { positionMs: 0 } }) })
+    expect(current.progressMs).toBe(0)
+    const update = vi.mocked(api.onMediaUpdate).mock.calls[0][0]
+    await act(async () => update({
+      ...oldTrack, sourceAppId: null, trackId: null, positionMs: null,
+      hasSession: false, playbackStatus: 'changing',
+    }))
+    await act(async () => update({ ...oldTrack, updatedAt: '2026-09-08T12:00:00.250Z' }))
+    expect(current.progressMs).toBeLessThan(1_000)
+    expect(current.media?.playbackStatus).toBe('playing')
+  })
+
   it('ignores a late timeline from the previous track', async () => {
     await render()
     const next = { ...snapshot, trackId: 'track-b', title: 'Track B', positionMs: 0 }

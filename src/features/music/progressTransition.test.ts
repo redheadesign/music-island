@@ -28,6 +28,16 @@ describe('progress visual transition', () => {
     expect(reconcileProgressTransition(completed, frame('a', .01, 1_000), navigation('previous'), false, 1_200).phase).toBe('stable')
   })
 
+  it('does not reveal the old midpoint after previous has restarted the track', () => {
+    const request = navigation('previous')
+    const restarting = reconcileProgressTransition(initialProgressTransition(frame()), frame('a', 0, 0), request, false, 1_100)
+    const stale = reconcileProgressTransition(restarting, frame('a', .651, 65_100), request, false, 1_130)
+    const completed = completeProgressTransition(stale)
+    expect(completed.visible.positionMs).toBe(0)
+    expect(reconcileProgressTransition(completed, frame('a', .652, 65_200), request, false, 1_400)).toBe(completed)
+    expect(reconcileProgressTransition(completed, frame('a', .004, 400), request, false, 1_500).visible.positionMs).toBe(400)
+  })
+
   it('absorbs delayed provider identity after one previous restart animation', () => {
     const request = navigation('previous')
     const exiting = reconcileProgressTransition(

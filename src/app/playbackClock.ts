@@ -26,6 +26,10 @@ const SESSION_HOLD_MS = 2_500
 const SEEK_CONFIRM_TOLERANCE_MS = 2_000
 const TRANSIENT_PAUSE_STATUSES: PlaybackStatus[] = ['paused', 'changing', 'opened']
 
+export function isTransientSessionGap(snapshot: MediaSnapshot): boolean {
+  return !snapshot.hasSession && TRANSIENT_NO_SESSION_STATUSES.includes(snapshot.playbackStatus)
+}
+
 export function getInterpolatedPosition(snapshot: MediaSnapshot, nowMs = Date.now()): number {
   const positionMs = snapshot.positionMs ?? 0
   if (snapshot.playbackStatus !== 'playing') {
@@ -64,13 +68,17 @@ export function mergeMediaSnapshot(
     return next
   }
 
-  if (previous?.hasSession && !next.hasSession) {
-    if (TRANSIENT_NO_SESSION_STATUSES.includes(next.playbackStatus)) {
-      return {
-        ...previous,
-        playbackStatus: next.playbackStatus === 'no-session' ? 'changing' : next.playbackStatus,
-        updatedAt: next.updatedAt,
-      }
+  if (previous?.hasSession && isTransientSessionGap(next)) {
+    if (pendingSeek && nowMs < pendingSeek.untilMs) {
+      const holdsDestination = previous.positionMs != null
+        && Math.abs(previous.positionMs - pendingSeek.positionMs) <= SEEK_CONFIRM_TOLERANCE_MS
+      if (holdsDestination) return previous
+      return withAnchor(previous, pendingSeek.positionMs, nowMs)
+    }
+    return {
+      ...previous,
+      playbackStatus: next.playbackStatus === 'no-session' ? 'changing' : next.playbackStatus,
+      updatedAt: next.updatedAt,
     }
   }
 

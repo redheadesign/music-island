@@ -82,10 +82,11 @@
   --island-lens-hover-tint: rgb(255 255 255 / .28);
   --island-lens-pressed-tint: rgb(0 0 0 / .48);
   --island-lens-hover-sheen: var(--glass-selection-sheen);
-  --island-cover-primary: #a6a6a2;
-  --island-cover-secondary: #777774;
-  --island-progress-start: var(--artwork-progress-color, #6d6d69);
-  --island-progress-end: color-mix(in srgb, var(--island-progress-start) 96%, black);
+  --island-cover-primary: #a8a9ac;
+  --island-cover-secondary: #777a80;
+  --island-progress-neutral: #696b71;
+  --island-progress-start: color-mix(in srgb, var(--artwork-progress-color, var(--island-progress-neutral)) 84%, var(--island-progress-neutral));
+  --island-progress-end: color-mix(in srgb, var(--island-progress-start) 96%, var(--island-progress-neutral));
   --island-particle-ink: color-mix(in srgb, var(--island-cover-primary) 65%, #fff);
   --island-particle-soft-ink: color-mix(in srgb, var(--island-cover-secondary) 52%, #fff);
   --island-glass-ink: var(--fg-on-glass);
@@ -93,6 +94,26 @@
   --island-wave-trough: rgb(177 185 194 / .06);
 }
 .island-root[data-interface-theme='glass'] .music-module { --player-reaction-size: 46px; }
+
+@media (forced-colors: none) and (prefers-contrast: no-preference) and (prefers-reduced-transparency: no-preference) {
+  /* Lift dark desktops with a neutral base and cap transmitted white so the
+     monochrome labels keep their contrast over a light window. */
+  .island-root[data-interface-theme='glass']:not([data-reduced-transparency='true']) {
+    --island-player-transmission: min(.34, calc(var(--glass-island-transmission) * .46));
+    --island-player-fill: rgb(48 49 52 / calc(1 - var(--island-player-transmission)));
+    --glass-depth: 0 9px 32px -16px rgb(0 0 0 / .46);
+  }
+  .island-root[data-interface-theme='glass']:not([data-reduced-transparency='true']) .island-card {
+    --island-lens-fill: rgb(var(--glass-ink) / .08);
+    --island-lens-sheen: linear-gradient(163deg, rgb(255 255 255 / calc(.24 * var(--glass-highlight))), transparent 53%);
+    --island-lens-hover-sheen: linear-gradient(163deg, rgb(255 255 255 / calc(.39 * var(--glass-highlight))), transparent 60%);
+    --glass-control-rim: inset 0 var(--glass-edge-width) rgb(255 255 255 / calc(.62 * var(--glass-highlight))),
+      inset 0 calc(0px - var(--glass-edge-width)) rgb(0 0 0 / .24);
+  }
+  :where(.island-root[data-interface-theme='glass']:not([data-reduced-transparency='true'])) .island-card .progress-track {
+    --island-lens-fill: rgb(12 15 20 / .18);
+  }
+}
 .island-root[data-interface-theme='glass'][data-cover-art='true'] {
   --island-cover-primary: rgb(var(--artwork-primary));
   --island-cover-secondary: rgb(var(--artwork-secondary));

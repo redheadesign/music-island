@@ -35,6 +35,39 @@ export async function checkGlassFrost(page) {
   }
 }
 
+// Sample rendered pixels to catch an overly dark tint or washed-out labels.
+export async function checkGlassReadingTone(page) {
+  const card = await page.locator('.island-card').boundingBox()
+  const track = await page.locator('.progress-track').boundingBox()
+  assert.ok(card && track, 'Expected the expanded player and seek control')
+  const text = page.locator('.progress-content--track')
+  const ink = await text.evaluate(element => getComputedStyle(element).color.match(/[\d.]+/g).slice(0, 3).map(Number))
+  const background = await page.addStyleTag({ content: '.island-feedback__ambient { visibility: hidden }' })
+  try {
+    const samples = []
+    for (const color of ['#131519', '#fff']) {
+      await background.evaluate((style, bg) => {
+        style.textContent = '.island-feedback__ambient { visibility: hidden } .workshop-stage { background: ' + bg + ' !important }'
+      }, color)
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+      const screen = await page.screenshot()
+      const sample = (left, top) => sharp(screen).extract({
+        left: Math.round(left), top: Math.round(top), width: 12, height: 4,
+      }).resize(1, 1).removeAlpha().raw().toBuffer()
+      const tone = await sample(card.x + 24, card.y + 37)
+      samples.push(luminance(tone))
+      assert.ok(Math.max(...tone) - Math.min(...tone) < 12, 'Neutral backdrop picked up a colored cast')
+      const rail = await sample(track.x + track.width * .78, track.y + 10)
+      const ratio = (luminance(ink) + .05) / (luminance(rail) + .05)
+      assert.ok(ratio >= 4.5, `Track text on ${color}: ${ratio.toFixed(2)}:1`)
+    }
+    assert.ok(samples[0] > .014, 'The glass crushes shadow detail on the dark background')
+    assert.ok(samples[1] - samples[0] > .075, 'The glass does not transmit enough of the background tone')
+  } finally {
+    await background.evaluate(element => element.remove())
+  }
+}
+
 // Measure each widget's actual desktop transmission, including any ancestor
 // fills. Text covers some pixels, so compare the median in the centre.
 export async function checkIslandWidgetTransmission(page) {

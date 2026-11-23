@@ -215,4 +215,14 @@ describe('playbackClock', () => {
     expect(merged.playbackStatus).toBe('playing')
     expect(merged.positionMs).toBe(120_000)
   })
+
+  it('keeps the seek destination through an empty provider poll', () => {
+    const now = Date.parse('2026-07-08T12:00:02.000Z')
+    const previous = snapshot({ positionMs: 60_000, playbackStatus: 'playing' })
+    const gap = snapshot({ hasSession: false, playbackStatus: 'changing', positionMs: null })
+    const pending = { positionMs: 0, untilMs: now + 2_000, preservePlaying: true }
+    expect(mergeMediaSnapshot(previous, gap, pending, now)).toMatchObject({
+      hasSession: true, playbackStatus: 'playing', positionMs: 0,
+    })
+  })
 })

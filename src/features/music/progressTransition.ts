@@ -27,6 +27,8 @@ export interface ProgressTransition {
   generation: number
 }
 
+const NAVIGATION_CONFIRM_MS = 2_500
+
 /** UI identity only; provider/session arbitration remains in the app controller. */
 export function progressTrackKey(media: Pick<MediaSnapshot, 'provider' | 'sourceAppId' | 'trackId' | 'title' | 'durationMs'>): string {
   // Duration commonly arrives after title and is timeline metadata, not identity.
@@ -65,6 +67,16 @@ export function reconcileProgressTransition(
       awaitingIdentityNavigation: null,
     }
   }
+  const awaitingRestart = navigation && navigation.id === state.awaitingIdentityNavigation
+    && now - navigation.requestedAt <= NAVIGATION_CONFIRM_MS ? navigation : null
+  const destination = state.pending ?? state.visible
+  if (awaitingRestart && awaitingRestart.fromPositionMs != null && frame.trackKey === awaitingRestart.fromTrackKey
+    && frame.positionMs != null && frame.positionMs >= awaitingRestart.fromPositionMs - 1_000
+    && (destination.trackKey !== frame.trackKey
+      || frame.positionMs > (destination.positionMs ?? 0) + NAVIGATION_CONFIRM_MS)) {
+    // A poll carrying the pre-restart position can arrive after the reset.
+    return state
+  }
   if (state.phase === 'exiting') {
     // Rapid changes coalesce into the latest frame without redirecting the outgoing one.
     return { ...state, pending: frame, consumedNavigation: navigation?.id ?? state.consumedNavigation }
@@ -72,24 +84,18 @@ export function reconcileProgressTransition(
   const freshNavigation = navigation
     && navigation.id !== state.consumedNavigation
     && navigation.fromTrackKey === state.visible.trackKey
-    && now - navigation.requestedAt <= 2_500
+    && now - navigation.requestedAt <= NAVIGATION_CONFIRM_MS
       ? navigation : null
   const restartedPrevious = freshNavigation?.direction === 'previous'
     && freshNavigation.fromPositionMs != null && frame.positionMs != null
     && frame.positionMs < freshNavigation.fromPositionMs - 1_000
-  const delayedIdentityForRestart = state.awaitingIdentityNavigation != null
-    && navigation?.id === state.awaitingIdentityNavigation
-    && now - navigation.requestedAt <= 2_500
-    && frame.trackKey !== state.visible.trackKey
+  const delayedIdentityForRestart = awaitingRestart && frame.trackKey !== state.visible.trackKey
   if (delayedIdentityForRestart) {
     // Previous can first reset the current session position, then publish the
     // destination identity. Both updates acknowledge the same command.
     return { ...state, visible: frame, awaitingIdentityNavigation: null }
   }
-  const awaitingIdentityNavigation = state.awaitingIdentityNavigation != null
-    && navigation?.id === state.awaitingIdentityNavigation
-    && now - navigation.requestedAt <= 2_500
-      ? state.awaitingIdentityNavigation : null
+  const awaitingIdentityNavigation = awaitingRestart?.id ?? null
   if (frame.trackKey !== state.visible.trackKey || restartedPrevious) {
     return {
       ...state, pending: frame, phase: 'exiting',

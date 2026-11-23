@@ -11,7 +11,7 @@ export function normalizeDesktopGlassMode(value: unknown): DesktopGlassMode {
   return value === 'system' || value === 'snapshot' ? value : 'lens'
 }
 
-export const DESKTOP_LENS_DEFAULTS: Readonly<DesktopLens> = { bend: .52, dispersion: .28 }
+export const DESKTOP_LENS_DEFAULTS: Readonly<DesktopLens> = { bend: .46, dispersion: .14 }
 
 export function normalizeDesktopLens(value?: Partial<DesktopLens>): DesktopLens {
   const dial = (key: keyof DesktopLens) => {
@@ -46,13 +46,19 @@ export interface GlassSurfaceSettings {
 
 export type AdvancedGlassOverrides = Partial<Record<GlassSurfaceId, Partial<GlassSurfaceSettings>>>
 
+const defaultSurfacePaint: Partial<Record<GlassSurfaceId, string>> = {
+  body: '#303134',
+  progressTrack: '#0c0f14',
+  progressFill: '#696b71',
+}
+
 export function getSurfaceDefaults(id: GlassSurfaceId, base: GlassMaterial): GlassSurfaceSettings {
   const nested = ['transport', 'buttons', 'progressTrack', 'progressFill'].includes(id)
   return {
     bend: 0, dispersion: 0, frost: nested ? 0 : Math.round(base.frost * .32 * 10) / 10,
     rim: .13, transparency: id === 'progressFill' ? 0 : base.transparency,
     parallax: base.parallax, highlight: base.highlight, edge: base.edge,
-    background: id === 'progressFill' ? '#6d6d69' : '#080808', text: '#f4f4f1',
+    background: defaultSurfacePaint[id] ?? '#080808', text: '#f4f4f1',
     height: 64, radius: 32, textSize: 18, brightness: 100,
   }
 }

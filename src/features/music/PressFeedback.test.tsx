@@ -8,6 +8,38 @@ import { PlaybackButton, ReactionButton } from './MusicControls'
 
 afterEach(() => { document.body.innerHTML = ''; vi.restoreAllMocks(); vi.unstubAllGlobals() })
 describe('island feedback commands', () => {
+  it('plays the pause gesture once through a delayed acknowledgement and a stale playing update', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+    const host = document.body.appendChild(document.createElement('div'))
+    const root = createRoot(host)
+    const render = (playing: boolean | null) => act(async () => root.render(
+      <IslandFeedback glassOptic opticActive={false} playbackWave playbackMotion={playing}>
+        <PlaybackButton playing={playing !== false} />
+      </IslandFeedback>,
+    ))
+    const phase = () => host.querySelector('.island-feedback__ambient')?.getAttribute('data-wave-phase')
+    try {
+      await render(true)
+      await act(async () => host.querySelector('button')!.click())
+      expect(phase()).toBe('return')
+      await act(async () => { vi.advanceTimersByTime(1_100) })
+      expect(phase()).toBe('return')
+      await render(null)
+      await render(false)
+      await render(true)
+      await render(false)
+      expect(phase()).toBe('return')
+      await act(async () => { vi.advanceTimersByTime(3_000) })
+      expect(phase()).toBe('return')
+      await render(true)
+      expect(phase()).toBe('launch')
+    } finally {
+      await act(async () => root.unmount())
+      vi.useRealTimers()
+    }
+  })
+
   it('opens in steady motion and only launches or retracts on playback changes', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
     const host = document.body.appendChild(document.createElement('div'))

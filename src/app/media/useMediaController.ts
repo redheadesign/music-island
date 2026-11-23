@@ -18,6 +18,7 @@ import {
   applyOptimisticSeek,
   applySessionHold,
   getInterpolatedPosition,
+  isTransientSessionGap,
   mergeMediaSnapshot,
   type SessionHold,
   isSameTrack,
@@ -74,7 +75,16 @@ export function useMediaController({
   const reconcileMedia = useCallback((current: MediaSnapshot | null, snapshot: MediaSnapshot) => {
     if (snapshot.provider !== protocol || (snapshot.generation ?? 0) < (current?.generation ?? 0)) return current
     const now = Date.now()
-    if (pendingSeekRef.current && (!isSameTrack(pendingSeekRef.current.track, snapshot) || pendingSeekRef.current.track.provider !== snapshot.provider || pendingSeekRef.current.track.sourceAppId !== snapshot.sourceAppId || now >= pendingSeekRef.current.untilMs)) pendingSeekRef.current = null
+    const pending = pendingSeekRef.current
+    if (pending && (
+      pending.track.provider !== snapshot.provider ||
+      (pending.track.generation ?? 0) !== (snapshot.generation ?? 0) ||
+      (snapshot.sourceAppId != null && pending.track.sourceAppId !== snapshot.sourceAppId) ||
+      (!isTransientSessionGap(snapshot) && !isSameTrack(pending.track, snapshot)) ||
+      now >= pending.untilMs
+    )) {
+      pendingSeekRef.current = null
+    }
     const merged = mergeMediaSnapshot(current, snapshot, pendingSeekRef.current, now)
     const held = applySessionHold(current, merged, sessionHoldRef.current, now)
     sessionHoldRef.current = held.hold

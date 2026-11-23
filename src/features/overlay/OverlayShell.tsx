@@ -158,7 +158,9 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const hasSession = media?.hasSession === true
   const reducedTransparency = useSystemReducedTransparency()
   const hasPlaybackWave = hasSession && getPlaybackWaveEnabled(config)
-  const playbackMotion = hasSession && media?.playbackStatus === 'playing'
+  const playbackStatus = media?.playbackStatus
+  const playbackMotion = hasSession && (playbackStatus === 'changing' || playbackStatus === 'opened' || playbackStatus === 'closed')
+    ? null : hasSession && playbackStatus === 'playing'
   const overlay = useRef<HTMLElement>(null)
   const glassMaterial = useMemo(() => getGlassMaterial(config), [config])
   const advanced = useAdvancedGlass(usesGlassMaterial(config) ? uiPrefs.advancedGlass : undefined, glassMaterial)
@@ -181,7 +183,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     bassEffect.current?.update(bass)
   }, [])
   usePlaybackBass(
-    expandedVisible && hasPlaybackWave && playbackMotion
+    expandedVisible && hasPlaybackWave && playbackMotion === true
       && !reducedMotion && !reducedTransparency
       && config.media.protocol === 'yandex-direct' && config.media.directYandexConsent && media?.provider === 'yandex-direct',
     applyBassLevel,

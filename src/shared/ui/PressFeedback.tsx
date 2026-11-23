@@ -16,13 +16,20 @@ type IslandFeedbackProps = HTMLAttributes<HTMLElement> & {
   glassOptic?: boolean
   opticActive?: boolean
   particles?: boolean
-  playbackMotion?: boolean
+  playbackMotion?: boolean | null
   playbackWave?: boolean
   ambientRef?: Ref<HTMLSpanElement>
   shaderTuning?: Partial<IslandShaderTuning>
 }
 
 type WavePhase = 'idle' | 'steady' | 'launch' | 'return'
+type WaveIntent = { playing: boolean; requestedAt: number }
+const WAVE_CONFIRM_MS = 2_500
+const WAVE_CONFIRM_GRACE_MS = 300
+
+function restingWave(playing: boolean): WavePhase {
+  return playing ? 'steady' : 'idle'
+}
 
 /** The ripple belongs to the surface, never to a moving button. */
 export function IslandFeedback({ children, className = '', glassOptic = false, opticActive = true, particles = false, playbackMotion, playbackWave = false, ambientRef, shaderTuning, ...props }: IslandFeedbackProps) {
@@ -30,30 +37,49 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
   const surface = useRef<HTMLElement>(null)
   const layer = useRef<HTMLSpanElement>(null)
   const animations = useRef<Animation[]>([])
-  const [waveIntent, setWaveIntent] = useState<boolean | null>(null)
-  const wavePlaying = waveIntent ?? (playbackMotion !== false)
+  const confirmed = playbackMotion === undefined ? true : playbackMotion
   const [wave, setWave] = useState(() => ({
-    enabled: playbackWave, playing: wavePlaying, phase: (wavePlaying ? 'steady' : 'idle') as WavePhase,
+    enabled: playbackWave,
+    playing: confirmed ?? false,
+    phase: restingWave(confirmed ?? false),
+    intent: null as WaveIntent | null,
+    late: null as WaveIntent | null,
   }))
+  const wavePlaying = wave.intent?.playing ?? confirmed ?? wave.playing
+  const lateConfirmation = wave.late?.playing === confirmed ? wave.late : null
   // Opening the island mounts at the current playback state. Only a change
   // while the rings are enabled creates an outward or inward gesture.
-  if (wave.playing !== wavePlaying || wave.enabled !== playbackWave) {
-    const transitioning = wave.enabled && playbackWave && !document.hidden
+  if (wave.playing !== wavePlaying || wave.enabled !== playbackWave || lateConfirmation) {
+    const acknowledging = lateConfirmation && Date.now() - lateConfirmation.requestedAt <= 2 * WAVE_CONFIRM_MS
+    const transitioning = wave.playing !== wavePlaying && wave.enabled && playbackWave && !document.hidden && !acknowledging
     setWave({
+      ...wave,
       enabled: playbackWave,
       playing: wavePlaying,
-      phase: wavePlaying ? (transitioning ? 'launch' : 'steady') : (transitioning ? 'return' : 'idle'),
+      phase: transitioning ? (wavePlaying ? 'launch' : 'return') : restingWave(wavePlaying),
+      intent: playbackWave ? wave.intent : null,
+      late: playbackWave && !lateConfirmation ? wave.late : null,
     })
   }
   useEffect(() => {
-    if (waveIntent == null) return
-    if (!playbackWave || waveIntent === playbackMotion) {
-      setWaveIntent(null)
-      return
-    }
-    const timeout = window.setTimeout(() => setWaveIntent(null), 900)
+    const intent = wave.intent
+    if (!intent) return
+    const remaining = Math.max(0, intent.requestedAt + WAVE_CONFIRM_MS - Date.now())
+    const acknowledged = confirmed === intent.playing
+    const delay = acknowledged ? Math.min(remaining, WAVE_CONFIRM_GRACE_MS) : remaining
+    const timeout = window.setTimeout(() => {
+      setWave(current => {
+        if (current.intent !== intent) return current
+        const playing = confirmed ?? current.playing
+        return {
+          ...current, playing, intent: null,
+          late: acknowledged ? null : intent,
+          phase: playing === current.playing ? current.phase : restingWave(playing),
+        }
+      })
+    }, delay)
     return () => window.clearTimeout(timeout)
-  }, [playbackMotion, playbackWave, waveIntent])
+  }, [confirmed, wave.intent])
   const clear = () => { animations.current.forEach((animation) => animation.cancel()); animations.current = [] }
   useEffect(() => {
     const onVisibility = () => {
@@ -61,7 +87,7 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
       if (document.hidden) {
         clear()
         setWave(current => {
-          const phase = current.playing ? 'steady' : 'idle'
+          const phase = restingWave(current.playing)
           return current.phase === phase ? current : { ...current, phase }
         })
       }
@@ -74,7 +100,10 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
     const node = surface.current
     if (!node || !layer.current || document.hidden) return
     if (glassOptic && playbackWave && playbackMotion !== undefined) {
-      setWaveIntent(direction === 'outward')
+      const playing = direction === 'outward'
+      setWave(current => current.intent?.playing === playing ? current : {
+        ...current, intent: { playing, requestedAt: Date.now() }, late: null,
+      })
       return
     }
     if (!node.animate) return

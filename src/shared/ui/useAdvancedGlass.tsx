@@ -39,7 +39,9 @@ function paint(group: GlassSurfaceId, values: GlassSurfaceSettings, changed: Fie
     const defaultAlpha = group === 'body' ? 1 - reading
       : group === 'dictation' || readingSurface.has(group) ? 1 - transmission : 1 - (detached ? reading : top)
     const alpha = changed.transparency !== undefined ? 1 - t : defaultAlpha
-    const fill = `color-mix(in srgb, ${values.background} ${(alpha * 100).toFixed(3)}%, transparent)`
+    const fill = group === 'body' && changed.transparency === undefined
+      ? `color-mix(in srgb, ${values.background}, transparent calc(var(--island-player-transmission, ${reading}) * 100%))`
+      : `color-mix(in srgb, ${values.background} ${(alpha * 100).toFixed(3)}%, transparent)`
     if (group === 'buttons' || group === 'transport' || group === 'progressTrack') declarations.push(`--island-lens-fill:${fill}`)
     else declarations.push(`background-color:${fill}`)
     if (readingSurface.has(group)) declarations.push('background-image:none')
