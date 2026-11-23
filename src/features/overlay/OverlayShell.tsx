@@ -588,6 +588,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       '--island-blur': `${config.appearance.blurStrength}px`,
       '--island-scale': config.layout.scale / 100,
       '--usage-scale': getUsageWidgetScale(config),
+      '--island-action-count': islandLayout.zones.actions.length,
       '--inline-actions-width': `${inlineActionsWidth(islandLayout.zones.actions.length)}px`,
       '--island-width': config.layout.width / 100,
       '--island-layout-width': `${500 * (config.layout.width / 100) + 112}px`,

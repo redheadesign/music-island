@@ -18,7 +18,7 @@
 /* Independent desktop silhouettes get one frost plane. The soft highlight also
    works on the small quota capsule without a second lens or a hard outline. */
 [data-interface-theme='glass'] .island-surface:not(.island-card) {
-  background: var(--island-widget-sheen, var(--glass-reading-sheen)) var(--island-widget-fill, var(--glass-island-fill));
+  background: var(--glass-reading-sheen) var(--glass-island-fill);
   backdrop-filter: var(--island-detached-filter, var(--glass-filter));
   box-shadow: var(--glass-depth);
   --fg-secondary: var(--glass-reading-secondary);
@@ -26,11 +26,15 @@
 .island-root[data-interface-theme='glass'][data-native-backdrop] {
   --island-detached-filter: none;
 }
-[data-interface-theme='glass'] .usage-chip :is(.usage-chip__compact-value, .usage-chip__provider-header strong, .usage-chip__window-value strong) {
-  color: var(--fg-primary);
+[data-interface-theme='glass'] .island-surface[data-island-surface] {
+  background: var(--island-widget-sheen, none) var(--island-widget-fill);
+  color: var(--island-widget-ink);
+  --fg-primary: var(--island-widget-ink);
+  --fg-secondary: var(--island-widget-secondary);
+  border-radius: var(--island-widget-radius);
 }
-[data-interface-theme='glass'] .usage-chip :is(.usage-chip__empty, .usage-chip__window-value span) {
-  color: var(--glass-reading-secondary);
+[data-interface-theme='glass'] .island-surface[data-island-surface='capsule'] {
+  border-radius: var(--island-capsule-radius);
 }
 [data-interface-theme='glass'] .usage-chip__provider--stale {
   opacity: 1;
@@ -316,6 +320,11 @@
   --island-detached-filter: none;
   --island-lens-hover-sheen: none;
 }
+@media (forced-colors: none) {
+  [data-interface-theme='glass'][data-reduced-transparency='true'] .island-surface[data-island-surface] {
+    background: var(--glass-island-opaque);
+  }
+}
 @media (prefers-reduced-transparency: reduce) {
   .island-root[data-interface-theme='glass'] {
     --island-lens-fill: #424241;
@@ -323,5 +332,10 @@
     --island-lens-pressed-tint: #2d2d2c;
     --island-detached-filter: none;
     --island-lens-hover-sheen: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) and (forced-colors: none) {
+  [data-interface-theme='glass'] .island-surface[data-island-surface] {
+    background: var(--glass-island-opaque);
   }
 }

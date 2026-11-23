@@ -71,6 +71,7 @@ function CompactProvider({
   return (
     <span
       className={`usage-chip__compact-provider island-surface usage-chip__provider--${state}`}
+      data-island-surface="capsule"
       data-usage-provider={provider}
       data-tone={tone}
       title={`${providerName[provider]} · ${summary}`}
@@ -100,7 +101,7 @@ function ExpandedProvider({
   const state = data?.state ?? 'connecting'
   const windows = visibleWindows(data)
   return (
-    <section className={`usage-chip__provider island-surface usage-chip__provider--${state}`}>
+    <section className={`usage-chip__provider island-surface usage-chip__provider--${state}`} data-island-surface="widget">
       <header className="usage-chip__provider-header">
         <span className="usage-chip__brand"><BrandLogo brand={provider} size={17} /></span>
         <strong>{providerName[provider]}</strong>

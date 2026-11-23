@@ -33,7 +33,7 @@ const criticalStories = [
   'screens-island--factory-glass', 'screens-island--advanced-glass-surfaces', 'screens-settings--advanced-surface-editor', 'screens-settings--desktop-glass-effect', 'screens-dictation--advanced-capsule-surface', 'screens-dictation--pinned-recorder-preview',
   'screens-island--glass-optical-surface', 'screens-island--glass-control-lenses', 'screens-island--glass-edge-gesture', 'screens-island--glass-reactive-wave', 'screens-island--glass-playback',
   'screens-island--glass-cool-cover', 'screens-island--glass-without-cover',
-  'screens-island--glass-background-off', 'screens-island--glass-widget-panels',
+  'screens-island--glass-background-off', 'screens-island--glass-widget-panels', 'screens-island--local-servers-actions',
   'organisms-taskbarlayouteditor--glass-catalog', 'screens-bettervoice--signal-route', 'screens-bettervoice--signal-route-narrow',
   'organisms-taskbarplayer--source-unavailable', 'organisms-directconnectiondialog--glass-error-narrow',
 ]

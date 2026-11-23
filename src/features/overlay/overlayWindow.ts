@@ -13,7 +13,8 @@ const USAGE_COMPACT_GAP = 8
 const USAGE_COMPACT_HEIGHT = 42
 const USAGE_DETAILED_PROVIDER_HEIGHT = 104
 const USAGE_DETAILED_PROVIDER_GAP = 8
-const USAGE_RIGHT_TOP = 64
+const STACKED_ACTION_SIZE = 38
+const STACKED_ACTION_GAP = 8
 /** Extra CSS px beyond measured chrome so the cursor can leave the glyph slightly. */
 const HIT_PAD_CSS_PX = 16
 export const OVERLAY_CLOSE_GRACE_MS = 280
@@ -197,6 +198,9 @@ export function getOverlayBounds(
   const detailedHeight = USAGE_DETAILED_PROVIDER_HEIGHT * providers
     + USAGE_DETAILED_PROVIDER_GAP * (providers - 1)
   const satelliteHeight = usage.compact ? USAGE_COMPACT_HEIGHT : detailedHeight
+  // Default rail geometry before the WebView reports the actual themed size.
+  const satelliteTop = arrangement === 'inline' ? USAGE_GAP
+    : USAGE_GAP + actionCount * (STACKED_ACTION_SIZE + STACKED_ACTION_GAP)
 
   return {
     // CSS px — converted to physical at setOverlayBounds time.
@@ -204,7 +208,7 @@ export function getOverlayBounds(
     // remains stable even when only one side is populated.
     cardWidth: (centerHalfWidth + sideExtent) * 2,
     // Fallback until ResizeObserver measures the real hover-zone.
-    expandedHeight: Math.max(base.expandedHeight, (arrangement === 'inline' ? USAGE_GAP : USAGE_RIGHT_TOP) * islandScale + satelliteHeight * usageScale),
+    expandedHeight: Math.max(base.expandedHeight, satelliteTop * islandScale + satelliteHeight * usageScale),
     collapsedWidth: usage.visibleWhenCollapsed
       ? base.collapsedWidth + 2 * (USAGE_GAP * islandScale + (
           USAGE_COMPACT_PROVIDER_WIDTH * providers + USAGE_COMPACT_GAP * (providers - 1)

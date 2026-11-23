@@ -1,4 +1,7 @@
 .island-root {
+  --island-action-size: 38px;
+  --island-action-top: 12px;
+  --island-stacked-widget-top: calc(var(--island-action-top) + (var(--island-action-size) + var(--space-2)) * var(--island-action-count, 0));
   --island-player-width: calc(500px * var(--island-width, 1));
   --panel-bg: rgba(10, 11, 15, 0.58);
   --text-primary: rgba(255, 255, 255, 0.96);
@@ -304,7 +307,7 @@
 
 .island-actions {
   position: absolute;
-  top: calc(12px * var(--actions-scale, var(--island-scale, 1)));
+  top: calc(var(--island-action-top) * var(--actions-scale, var(--island-scale, 1)));
   right: calc(12px * var(--actions-scale, var(--island-scale, 1)));
   z-index: 2;
   display: flex;
@@ -337,7 +340,7 @@
 .island-usage-rail--right {
   left: calc(50% + (250px * var(--island-width, 1) + 12px) * var(--island-scale, 1));
   right: auto;
-  top: calc(64px * var(--island-scale, 1));
+  top: calc(var(--island-stacked-widget-top) * var(--island-scale, 1));
   transform-origin: top left;
 }
 .island-usage-rail .usage-chip--expanded { width: 124px; }
@@ -386,8 +389,8 @@
 
 /* The live rail scales with the island. */
 .island-actions .icon-button {
-  width: calc(38px * var(--actions-scale, var(--island-scale, 1)));
-  height: calc(38px * var(--actions-scale, var(--island-scale, 1)));
+  width: calc(var(--island-action-size) * var(--actions-scale, var(--island-scale, 1)));
+  height: calc(var(--island-action-size) * var(--actions-scale, var(--island-scale, 1)));
 }
 
 .island-root button[data-island-control='floating'] {

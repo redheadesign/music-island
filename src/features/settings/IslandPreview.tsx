@@ -173,6 +173,7 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
     '--island-width': sizing.width / 100,
     '--island-scale': 1,
     '--actions-scale': 1,
+    '--island-action-count': layout.zones.actions.length,
     '--inline-actions-width': `${actionWidth}px`,
     ...getPreviewArtworkStyle(usesGlassMaterial(config)),
     '--preview-left': `${sideWidth('left')}px`, '--preview-right': `${sideWidth('right')}px`,
@@ -212,6 +213,6 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
 
 export function IslandElementSample({ element, usage, locale = 'ru' }: { element: IslandLayoutElement; usage?: UsageSnapshot | null; locale?: 'ru' | 'en' }) {
   if (element === 'codex' || element === 'claude') return <UsageStatusChip snapshot={usage ?? null} enabledProviders={[element]} compact locale={locale} />
-  if (element === 'localServers') return <div className="island-preview__widget island-surface"><SquareTerminal size={20} aria-hidden="true" />{createTranslator(locale)('localServers.title')}</div>
+  if (element === 'localServers') return <div className="island-preview__widget island-surface" data-island-surface="capsule"><SquareTerminal size={20} aria-hidden="true" />{createTranslator(locale)('localServers.title')}</div>
   return <IslandMusicElementSample element={element} locale={locale} />
 }

@@ -4,7 +4,7 @@
 .island-root :is(input, textarea, [contenteditable='true']) { user-select: text; }
 
 @media (forced-colors: none) and (prefers-contrast: no-preference) and (prefers-reduced-transparency: no-preference) {
-  .island-root[data-interface-theme='glass']:not([data-reduced-transparency='true'])
+  :is(.island-root, .dictation-overlay)[data-interface-theme='glass']:not([data-reduced-transparency='true'])
     :is([data-island-controls='nested'], .island-surface),
   .island-root[data-interface-theme='glass'][data-island-controls='nested']:not([data-reduced-transparency='true']) {
     --island-lens-fill: var(--island-button-fill);
@@ -21,7 +21,7 @@
   }
 }
 
-.island-root[data-interface-theme='glass'] button[data-island-control]:where(:not([data-island-control='glyph'])) {
+:is(.island-root, .dictation-overlay)[data-interface-theme='glass'] button[data-island-control]:where(:not([data-island-control='glyph'], [data-island-control='plain'])) {
   color: var(--island-glass-ink);
   background: var(--island-lens-sheen, var(--glass-sheen)) var(--island-lens-state, var(--island-lens-fill));
   box-shadow: var(--island-lens-shadow, var(--island-lens-rim, var(--glass-control-rim)), var(--shadow-control-depth));
@@ -46,6 +46,23 @@
 }
 .island-root[data-interface-theme='glass'] [data-island-control][aria-pressed='true'] { color: var(--accent); }
 
+/* Quiet actions on a reading surface share its hit targets and focus states
+   while leaving the plate visible right up to the label or icon. */
+.island-surface[data-island-surface] button[data-island-control='plain'] {
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  border-radius: var(--radius-pill);
+}
+.island-surface button[data-island-control='plain']:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+.island-surface button[data-island-control='plain'] > svg { opacity: .8; }
+.island-surface button[data-island-control='plain']:is(:hover, :focus-visible, [aria-expanded='true']) > svg { opacity: 1; }
+.island-surface button[data-island-control='plain']:not(.ui-button--icon):enabled:hover { text-decoration: underline; }
+.island-surface button[data-island-control='plain']:enabled:active { opacity: .68; }
+
 .island-root[data-interface-theme='glass'] .artwork-play-button { position: absolute; z-index: 1; opacity: 1; }
 .island-root[data-interface-theme='glass'] button.play-button {
   color: var(--island-glass-ink);
@@ -56,7 +73,7 @@
 .island-root[data-interface-theme='glass'] .play-button:enabled:active { opacity: .78; }
 
 @media (hover: hover) {
-  .island-root[data-interface-theme='glass'] [data-island-control]:not([data-island-control='glyph']):enabled:hover,
+  :is(.island-root, .dictation-overlay)[data-interface-theme='glass'] [data-island-control]:not([data-island-control='glyph'], [data-island-control='plain']):enabled:hover,
   .island-root[data-interface-theme='glass'] .island-editor-element:not([data-protected]):hover
     [data-island-control]:not([data-island-control='glyph']):enabled {
     --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 82%, var(--island-lens-hover-tint));
@@ -64,35 +81,35 @@
   }
   .island-root[data-interface-theme='glass'] .reaction-button:hover { transform: none; }
 }
-.island-root[data-interface-theme='glass'] [data-island-control]:not([data-island-control='glyph']):enabled:active {
+:is(.island-root, .dictation-overlay)[data-interface-theme='glass'] [data-island-control]:not([data-island-control='glyph'], [data-island-control='plain']):enabled:active {
   --island-lens-state: color-mix(in srgb, var(--island-lens-fill) 70%, var(--island-lens-pressed-tint));
   --island-lens-sheen: var(--glass-sheen);
   --island-lens-rim: inset 0 1px 4px rgb(0 0 0 / .35);
 }
-.island-root[data-interface-theme='glass'] [data-island-control]:focus-visible {
+:is(.island-root, .dictation-overlay)[data-interface-theme='glass'] [data-island-control]:focus-visible {
   outline: var(--focus-ring);
   outline-offset: -2px;
 }
-.island-root[data-interface-theme='glass'] [data-island-control]:disabled {
+:is(.island-root, .dictation-overlay)[data-interface-theme='glass'] [data-island-control]:not([data-island-control='plain']):disabled {
   opacity: .42;
   color: var(--island-glass-ink);
   cursor: default;
 }
 
 @media (forced-colors: active) {
-  .island-root[data-interface-theme='glass'] button[data-island-control] { color: ButtonText; }
-  .island-root[data-interface-theme='glass'] button[data-island-control]:not([data-island-control='glyph']) {
+  :is(.island-root, .dictation-overlay)[data-interface-theme='glass'] button[data-island-control] { color: ButtonText; }
+  :is(.island-root, .dictation-overlay)[data-interface-theme='glass'] button[data-island-control]:not([data-island-control='glyph'], [data-island-control='plain']) {
     background: ButtonFace;
     box-shadow: inset 0 0 0 1px ButtonText;
     backdrop-filter: none;
     forced-color-adjust: none;
   }
-  .island-root[data-interface-theme='glass'] [data-island-control]:not([data-island-control='glyph']):is([aria-pressed='true'], :enabled:active) {
+  :is(.island-root, .dictation-overlay)[data-interface-theme='glass'] [data-island-control]:not([data-island-control='glyph'], [data-island-control='plain']):is([aria-pressed='true'], :enabled:active) {
     color: HighlightText;
     background: Highlight;
   }
-  .island-root[data-interface-theme='glass'] [data-island-control]:focus-visible { outline: 2px solid ButtonText; }
-  .island-root[data-interface-theme='glass'] [data-island-control]:disabled { color: GrayText; opacity: 1; }
+  :is(.island-root, .dictation-overlay)[data-interface-theme='glass'] [data-island-control]:focus-visible { outline: 2px solid ButtonText; }
+  :is(.island-root, .dictation-overlay)[data-interface-theme='glass'] [data-island-control]:disabled { color: GrayText; opacity: 1; }
 }
 @media (forced-colors: none) {
   .island-root[data-interface-theme='glass'][data-native-backdrop='unavailable'] [data-island-control='floating'] {

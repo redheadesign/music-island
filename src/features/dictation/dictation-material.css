@@ -4,22 +4,18 @@
 .dictation-overlay--cloud:has([data-fallback='true']) .dictation-wave-fallback + .dictation-cloud__fallback { display: none; }
 .dictation-overlay[data-material='glass'] {
   --island-optic-blur: min(6px, var(--glass-blur));
-  --island-optic-fill: var(--glass-island-fill);
-  --dictation-reading-ink: #f4f4f1;
+  --island-optic-fill: var(--island-widget-fill);
+  --dictation-reading-ink: var(--island-widget-ink);
+  --island-glass-ink: var(--dictation-reading-ink);
   color: var(--dictation-reading-ink);
   background: transparent;
-  border-radius: var(--radius-pill);
+  border-radius: var(--island-capsule-radius);
   isolation: isolate;
   position: relative;
   overflow: visible;
 }
 
-.dictation-overlay[data-material='glass'][data-expanded='true'] { border-radius: var(--glass-island-radius); }
-.dictation-overlay[data-material='glass']:is([data-theme='classic'], [data-expanded='true'], [data-phase='error']),
-.dictation-overlay--cloud[data-material='glass'] .dictation-cloud__satellite,
-.dictation-overlay[data-material='glass'][data-audio-progress='true'] .dictation-cloud__core {
-  --island-optic-fill: var(--glass-reading-fill);
-}
+.dictation-overlay[data-material='glass'][data-island-surface='widget'] { border-radius: var(--island-widget-radius); }
 .dictation-overlay[data-material='glass'] > .dictation-overlay__bar,
 .dictation-overlay[data-material='glass'] > .dictation-overlay__text {
   position: relative;
@@ -33,7 +29,7 @@
 .dictation-overlay[data-material='glass'] .dictation-overlay__text span { opacity: .95; }
 .dictation-overlay--cloud[data-material='glass'] .dictation-cloud__core {
   background: transparent;
-  border-radius: var(--radius-pill);
+  border-radius: var(--island-capsule-radius);
   box-shadow: none;
 }
 /* Switching a live recording from Classic or Waves can leave the previous
@@ -59,22 +55,13 @@
   background: transparent;
   color: var(--dictation-reading-ink);
 }
-.dictation-overlay[data-material='glass'] :is(.dictation-overlay__bar button, .dictation-cloud__copy, .dictation-cloud__dismiss) {
-  background: var(--glass-control-sheen) var(--glass-layer-tint);
-  box-shadow: var(--glass-control-rim);
-}
 .dictation-overlay[data-material='glass'] .dictation-cloud__interaction { background: transparent; box-shadow: none; }
 .dictation-overlay[data-material='glass'] .dictation-cloud__core:has(button):active { transform: none; }
-.dictation-overlay[data-material='glass'] button:focus-visible {
-  outline: 2px solid var(--dictation-reading-ink);
+.dictation-overlay[data-material='glass'] :is(.dictation-cloud__interaction, .dictation-cloud__satellite):focus-visible {
+  outline: var(--focus-ring);
   outline-offset: -2px;
 }
-@media (hover: hover) {
-  .dictation-overlay[data-material='glass'] :is(.dictation-overlay__bar button, .dictation-cloud__copy, .dictation-cloud__dismiss):enabled:hover {
-    background: var(--glass-selection-sheen) var(--glass-layer-tint);
-  }
-}
-.dictation-overlay[data-material='glass'] button:enabled:active { background-color: rgb(0 0 0 / .35); }
+.dictation-overlay[data-material='glass'] .dictation-cloud__satellite:enabled:active { opacity: .8; }
 
 .dictation-overlay[data-material='glass'][data-native-backdrop='unavailable'] .island-glass-optic { display: none; }
 @media (forced-colors: none) {

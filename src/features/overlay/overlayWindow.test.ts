@@ -94,6 +94,14 @@ describe('overlayWindow', () => {
     expect(bounds.collapsedWidth).toBe(220 * 0.65)
   })
 
+  it('reserves room below three stacked actions for two detailed widgets', () => {
+    const bounds = getOverlayBounds(100, 65, {
+      visible: true, scale: 1.35, visibleWhenCollapsed: false, compact: false, maxProviders: 2,
+    }, 'stacked', 3)
+    const firstWidgetTop = (12 + 3 * (38 + 8)) * 0.65
+    expect(bounds.expandedHeight).toBeCloseTo(firstWidgetTop + (2 * 104 + 8) * 1.35)
+  })
+
   it('covers one or two compact providers and the always-visible collapsed rail', () => {
     const one = getOverlayBounds(100, 100, {
       visible: true, scale: 1, visibleWhenCollapsed: true, compact: true, maxProviders: 1,

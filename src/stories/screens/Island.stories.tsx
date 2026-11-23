@@ -28,6 +28,7 @@ function IslandPreview({
   update = false,
   longTrack = false,
   assistantLimits = false,
+  claudeLimits = false,
   localServersMode,
   localServersWidgetScale = 100,
   latestMessageMode,
@@ -51,6 +52,7 @@ function IslandPreview({
   update?: boolean
   longTrack?: boolean
   assistantLimits?: boolean
+  claudeLimits?: boolean
   localServersMode?: 'expanded' | 'collapsed' | 'empty' | 'stoppable'
   localServersWidgetScale?: number
   latestMessageMode?: 'expanded' | 'collapsed'
@@ -69,9 +71,10 @@ function IslandPreview({
     if (localServersMode === 'stoppable') return demoLocalServers.map((server) => ({ ...server, canStop: true }))
     return demoLocalServers
   })
-  const usage = useUsageController(assistantLimits)
+  const usage = useUsageController(assistantLimits || claudeLimits)
   const connectUsage = usage.connect
   useEffect(() => { if (assistantLimits) void connectUsage('codex') }, [assistantLimits, connectUsage])
+  useEffect(() => { if (claudeLimits) void connectUsage('claude') }, [claudeLimits, connectUsage])
   const [mode, setMode] = useState<OverlayMode>(startCollapsed ? 'compact' : 'expanded')
   const [track, setTrack] = useState<MediaSnapshot>({
     ...media,
@@ -93,7 +96,7 @@ function IslandPreview({
         settings: {
           ...config.plugins.settings,
           ui: { ...ui, ...(advancedGlass && { advancedGlass }), playbackWaveEnabled, localServersEnabled: ui.localServersEnabled ?? Boolean(localServersMode), localServersWidgetScale, showLatestDictationMessage: Boolean(latestMessageMode), forceIslandUpdateBanner: update && !ui.islandUpdateSnoozedUntil },
-          usage: { codexEnabled: assistantLimits, claudeEnabled: false },
+          usage: { codexEnabled: assistantLimits, claudeEnabled: claudeLimits },
         },
       },
     },
@@ -711,12 +714,19 @@ export const LocalServersActions: StoryObj<typeof meta> = {
   ...LocalServersExpanded,
   name: 'Действия с локальными серверами',
   args: { ...LocalServersExpanded.args, localServersMode: 'expanded' },
+  globals: { interfaceTheme: 'glass' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const widget = within(await canvas.findByRole('region', { name: /^(Локальные серверы|Local servers)$/ }))
     await waitFor(() => expect(widget.getByText('[::1]:8000')).toBeVisible())
     await expect(widget.queryByRole('button', { name: /^(Остановить сервер|Stop server) · \[::1\]:8000$/ })).not.toBeInTheDocument()
     await expect(widget.getByRole('button', { name: /^(Остановить всё|Stop all)$/ })).toBeDisabled()
+    for (const button of widget.getAllByRole('button')) {
+      await expect(button).toHaveAttribute('data-island-control', 'plain')
+      const style = getComputedStyle(button)
+      await expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)')
+      await expect(style.boxShadow).toBe('none')
+    }
     await userEvent.click(widget.getByRole('button', { name: /^(Открыть в браузере|Open in browser) · 127\.0\.0\.1:5173$/ }))
     await expect(openLocalServer).toHaveBeenLastCalledWith(demoLocalServers[0])
 
@@ -724,6 +734,8 @@ export const LocalServersActions: StoryObj<typeof meta> = {
     await userEvent.click(stop)
     const cancel = widget.getByRole('button', { name: /^(Отмена|Cancel)$/ })
     await expect(cancel).toHaveFocus()
+    await expect(getComputedStyle(cancel).outlineStyle).toBe('solid')
+    await expect(getComputedStyle(cancel).backgroundColor).toBe('rgba(0, 0, 0, 0)')
     await userEvent.click(cancel)
     await expect(stop).toHaveFocus()
     await userEvent.click(stop)
@@ -779,7 +791,7 @@ export const LatestDictationExpanded: StoryObj<typeof meta> = {
   parameters: { workshop: { height: 640 } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const servers = await canvas.findByRole('region', { name: /Локальные серверы|Local servers/ })
+    const servers = await waitFor(() => canvas.getByRole('region', { name: /Локальные серверы|Local servers/ }), { timeout: 5000 })
     const latest = canvas.getByRole('region', { name: /Последняя запись|Latest transcript/ })
     const player = canvasElement.querySelector<HTMLElement>('.island-card')!
     const playerBounds = player.getBoundingClientRect()
@@ -799,8 +811,8 @@ export const LatestDictationExpanded: StoryObj<typeof meta> = {
 
 export const GlassWidgetPanels: StoryObj<typeof meta> = {
   ...LatestDictationExpanded,
-  name: 'Стекло · Codex, серверы и последняя запись',
-  args: { ...LatestDictationExpanded.args, assistantLimits: true },
+  name: 'Стекло · Codex, Claude, серверы и последняя запись',
+  args: { ...LatestDictationExpanded.args, assistantLimits: true, claudeLimits: true },
   globals: { interfaceTheme: 'glass' },
   parameters: { workshop: { height: 720, backdrop: seaStack } },
   play: async (context) => {
@@ -814,25 +826,26 @@ export const GlassWidgetPanels: StoryObj<typeof meta> = {
       await new Promise(requestAnimationFrame)
     }
     await expect(drawer).toHaveStyle({ opacity: '1' })
-    const surfaces = ['.usage-chip__compact-provider', '.island-local-servers', '.island-latest-dictation']
+    const surfaces = ['[data-usage-provider="codex"]', '[data-usage-provider="claude"]', '.island-local-servers', '.island-latest-dictation']
       .map(selector => canvasElement.querySelector<HTMLElement>(selector)!)
     for (const surface of surfaces) {
       await expect(surface).toBeVisible()
       await expect(surface).toHaveClass('island-surface')
       await expect(surface.querySelector('.island-glass-optic')).toBeNull()
     }
+    const actions = canvasElement.querySelector<HTMLElement>('.island-actions')!
+    await expect(surfaces[1].getBoundingClientRect().top).toBeGreaterThan(actions.getBoundingClientRect().bottom)
     if (matchMedia('(forced-colors: active), (prefers-reduced-transparency: reduce), (prefers-contrast: more)').matches) return
-    const [provider, servers, latest] = surfaces.map(surface => getComputedStyle(surface))
+    const panels = surfaces.map(surface => getComputedStyle(surface))
     const player = canvasElement.querySelector<HTMLElement>('.island-card')!
     // Artwork colors remain in the progress and wave. The base has no
     // directional highlight in the top-left corner.
     await expect(getComputedStyle(player).backgroundImage).toBe('none')
-    await expect(provider.backgroundColor).toBe(servers.backgroundColor)
-    await expect(latest.backgroundColor).toBe(servers.backgroundColor)
-    await expect(servers.backgroundColor).toMatch(/^rgba\(.+, 0\.\d+\)$/)
-    for (const surface of [provider, servers, latest]) {
+    await expect(panels[0].backgroundColor).toMatch(/^rgba\(.+, 0\.\d+\)$/)
+    for (const surface of panels) {
+      await expect(surface.backgroundColor).toBe(panels[0].backgroundColor)
       await expect(surface.backdropFilter).toContain('blur(')
-      await expect(surface.backgroundImage).toBe(servers.backgroundImage)
+      await expect(surface.backgroundImage).toBe(panels[0].backgroundImage)
     }
     const root = player.closest<HTMLElement>('.island-root')!
     const previousEdge = root.style.getPropertyValue('--glass-edge-strength')

@@ -5,7 +5,7 @@
 .island-preview__body > .island-actions { top: 12px; right: -44px; }
 .island-preview__satellite { display: flex; min-width: 0; padding-top: var(--space-3); }
 .island-preview__satellite--left { justify-content: flex-end; padding-right: var(--space-3); }
-.island-preview__satellite--right { padding-left: var(--space-3); padding-top: calc(var(--space-unit) * 21); }
+.island-preview__satellite--right { padding-left: var(--space-3); padding-top: var(--island-stacked-widget-top); }
 .island-preview__satellite .usage-chip { pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .island-preview *, .island-preview [data-readout]::before { transition: none !important; } }
 .island-preview .island-preview__frame.island-root { min-height: 0; }

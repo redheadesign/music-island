@@ -71,8 +71,16 @@ export async function checkGlassReadingTone(page) {
 // Measure each widget's actual desktop transmission, including any ancestor
 // fills. Text covers some pixels, so compare the median in the centre.
 export async function checkIslandWidgetTransmission(page) {
+  const serverAction = page.locator('.island-local-servers__actions button').first()
+  await serverAction.hover()
+  assert.deepEqual(await serverAction.evaluate(button => {
+    const css = getComputedStyle(button)
+    return { hovered: button.matches(':hover'), fill: css.backgroundColor, sheen: css.backgroundImage, shadow: css.boxShadow }
+  }), { hovered: true, fill: 'rgba(0, 0, 0, 0)', sheen: 'none', shadow: 'none' })
+  await page.mouse.move(0, 0)
   const widgets = [
-    ['.usage-chip__compact-provider', '.usage-chip__compact-value'],
+    ['[data-usage-provider="codex"]', '.usage-chip__compact-value'],
+    ['[data-usage-provider="claude"]', '.usage-chip__compact-value'],
     ['.island-local-servers', '.island-local-servers__address span'],
     ['.island-latest-dictation', '.island-latest-dictation__text'],
   ]

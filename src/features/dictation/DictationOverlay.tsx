@@ -99,13 +99,13 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
       </div> : null}
       <Icon className="dictation-cloud__fallback" size={18} aria-hidden="true" />
     </>
-    return <div {...materialAttributes} ref={root} data-native-backdrop-surface={expanded || error || undefined} hidden={!visible} className="dictation-overlay dictation-overlay--cloud" data-theme={appearance.theme} data-phase={status.phase} data-audio-progress={progress ? true : undefined} data-recording-control={recordingControl || undefined} data-expanded={expanded || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
+    return <div {...materialAttributes} ref={root} data-native-backdrop-surface={expanded || error || undefined} data-island-surface={expanded || error ? 'widget' : undefined} hidden={!visible} className="dictation-overlay dictation-overlay--cloud" data-theme={appearance.theme} data-phase={status.phase} data-audio-progress={progress ? true : undefined} data-recording-control={recordingControl || undefined} data-expanded={expanded || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
       {advanced.layers}
       <DictationCloudSurface appearance={appearance} material={material} accentColor={paletteStyle?.['--accent']} phase={status.phase} levels={levels} still={still} active={artworkActive && !error && (material !== 'glass' || !fox)} demo={demo} coreRef={core} effectRef={progress ? progressArt : undefined} expanded={expanded} singleControl controlsVisible={recording && recordingControl} />
       {material === 'glass' && (expanded || error) ? <IslandGlassOptic active={opticsActive} /> : null}
       {previewText}
-      <div className="dictation-cloud__bar">
-        <div ref={core} className="dictation-cloud__core" data-native-backdrop-surface={!expanded && !error || undefined}>
+      <div className="dictation-cloud__bar" data-island-controls="nested">
+        <div ref={core} className="dictation-cloud__core" data-island-surface="capsule" data-native-backdrop-surface={!expanded && !error || undefined}>
           {material === 'glass' && !expanded && !error ? <IslandGlassOptic active={opticsActive} /> : null}
           {progressTime ? <>
             <span ref={progressArt} className="dictation-cloud__progress-art">{visible ? visual : null}</span>
@@ -115,22 +115,22 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
         </div>
         <span role={error ? 'alert' : 'status'} className={error ? 'dictation-cloud__error-label' : 'dictation-overlay__sr'}>{message}</span>
         {error ? <>
-          {status.text ? <button className="dictation-cloud__copy" type="button" aria-label={copyLabel} title={copyLabel} onPointerDown={event => event.preventDefault()} onClick={copyText}><Copy size={16} /></button> : null}
-          <button className="dictation-cloud__dismiss" type="button" aria-label={closeLabel} title={closeLabel} onPointerDown={event => event.preventDefault()} onClick={close}><X size={15} /></button>
-        </> : recordingControl ? <button className="dictation-cloud__satellite dictation-cloud__satellite--right" data-native-backdrop-surface={recording && !expanded || undefined} type="button" aria-label={ru ? 'Завершить запись' : 'Finish recording'} title={ru ? 'Завершить запись' : 'Finish recording'} disabled={!recording} aria-hidden={!recording} onPointerDown={event => event.preventDefault()} onClick={end}>{material === 'glass' ? <IslandGlassOptic active={opticsActive && recording} /> : null}<Stop weight="fill" size={13} /></button> : null}
+          {status.text ? <button className="dictation-cloud__copy" data-island-control="button" type="button" aria-label={copyLabel} title={copyLabel} onPointerDown={event => event.preventDefault()} onClick={copyText}><Copy size={16} /></button> : null}
+          <button className="dictation-cloud__dismiss" data-island-control="button" type="button" aria-label={closeLabel} title={closeLabel} onPointerDown={event => event.preventDefault()} onClick={close}><X size={15} /></button>
+        </> : recordingControl ? <button className="dictation-cloud__satellite dictation-cloud__satellite--right" data-island-surface="capsule" data-native-backdrop-surface={recording && !expanded || undefined} type="button" aria-label={ru ? 'Завершить запись' : 'Finish recording'} title={ru ? 'Завершить запись' : 'Finish recording'} disabled={!recording} aria-hidden={!recording} onPointerDown={event => event.preventDefault()} onClick={end}>{material === 'glass' ? <IslandGlassOptic active={opticsActive && recording} /> : null}<Stop weight="fill" size={13} /></button> : null}
       </div>
     </div>
   }
   if (!visible) return null
-  return <div {...materialAttributes} ref={root} data-native-backdrop-surface className="dictation-overlay" data-theme={appearance.theme} data-phase={status.phase} data-expanded={Boolean(previewText) || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
+  return <div {...materialAttributes} ref={root} data-native-backdrop-surface data-island-surface={previewText || error ? 'widget' : 'capsule'} className="dictation-overlay" data-theme={appearance.theme} data-phase={status.phase} data-expanded={Boolean(previewText) || undefined} data-reduced-motion={still || undefined} data-demo={demo || undefined}>
     {advanced.layers}
     {material === 'glass' ? <IslandGlassOptic active={opticsActive} /> : null}
-    <div className="dictation-overlay__bar">
+    <div className="dictation-overlay__bar" data-island-controls="nested">
       <div className="dictation-overlay__art"><DictationVisual key={`${appearance.theme}:${status.operationId}:${status.phase}`} appearance={appearance} phase={status.phase} levels={levels} still={still} active={active} demo={demo} operationId={status.operationId} /></div>
       <span className="dictation-overlay__label"><span role={error ? 'alert' : 'status'}>{message}</span>{progressTime && <> {progressTime}</>}</span>
       {recording ? <div className="dictation-overlay__levels" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <i key={index} style={{ height: `${Math.max(3, Math.min(23, (levels[index % Math.max(1, levels.length)] ?? 0) * 23))}px` }} />)}</div> : null}
-      {status.phase === 'error' && status.text ? <button type="button" aria-label={ru ? 'Скопировать текст' : 'Copy text'} title={ru ? 'Скопировать текст' : 'Copy text'} onPointerDown={(event) => event.preventDefault()} onClick={() => { setCopyFailure(null); void copy().catch(() => setCopyFailure(status.operationId)) }}><Copy size={15} /></button> : null}
-      {recording ? recordingControl ? <button type="button" aria-label={ru ? 'Завершить запись' : 'Finish recording'} onPointerDown={event => event.preventDefault()} onClick={() => { void finish?.().catch(() => {}) }}><Stop weight="fill" size={13} /></button> : null : <button type="button" aria-label={status.phase === 'transcribing' || status.phase === 'processing' ? ru ? 'Отменить обработку' : 'Cancel processing' : closeLabel} onPointerDown={event => event.preventDefault()} onClick={() => { void cancel().catch(() => {}) }}><X size={15} /></button>}
+      {status.phase === 'error' && status.text ? <button data-island-control="button" type="button" aria-label={ru ? 'Скопировать текст' : 'Copy text'} title={ru ? 'Скопировать текст' : 'Copy text'} onPointerDown={(event) => event.preventDefault()} onClick={() => { setCopyFailure(null); void copy().catch(() => setCopyFailure(status.operationId)) }}><Copy size={15} /></button> : null}
+      {recording ? recordingControl ? <button data-island-control="button" type="button" aria-label={ru ? 'Завершить запись' : 'Finish recording'} onPointerDown={event => event.preventDefault()} onClick={() => { void finish?.().catch(() => {}) }}><Stop weight="fill" size={13} /></button> : null : <button data-island-control="button" type="button" aria-label={status.phase === 'transcribing' || status.phase === 'processing' ? ru ? 'Отменить обработку' : 'Cancel processing' : closeLabel} onPointerDown={event => event.preventDefault()} onClick={() => { void cancel().catch(() => {}) }}><X size={15} /></button>}
     </div>
     {previewText}
   </div>

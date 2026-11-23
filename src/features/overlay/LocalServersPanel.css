@@ -40,8 +40,6 @@
   gap: var(--space-half);
 }
 
-.island-local-servers__actions .ui-button:focus-visible { outline-offset: -2px; }
-
 .island-local-servers__address {
   display: grid;
   grid-template-columns: minmax(0, max-content) minmax(0, 1fr);

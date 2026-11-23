@@ -26,7 +26,7 @@ export function LatestDictationPanel({ message, locale, copy, dismiss, ref }: {
   }
 
   return (
-    <section className="island-latest-dictation island-surface" aria-label={t('dictation.latestTitle')} ref={ref}>
+    <section className="island-latest-dictation island-surface" data-island-surface="widget" aria-label={t('dictation.latestTitle')} ref={ref}>
       <p className="island-latest-dictation__text" title={message.text}>{message.text}</p>
       <div className="island-latest-dictation__actions">
         <SettingsIconButton data-island-control="button" variant="ghost" size="compact" label={t('dictation.latestCopy')} busy={state === 'copying'} onClick={() => void copyText()}>

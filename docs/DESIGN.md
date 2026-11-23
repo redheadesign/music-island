@@ -4,9 +4,9 @@
 
 ## Материалы островка
 
-Живой островок, его превью и каталог конструктора используют роли `data-island-control`. `button` рисует кнопку внутри поверхности, `floating` — отдельную кнопку над рабочим столом, `track` — шкалу, `glyph` — знак без подложки. Кнопки настроек, закрепления и диктовки используют общий `IslandActionButton`.
+Живой островок, его превью и каталог конструктора используют роли `data-island-control`. `button` рисует кнопку внутри поверхности, `floating` — отдельную кнопку над рабочим столом, `track` — шкалу, `glyph` — знак без подложки. `plain` оставляет кнопку поверх виджета прозрачной во всех состояниях и сохраняет обводку клавиатурного фокуса. Кнопки настроек, закрепления и диктовки используют общий `IslandActionButton`.
 
-Чтобы добавить тему, зарегистрируйте её в `src/shared/lib/interfaceTheme.ts`. Тема выбирает материал и может переопределить `--island-button-fill`, `--island-floating-fill`, `--island-track-fill` и `--island-catalog-fill`. Цвет корпуса и материал виджетов задают `--island-body-fill`, `--island-widget-fill` и `--island-widget-sheen`. Состояния кнопок, фокус и режимы доступности находятся в `src/shared/styles/island-controls.css`. Сценарии `Foundations/InterfaceTheme` и `Organisms/IslandLayoutEditor` проверяют подключение новой темы и сохранение оформления при переносе элемента из каталога.
+Чтобы добавить тему, зарегистрируйте её в `src/shared/lib/interfaceTheme.ts`. Тема выбирает материал и может переопределить `--island-button-fill`, `--island-floating-fill`, `--island-track-fill` и `--island-catalog-fill`. Цвет корпуса задаёт `--island-body-fill`. Роли `data-island-surface="widget"` и `"capsule"` используют общую заливку `--island-widget-fill` и разные токены скругления. Капсула записи использует эту же заливку на своём оптическом слое. Состояния кнопок, фокус и режимы доступности находятся в `src/shared/styles/island-controls.css`.
 
 ## Что показал первоначальный просмотр
 

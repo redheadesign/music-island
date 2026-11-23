@@ -62,7 +62,7 @@ export function useGlassPointerLight(enabled: boolean) {
       const control = surfaceAt(event.target)
       const theme = control?.closest('[data-interface-theme]')?.getAttribute('data-interface-theme')
       if (!control || !isInterfaceThemeId(theme) || getInterfaceThemeDefinition(theme).material !== 'glass'
-        || control.matches('.island-editor-element, [data-island-control="glyph"], :disabled, [aria-disabled="true"]') || control.closest(quietSelector)) return reset()
+        || control.matches('.island-editor-element, [data-island-control="glyph"], [data-island-control="plain"], :disabled, [aria-disabled="true"]') || control.closest(quietSelector)) return reset()
 
       if (active && active !== control) removeLight()
       pending = { control, x: event.clientX, y: event.clientY }
