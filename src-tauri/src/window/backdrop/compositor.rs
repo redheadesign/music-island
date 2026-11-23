@@ -263,6 +263,10 @@ impl HostBackdrop {
     // Setup of D3D11 and the shaders starts while the island is collapsed.
     // The first frame request is still what starts desktop capture.
     pub(super) fn prewarm_lens(&mut self) {
+        // The host brush paints the first frame before WGC can supply pixels.
+        // Prepare its effect graph while the top-edge window has no regions.
+        self.frost_factory
+            .get_or_init(|| optics::blur_factory(&self.compositor).ok());
         if self.lens_preparing.is_some() || self.lens_device.is_some() || self.lens_failed {
             return;
         }

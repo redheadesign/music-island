@@ -54,16 +54,20 @@ unsafe extern "system" fn checker_proc(
     DefWindowProcW(hwnd, message, wp, lp)
 }
 
+fn pump_messages() {
+    let mut message = MSG::default();
+    unsafe {
+        while PeekMessageW(&mut message, None, 0, 0, PM_REMOVE).as_bool() {
+            let _ = TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+}
+
 fn pump() {
     let end = std::time::Instant::now() + std::time::Duration::from_millis(500);
     while std::time::Instant::now() < end {
-        let mut message = MSG::default();
-        unsafe {
-            while PeekMessageW(&mut message, None, 0, 0, PM_REMOVE).as_bool() {
-                let _ = TranslateMessage(&message);
-                DispatchMessageW(&message);
-            }
-        }
+        pump_messages();
         std::thread::sleep(std::time::Duration::from_millis(8));
     }
 }
@@ -222,6 +226,44 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
             cleared >= 240,
             "removing the visual did not restore desktop contrast"
         );
+        // Present the opening frame without starting desktop capture. This is
+        // the same host frame used when the GPU lens is still waiting on WGC.
+        let first_frame = super::super::geometry::BackdropFrame {
+            generation: 1,
+            enabled: true,
+            viewport_width: 640.0,
+            viewport_height: 400.0,
+            scale: 1.0,
+            frost: 0.72,
+            regions: vec![surfaces[0].clone()],
+            lens: Some(super::super::geometry::DesktopLensSettings {
+                region: 0,
+                bend: 0.5,
+                dispersion: 0.14,
+                snapshot: false,
+                reduced_motion: false,
+            }),
+            prewarm_lens: false,
+        };
+        compositor.update(640.0, 400.0, &first_frame.host_regions(first_frame.lens))?;
+        let mut opening_contrast = cleared;
+        for _ in 0..6 {
+            pump_messages();
+            DwmFlush()?;
+            let dc = GetDC(None);
+            opening_contrast = ((GetPixel(dc, 300, 240).0 & 255) as i32
+                - (GetPixel(dc, 304, 240).0 & 255) as i32)
+                .abs();
+            ReleaseDC(None, dc);
+            if opening_contrast <= 20 {
+                break;
+            }
+        }
+        assert!(
+            opening_contrast <= 20,
+            "first-frame frost was waiting for the GPU lens: stripe contrast={opening_contrast}"
+        );
+
         SetWindowLongPtrW(checker, GWLP_USERDATA, 2);
         let _ = RedrawWindow(Some(checker), None, None, RDW_INVALIDATE | RDW_UPDATENOW);
         DwmFlush()?;

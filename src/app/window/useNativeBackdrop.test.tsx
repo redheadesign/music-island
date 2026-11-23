@@ -131,14 +131,24 @@ it('leaves a settings preview without an overlay owner entirely local', async ()
   expect(observed).toBe(0)
 })
 
-it('keeps a translucent first frame while Windows prepares the viewport', async () => {
+it('retries a transient viewport mismatch on the next animation frame', async () => {
   vi.mocked(setOverlayBackdrop).mockResolvedValueOnce(null)
   await act(async () => root.render(<Recording text="one" />))
   expect(container.querySelector('output')?.textContent).toBe('pending')
-  await act(async () => vi.advanceTimersByTimeAsync(50))
+  await act(async () => vi.advanceTimersByTimeAsync(16))
   expect(container.querySelector('output')?.textContent).toBe('pending')
-  await act(async () => vi.advanceTimersByTimeAsync(300))
+  await act(async () => vi.advanceTimersByTimeAsync(32))
   expect(container.querySelector('output')?.textContent).toBe('active')
+})
+
+it('bounds the number of attempts during a persistent viewport mismatch', async () => {
+  vi.mocked(setOverlayBackdrop).mockResolvedValue(null)
+  await act(async () => root.render(<Recording text="one" />))
+  await act(async () => vi.advanceTimersByTimeAsync(1200))
+  expect(vi.mocked(setOverlayBackdrop).mock.calls.filter(([frame]) => frame.enabled)).toHaveLength(4)
+  const calls = vi.mocked(setOverlayBackdrop).mock.calls.length
+  await act(async () => vi.advanceTimersByTimeAsync(5000))
+  expect(setOverlayBackdrop).toHaveBeenCalledTimes(calls)
 })
 
 it('does not schedule native layout reads when only speech text or meter levels change', async () => {

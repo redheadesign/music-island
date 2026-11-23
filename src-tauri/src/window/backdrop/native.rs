@@ -170,30 +170,23 @@ pub(super) fn apply(
             state.frame = None;
             return Ok(None);
         }
-        let regions: Vec<_> = frame
-            .regions
-            .iter()
-            .map(|region| region.physical(frame.scale, frame.frost))
-            .collect();
+        let settings = (label == "main").then_some(frame.lens).flatten();
         let geometry = (
             frame.viewport_width * frame.scale,
             frame.viewport_height * frame.scale,
-            regions,
+            frame.host_regions(settings),
         );
-        let lens = (label == "main")
-            .then_some(frame.lens)
-            .flatten()
-            .map(|settings| {
-                (
-                    settings.region,
-                    LensLayout::new(
-                        &frame.regions[settings.region],
-                        frame.scale,
-                        frame.frost,
-                        settings,
-                    ),
-                )
-            });
+        let lens = settings.map(|settings| {
+            (
+                settings.region,
+                LensLayout::new(
+                    &frame.regions[settings.region],
+                    frame.scale,
+                    frame.frost,
+                    settings,
+                ),
+            )
+        });
         let geometry_changed = state.frame.as_ref() != Some(&geometry);
         if geometry_changed {
             if compositor

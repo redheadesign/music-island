@@ -110,9 +110,7 @@ impl LensLayout {
             radii: physical.radii.map(|value| value as f32),
             bend: lens.bend * (24.0 * scale as f32).min(36.0),
             dispersion: lens.dispersion * (6.0 * scale as f32).min(10.0),
-            // The slider expresses a visible blur radius in CSS pixels. The
-            // Gaussian standard deviation is one third of that radius.
-            frost: (region.frost.unwrap_or(global_frost) * (32.0 / 3.0) * scale).min(16.0) as f32,
+            frost: region.lens_blur_sigma(scale, global_frost),
             opacity: region.opacity as f32,
             snapshot: lens.snapshot,
             reduced_motion: lens.reduced_motion,

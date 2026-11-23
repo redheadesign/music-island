@@ -6,6 +6,7 @@ import { setOverlayBackdrop, type NativeBackdropFrame, type NativeBackdropRegion
 export type NativeBackdropStatus = 'pending' | 'active' | 'unavailable' | undefined
 let sequence = Date.now() * 1000
 const defaultFrost = DEFAULT_GLASS_MATERIAL.frost / 100
+const viewportRetryDelays = [16, 48, 120] as const
 
 /** Measure the visible surface, including CSS transforms and ancestor fades. */
 export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElement, styles = new Map<HTMLElement, CSSStyleDeclaration>()): NativeBackdropRegion | null {
@@ -124,9 +125,10 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
           }
           // Keep the material during a show/DPI race. A policy denial is final
           // until Windows invalidates it, so it never starts a retry loop.
-          if (active === null && next.enabled && next.regions.length && retryCount < 2) {
+          const retryDelay = viewportRetryDelays[retryCount]
+          if (active === null && next.enabled && next.regions.length && retryDelay !== undefined) {
             retryCount += 1
-            retry = window.setTimeout(() => { previous = ''; refresh() }, 250)
+            retry = window.setTimeout(() => { previous = ''; refresh() }, retryDelay)
           }
         }).catch(() => { if (!disposed) setStatus('unavailable') }).finally(() => {
           inFlight = false

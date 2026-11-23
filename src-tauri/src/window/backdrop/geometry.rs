@@ -66,9 +66,32 @@ impl BackdropFrame {
         (self.viewport_width * self.scale - f64::from(width)).abs() <= 2.0
             && (self.viewport_height * self.scale - f64::from(height)).abs() <= 2.0
     }
+
+    pub(super) fn host_regions(&self, lens: Option<DesktopLensSettings>) -> Vec<BackdropRegion> {
+        self.regions
+            .iter()
+            .enumerate()
+            .map(|(index, region)| {
+                let mut physical = region.physical(self.scale, self.frost);
+                if lens.is_some_and(|settings| settings.region == index) {
+                    // While the first captured frame is pending, use the same
+                    // sigma and silhouette opacity as the GPU lens. At zero
+                    // frost let the unfiltered desktop show through.
+                    let sigma = region.lens_blur_sigma(self.scale, self.frost);
+                    physical.blur_radius = (sigma > 0.0).then_some(f64::from(sigma));
+                    physical.opacity = if sigma > 0.0 { region.opacity } else { 0.0 };
+                }
+                physical
+            })
+            .collect()
+    }
 }
 
 impl BackdropRegion {
+    pub(super) fn lens_blur_sigma(&self, scale: f64, global_frost: f64) -> f32 {
+        // The slider spans 32 CSS pixels of visible blur, roughly 3 sigma.
+        (self.frost.unwrap_or(global_frost) * (32.0 / 3.0) * scale).min(16.0) as f32
+    }
     fn is_valid(&self, frame: &BackdropFrame) -> bool {
         [self.left, self.top, self.width, self.height, self.opacity]
             .into_iter()
@@ -191,6 +214,40 @@ mod tests {
             25
         ];
         assert!(!frame.is_valid());
+    }
+
+    #[test]
+    fn first_host_frame_matches_the_gpu_lens_without_restyling_satellites() {
+        let mut frame = frame();
+        let card = BackdropRegion {
+            left: 120.0,
+            top: -8.0,
+            width: 500.0,
+            height: 200.0,
+            radii: [0.0, 0.0, 36.0, 36.0],
+            opacity: 0.6,
+            frost: None,
+            blur_radius: None,
+        };
+        frame.regions = vec![card.clone(), card.clone()];
+        let lens = DesktopLensSettings {
+            region: 0,
+            bend: 0.4,
+            dispersion: 0.1,
+            snapshot: false,
+            reduced_motion: false,
+        };
+        let stock = frame.host_regions(None);
+        assert_eq!(stock[0].blur_radius, None);
+        for amount in [None, Some(0.35), Some(0.0)] {
+            frame.regions[0].frost = amount;
+            let prepared = frame.host_regions(Some(lens));
+            let sigma = frame.regions[0].lens_blur_sigma(frame.scale, frame.frost);
+            assert_eq!(prepared[0].blur_radius, (sigma > 0.0).then_some(f64::from(sigma)));
+            assert_eq!(prepared[0].opacity, if sigma > 0.0 { card.opacity } else { 0.0 });
+            assert_eq!(prepared[0].radii, stock[0].radii);
+            assert_eq!(prepared[1], stock[1]);
+        }
     }
 
     #[test]
