@@ -744,6 +744,7 @@ impl LensRenderer {
 
     fn render(&mut self, origin: POINT, tex_width: u32, tex_height: u32) -> Result<bool> {
         let layout = self.layout;
+        let crop_top = self.source.as_ref().ok_or(E_FAIL)?.crop.top;
         let view = self.filtered_source()?;
         let data = [
             layout.width as f32,
@@ -760,7 +761,7 @@ impl LensRenderer {
             layout.radii[3],
             layout.bend,
             layout.dispersion,
-            (input.crop.top + origin.y) as f32,
+            (crop_top + origin.y) as f32,
             layout.opacity,
         ];
         unsafe {
