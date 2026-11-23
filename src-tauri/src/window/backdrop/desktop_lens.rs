@@ -31,6 +31,7 @@ use windows::{
             },
         },
         System::WinRT::{
+            RoInitialize, RoUninitialize, RO_INIT_MULTITHREADED,
             Composition::ICompositorInterop,
             Direct3D11::{CreateDirect3D11DeviceFromDXGIDevice, IDirect3DDxgiInterfaceAccess},
             Graphics::Capture::IGraphicsCaptureItemInterop,
@@ -41,7 +42,8 @@ use windows::{
         },
     },
     UI::Composition::{
-        CompositionBatchTypes, CompositionScopedBatch, Compositor, ContainerVisual, SpriteVisual,
+        AnimationStopBehavior, CompositionBatchTypes, CompositionScopedBatch, Compositor,
+        ContainerVisual, SpriteVisual,
     },
 };
 use windows_numerics::{Vector2, Vector3};
@@ -55,6 +57,7 @@ pub(crate) const LENS_RETRY: u32 = WM_APP + 0x47;
 pub(crate) const LENS_PRESENT_TIMER: usize = 0x4d49_4c50;
 const CAPTURE_BUFFERS: i32 = 2;
 const FRAME_INTERVAL: i64 = 160_000; // 16 ms, in 100 ns ticks
+const REVEAL_DURATION: i64 = 2_800_000; // 280 ms
 const FORMAT: DXGI_FORMAT = DXGI_FORMAT_B8G8R8A8_UNORM;
 const SAMPLE: DXGI_SAMPLE_DESC = DXGI_SAMPLE_DESC {
     Count: 1,
@@ -159,9 +162,36 @@ pub(super) struct DesktopLens {
     visual: SpriteVisual,
     compositor: Compositor,
     revealed: Arc<AtomicBool>,
-    reveal_started: bool,
     reveal_batch: Option<CompositionScopedBatch>,
     visible: bool,
+}
+
+/// The DWM backdrop remains below the lens until this animation is complete.
+/// Explicitly start from zero before the swap chain can become visible.
+pub(super) fn fade_in(
+    compositor: &Compositor,
+    visual: &SpriteVisual,
+    on_complete: impl Fn() + Send + 'static,
+) -> Result<CompositionScopedBatch> {
+    let opacity = compositor.CreateScalarKeyFrameAnimation()?;
+    let easing = compositor.CreateCubicBezierEasingFunction(
+        Vector2 { X: 0.35, Y: 0.0 },
+        Vector2 { X: 0.45, Y: 1.0 },
+    )?;
+    opacity.InsertKeyFrame(0.0, 0.0)?;
+    opacity.InsertKeyFrameWithEasingFunction(1.0, 1.0, &easing)?;
+    opacity.SetDuration(TimeSpan { Duration: REVEAL_DURATION })?;
+    opacity.SetStopBehavior(AnimationStopBehavior::SetToFinalValue)?;
+    let batch = compositor.CreateScopedBatch(CompositionBatchTypes::Animation)?;
+    batch.Completed(&TypedEventHandler::new(move |_, _| {
+        on_complete();
+        Ok(())
+    }))?;
+    visual.SetOpacity(0.0)?;
+    visual.StartAnimation(&"Opacity".into(), &opacity)?;
+    visual.SetIsVisible(true)?;
+    batch.End()?;
+    Ok(batch)
 }
 
 /// Owns the immediate GPU context. The capture callback and occasional UI
@@ -198,6 +228,7 @@ struct CaptureStream {
 
 impl Drop for CaptureStream {
     fn drop(&mut self) {
+        self.closed.store(true, Ordering::Release);
         let _ = self.item.RemoveClosed(self.closed_token);
         let _ = self.pool.RemoveFrameArrived(self.token);
         let _ = self.session.Close();
@@ -268,6 +299,7 @@ impl DesktopLens {
         };
         let visual = compositor.CreateSpriteVisual()?;
         visual.SetBrush(&compositor.CreateSurfaceBrushWithSurface(&surface)?)?;
+        visual.SetOpacity(0.0)?;
         visual.SetIsVisible(false)?;
         fit_visual(&visual, layout)?;
         let renderer = Arc::new(Mutex::new(LensRenderer {
@@ -344,16 +376,41 @@ impl DesktopLens {
             visual,
             compositor: compositor.clone(),
             revealed: Arc::new(AtomicBool::new(false)),
-            reveal_started: false,
             reveal_batch: None,
             visible: false,
         };
         root.Children()?.InsertAtTop(&lens.visual)?;
-        lens.capture
-            .as_ref()
-            .ok_or(E_FAIL)?
-            .session
-            .StartCapture()?;
+        let capture = lens.capture.as_ref().ok_or(E_FAIL)?;
+        let session = capture.session.clone();
+        let cancelled = capture.closed.clone();
+        let renderer = Arc::downgrade(&lens.renderer);
+        // Even a prewarmed device can block in StartCapture. Let DWM paint the
+        // opening and keep the WebView responsive while the session starts.
+        std::thread::Builder::new()
+            .name("desktop-glass-start".into())
+            .spawn(move || {
+                if cancelled.load(Ordering::Acquire) {
+                    return;
+                }
+                let result = unsafe { RoInitialize(RO_INIT_MULTITHREADED) }.and_then(|()| {
+                    let result = session.StartCapture();
+                    drop(session);
+                    unsafe { RoUninitialize() };
+                    result
+                });
+                let Err(error) = result else { return };
+                let Some(renderer) = renderer.upgrade() else { return };
+                let Ok(mut renderer) = renderer.lock() else { return };
+                if !renderer.stopped && !cancelled.load(Ordering::Acquire) {
+                    renderer.failure = Some(error);
+                    renderer.stopped = true;
+                    drop(renderer);
+                    let _ = unsafe {
+                        PostMessageW(Some(HWND(window_id as _)), LENS_FRAME, WPARAM(0), LPARAM(0))
+                    };
+                }
+            })
+            .map_err(|_| E_FAIL)?;
         Ok(lens)
     }
 
@@ -365,40 +422,21 @@ impl DesktopLens {
         if self.visible {
             return Ok(());
         }
-        self.visual.SetIsVisible(true)?;
-        self.visible = true;
-        if self.reveal_started {
-            return Ok(());
-        }
-        self.reveal_started = true;
         if reduced_motion {
+            self.visual.SetOpacity(1.0)?;
+            self.visual.SetIsVisible(true)?;
             self.revealed.store(true, Ordering::Release);
-            self.visual.StopAnimation(&"Opacity".into())?;
-            self.visual.SetOpacity(1.)?;
-            return Ok(());
+        } else {
+            let done = self.revealed.clone();
+            let window_id = self.hwnd.0 as usize;
+            self.reveal_batch = Some(fade_in(&self.compositor, &self.visual, move || {
+                done.store(true, Ordering::Release);
+                let _ = unsafe {
+                    PostMessageW(Some(HWND(window_id as _)), LENS_FRAME, WPARAM(0), LPARAM(0))
+                };
+            })?);
         }
-        let opacity = self.compositor.CreateScalarKeyFrameAnimation()?;
-        opacity.InsertKeyFrame(0., 0.)?;
-        opacity.InsertKeyFrame(1., 1.)?;
-        opacity.SetDuration(TimeSpan {
-            Duration: 1_400_000,
-        })?;
-        self.visual.SetOpacity(1.)?;
-        let batch = self
-            .compositor
-            .CreateScopedBatch(CompositionBatchTypes::Animation)?;
-        let done = self.revealed.clone();
-        let window_id = self.hwnd.0 as usize;
-        batch.Completed(&TypedEventHandler::new(move |_, _| {
-            done.store(true, Ordering::Release);
-            let _ = unsafe {
-                PostMessageW(Some(HWND(window_id as _)), LENS_FRAME, WPARAM(0), LPARAM(0))
-            };
-            Ok(())
-        }))?;
-        self.visual.StartAnimation(&"Opacity".into(), &opacity)?;
-        batch.End()?;
-        self.reveal_batch = Some(batch);
+        self.visible = true;
         Ok(())
     }
 
@@ -408,8 +446,14 @@ impl DesktopLens {
             return Ok(());
         }
         validate_size(layout)?;
-        if renderer.configure(layout)? {
+        renderer.configure(layout)?;
+        if !renderer.submitted && self.visible {
+            // A cached frame that already fits should keep blending. When
+            // there is no replacement, discard this reveal's completion.
             self.visual.SetIsVisible(false)?;
+            self.visual.StopAnimation(&"Opacity".into())?;
+            self.revealed = Arc::new(AtomicBool::new(false));
+            self.reveal_batch = None;
             self.visible = false;
         }
         fit_visual(&self.visual, layout)?;
@@ -456,7 +500,7 @@ impl LensRenderer {
         HMONITOR(self.monitor_id as _)
     }
 
-    fn configure(&mut self, layout: LensLayout) -> Result<bool> {
+    fn configure(&mut self, layout: LensLayout) -> Result<()> {
         let previous = self.layout;
         let moved = (layout.left, layout.top) != (previous.left, previous.top);
         let resized = (layout.width, layout.height) != (previous.width, previous.height);
@@ -480,8 +524,7 @@ impl LensRenderer {
         if moved || resized {
             self.submitted = false;
         }
-        self.present_cached()?;
-        Ok(moved || resized)
+        self.present_cached()
     }
 
     fn present_cached(&mut self) -> Result<()> {
