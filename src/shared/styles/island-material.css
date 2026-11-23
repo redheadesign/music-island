@@ -11,23 +11,19 @@
 .preview-warp-material { opacity: 1; }
 
 [data-interface-theme='glass'] .island-surface {
-  background: var(--glass-sheen) var(--glass-island-fill);
-  box-shadow: var(--glass-control-rim), var(--glass-depth);
+  background: var(--island-plate-fill);
+  box-shadow: var(--glass-depth);
 }
 
-/* Independent desktop silhouettes get one frost plane. The soft highlight also
-   works on the small quota capsule without a second lens or a hard outline. */
+/* Independent desktop silhouettes get one frost plane. */
 [data-interface-theme='glass'] .island-surface:not(.island-card) {
-  background: var(--glass-reading-sheen) var(--glass-island-fill);
   backdrop-filter: var(--island-detached-filter, var(--glass-filter));
-  box-shadow: var(--glass-depth);
   --fg-secondary: var(--glass-reading-secondary);
 }
 .island-root[data-interface-theme='glass'][data-native-backdrop] {
   --island-detached-filter: none;
 }
 [data-interface-theme='glass'] .island-surface[data-island-surface] {
-  background: var(--island-widget-sheen, none) var(--island-widget-fill);
   color: var(--island-widget-ink);
   --fg-primary: var(--island-widget-ink);
   --fg-secondary: var(--island-widget-secondary);
@@ -43,9 +39,7 @@
   opacity: .72;
 }
 [data-interface-theme='glass'] .island-card {
-  background: var(--island-player-fill, var(--glass-island-fill));
   border-radius: 0 0 var(--glass-island-radius) var(--glass-island-radius);
-  box-shadow: var(--glass-depth);
   backdrop-filter: var(--glass-filter);
   transition: none;
 }
@@ -56,16 +50,14 @@
 [data-interface-theme='glass'] .island-card[data-island-optical] {
   --island-optic-radius: var(--glass-island-radius);
   --island-optic-overhang: var(--glass-island-radius);
-  --island-optic-fill: transparent;
-  background: var(--island-player-fill, var(--glass-island-fill));
-  box-shadow: var(--glass-depth);
+  --island-optic-fill: var(--island-plate-fill);
+  background: transparent;
   backdrop-filter: none;
 }
 
 /* The desktop supplies the plate's color. Reserve intentional tint for playback
    progress, the ambient effect and selected glyphs. */
 .island-root[data-interface-theme='glass'] {
-  --island-player-fill: var(--island-body-fill, var(--glass-reading-fill));
   --island-lens-fill: var(--glass-upper-fill);
   --island-lens-sheen: var(--glass-control-sheen);
   --island-lens-hover-tint: rgb(255 255 255 / .28);
@@ -84,15 +76,6 @@
 }
 .island-root[data-interface-theme='glass'] .music-module { --player-reaction-size: 46px; }
 
-@media (forced-colors: none) and (prefers-contrast: no-preference) and (prefers-reduced-transparency: no-preference) {
-  /* Lift dark desktops with a neutral base and cap transmitted white so the
-     monochrome labels keep their contrast over a light window. */
-  .island-root[data-interface-theme='glass']:not([data-reduced-transparency='true']) {
-    --island-player-transmission: min(.34, calc(var(--glass-island-transmission) * .46));
-    --island-player-fill: var(--island-body-fill, rgb(48 49 52 / calc(1 - var(--island-player-transmission))));
-    --glass-depth: 0 9px 32px -16px rgb(0 0 0 / .46);
-  }
-}
 .island-root[data-interface-theme='glass'][data-cover-art='true'] {
   --island-cover-primary: rgb(var(--artwork-primary));
   --island-cover-secondary: rgb(var(--artwork-secondary));
@@ -287,16 +270,14 @@
     backdrop-filter: none;
     transition-property: transform, opacity;
   }
+  .island-root[data-interface-theme='glass'][data-native-backdrop='unavailable'] .island-card > .island-glass-optic {
+    display: none;
+  }
 }
 @media (prefers-contrast: more) and (forced-colors: none) {
   .island-root[data-interface-theme='glass'] .island-surface:not(.island-card) {
     background: var(--glass-island-opaque);
     backdrop-filter: none;
-  }
-}
-@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  [data-interface-theme='glass'] .island-card[data-island-optical] {
-    background: var(--glass-island-opaque);
   }
 }
 @media (forced-colors: active) {
@@ -320,11 +301,6 @@
   --island-detached-filter: none;
   --island-lens-hover-sheen: none;
 }
-@media (forced-colors: none) {
-  [data-interface-theme='glass'][data-reduced-transparency='true'] .island-surface[data-island-surface] {
-    background: var(--glass-island-opaque);
-  }
-}
 @media (prefers-reduced-transparency: reduce) {
   .island-root[data-interface-theme='glass'] {
     --island-lens-fill: #424241;
@@ -332,10 +308,5 @@
     --island-lens-pressed-tint: #2d2d2c;
     --island-detached-filter: none;
     --island-lens-hover-sheen: none;
-  }
-}
-@media (prefers-reduced-transparency: reduce) and (forced-colors: none) {
-  [data-interface-theme='glass'] .island-surface[data-island-surface] {
-    background: var(--glass-island-opaque);
   }
 }

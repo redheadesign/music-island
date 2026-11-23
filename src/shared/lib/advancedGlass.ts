@@ -1,4 +1,5 @@
 import type { GlassMaterial } from './glassMaterialTokens'
+import { DEFAULT_ISLAND_PLATE_TINT } from './interfaceTheme'
 
 export interface DesktopLens {
   bend: number
@@ -47,10 +48,12 @@ export interface GlassSurfaceSettings {
 export type AdvancedGlassOverrides = Partial<Record<GlassSurfaceId, Partial<GlassSurfaceSettings>>>
 
 const defaultSurfacePaint: Partial<Record<GlassSurfaceId, string>> = {
-  body: '#303134',
   progressTrack: '#0c0f14',
   progressFill: '#696b71',
 }
+
+const islandPlates = new Set<GlassSurfaceId>(['body', 'usage', 'localServers', 'latestDictation', 'notices', 'dictation'])
+export const usesIslandPlate = (id: GlassSurfaceId) => islandPlates.has(id)
 
 export function getSurfaceDefaults(id: GlassSurfaceId, base: GlassMaterial): GlassSurfaceSettings {
   const nested = ['transport', 'buttons', 'progressTrack', 'progressFill'].includes(id)
@@ -58,7 +61,7 @@ export function getSurfaceDefaults(id: GlassSurfaceId, base: GlassMaterial): Gla
     bend: 0, dispersion: 0, frost: nested ? 0 : Math.round(base.frost * .32 * 10) / 10,
     rim: .13, transparency: id === 'progressFill' ? 0 : base.transparency,
     parallax: base.parallax, highlight: base.highlight, edge: base.edge,
-    background: defaultSurfacePaint[id] ?? '#080808', text: '#f4f4f1',
+    background: usesIslandPlate(id) ? DEFAULT_ISLAND_PLATE_TINT : defaultSurfacePaint[id] ?? '#080808', text: '#f4f4f1',
     height: 64, radius: 32, textSize: 18, brightness: 100,
   }
 }

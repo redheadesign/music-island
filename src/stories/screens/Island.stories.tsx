@@ -81,8 +81,11 @@ function IslandPreview({
     hasSession: !empty,
     thumbnailDataUrl: artwork === 'missing' ? null : artwork === 'warm' ? media.thumbnailDataUrl : alternateCovers[artwork],
   })
-  const composition = includeSeek ? withIslandLayout(config,
+  const seekComposition = includeSeek ? withIslandLayout(config,
     moveIslandElement(moveIslandElement(getIslandLayout(config), 'seekBack', 'player'), 'seekForward', 'player')) : config
+  const composition = factoryAppearance && claudeLimits
+    ? withIslandLayout(seekComposition, moveIslandElement(getIslandLayout(seekComposition), 'claude', 'right'))
+    : seekComposition
   const ui = getUiPrefs(composition)
   const app: IslandAppState = {
     config: {
@@ -841,7 +844,8 @@ export const GlassWidgetPanels: StoryObj<typeof meta> = {
     // Artwork colors remain in the progress and wave. The base has no
     // directional highlight in the top-left corner.
     await expect(getComputedStyle(player).backgroundImage).toBe('none')
-    await expect(panels[0].backgroundColor).toMatch(/^rgba\(.+, 0\.\d+\)$/)
+    const optic = player.querySelector('.island-glass-optic')!
+    await expect(panels[0].backgroundColor).toBe(getComputedStyle(optic, '::after').backgroundColor)
     for (const surface of panels) {
       await expect(surface.backgroundColor).toBe(panels[0].backgroundColor)
       await expect(surface.backdropFilter).toContain('blur(')
@@ -860,6 +864,12 @@ export const GlassWidgetPanels: StoryObj<typeof meta> = {
       root.style.setProperty('--glass-edge-strength', previousEdge)
     }
   },
+}
+
+export const FactoryGlassWidgetPanels: StoryObj<typeof meta> = {
+  ...GlassWidgetPanels,
+  name: 'Стекло · виджеты с заводскими настройками',
+  args: { ...GlassWidgetPanels.args, factoryAppearance: true, width: 117, scale: 82 },
 }
 
 export const LatestDictationNarrow: StoryObj<typeof meta> = {

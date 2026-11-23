@@ -7,6 +7,15 @@
   overflow: hidden;
   border-radius: inherit;
   pointer-events: none;
+}
+
+/* The lens samples the desktop. Tint its output once so a light background
+   above the square top edge cannot be mixed back into the painted plate. */
+.island-glass-optic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background-color: var(--island-optic-fill, var(--glass-island-fill));
 }
 
@@ -56,6 +65,10 @@
 [data-reduced-transparency='true'] .island-glass-optic > .lg-glass { display: none; }
 
 @media (prefers-reduced-transparency: reduce), (forced-colors: active), (prefers-contrast: more) {
-  .island-glass-optic { background: var(--glass-island-opaque, Canvas); }
+  .island-glass-optic::after { background: var(--glass-island-opaque, Canvas); }
   .island-glass-optic > .lg-glass { display: none; }
+}
+
+@media (forced-colors: active) {
+  .island-glass-optic::after { background: Canvas; }
 }

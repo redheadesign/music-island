@@ -54,26 +54,6 @@
         "transparency": 82,
         "background": "#495259"
       },
-      "usage": {
-        "frost": 32,
-        "transparency": 34,
-        "background": "#15181b"
-      },
-      "localServers": {
-        "frost": 32,
-        "transparency": 34,
-        "background": "#15181b"
-      },
-      "latestDictation": {
-        "frost": 32,
-        "transparency": 34,
-        "background": "#15181b"
-      },
-      "notices": {
-        "frost": 32,
-        "transparency": 34,
-        "background": "#15181b"
-      },
       "progressTrack": {
         "bend": 0.16,
         "dispersion": 0.04,
@@ -99,15 +79,7 @@
     "dictationAppearance": {
       "theme": "pixels",
       "palette": "ember",
-      "chromatic": false,
-      "materialTheme": "glass",
-      "glassMaterial": {
-        "transparency": 38,
-        "frost": 77,
-        "parallax": 91,
-        "highlight": 73,
-        "edge": 0
-      }
+      "chromatic": false
     },
     "taskbarLayout": {
       "version": 1,

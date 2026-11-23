@@ -53,6 +53,21 @@ fn update_stock_glass(ui: &mut Map<String, Value>) -> bool {
                 changed = true;
             }
         }
+        let retired_widget = json!({ "frost": 32, "transparency": 34, "background": "#15181b" });
+        for surface in ["usage", "localServers", "latestDictation", "notices"] {
+            if surfaces.get(surface) == Some(&retired_widget) {
+                surfaces.remove(surface);
+                changed = true;
+            }
+        }
+    }
+    if ui.get("dictationAppearance") == Some(&json!({
+        "theme": "pixels", "palette": "ember", "chromatic": false,
+        "materialTheme": "glass",
+        "glassMaterial": { "transparency": 38, "frost": 77, "parallax": 91, "highlight": 73, "edge": 0 }
+    })) {
+        ui.insert("dictationAppearance".into(), defaults["dictationAppearance"].clone());
+        changed = true;
     }
     changed
 }
@@ -602,6 +617,35 @@ mod tests {
         assert_eq!(saved["desktopLens"], appearance_defaults().ui["desktopLens"]);
         assert_eq!(saved["advancedGlass"]["body"], appearance_defaults().ui["advancedGlass"]["body"]);
         assert_eq!(saved["advancedGlass"]["buttons"], custom);
+        assert!(!config.migrate_interface_preferences());
+    }
+
+    #[test]
+    fn removes_retired_factory_widget_paint_and_keeps_edited_settings() {
+        use serde_json::json;
+
+        let mut config = AppConfig::default();
+        let ui = config.plugins.ui_preferences_mut();
+        let surfaces = ui.get_mut("advancedGlass").and_then(Value::as_object_mut).unwrap();
+        let retired = json!({ "frost": 32, "transparency": 34, "background": "#15181b" });
+        for surface in ["usage", "localServers", "latestDictation", "notices"] {
+            surfaces.insert(surface.into(), retired.clone());
+        }
+        let custom = json!({ "frost": 32, "transparency": 35, "background": "#15181b" });
+        surfaces.insert("notices".into(), custom.clone());
+        ui.insert("dictationAppearance".into(), json!({
+            "theme": "pixels", "palette": "ember", "chromatic": false,
+            "materialTheme": "glass",
+            "glassMaterial": { "transparency": 38, "frost": 77, "parallax": 91, "highlight": 73, "edge": 0 }
+        }));
+
+        assert!(config.migrate_interface_preferences());
+        let saved = &config.plugins.settings[UI_PREFS_KEY];
+        for surface in ["usage", "localServers", "latestDictation"] {
+            assert!(saved["advancedGlass"].get(surface).is_none());
+        }
+        assert_eq!(saved["advancedGlass"]["notices"], custom);
+        assert_eq!(saved["dictationAppearance"], appearance_defaults().ui["dictationAppearance"]);
         assert!(!config.migrate_interface_preferences());
     }
 

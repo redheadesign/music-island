@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import { GLASS_SURFACE_IDS, getSurfaceDefaults, normalizeAdvancedGlass, type AdvancedGlassOverrides, type GlassSurfaceId, type GlassSurfaceSettings } from '../lib/advancedGlass'
+import { GLASS_SURFACE_IDS, getSurfaceDefaults, normalizeAdvancedGlass, usesIslandPlate, type AdvancedGlassOverrides, type GlassSurfaceId, type GlassSurfaceSettings } from '../lib/advancedGlass'
 import type { GlassMaterial } from '../lib/glassMaterialTokens'
 import field from './glisse-bezel.png?inline'
 
@@ -36,13 +36,12 @@ function paint(group: GlassSurfaceId, values: GlassSurfaceSettings, changed: Fie
     const reading = transmission * (1 - .62 * transmission)
     const top = 1 - Math.max(.14, 1 - .40 / Math.max(.01, transmission))
     const detached = group === 'dictationActions'
-    const defaultAlpha = group === 'body' ? 1 - reading
-      : group === 'dictation' || readingSurface.has(group) ? 1 - transmission : 1 - (detached ? reading : top)
-    const alpha = changed.transparency !== undefined ? 1 - t : defaultAlpha
-    const fill = group === 'body' && changed.transparency === undefined
-      ? `color-mix(in srgb, ${values.background}, transparent calc(var(--island-player-transmission, ${reading}) * 100%))`
+    const alpha = changed.transparency !== undefined ? 1 - t : 1 - (detached ? reading : top)
+    const fill = usesIslandPlate(group) && changed.transparency === undefined
+      ? `color-mix(in srgb, ${values.background}, transparent calc(var(--island-plate-transmission) * 100%))`
       : `color-mix(in srgb, ${values.background} ${(alpha * 100).toFixed(3)}%, transparent)`
     if (group === 'buttons' || group === 'transport' || group === 'progressTrack') declarations.push(`--island-lens-fill:${fill}`)
+    else if (group === 'body') declarations.push(`--island-plate-fill:${fill}`)
     else declarations.push(`background-color:${fill}`)
     if (readingSurface.has(group)) declarations.push('background-image:none')
     if (group === 'dictation' || group === 'dictationActions') {

@@ -8,6 +8,8 @@ export type ThemeDefinition = {
   playbackWave?: boolean
 }
 
+export const DEFAULT_ISLAND_PLATE_TINT = '#303134'
+
 export const INTERFACE_THEMES = {
   classic: { label: { ru: 'Классическая', en: 'Classic' }, material: 'classic' },
   glass: {
@@ -17,12 +19,12 @@ export const INTERFACE_THEMES = {
       '--font-sans': '"Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif',
       '--radius-unit': '6px',
       '--island-button-fill': 'rgb(var(--glass-ink) / .08)',
-      '--island-floating-fill': 'rgb(42 44 48 / .64)',
+      '--island-floating-fill': 'var(--island-plate-fill)',
       '--island-track-fill': 'rgb(12 15 20 / .18)',
       '--island-catalog-fill': 'rgb(var(--glass-ink) / .045)',
-      '--island-widget-fill': 'rgb(22 23 25 / calc(1 - .91 * var(--glass-reading-transmission)))',
-      '--island-widget-ink': 'var(--fg-on-glass)',
-      '--island-widget-secondary': 'var(--glass-reading-secondary)',
+      '--island-plate-tint': DEFAULT_ISLAND_PLATE_TINT,
+      '--island-widget-ink': '#fff',
+      '--island-widget-secondary': '#fbfbfb',
       '--island-widget-radius': 'var(--glass-panel-radius)',
       '--island-capsule-radius': 'var(--radius-pill)',
     },

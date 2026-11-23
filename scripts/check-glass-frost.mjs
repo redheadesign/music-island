@@ -94,24 +94,38 @@ export async function checkIslandWidgetTransmission(page) {
     }
     return { selector, text: element.locator(text).first(), crop }
   }))
+  const card = await page.locator('.island-card').boundingBox()
+  assert.ok(card, 'Missing the reference plate')
+  const plateCrop = {
+    left: Math.ceil(card.x + card.width * .13), top: Math.ceil(card.y + card.height * .14),
+    width: Math.floor(card.width * .19), height: Math.floor(card.height * .1),
+  }
+  const platePixels = (frame, crop) => sharp(frame).extract(crop).removeAlpha().greyscale().raw().toBuffer()
+  const median = pixels => pixels.sort()[Math.floor(pixels.length / 2)]
   const style = await page.addStyleTag({ content: '.workshop-stage { background: #000 !important }' })
   async function capture(css, background) {
-    await style.evaluate((el, rules) => { el.textContent = rules }, css + `.workshop-stage { background: ${background} !important }`)
+    await style.evaluate((el, rules) => { el.textContent = rules },
+      css + `.island-feedback__ambient { visibility: hidden } .workshop-stage { background: ${background} !important }`)
     return page.screenshot()
   }
   try {
     const defaults = []
-    for (const [strength, min, max] of [[null, .25, .55], [0, 0, .01], [1, .36, .48]]) {
+    for (const [strength, min, max] of [[null, .28, .34], [0, 0, .01], [1, .30, .34]]) {
       const css = strength === null ? '' : `.island-root { --glass-transparency-strength: ${strength} !important; --glass-highlight-strength: 1 !important }`
       const dark = await capture(css, '#000'), light = await capture(css, '#fff')
+      const plateTones = await Promise.all([dark, light].map(async frame => median(await platePixels(frame, plateCrop))))
       for (const { selector, text, crop } of areas) {
-        const patches = await Promise.all([dark, light].map(frame => sharp(frame).extract(crop).removeAlpha().greyscale().raw().toBuffer()))
+        const patches = await Promise.all([dark, light].map(frame => platePixels(frame, crop)))
         const differences = patches[1].map((value, index) => Math.abs(value - patches[0][index])).sort()
         const transmitted = differences[Math.floor(differences.length / 2)] / 255
         assert.ok(transmitted >= min && transmitted <= max, `${selector} transmitted ${Math.round(transmitted * 100)}% at ${strength ?? 'default'}`)
+        const widgetTones = patches.map(median)
+        widgetTones.forEach((tone, i) => {
+          assert.ok(tone >= plateTones[i] - 3, `${selector} is darker than the island on ${i ? 'white' : 'black'} (${tone} vs ${plateTones[i]})`)
+        })
         if (strength === null) defaults.push(transmitted)
         if (strength === 1) {
-          const plate = patches[1].sort()[Math.floor(patches[1].length / 2)]
+          const plate = widgetTones[1]
           const ink = (await text.evaluate(el => getComputedStyle(el).color)).match(/[\d.]+/g).map(Number)
           const contrast = (luminance(ink.slice(0, 3)) + .05) / (luminance([plate, plate, plate]) + .05)
           assert.ok(contrast >= 4.5, `${selector} text on white backdrop: ${contrast.toFixed(2)}:1`)

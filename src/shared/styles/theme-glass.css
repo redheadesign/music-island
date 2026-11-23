@@ -33,14 +33,16 @@
   --glass-reading-fill: rgb(8 8 8 / calc(1 - var(--glass-reading-transmission)));
   --glass-reading-secondary: #eeeee9;
   --glass-edge-width: calc(.5px + 1.5px * var(--glass-edge-strength, .5));
-  --glass-reading-sheen:
-    linear-gradient(180deg, transparent, rgb(8 8 8 / var(--glass-reading-veil)) var(--space-2), rgb(8 8 8 / var(--glass-reading-veil)) calc(100% - var(--space-2)), transparent);
+  /* A single neutral plate for the player, detached widgets and recorder.
+     Cap transmission so their small white labels remain readable over white. */
+  --island-plate-transmission: min(.32, calc(var(--glass-island-transmission) * .46));
+  --island-plate-fill: color-mix(in srgb, var(--island-plate-tint), transparent calc(var(--island-plate-transmission) * 100%));
   /* Buttons on a frosted plane only add tint and a specular edge. Cap the
      combined transmission behind labels, regardless of the desktop color. */
   --glass-upper-fill: rgb(8 8 8 / max(.14, 1 - .40 / max(.01, var(--glass-island-transmission))));
   --glass-layer-tint: rgb(8 8 8 / calc(.32 - .18 * var(--glass-transparency)));
   --glass-island-opaque: #242424;
-  --glass-depth: 0 9px 32px -16px rgb(0 0 0 / .68);
+  --glass-depth: 0 9px 32px -16px rgb(0 0 0 / .46);
   --shadow-control-depth: 0 2px 10px -4px rgb(0 0 0 / .48);
   --glass-filter: var(--glass-user-filter, blur(var(--glass-blur)) saturate(var(--glass-saturation)));
   --glass-frost-filter: blur(min(3.5px, var(--glass-blur))) saturate(var(--glass-saturation));
@@ -98,7 +100,7 @@
   --glass-contour: none;
   --glass-island-fill: var(--glass-island-opaque);
   --glass-reading-fill: var(--glass-island-opaque);
-  --glass-reading-sheen: none;
+  --island-plate-fill: var(--glass-island-opaque);
   --glass-layer-tint: #424241;
 }
 
@@ -118,7 +120,7 @@
     --glass-contour: none;
     --glass-island-fill: var(--glass-island-opaque);
     --glass-reading-fill: var(--glass-island-opaque);
-    --glass-reading-sheen: none;
+    --island-plate-fill: var(--glass-island-opaque);
     --glass-layer-tint: #424241;
   }
 }
@@ -138,7 +140,7 @@
     --glass-button-opacity: 100%;
     --glass-popup-opacity: 100%;
     --glass-reading-fill: var(--glass-island-opaque);
-    --glass-reading-sheen: none;
+    --island-plate-fill: var(--glass-island-opaque);
     --glass-layer-tint: #424241;
   }
 }

@@ -4,7 +4,7 @@
 .dictation-overlay--cloud:has([data-fallback='true']) .dictation-wave-fallback + .dictation-cloud__fallback { display: none; }
 .dictation-overlay[data-material='glass'] {
   --island-optic-blur: min(6px, var(--glass-blur));
-  --island-optic-fill: var(--island-widget-fill);
+  --island-optic-fill: var(--island-plate-fill);
   --dictation-reading-ink: var(--island-widget-ink);
   --island-glass-ink: var(--dictation-reading-ink);
   color: var(--dictation-reading-ink);
@@ -26,7 +26,7 @@
 .dictation-overlay[data-material='glass'] .dictation-cloud__bar button {
   color: var(--dictation-reading-ink);
 }
-.dictation-overlay[data-material='glass'] .dictation-overlay__text span { opacity: .95; }
+.dictation-overlay[data-material='glass'] .dictation-overlay__text span { opacity: .97; }
 .dictation-overlay--cloud[data-material='glass'] .dictation-cloud__core {
   background: transparent;
   border-radius: var(--island-capsule-radius);

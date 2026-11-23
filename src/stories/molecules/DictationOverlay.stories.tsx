@@ -34,7 +34,7 @@ export const GlassFox: Story = {
     if (matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)').matches) return
     const paint = getComputedStyle(rim)
     await expect(core).toHaveAttribute('data-island-surface', 'capsule')
-    await expect(paint.getPropertyValue('--island-optic-fill')).toBe(paint.getPropertyValue('--island-widget-fill'))
+    await expect(paint.getPropertyValue('--island-optic-fill')).toBe(paint.getPropertyValue('--island-plate-fill'))
     const move = (target: HTMLElement) => {
       const { right, top, height } = target.getBoundingClientRect()
       target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse', clientX: right - 1, clientY: top + height / 2 }))
