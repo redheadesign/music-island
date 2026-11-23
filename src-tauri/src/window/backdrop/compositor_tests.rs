@@ -243,7 +243,7 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
                 snapshot: false,
             }),
             prewarm_lens: false,
-            prepare_capture: false,
+            prepare_frost: None,
         };
         compositor.update(640.0, 400.0, &first_frame.host_regions(first_frame.lens))?;
         let mut opening_contrast = cleared;

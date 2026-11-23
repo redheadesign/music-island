@@ -1,9 +1,9 @@
 //! Optional local material. WGC supplies the monitor texture. Only the body
 //! and its sampling margin are copied. The copy and shader both stay on GPU.
-use super::super::geometry::{BackdropRegion, DesktopLensSettings};
+use super::super::geometry::{lens_blur_sigma, BackdropRegion, DesktopLensSettings};
 use std::sync::{
     mpsc::{self, Sender},
-    Arc, Mutex, Weak,
+    Arc, Mutex, TryLockError, Weak,
 };
 use windows::{
     core::{self, s, Interface, Result},
@@ -93,7 +93,7 @@ pub(crate) struct LensLayout {
 }
 
 impl LensLayout {
-    pub(super) fn capture_band(width: f64, height: f64, scale: f64) -> Self {
+    pub(crate) fn capture_band(width: f64, height: f64, scale: f64, frost: f64) -> Self {
         let viewport_width = (width * scale).round() as i32;
         // The body is centered at the top edge. Limit the speculative copy
         // to this band; the native layout still supplies the exact crop.
@@ -107,7 +107,7 @@ impl LensLayout {
             radii: [0.0; 4],
             bend: 0.0,
             dispersion: 0.0,
-            frost: 0.0,
+            frost: lens_blur_sigma(frost, scale),
             opacity: 0.0,
             snapshot: false,
         }
@@ -180,6 +180,7 @@ pub(super) struct DesktopLens {
 /// resize or retry serialize GPU access here. The visual tree stays on the UI
 /// thread.
 struct LensRenderer {
+    _lease: Arc<()>,
     window: usize,
     monitor_id: usize,
     source_size: SizeInt32,
@@ -322,6 +323,7 @@ impl DesktopLens {
         root: &ContainerVisual,
         band: LensLayout,
         gpu: LensDevice,
+        lease: Arc<()>,
     ) -> Result<Self> {
         let exclusion = CaptureExclusion::for_window(hwnd)?;
         let monitor = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
@@ -354,6 +356,7 @@ impl DesktopLens {
         let device = gpu.device.clone();
         let monitor_id = monitor.0 as usize;
         let renderer = Arc::new(Mutex::new(LensRenderer {
+            _lease: lease,
             window: hwnd.0 as usize,
             monitor_id,
             source_size: SizeInt32::default(),
@@ -412,33 +415,47 @@ impl DesktopLens {
         Ok(lens)
     }
 
-    pub(super) fn configure(&mut self, layout: LensLayout) -> Result<()> {
-        let mut renderer = self.renderer.lock().map_err(|_| E_FAIL)?;
+    pub(super) fn configure(&mut self, layout: LensLayout) -> Result<bool> {
+        let mut renderer = if self.visible {
+            self.renderer.lock().map_err(|_| E_FAIL)?
+        } else {
+            // A first paint must never wait for WGC or the first blur pass.
+            match self.renderer.try_lock() {
+                Ok(renderer) => renderer,
+                Err(TryLockError::WouldBlock) => return Ok(false),
+                Err(TryLockError::Poisoned(_)) => return Err(E_FAIL.into()),
+            }
+        };
         if let Some(error) = renderer.failure.take() {
             return Err(error);
         }
-        if renderer.preparing && renderer.source.is_none() {
-            return Ok(());
+        if (renderer.preparing && renderer.source.is_none())
+            || (self.capture.is_none() && !layout.snapshot)
+        {
+            return Ok(false);
         }
         if renderer.preparing || layout != renderer.layout {
             validate_size(layout)?;
             renderer.configure(layout)?;
             fit_visual(&self.visual, layout)?;
         }
+        let submitted = renderer.submitted;
+        drop(renderer);
+        self.show_frame(submitted, layout.snapshot)
+    }
+
+    pub(super) fn draw(&mut self, retry: bool) -> Result<()> {
+        let mut renderer = self.renderer.lock().map_err(|_| E_FAIL)?;
+        if let Some(error) = renderer.failure.take() {
+            return Err(error);
+        }
+        if retry && std::mem::take(&mut renderer.retry_pending) && renderer.redraw {
+            renderer.present_cached()?;
+        }
         Ok(())
     }
 
-    pub(super) fn draw(&mut self, retry: bool) -> Result<bool> {
-        let (submitted, snapshot) = {
-            let mut renderer = self.renderer.lock().map_err(|_| E_FAIL)?;
-            if let Some(error) = renderer.failure.take() {
-                return Err(error);
-            }
-            if retry && std::mem::take(&mut renderer.retry_pending) && renderer.redraw {
-                renderer.present_cached()?;
-            }
-            (renderer.submitted, renderer.layout.snapshot)
-        };
+    fn show_frame(&mut self, submitted: bool, snapshot: bool) -> Result<bool> {
         if submitted && !self.visible {
             self.visual.SetIsVisible(true)?;
             self.visible = true;
@@ -598,6 +615,9 @@ impl LensRenderer {
         }
         let _ = frame.Close();
         if self.preparing {
+            if needs_texture {
+                self.filtered_source()?;
+            }
             self.redraw = false;
             return Ok(());
         }
@@ -705,23 +725,26 @@ impl LensRenderer {
         }
     }
 
+    fn filtered_source(&mut self) -> Result<ID3D11ShaderResourceView> {
+        let input = self.source.as_ref().ok_or(E_FAIL)?;
+        if self.layout.frost == 0.0 {
+            return Ok(input.view.clone());
+        }
+        let blur = match &mut self.gaussian {
+            Some(blur) => blur,
+            None => self.gaussian.insert(Gaussian::new(&self.gpu.device)?),
+        };
+        blur.prepare(
+            &self.gpu.device,
+            &input.texture,
+            input.revision,
+            self.layout.frost,
+        )
+    }
+
     fn render(&mut self, origin: POINT, tex_width: u32, tex_height: u32) -> Result<bool> {
         let layout = self.layout;
-        let input = self.source.as_ref().ok_or(E_FAIL)?;
-        let view = if layout.frost > 0. {
-            let blur = match &mut self.gaussian {
-                Some(blur) => blur,
-                None => self.gaussian.insert(Gaussian::new(&self.gpu.device)?),
-            };
-            blur.prepare(
-                &self.gpu.device,
-                &input.texture,
-                input.revision,
-                layout.frost,
-            )?
-        } else {
-            input.view.clone()
-        };
+        let view = self.filtered_source()?;
         let data = [
             layout.width as f32,
             layout.height as f32,
@@ -786,9 +809,9 @@ impl LensRenderer {
 
 impl Drop for DesktopLens {
     fn drop(&mut self) {
-        // Release the lock before revoking the callback. The frame pool can
-        // wait for a callback that is about to acquire the lock.
-        if let Ok(mut renderer) = self.renderer.lock() {
+        // The worker can still finish its current frame. Its lease prevents
+        // a subsequent opening from using the same context in parallel.
+        if let Ok(mut renderer) = self.renderer.try_lock() {
             renderer.stopped = true;
         }
         self.capture = None;

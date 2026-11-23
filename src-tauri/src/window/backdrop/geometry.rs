@@ -32,7 +32,7 @@ pub struct BackdropFrame {
     #[serde(default)]
     pub prewarm_lens: bool,
     #[serde(default)]
-    pub prepare_capture: bool,
+    pub prepare_frost: Option<f64>,
 }
 
 /// Select once per opening. A failed GPU path can fall back, but a late
@@ -72,6 +72,9 @@ impl BackdropFrame {
             && [self.viewport_width, self.viewport_height]
                 .into_iter()
                 .all(|value| value.is_finite() && value > 0.0 && value <= 32_768.0)
+            && self
+                .prepare_frost
+                .is_none_or(|frost| (0.0..=1.0).contains(&frost))
             && self.regions.len() <= 24
             && self.lens.is_none_or(|lens| {
                 lens.region < self.regions.len()
@@ -106,10 +109,14 @@ impl BackdropFrame {
     }
 }
 
+pub(super) fn lens_blur_sigma(frost: f64, scale: f64) -> f32 {
+    (frost * (32.0 / 3.0) * scale).min(16.0) as f32
+}
+
 impl BackdropRegion {
     pub(super) fn lens_blur_sigma(&self, scale: f64, global_frost: f64) -> f32 {
         // The slider spans 32 CSS pixels of visible blur, roughly 3 sigma.
-        (self.frost.unwrap_or(global_frost) * (32.0 / 3.0) * scale).min(16.0) as f32
+        lens_blur_sigma(self.frost.unwrap_or(global_frost), scale)
     }
     fn is_valid(&self, frame: &BackdropFrame) -> bool {
         [self.left, self.top, self.width, self.height, self.opacity]
@@ -164,7 +171,7 @@ mod tests {
             regions: vec![],
             lens: None,
             prewarm_lens: false,
-            prepare_capture: false,
+            prepare_frost: None,
         }
     }
 
@@ -219,7 +226,7 @@ mod tests {
             regions: vec![],
             lens: None,
             prewarm_lens: false,
-            prepare_capture: false,
+            prepare_frost: None,
         };
         frame.regions = vec![
             BackdropRegion {

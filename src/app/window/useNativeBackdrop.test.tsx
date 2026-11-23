@@ -220,16 +220,16 @@ it('publishes an optical scene only when the island body exists, even with frost
 it('requests capture during edge contact with no visible card and releases it when contact is abandoned', async () => {
   function Collapsed({ touching }: { touching: boolean }) {
     const ref = useRef<HTMLDivElement>(null)
-    useNativeBackdrop(ref, true, '[data-blur]', .18, '', previewOptics, touching)
+    useNativeBackdrop(ref, true, '[data-blur]', .18, '', previewOptics, touching ? .56 : undefined)
     return <div ref={ref} />
   }
 
   await act(async () => root.render(<Collapsed touching />))
   await act(async () => vi.advanceTimersByTimeAsync(20))
-  expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]).toMatchObject({ prepareCapture: true, regions: [] })
+  expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]).toMatchObject({ prepareFrost: .56, regions: [] })
   await act(async () => root.render(<Collapsed touching={false} />))
   await act(async () => vi.advanceTimersByTimeAsync(20))
   const stopped = vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]
-  expect(stopped?.prepareCapture).toBeUndefined()
+  expect(stopped?.prepareFrost).toBeUndefined()
   expect(stopped?.regions).toEqual([])
 })

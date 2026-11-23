@@ -170,7 +170,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   }, [glassMode, uiPrefs.desktopLens])
   const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency,
     '.island-surface, [data-island-control="floating"]', glassMaterial.frost / 100, advanced.regionFrostKey, desktopLens,
-    windowPhase === 'opening' || windowPhase === 'open' || (windowPhase === 'collapsed' && edgeContact))
+    windowPhase === 'opening' || windowPhase === 'open' || (windowPhase === 'collapsed' && edgeContact)
+      ? advanced.nativeBodyFrost : undefined)
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {

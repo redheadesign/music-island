@@ -44,7 +44,7 @@ export interface NativeBackdropFrame {
   regions: NativeBackdropRegion[]
   lens?: { region: number } & NativeDesktopLens
   prewarmLens?: boolean
-  prepareCapture?: boolean
+  prepareFrost?: number
 }
 
 export interface NativeDesktopLens {

@@ -100,7 +100,9 @@ export function useAdvancedGlass(raw: AdvancedGlassOverrides | undefined, base: 
   return useMemo(() => {
     const settings = normalizeAdvancedGlass(raw)
     const groups = GLASS_SURFACE_IDS.filter(id => settings[id] && isRecorder(id) === recorder)
-    if (!groups.length) return { attributes: {}, layers: null, regionFrostKey: '' }
+    const bodyFrost = settings.body?.frost
+    const nativeBodyFrost = bodyFrost === undefined ? frost / 100 : bodyFrost / 32
+    if (!groups.length) return { attributes: {}, layers: null, regionFrostKey: '', nativeBodyFrost }
     const root = `[data-advanced-glass-key][data-glass-scope="${scopeId}"]:not([data-reduced-transparency="true"],[data-native-backdrop="unavailable"])`
     const filters = new Map<string, { id: string; bend: number; dispersion: number }>()
     const rules: string[] = []
@@ -176,6 +178,7 @@ export function useAdvancedGlass(raw: AdvancedGlassOverrides | undefined, base: 
     return {
       attributes: { 'data-advanced-glass-key': key, 'data-glass-scope': scopeId },
       regionFrostKey,
+      nativeBodyFrost,
       layers: <>
         <style>{'@media not ((forced-colors:active) or (prefers-contrast:more) or (prefers-reduced-transparency:reduce)){' + rules.join('\n') + '}'}</style>
         {filters.size > 0 && <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute', pointerEvents: 'none' }}>

@@ -153,18 +153,18 @@ pub(super) fn apply(
         let shown =
             unsafe { IsWindowVisible(hwnd) }.as_bool() && !unsafe { IsIconic(hwnd) }.as_bool();
         let settings = (label == "main").then_some(frame.lens).flatten();
-        let preparing = shown
-            && label == "main"
-            && frame.prewarm_lens
-            && frame.prepare_capture
-            && settings.is_none();
-        if preparing {
+        let pending_frost = frame
+            .prepare_frost
+            .filter(|_| shown && label == "main" && frame.prewarm_lens && settings.is_none());
+        if let Some(frost) = pending_frost {
             compositor.prepare_capture(LensLayout::capture_band(
                 frame.viewport_width,
                 frame.viewport_height,
                 frame.scale,
+                frost,
             ));
         }
+        let preparing = pending_frost.is_some();
         if frame.regions.is_empty() || !shown {
             state.frame = None;
             state.lens = None;

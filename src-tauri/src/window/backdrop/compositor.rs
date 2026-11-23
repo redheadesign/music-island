@@ -2,7 +2,10 @@ use super::geometry::{BackdropRegion, LensOpening};
 use std::{
     cell::{OnceCell, RefCell},
     rc::Rc,
-    sync::mpsc::{self, Receiver, TryRecvError},
+    sync::{
+        mpsc::{self, Receiver, TryRecvError},
+        Arc, Weak,
+    },
 };
 use windows::{
     core::Interface,
@@ -39,6 +42,7 @@ pub(super) struct HostBackdrop {
     frost_factory: OnceCell<Option<CompositionEffectFactory>>,
     lens: Option<DesktopLens>,
     lens_region: Option<usize>,
+    lens_lease: Weak<()>,
     opening: LensOpening,
     capture_band: Option<LensLayout>,
     lens_device: Option<LensDevice>,
@@ -128,6 +132,7 @@ impl HostBackdrop {
                 frost_factory: OnceCell::new(),
                 lens: None,
                 lens_region: None,
+                lens_lease: Weak::new(),
                 opening: LensOpening::default(),
                 capture_band: None,
                 lens_device: None,
@@ -199,10 +204,10 @@ impl HostBackdrop {
         // Make the first eligible paint the only decision point. There is no
         // later DWM-to-GPU handoff, even if the worker delivers a frame then.
         self.capture_band = None;
-        let result = self.lens.as_mut().map_or(Ok(false), |lens| {
-            lens.configure(layout)?;
-            lens.draw(false)
-        });
+        let result = self
+            .lens
+            .as_mut()
+            .map_or(Ok(false), |lens| lens.configure(layout));
         match result {
             Ok(ready) if self.opening.select(ready) => {
                 if self.lens_region != Some(index) {
@@ -265,13 +270,18 @@ impl HostBackdrop {
             self.capture_band,
             &self.lens_device,
         ) {
-            self.lens = Some(DesktopLens::prepare(
-                self.hwnd,
-                &self.compositor,
-                &self.root,
-                band,
-                device.clone(),
-            )?);
+            if self.lens_lease.strong_count() == 0 {
+                let lease = Arc::new(());
+                self.lens_lease = Arc::downgrade(&lease);
+                self.lens = Some(DesktopLens::prepare(
+                    self.hwnd,
+                    &self.compositor,
+                    &self.root,
+                    band,
+                    device.clone(),
+                    lease,
+                )?);
+            }
         }
         Ok(())
     }
