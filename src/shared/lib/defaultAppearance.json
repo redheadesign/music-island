@@ -45,10 +45,7 @@
     },
     "advancedGlass": {
       "body": {
-        "frost": 18,
-        "transparency": 69,
-        "background": "#14171b",
-        "text": "#ffffff"
+        "frost": 24
       },
       "transport": {
         "bend": 0,
@@ -78,25 +75,21 @@
         "background": "#15181b"
       },
       "progressTrack": {
-        "bend": 0.28,
-        "dispersion": 0.08,
-        "frost": 19.7,
-        "transparency": 56,
+        "bend": 0.16,
+        "dispersion": 0.04,
+        "frost": 16,
         "parallax": 0,
         "highlight": 42,
-        "edge": 0,
-        "background": "#121417"
+        "edge": 0
       },
       "buttons": {
-        "background": "#000000",
-        "frost": 7.5,
-        "transparency": 75
+        "frost": 5.5
       }
     },
     "desktopGlassMode": "lens",
     "desktopLens": {
-      "bend": 1,
-      "dispersion": 0.47
+      "bend": 0.58,
+      "dispersion": 0.14
     },
     "playbackWaveEnabled": true,
     "islandShader": {

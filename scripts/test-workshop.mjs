@@ -81,7 +81,7 @@ try {
       if (id === 'screens-island--glass-without-cover') {
         await checkGlassFrost(page)
       }
-      if (id === 'screens-island--glass-cool-cover') {
+      if (id === 'screens-island--glass-cool-cover' || id === 'screens-island--factory-glass') {
         await checkGlassReadingTone(page)
       }
       if (id === 'screens-island--glass-widget-panels') {

@@ -4,7 +4,7 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    sync::{Arc, RwLock},
+    sync::{Arc, OnceLock, RwLock},
 };
 
 const CONFIG_FILE_NAME: &str = "config.json";
@@ -13,6 +13,49 @@ const INTERFACE_THEME_KEY: &str = "interfaceTheme";
 const GLASS_DEFAULT_MARKER: &str = "interfaceThemeGlassDefaultApplied";
 const DEFAULT_INTERFACE_THEME: &str = "glass";
 const PLAYBACK_WAVE_KEY: &str = "playbackWaveEnabled";
+
+#[derive(Deserialize)]
+struct AppearanceDefaults {
+    width: u8,
+    scale: u8,
+    ui: Map<String, Value>,
+}
+
+fn appearance_defaults() -> &'static AppearanceDefaults {
+    static DEFAULTS: OnceLock<AppearanceDefaults> = OnceLock::new();
+    DEFAULTS.get_or_init(|| {
+        serde_json::from_str(include_str!("../../../src/shared/lib/defaultAppearance.json"))
+            .expect("bundled appearance defaults")
+    })
+}
+
+fn update_stock_glass(ui: &mut Map<String, Value>) -> bool {
+    use serde_json::json;
+    let defaults = &appearance_defaults().ui;
+    let mut changed = false;
+    if ui.get("desktopLens") == Some(&json!({ "bend": 1, "dispersion": 0.47 })) {
+        ui.insert("desktopLens".into(), defaults["desktopLens"].clone());
+        changed = true;
+    }
+    if let Some(surfaces) = ui.get_mut("advancedGlass").and_then(Value::as_object_mut) {
+        // Replace a complete old factory surface. A partial or edited group
+        // stays explicit, even if some of its values match the old preset.
+        for (surface, old) in [
+            ("body", json!({ "frost": 18, "transparency": 69, "background": "#14171b", "text": "#ffffff" })),
+            ("buttons", json!({ "background": "#000000", "frost": 7.5, "transparency": 75 })),
+            ("progressTrack", json!({
+                "bend": 0.28, "dispersion": 0.08, "frost": 19.7, "transparency": 56,
+                "parallax": 0, "highlight": 42, "edge": 0, "background": "#121417"
+            })),
+        ] {
+            if surfaces.get(surface) == Some(&old) {
+                surfaces.insert(surface.into(), defaults["advancedGlass"][surface].clone());
+                changed = true;
+            }
+        }
+    }
+    changed
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -236,6 +279,7 @@ impl AppConfig {
     fn migrate_interface_preferences(&mut self) -> bool {
         let mut changed = self.plugins.apply_glass_default_once();
         let ui = self.plugins.ui_preferences_mut();
+        changed |= update_stock_glass(ui);
         let old_bass = ui.remove("playbackReactiveWave");
         let old_visual = ui.remove("playbackVisual");
         changed |= old_bass.is_some() || old_visual.is_some();
@@ -266,18 +310,10 @@ impl AppConfig {
 
 impl Default for AppConfig {
     fn default() -> Self {
-        #[derive(Deserialize)]
-        struct AppearanceDefaults {
-            width: u8,
-            scale: u8,
-            ui: Map<String, Value>,
-        }
-        let defaults: AppearanceDefaults =
-            serde_json::from_str(include_str!("../../../src/shared/lib/defaultAppearance.json"))
-                .expect("bundled appearance defaults");
+        let defaults = appearance_defaults();
         let mut plugins = PluginsConfig::default();
         plugins.apply_glass_default_once();
-        plugins.ui_preferences_mut().extend(defaults.ui);
+        plugins.ui_preferences_mut().extend(defaults.ui.clone());
         Self {
             schema_version: 2,
             taskbar: TaskbarConfig::default(),
@@ -548,6 +584,25 @@ mod tests {
             assert!(saved.get("interfaceScenes").is_none());
             assert!(!config.migrate_interface_preferences());
         }
+    }
+
+    #[test]
+    fn updates_old_factory_glass_and_keeps_custom_surface_values() {
+        let mut config = AppConfig::default();
+        let ui = config.plugins.ui_preferences_mut();
+        ui.insert("desktopLens".into(), serde_json::json!({ "bend": 1, "dispersion": 0.47 }));
+        let surfaces = ui.get_mut("advancedGlass").and_then(Value::as_object_mut).unwrap();
+        surfaces.insert("body".into(), serde_json::json!({
+            "frost": 18, "transparency": 69, "background": "#14171b", "text": "#ffffff"
+        }));
+        let custom = serde_json::json!({ "background": "#000000", "frost": 9, "transparency": 75 });
+        surfaces.insert("buttons".into(), custom.clone());
+        assert!(config.migrate_interface_preferences());
+        let saved = &config.plugins.settings[UI_PREFS_KEY];
+        assert_eq!(saved["desktopLens"], appearance_defaults().ui["desktopLens"]);
+        assert_eq!(saved["advancedGlass"]["body"], appearance_defaults().ui["advancedGlass"]["body"]);
+        assert_eq!(saved["advancedGlass"]["buttons"], custom);
+        assert!(!config.migrate_interface_preferences());
     }
 
     #[test]
