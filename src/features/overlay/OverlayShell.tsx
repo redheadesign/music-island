@@ -5,11 +5,10 @@ import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMate
 import { normalizeDesktopGlassMode, normalizeDesktopLens } from '../../shared/lib/advancedGlass'
 import { progressTrackKey } from '../music/progressTransition'
 import { createIslandBassEffect } from '../../shared/ui/islandBassEffect'
-import { SettingsFilled } from '../../shared/ui/SettingsIcons'
+import { IslandActionButton } from '../../shared/ui/IslandActionButton'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Pin, PinOff } from 'lucide-react'
 import { useLatestDictationMessage, useLocalServersController, useNativeBackdrop, usePlaybackBass, type IslandAppState, type LatestDictationMessageController, type LocalServersController, type UsageController } from '../../app/useIslandApp'
 import { islandArrangement, getIslandLayout, inlineActionsWidth } from '../../shared/lib/islandLayout'
 import {
@@ -169,7 +168,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     ...normalizeDesktopLens(uiPrefs.desktopLens), snapshot: glassMode === 'snapshot', reducedMotion,
   }, [glassMode, uiPrefs.desktopLens, reducedMotion])
   const nativeBackdrop = useNativeBackdrop(overlay, usesGlassMaterial(config) && !reducedTransparency,
-    '.island-surface, .island-actions > .icon-button, .island-plugin-button', glassMaterial.frost / 100, advanced.regionFrostKey, desktopLens)
+    '.island-surface, [data-island-control="floating"]', glassMaterial.frost / 100, advanced.regionFrostKey, desktopLens)
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -988,6 +987,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
             <div className="island-scale-layer">
             <IslandFeedback
               className="island-card island-surface"
+              data-island-controls="nested"
               glassOptic={usesGlassMaterial(config)}
               opticActive={!reducedTransparency && !isTauriRuntime()}
               particles={usesGlassMaterial(config)}
@@ -1069,19 +1069,16 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
                 } as CSSProperties
               }
             >
-              {islandLayout.zones.actions.map((action) => action === 'settings' ? <button
+              {islandLayout.zones.actions.map((action) => action === 'settings' ? <IslandActionButton
                 key={action}
-                type="button"
-                className="icon-button island-settings-button"
-                aria-label="Open settings"
+                action={action}
+                label="Open settings"
                 onClick={() => void openSettingsWindow()}
-              >
-                <SettingsFilled weight="fill" size={16} />
-              </button> : action === 'pin' ? <button
+              /> : action === 'pin' ? <IslandActionButton
                 key={action}
-                type="button"
-                className="icon-button"
-                aria-label={config.behavior.pinExpanded ? 'Unpin island' : 'Pin island'}
+                action={action}
+                active={config.behavior.pinExpanded}
+                label={config.behavior.pinExpanded ? 'Unpin island' : 'Pin island'}
                 onClick={() => {
                   const nextPinExpanded = !config.behavior.pinExpanded
                   void updateConfig({
@@ -1097,9 +1094,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
 
                   }
                 }}
-              >
-                {config.behavior.pinExpanded ? <PinOff size={16} /> : <Pin size={16} />}
-              </button> : <DictationMicrophone key={action} enabled={config.plugins.enabled.includes('dictation')} locale={locale} />)}
+              /> : <DictationMicrophone key={action} enabled={config.plugins.enabled.includes('dictation')} locale={locale} />)}
             </header>
             </motion.div>
           </div>

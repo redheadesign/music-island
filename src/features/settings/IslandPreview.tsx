@@ -2,8 +2,8 @@ import { useSystemReducedTransparency } from '../../shared/ui/useSystemReducedTr
 import { IslandFeedback } from '../../shared/ui/PressFeedback'
 import { useAdvancedGlass } from '../../shared/ui/useAdvancedGlass'
 import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMaterial'
-import { SettingsFilled, SquareTerminal } from '../../shared/ui/SettingsIcons'
-import { Mic, Pin } from 'lucide-react'
+import { SquareTerminal } from '../../shared/ui/SettingsIcons'
+import { IslandActionButton } from '../../shared/ui/IslandActionButton'
 import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import type { AppConfig } from '../../shared/lib/types'
@@ -186,10 +186,13 @@ export function IslandPreview({ config, label, usage, onResize, onLocalServersRe
       {advanced.layers}
       <aside className="island-preview__satellite island-preview__satellite--left"><div className="island-preview__satellite-content" ref={leftContent}>{satellite('left')}</div></aside>
       <div ref={body} className="island-preview__body">
-        <IslandFeedback shaderTuning={getUiPrefs(config).islandShader} className="island-card island-surface" glassOptic={usesGlassMaterial(config)} opticActive={active && dimensions === null} particles={active && usesGlassMaterial(config)} playbackWave={active && playbackWave}>
+        <IslandFeedback shaderTuning={getUiPrefs(config).islandShader} className="island-card island-surface" data-island-controls="nested" glassOptic={usesGlassMaterial(config)} opticActive={active && dimensions === null} particles={active && usesGlassMaterial(config)} playbackWave={active && playbackWave}>
           <MusicModule media={media} layout={layout} progressMs={media.positionMs} progressPercent={34} density={config.layout.density} showArtwork={config.layout.showArtwork} showTitle={config.layout.showTitle} showArtist={config.layout.showArtist} showProgress={config.layout.showProgress} showSource={config.layout.showSource} showPreviousNext={config.layout.showPreviousNext} locale={config.appearance.locale} reducedMotion onCommand={() => undefined} renderElement={renderElement} renderZone={renderZone} />
         </IslandFeedback>
-        <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => <Fragment key={element}>{renderElement(element, <button type="button" className={`icon-button${element === 'settings' ? ' island-settings-button' : ''}`} aria-label={element === 'settings' ? 'Open settings' : element === 'microphone' ? 'Dictation' : 'Pin island'}>{element === 'settings' ? <SettingsFilled weight="fill" size={16} /> : element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>)}</Fragment>))}</header>
+        <header className="island-actions">{renderZone('actions', layout.zones.actions.map((element) => (
+          <Fragment key={element}>{renderElement(element, <IslandActionButton action={element}
+            label={element === 'settings' ? 'Open settings' : element === 'microphone' ? 'Dictation' : 'Pin island'} />)}</Fragment>
+        )))}</header>
         {onResize ? <>
           <div className="island-preview__resize-edge island-preview__resize-edge--left preview-resize-readout" {...resizeHandles('width', -1)} />
           <div className="island-preview__resize-edge island-preview__resize-edge--right preview-resize-readout" {...resizeHandles('width')} />

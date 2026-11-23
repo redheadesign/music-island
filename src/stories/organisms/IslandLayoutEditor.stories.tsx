@@ -410,6 +410,15 @@ export const FullInlineLayout: Story = {
     await expect(sample.boxShadow).toBe('none')
     await expect(catalog.querySelector('.island-root')).toHaveAttribute('data-interface-theme', 'glass')
     await expect(getComputedStyle(zone(canvasElement, 'widgetCatalog')).backgroundColor).toBe(restingBackground)
+    const paint = (node: HTMLElement) => {
+      const control = node.querySelector('[data-island-control]')!
+      const style = getComputedStyle(control)
+      return { role: control.getAttribute('data-island-control'), color: style.color, fill: style.backgroundColor }
+    }
+    const shufflePaint = paint(element(catalog, 'shuffle'))
+    const micPaint = paint(element(catalog, 'microphone'))
+    await expect(shufflePaint.role).toBe('button')
+    await expect(micPaint.role).toBe('floating')
     element(catalog, 'seekBack').focus()
     await userEvent.keyboard(' {ArrowLeft}')
     await expect(catalog).toHaveAttribute('data-over', 'true')
@@ -440,6 +449,8 @@ export const FullInlineLayout: Story = {
       if (id !== 'progress') await expect(bounds.height).toBeLessThan(bar.height)
     }
     const settings = element(zone(canvasElement, 'actions'), 'settings').getBoundingClientRect()
+    await expect(paint(element(player, 'shuffle'))).toEqual(shufflePaint)
+    await expect(paint(element(zone(canvasElement, 'actions'), 'microphone'))).toEqual(micPaint)
     await expect(settings.left).toBeGreaterThan(card.right)
     await expect(settings.bottom).toBeLessThanOrEqual(card.bottom)
   },

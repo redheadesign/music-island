@@ -90,7 +90,7 @@ export function SystemVolumeControl({ locale = 'ru', audio }: { locale?: Locale;
         reveal()
       }
     }}>
-    <button ref={button} type="button" className="icon-button media-button system-volume__button"
+    <button ref={button} type="button" data-island-control="button" className="icon-button media-button system-volume__button"
       aria-label={audio ? action : title} title={audio?.available === false ? unavailable : action}
       tabIndex={audio ? undefined : -1} disabled={audio?.available === false}
       onClick={() => audio?.toggleMute()}>

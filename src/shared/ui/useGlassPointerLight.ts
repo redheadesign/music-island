@@ -5,7 +5,7 @@ import { getInterfaceThemeDefinition, isInterfaceThemeId } from '../lib/interfac
 const controlSelector = [
   '.ui-button',
   ':is(.island-root, .dictation-overlay) :is(button, a[href], input, [role="button"], [role="slider"])',
-  '.media-button', '.play-button', '.reaction-button', '.island-plugin-button',
+  '[data-island-control]',
 ].join(', ')
 const quietSelector = '[data-reduced-motion="true"], [data-reduced-transparency="true"], .reduced-motion'
 
@@ -62,7 +62,7 @@ export function useGlassPointerLight(enabled: boolean) {
       const control = surfaceAt(event.target)
       const theme = control?.closest('[data-interface-theme]')?.getAttribute('data-interface-theme')
       if (!control || !isInterfaceThemeId(theme) || getInterfaceThemeDefinition(theme).material !== 'glass'
-        || control.matches('.media-navigation-button, .play-button, :disabled, [aria-disabled="true"]') || control.closest(quietSelector)) return reset()
+        || control.matches('.island-editor-element, [data-island-control="glyph"], :disabled, [aria-disabled="true"]') || control.closest(quietSelector)) return reset()
 
       if (active && active !== control) removeLight()
       pending = { control, x: event.clientX, y: event.clientY }

@@ -92,11 +92,11 @@ export function LocalServersPanel({ servers, open, stop, stopAll, locale, conten
                 <span title={server.processName}>{server.processName}</span>
               </div>
               <div className="island-local-servers__actions">
-                <SettingsIconButton variant="ghost" size="compact" label={`${t('localServers.open')} · ${address}`} disabled={busy}
+                <SettingsIconButton data-island-control="button" variant="ghost" size="compact" label={`${t('localServers.open')} · ${address}`} disabled={busy}
                   onClick={open ? () => void act(() => open(server), 'localServers.openError') : undefined}>
                   <ArrowUpRight size={16} aria-hidden="true" />
                 </SettingsIconButton>
-                {server.canStop ? <SettingsIconButton variant="ghost" size="compact" label={`${t('localServers.stop')} · ${address}`} disabled={busy}
+                {server.canStop ? <SettingsIconButton data-island-control="button" variant="ghost" size="compact" label={`${t('localServers.stop')} · ${address}`} disabled={busy}
                   aria-expanded={stopId === server.id}
                   onClick={stop ? (event) => requestStop({ kind: 'single', id: server.id }, event.currentTarget) : undefined}>
                   <Stop size={16} weight="fill" aria-hidden="true" />
@@ -108,7 +108,7 @@ export function LocalServersPanel({ servers, open, stop, stopAll, locale, conten
       </ul>
       {servers.length > 1 && (stopAll || preview) ? (
         <div className="island-local-servers__bulk">
-          <Button variant="ghost" size="compact" disabled={busy || !canStopAll} aria-expanded={Boolean(bulkRequest)}
+          <Button data-island-control="button" variant="ghost" size="compact" disabled={busy || !canStopAll} aria-expanded={Boolean(bulkRequest)}
             title={canStopAll ? undefined : t('localServers.stopAllUnavailable')}
             onClick={stopAll ? (event) => requestStop({ kind: 'all', servers }, event.currentTarget) : undefined}>
             {t('localServers.stopAll')}
@@ -120,7 +120,7 @@ export function LocalServersPanel({ servers, open, stop, stopAll, locale, conten
           <strong>{bulkRequest ? t('localServers.stopAllConfirm') : selectedServer && `${selectedServer.processName} · ${addressOf(selectedServer)}`}</strong>
           <p>{t(bulkRequest ? 'localServers.stopAllHint' : 'localServers.stopHint')}</p>
           <div className="island-local-servers__confirmation-actions">
-            <Button ref={cancelRef} variant="ghost" size="compact" disabled={busy} onClick={() => {
+            <Button data-island-control="button" ref={cancelRef} variant="ghost" size="compact" disabled={busy} onClick={() => {
               setStopRequest(null)
               setError(null)
               stopTriggerRef.current?.focus({ preventScroll: true })

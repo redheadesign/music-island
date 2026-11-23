@@ -107,7 +107,7 @@ export function MusicModule({
         {isDirect && onDirectReload ? (
           <Button
             variant="primary"
-            className="direct-reload-button"
+            data-island-control="button" className="direct-reload-button"
             disabled={directReloadBusy}
             onClick={() => onDirectReload()}
           >
@@ -149,7 +149,7 @@ export function MusicModule({
       <span>{t('music.directDropped')}</span>
       <button
         type="button"
-        className="direct-reload-button"
+        data-island-control="button" className="direct-reload-button"
         disabled={directReloadBusy}
         onClick={() => onDirectReload()}
       >
@@ -260,7 +260,7 @@ export function MusicModule({
     if (element !== 'progress' || !showProgress || (!canShowSeek && media.provider !== 'yandex-direct')) return null
     return <button
       type="button"
-      className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
+      data-island-control="track" className={['progress-track', scrubRatio != null ? 'progress-track--scrubbing' : ''].join(' ')}
       role="slider"
       aria-label={t('music.seek')}
       aria-valuemin={0}

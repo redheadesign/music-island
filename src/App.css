@@ -384,18 +384,20 @@
   color: rgba(255, 255, 255, 1);
 }
 
-/* Settings/Pin: difference on the whole control (not just the glyph over glass). */
+/* The live rail scales with the island. */
 .island-actions .icon-button {
   width: calc(38px * var(--actions-scale, var(--island-scale, 1)));
   height: calc(38px * var(--actions-scale, var(--island-scale, 1)));
+}
+
+.island-root button[data-island-control='floating'] {
   color: #ffffff;
   background: transparent;
   mix-blend-mode: difference;
 }
 
-.island-actions .icon-button:hover {
+.island-root button[data-island-control='floating']:hover {
   color: #ffffff;
-  background: transparent;
 }
 
 .island-actions .icon-button svg {
@@ -403,6 +405,9 @@
   height: calc(16px * var(--actions-scale, var(--island-scale, 1)));
   opacity: 1;
   color: inherit;
+}
+
+.island-root [data-island-control='floating'] svg {
   /* Halo when WebView treats transparent backdrop as black (difference alone fails). */
   filter:
     drop-shadow(0 0 0.8px #fff)

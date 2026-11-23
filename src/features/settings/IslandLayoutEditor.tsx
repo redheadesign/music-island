@@ -9,8 +9,11 @@ import type { AppConfig, Locale } from '../../shared/lib/types'
 import type { UsageSnapshot } from '../../shared/lib/usageTypes'
 import { islandArrangement, ISLAND_LAYOUT_ELEMENTS, canPlaceIslandElement, getIslandLayout, getLegacyIslandLayout, isIslandCatalog, isIslandWidget, moveIslandElement, withIslandLayout, type IslandLayoutDropTarget, type IslandLayoutElement, type IslandLayout, type IslandLayoutZone } from '../../shared/lib/islandLayout'
 import { createTranslator } from '../../shared/i18n/messages'
-import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, withUiPrefs } from '../../shared/lib/uiPrefs'
+import { getGlassMaterial, glassMaterialStyle } from '../../shared/lib/glassMaterial'
+import { getInterfacePalette, getInterfacePaletteStyle, getInterfaceTheme, getUiPrefs, usesGlassMaterial, withUiPrefs } from '../../shared/lib/uiPrefs'
+import { useAdvancedGlass } from '../../shared/ui/useAdvancedGlass'
 import { IslandElementSample, IslandPreview } from './IslandPreview'
+import { getPreviewArtworkStyle } from './previewMedia'
 import './IslandLayoutEditor.css'
 
 const names: Record<Locale, Record<Exclude<IslandLayoutElement, 'localServers'>, string>> = {
@@ -38,6 +41,11 @@ export interface IslandLayoutEditorProps {
 export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeading = true, active = true }: IslandLayoutEditorProps) {
   const reducedTransparency = useSystemReducedTransparency()
   const paletteStyle = getInterfacePaletteStyle(config)
+  const theme = getInterfaceTheme(config)
+  const glass = usesGlassMaterial(config)
+  const material = getGlassMaterial(config)
+  const catalogGlass = useAdvancedGlass(glass ? getUiPrefs(config).advancedGlass : undefined, material)
+  const catalogStyle = { ...paletteStyle, ...glassMaterialStyle(material), ...getPreviewArtworkStyle(glass) } as CSSProperties
   const locale: Locale = config.appearance.locale === 'en' ? 'en' : 'ru'
   const labels = { ...names[locale], localServers: createTranslator(locale)('localServers.title') }
   const zones = zoneNames[locale]
@@ -158,8 +166,9 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
     if (!elements.length && !(dragging && canPlaceIslandElement(layout, dragging, zone))) return null
     return <div className="island-layout-catalog" role="group" aria-label={zones[zone]} data-layout-target={zone}
       data-ready={Boolean(dragging && canPlaceIslandElement(layout, dragging, zone)) || undefined} data-over={over?.zone === zone || undefined}>
-      <div className="island-layout-catalog__items island-root" data-interface-theme={getInterfaceTheme(config)}
-        style={paletteStyle as CSSProperties} data-interface-palette={getInterfacePalette(config)} data-reduced-transparency={reducedTransparency || undefined}>
+      <div className="island-layout-catalog__items island-root" data-interface-theme={theme}
+        data-island-controls="nested" data-interface-palette={getInterfacePalette(config)}
+        data-reduced-transparency={reducedTransparency || undefined}>
         {elements.map((element) => elementView(element, <IslandElementSample element={element} usage={usage} locale={locale} />, true))}
       </div>
     </div>
@@ -167,7 +176,9 @@ export function IslandLayoutEditor({ config, onChange, usage, onReset, showHeadi
   return <section ref={editorRef} style={{ '--drag-indicator': paletteStyle['--accent'] } as CSSProperties} className="island-layout-editor" data-dragging={Boolean(dragging) || undefined}>
     <header className="island-layout-editor__header"><div>{showHeading ? <h3>{locale === 'ru' ? 'Ваш островок' : 'Your island'}</h3> : null}<p>{locale === 'ru' ? 'Перетаскивайте элементы между рядами. Край меняет ширину, угол — масштаб.' : 'Drag controls between rows. Pull an edge to change width or a corner to scale.'}</p></div><button type="button" className="island-layout-editor__reset" aria-label={locale === 'ru' ? 'Сбросить настройки островка' : 'Reset island settings'} title={locale === 'ru' ? 'Сбросить расположение, размер, цвет и задержку' : 'Reset layout, size, color and opening delay'} onClick={onReset ?? reset}><RotateCcw size={15} /></button></header>
     <IslandPreview active={active} config={config} label={locale === 'ru' ? 'Редактируемый островок' : 'Editable island'} usage={usage} renderElement={elementView} renderZone={zoneView} onResize={(dimensions) => onChange({ ...config, layout: { ...config.layout, ...dimensions, size: 'medium' } })} onLocalServersResize={(localServersWidgetScale) => onChange(withUiPrefs(config, { localServersWidgetScale }))} />
-    <div className="island-layout-editor__catalogs">
+    <div className="island-layout-editor__catalogs" {...catalogGlass.attributes} data-interface-theme={theme}
+      data-reduced-transparency={reducedTransparency || undefined} style={catalogStyle}>
+      {catalogGlass.layers}
       {catalog('catalog')}
       {catalog('widgetCatalog')}
     </div>

@@ -1,4 +1,4 @@
-type ThemeRole = `--${'surface' | 'fg' | 'control' | 'font' | 'space' | 'radius' | 'text' | 'leading' | 'weight' | 'shadow' | 'status' | 'focus' | 'hit' | 'motion' | 'glass'}-${string}`
+type ThemeRole = `--${'surface' | 'fg' | 'control' | 'font' | 'space' | 'radius' | 'text' | 'leading' | 'weight' | 'shadow' | 'status' | 'focus' | 'hit' | 'motion' | 'glass' | 'island'}-${string}`
 export type ThemeRoles = Partial<Record<ThemeRole, string>>
 
 export type ThemeDefinition = {
@@ -16,6 +16,10 @@ export const INTERFACE_THEMES = {
     roles: {
       '--font-sans': '"Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif',
       '--radius-unit': '6px',
+      '--island-button-fill': 'rgb(var(--glass-ink) / .08)',
+      '--island-floating-fill': 'rgb(42 44 48 / .64)',
+      '--island-track-fill': 'rgb(12 15 20 / .18)',
+      '--island-catalog-fill': 'rgb(var(--glass-ink) / .045)',
     },
     playbackWave: true,
   },

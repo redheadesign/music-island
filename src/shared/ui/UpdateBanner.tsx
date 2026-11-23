@@ -66,12 +66,12 @@ export function UpdateBanner({
           <div className="island-update-rail__actions">
             <button
               type="button"
-              className="island-update-rail__primary"
+              data-island-control="button" className="island-update-rail__primary"
               onClick={onPrimary}
             >
               {primaryLabel}
             </button>
-            <button type="button" className="island-update-rail__ghost" onClick={onLater}>
+            <button type="button" data-island-control="button" className="island-update-rail__ghost" onClick={onLater}>
               {laterLabel}
             </button>
           </div>

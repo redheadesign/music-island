@@ -17,10 +17,9 @@
 .island-editor-zone--actions { display: flex; flex-direction: column; gap: var(--space-2); }
 .island-editor-zone--left, .island-editor-zone--right { display: flex; align-items: center; gap: var(--space-2); min-width: 40px; min-height: 42px; }
 .island-editor-zone[data-ready]:empty::after { content: '+'; position: absolute; inset: 0; display: grid; place-items: center; color: var(--drag-indicator); font-size: var(--text-title); }
-.island-layout-editor__catalogs { display: grid; gap: var(--space-2); --layout-catalog-ink: var(--fg-primary); }
-.island-layout-catalog { min-width: 0; border-radius: var(--radius-lg); padding: var(--space-3); background: var(--surface-sunken); transition: background-color var(--motion-fast); }
+.island-layout-editor__catalogs { display: grid; gap: var(--space-2); }
+.island-layout-catalog { min-width: 0; border-radius: var(--radius-lg); padding: var(--space-3); background: var(--island-catalog-fill, var(--surface-sunken)); transition: background-color var(--motion-fast); }
 .island-layout-catalog__items.island-root { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); min-height: var(--control-height); height: auto; pointer-events: auto; background: transparent; }
-.island-layout-catalog__items.island-root[data-interface-theme='glass'] { --island-glass-ink: var(--layout-catalog-ink); }
 .island-editor-element--catalog { padding: var(--space-1-5); border-radius: var(--radius-lg); background: var(--surface-raised); }
 .island-layout-catalog__items[data-interface-theme='glass'] .island-editor-element--catalog { background: transparent; }
 .island-editor-element--catalog[data-layout-element='progress'] { flex: 0 1 auto; }
@@ -32,6 +31,11 @@
 
 
 .island-editor-element--catalog > .island-editor-element__visual { zoom: .8; }
+.island-layout-catalog__items [data-island-control]:not([data-island-control='track'], .artwork-play-button) {
+  width: var(--control-height);
+  height: var(--control-height);
+  flex-basis: auto;
+}
 
 .island-layout-catalog[data-ready] { outline: 1.5px dashed var(--drag-indicator); outline-offset: -2px; background: color-mix(in srgb, var(--drag-indicator) 9%, var(--surface-panel)); }
 .island-layout-catalog[data-over] { outline: 2px solid var(--drag-indicator); outline-offset: -2px; background: color-mix(in srgb, var(--drag-indicator) 16%, var(--surface-panel)); }

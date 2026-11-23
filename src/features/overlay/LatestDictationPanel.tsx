@@ -29,10 +29,10 @@ export function LatestDictationPanel({ message, locale, copy, dismiss, ref }: {
     <section className="island-latest-dictation island-surface" aria-label={t('dictation.latestTitle')} ref={ref}>
       <p className="island-latest-dictation__text" title={message.text}>{message.text}</p>
       <div className="island-latest-dictation__actions">
-        <SettingsIconButton variant="ghost" size="compact" label={t('dictation.latestCopy')} busy={state === 'copying'} onClick={() => void copyText()}>
+        <SettingsIconButton data-island-control="button" variant="ghost" size="compact" label={t('dictation.latestCopy')} busy={state === 'copying'} onClick={() => void copyText()}>
           {state === 'copied' ? <Check size={16} weight="bold" aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
         </SettingsIconButton>
-        <SettingsIconButton variant="ghost" size="compact" label={t('dictation.latestDismiss')} onClick={dismiss}>
+        <SettingsIconButton data-island-control="button" variant="ghost" size="compact" label={t('dictation.latestDismiss')} onClick={dismiss}>
           <X size={16} aria-hidden="true" />
         </SettingsIconButton>
       </div>

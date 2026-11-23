@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
-import { Mic, Pin } from 'lucide-react'
 import type { IslandLayoutElement } from '../../shared/lib/islandLayout'
+import { IslandActionButton } from '../../shared/ui/IslandActionButton'
 import { MediaArtwork, NavigationButton, PlaybackButton, ReactionButton, PlaybackModeButton } from '../music/MusicControls'
 import { SeekStepButton } from '../music/SeekStepButton'
 import { SystemVolumeControl } from '../music/SystemVolumeControl'
@@ -18,6 +18,9 @@ export function IslandMusicElementSample({ element, locale = 'ru' }: {
   if (element === 'transport') return <PlaybackButton locale={locale} />
   if (element === 'like' || element === 'dislike') return <ReactionButton locale={locale} kind={element} />
   if (element === 'shuffle' || element === 'repeat') return <PlaybackModeButton kind={element} locale={locale} />
-  if (element === 'progress') return <button type="button" className="progress-track" aria-label={locale === 'ru' ? 'Позиция трека' : 'Seek track'} style={{ '--progress': .34, width: 210 } as CSSProperties}><ProgressStrip frame={{ trackKey: 'catalog', ratio: .34, positionMs: media.positionMs, durationMs: media.durationMs, label: 'Music Island · Evening Light' }} navigation={null} reducedMotion scrubbing={false} /></button>
-  return <button type="button" className="icon-button" aria-label={element}>{element === 'microphone' ? <Mic size={16} /> : <Pin size={16} />}</button>
+  if (element === 'progress') return <button type="button" data-island-control="track" className="progress-track" aria-label={locale === 'ru' ? 'Позиция трека' : 'Seek track'} style={{ '--progress': .34, width: 210 } as CSSProperties}><ProgressStrip frame={{ trackKey: 'catalog', ratio: .34, positionMs: media.positionMs, durationMs: media.durationMs, label: 'Music Island · Evening Light' }} navigation={null} reducedMotion scrubbing={false} /></button>
+  if (element === 'pin' || element === 'microphone' || element === 'settings') {
+    return <IslandActionButton action={element} label={element} />
+  }
+  return null
 }

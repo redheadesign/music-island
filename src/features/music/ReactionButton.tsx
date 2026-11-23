@@ -22,7 +22,7 @@ export function ReactionButton({ kind, active = false, disabled, onClick, reduce
   const [press, setPress] = useState(0)
   const Icon = kind === 'like' ? Heart : HeartCrack
   const label = labels[locale][kind][Number(active)]
-  return <button type="button" className={`reaction-button reaction-button--${kind}${active ? ' reaction-button--active' : ''}`}
+  return <button type="button" data-island-control="button" className={`reaction-button reaction-button--${kind}${active ? ' reaction-button--active' : ''}`}
     aria-label={label} aria-pressed={active} title={label} disabled={disabled}
     data-reduced-motion={reducedMotion || undefined}
     onClick={event => {

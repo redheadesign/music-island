@@ -19,7 +19,7 @@ export function ActiveSelectionChip({
       <span>{selection.label}</span>
       {selection.removable ? (
         <button
-          type="button"
+          type="button" data-island-control="glyph"
           aria-label={`Выключить подборку ${selection.label}`}
           disabled={disabled}
           onClick={(event) => {

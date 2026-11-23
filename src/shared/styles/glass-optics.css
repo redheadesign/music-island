@@ -10,7 +10,7 @@
   initial-value: 0;
 }
 
-[data-interface-theme='glass'] :where(.ui-button, .media-button:not(.media-navigation-button), .play-button:not(.artwork-play-button), .reaction-button, .island-actions .icon-button, .island-plugin-button) {
+[data-interface-theme='glass'] :where(.ui-button, [data-island-control]:not([data-island-control="glyph"])) {
   position: relative;
 }
 
@@ -20,7 +20,7 @@
   position: relative;
 }
 
-[data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, .media-button:not(.media-navigation-button), .reaction-button, .island-actions .icon-button, .island-plugin-button, [data-glass-light]:not(.island-card, .media-navigation-button, .play-button, [data-native-backdrop-surface]))::before {
+[data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, [data-island-control]:not([data-island-control="glyph"], [data-island-control="track"]), [data-glass-light]:not(.island-card, .island-editor-element, [data-island-control="glyph"], [data-native-backdrop-surface]))::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -32,7 +32,7 @@
   opacity: var(--glass-highlight-strength, .42);
 }
 
-[data-interface-theme='glass'] [data-glass-light]:not(.island-card, .media-navigation-button, .play-button, [data-native-backdrop-surface])::before {
+[data-interface-theme='glass'] [data-glass-light]:not(.island-card, .island-editor-element, [data-island-control="glyph"], [data-native-backdrop-surface])::before {
   background:
     radial-gradient(ellipse 54% 110% at var(--glass-light-x, 50%) var(--glass-light-y, 0%), var(--glass-light-peak), transparent 76%),
     var(--glass-contour);
@@ -47,16 +47,16 @@
 }
 
 /* Reduced transparency still has a clear resting line. It has no reflections. */
-[data-interface-theme='glass'][data-reduced-transparency='true'] :where(.ui-button, .media-button:not(.media-navigation-button), .reaction-button, .island-actions .icon-button, .island-plugin-button)::before {
+[data-interface-theme='glass'][data-reduced-transparency='true'] :where(.ui-button, [data-island-control]:not([data-island-control="glyph"], [data-island-control="track"]))::before {
   background: var(--surface-selected);
 }
 @media (prefers-reduced-transparency: reduce) {
-  [data-interface-theme='glass'] :where(.ui-button, .media-button:not(.media-navigation-button), .reaction-button, .island-actions .icon-button, .island-plugin-button)::before {
+  [data-interface-theme='glass'] :where(.ui-button, [data-island-control]:not([data-island-control="glyph"], [data-island-control="track"]))::before {
     background: var(--surface-selected);
   }
 }
 @media (forced-colors: active) {
-  [data-interface-theme='glass'] :where(.ui-button, .media-button:not(.media-navigation-button), .reaction-button, .island-actions .icon-button, .island-plugin-button)::before {
+  [data-interface-theme='glass'] :where(.ui-button, [data-island-control]:not([data-island-control="glyph"], [data-island-control="track"]))::before {
     display: none;
   }
 }
