@@ -19,14 +19,6 @@
   background-color: var(--island-optic-fill, var(--glass-island-fill));
 }
 
-/* Move the soft reflection inside the tint. The housing keeps a clear,
-   unlit rim and hovering one of its buttons only lights that button. */
-.island-card > .island-glass-optic[data-glass-parallax]::after {
-  background-image: radial-gradient(ellipse 42% 82% at var(--glass-light-x, 50%) var(--glass-light-y, 50%),
-    rgb(232 243 255 / calc(.38 * var(--optic-highlight) * var(--glass-parallax-strength, .91))),
-    transparent 78%);
-}
-
 .island-glass-optic > svg {
   position: absolute;
   width: 0;
@@ -74,7 +66,6 @@
 
 @media (prefers-reduced-transparency: reduce), (forced-colors: active), (prefers-contrast: more) {
   .island-glass-optic::after { background: var(--glass-island-opaque, Canvas); }
-  .island-card > .island-glass-optic[data-glass-parallax]::after { background-image: none; }
   .island-glass-optic > .lg-glass { display: none; }
 }
 
