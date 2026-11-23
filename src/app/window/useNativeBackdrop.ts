@@ -80,13 +80,17 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
     const frame = (capture: boolean): NativeBackdropFrame => {
       const styles = new Map<HTMLElement, CSSStyleDeclaration>()
       const regions: NativeBackdropRegion[] = []
+      let islandBody: number | undefined
       let desktopLens: NativeBackdropFrame['lens']
       if (capture) for (const surface of surfaces) {
         const region = measureNativeBackdropRegion(surface, node, styles)
         if (!region) continue
-        if (lens.current && surface.classList.contains('island-card')) {
-          desktopLens = { ...lens.current, region: regions.length }
-        } else if ((region.frost ?? frostAmount.current) === 0) continue
+        const isBody = surface.classList.contains('island-card')
+        if ((region.frost ?? frostAmount.current) === 0 && !(isBody && lens.current)) continue
+        if (isBody) {
+          islandBody = regions.length
+          if (lens.current) desktopLens = { ...lens.current, region: islandBody }
+        }
         regions.push(region)
       }
       return {
@@ -97,6 +101,7 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
         scale: window.devicePixelRatio || 1,
         frost: frostAmount.current,
         regions,
+        islandBody,
         ...(capture && lens.current && { prewarmLens: true, prepareFrost: pendingFrost.current }),
         ...(desktopLens && { lens: desktopLens }),
       }

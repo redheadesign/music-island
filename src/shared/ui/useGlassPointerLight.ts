@@ -7,13 +7,17 @@ const controlSelector = [
   ':is(.island-root, .dictation-overlay) :is(button, a[href], input, [role="button"], [role="slider"])',
   '[data-island-control]',
 ].join(', ')
+const bodyLightSelector = '.island-glass-optic[data-glass-surface="player"]'
 const quietSelector = '[data-reduced-motion="true"], [data-reduced-transparency="true"], .reduced-motion'
 
 function surfaceAt(target: EventTarget | null) {
-  return target instanceof Element ? target.closest<HTMLElement>(controlSelector) : null
+  if (!(target instanceof Element)) return null
+  return target.closest<HTMLElement>(controlSelector)
+    ?? target.closest('.island-card[data-island-optical]')?.querySelector<HTMLElement>(':scope > ' + bodyLightSelector)
+    ?? null
 }
 
-/** Paint only the hovered rim. No animation clock runs between pointer events. */
+/** Move the hovered reflection. No animation clock runs between pointer events. */
 export function useGlassPointerLight(enabled: boolean) {
   // The first pointermove may be the event that opened the desktop overlay.
   // Attach during commit so the first painted frame can respond to its pointer.
@@ -27,6 +31,7 @@ export function useGlassPointerLight(enabled: boolean) {
 
     const removeLight = () => {
       active?.removeAttribute('data-glass-light')
+      active?.removeAttribute('data-glass-parallax')
       active?.style.removeProperty('--glass-light-x')
       active?.style.removeProperty('--glass-light-y')
       active = null
@@ -53,7 +58,7 @@ export function useGlassPointerLight(enabled: boolean) {
       const clamp = Math.min(strength, 1)
       next.control.style.setProperty('--glass-light-x', percent(.5 + (((next.x - rect.left) / rect.width) - .5) * clamp))
       next.control.style.setProperty('--glass-light-y', percent(.5 + (((next.y - rect.top) / rect.height) - .5) * clamp))
-      next.control.setAttribute('data-glass-light', '')
+      next.control.setAttribute(next.control.matches(bodyLightSelector) ? 'data-glass-parallax' : 'data-glass-light', '')
       active = next.control
     }
 

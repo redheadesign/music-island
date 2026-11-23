@@ -217,6 +217,15 @@ it('publishes an optical scene only when the island body exists, even with frost
   expect(frame?.prewarmLens).toBeUndefined()
 })
 
+it('identifies the island body for system frost even if GPU optics are disabled', async () => {
+  await act(async () => root.render(<IndependentFrost global={1} />))
+  await act(async () => vi.advanceTimersByTimeAsync(20))
+  const frame = vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]
+  expect(frame?.islandBody).toBe(0)
+  expect(frame?.frost).toBe(1)
+  expect(frame?.lens).toBeUndefined()
+})
+
 it('requests capture during edge contact with no visible card and releases it when contact is abandoned', async () => {
   function Collapsed({ touching }: { touching: boolean }) {
     const ref = useRef<HTMLDivElement>(null)

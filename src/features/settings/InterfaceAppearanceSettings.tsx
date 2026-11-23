@@ -1,6 +1,7 @@
 import { createTranslator } from '../../shared/i18n/messages'
-import { getGlassMaterial } from '../../shared/lib/glassMaterial'
-import { normalizeAdvancedGlass } from '../../shared/lib/advancedGlass'
+import { getGlassMaterial, normalizeGlassMaterial } from '../../shared/lib/glassMaterial'
+import defaultAppearance from '../../shared/lib/defaultAppearance.json'
+import { GLASS_NUMERIC_RANGES, normalizeAdvancedGlass } from '../../shared/lib/advancedGlass'
 import { getInterfaceThemeDefinition, INTERFACE_THEME_IDS, INTERFACE_THEMES } from '../../shared/lib/interfaceTheme'
 import type { AppConfig, Locale } from '../../shared/lib/types'
 import { getInterfaceTheme, getPlaybackWaveEnabled, getUiPrefs, withUiPrefs } from '../../shared/lib/uiPrefs'
@@ -19,6 +20,17 @@ export function InterfaceThemeSettings({ config, locale, onChange }: AppearanceP
   const t = createTranslator(locale)
   const theme = getInterfaceTheme(config)
   const material = getGlassMaterial(config)
+  const prefs = getUiPrefs(config)
+  const body = normalizeAdvancedGlass(prefs.advancedGlass).body
+  const bodyFrost = body?.frost
+  const hasBodyFrost = bodyFrost !== undefined
+  const maxFrost = GLASS_NUMERIC_RANGES.frost.max
+  const stockFrost = defaultAppearance.ui.advancedGlass.body.frost
+  const frostPercent = (pixels: number) => Math.round(pixels * 100 / maxFrost)
+  const visibleMaterial = hasBodyFrost ? { ...material, frost: frostPercent(bodyFrost) } : material
+  const stockMaterial = normalizeGlassMaterial(defaultAppearance.ui.glassMaterial)
+  const resetMaterial = hasBodyFrost ? { ...stockMaterial, frost: frostPercent(stockFrost) } : undefined
+  const bodyWithFrost = (frost: number) => ({ ...prefs.advancedGlass, body: { ...body, frost } })
   const hasGlass = getInterfaceThemeDefinition(theme).material === 'glass'
   return <>
     <AppearanceChoices
@@ -33,10 +45,15 @@ export function InterfaceThemeSettings({ config, locale, onChange }: AppearanceP
     />
     {hasGlass && <GlassMaterialSettings
       locale={locale}
-      material={material}
-      bodyFrostOverride={normalizeAdvancedGlass(getUiPrefs(config).advancedGlass).body?.frost}
-      onChange={glassMaterial => onChange(withUiPrefs(config, { glassMaterial }))}
-      onReset={() => onChange(withUiPrefs(config, { glassMaterial: undefined }))}
+      material={visibleMaterial}
+      defaults={resetMaterial}
+      onChange={(next, key) => onChange(withUiPrefs(config, {
+        glassMaterial: key === 'frost' ? next : { ...next, frost: material.frost },
+        ...(key === 'frost' && hasBodyFrost && { advancedGlass: bodyWithFrost(next.frost * maxFrost / 100) }),
+      }))}
+      onReset={() => onChange(withUiPrefs(config, hasBodyFrost
+        ? { glassMaterial: stockMaterial, advancedGlass: bodyWithFrost(stockFrost) }
+        : { glassMaterial: undefined }))}
     />}
     <AdvancedGlassEditor config={config} locale={locale} onChange={onChange} scope="island"
       base={material} hasGlass={hasGlass} />

@@ -30,6 +30,8 @@ pub struct BackdropFrame {
     #[serde(default)]
     pub lens: Option<DesktopLensSettings>,
     #[serde(default)]
+    pub island_body: Option<usize>,
+    #[serde(default)]
     pub prewarm_lens: bool,
     #[serde(default)]
     pub prepare_frost: Option<f64>,
@@ -76,6 +78,9 @@ impl BackdropFrame {
                 .prepare_frost
                 .is_none_or(|frost| (0.0..=1.0).contains(&frost))
             && self.regions.len() <= 24
+            && self
+                .island_body
+                .is_none_or(|index| index < self.regions.len())
             && self.lens.is_none_or(|lens| {
                 lens.region < self.regions.len()
                     && (0.0..=1.0).contains(&lens.bend)
@@ -90,15 +95,15 @@ impl BackdropFrame {
     }
 
     pub(super) fn host_regions(&self, lens: Option<DesktopLensSettings>) -> Vec<BackdropRegion> {
+        let body = self.island_body.or(lens.map(|settings| settings.region));
         self.regions
             .iter()
             .enumerate()
             .map(|(index, region)| {
                 let mut physical = region.physical(self.scale, self.frost);
-                if lens.is_some_and(|settings| settings.region == index) {
-                    // While the first captured frame is pending, use the same
-                    // sigma and silhouette opacity as the GPU lens. At zero
-                    // frost let the unfiltered desktop show through.
+                if body == Some(index) {
+                    // System glass and the fallback for GPU glass share the
+                    // body blur, including zero frost and live slider changes.
                     let sigma = region.lens_blur_sigma(self.scale, self.frost);
                     physical.blur_radius = (sigma > 0.0).then_some(f64::from(sigma));
                     physical.opacity = if sigma > 0.0 { region.opacity } else { 0.0 };
@@ -170,6 +175,7 @@ mod tests {
             frost: 0.72,
             regions: vec![],
             lens: None,
+            island_body: None,
             prewarm_lens: false,
             prepare_frost: None,
         }
@@ -225,6 +231,7 @@ mod tests {
             frost: 0.72,
             regions: vec![],
             lens: None,
+            island_body: None,
             prewarm_lens: false,
             prepare_frost: None,
         };
@@ -279,9 +286,11 @@ mod tests {
         };
         let stock = frame.host_regions(None);
         assert_eq!(stock[0].blur_radius, None);
-        for amount in [None, Some(0.35), Some(0.0)] {
+        frame.island_body = Some(0);
+        for amount in [None, Some(0.35), Some(0.0), Some(1.0)] {
             frame.regions[0].frost = amount;
             let prepared = frame.host_regions(Some(lens));
+            assert_eq!(frame.host_regions(None), prepared);
             let sigma = frame.regions[0].lens_blur_sigma(frame.scale, frame.frost);
             assert_eq!(
                 prepared[0].blur_radius,

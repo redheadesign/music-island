@@ -25,6 +25,7 @@ function SettingsPreview({
   preferredSourceAppId,
   scrollViewportHeight,
   interfaceTheme,
+  factoryAppearance = false,
 }: {
   args: ComponentProps<typeof SettingsPanel>
   locale: Locale
@@ -34,8 +35,9 @@ function SettingsPreview({
   preferredSourceAppId?: string
   scrollViewportHeight?: number
   interfaceTheme: InterfaceThemeId
+  factoryAppearance?: boolean
 }) {
-  const [config, setConfig] = useWorkshopConfig(locale, accent, false, interfaceTheme)
+  const [config, setConfig] = useWorkshopConfig(locale, accent, false, interfaceTheme, factoryAppearance)
   const usage = useUsageController()
   const configuredPreview = preferredSourceAppId
     ? { ...config, media: { ...config.media, protocol: 'smtc' as const, preferredSourceAppId } }
@@ -96,6 +98,7 @@ const meta = {
         accent={context.globals.accent}
         reducedMotion={context.parameters.reducedMotion === true}
         interfaceTheme={normalizeInterfaceTheme(context.globals.interfaceTheme)}
+        factoryAppearance={context.parameters.factoryAppearance === true}
         preferredSourceAppId={context.parameters.preferredSourceAppId as string | undefined}
         scrollViewportHeight={context.parameters.scrollViewportHeight as number | undefined}
         onPreviewChange={(next) => {
@@ -253,6 +256,7 @@ export const GlassPlaybackBackground: Story = {
 }
 export const GlassMaterialTuning: Story = {
   ...Glass, name: 'Стекло · настройка материала',
+  parameters: { factoryAppearance: true },
   globals: { interfaceTheme: 'glass', locale: 'ru' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.querySelector<HTMLElement>('.settings-appearance')!)
@@ -266,14 +270,29 @@ export const GlassMaterialTuning: Story = {
     const parallax = controls.getByRole('slider', { name: 'Параллакс' })
     await expect(controls.getAllByRole('slider')).toHaveLength(5)
     await expect(transparency).toBeVisible()
+    await expect(frost).toHaveValue('56')
     await expect(controls.getByRole('button', { name: 'Сбросить параметры стекла' })).toBeDisabled()
+    const body = preview.querySelector<HTMLElement>('.island-card')!
+    await fireEvent.change(frost, { target: { value: '100' } })
+    await fireEvent.change(parallax, { target: { value: '100' } })
+    await waitFor(() => {
+      expect(getComputedStyle(body).getPropertyValue('--glass-region-frost').trim()).toBe('1')
+      expect(preview.style.getPropertyValue('--glass-parallax-strength')).toBe('1')
+    })
     await fireEvent.change(transparency, { target: { value: '82' } })
     await fireEvent.change(frost, { target: { value: '0' } })
     await fireEvent.change(parallax, { target: { value: '0' } })
     await waitFor(() => {
       expect(preview.style.getPropertyValue('--glass-transparency-strength')).toBe('0.82')
       expect(preview.style.getPropertyValue('--glass-user-filter')).toBe('none')
+      expect(getComputedStyle(body).getPropertyValue('--glass-region-frost').trim()).toBe('0')
       expect(preview.style.getPropertyValue('--glass-parallax-strength')).toBe('0')
+    })
+    await fireEvent.change(parallax, { target: { value: '100' } })
+    await fireEvent.change(frost, { target: { value: '100' } })
+    await waitFor(() => {
+      expect(preview.style.getPropertyValue('--glass-parallax-strength')).toBe('1')
+      expect(getComputedStyle(body).getPropertyValue('--glass-region-frost').trim()).toBe('1')
     })
     await expect(disclosure()).toHaveTextContent('Свои значения')
     await userEvent.click(disclosure())
@@ -287,10 +306,10 @@ export const GlassMaterialTuning: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Сбросить параметры стекла' }))
     await expect(disclosure()).toHaveTextContent('По умолчанию')
     await expect(canvas.getByRole('slider', { name: 'Прозрачность' })).toHaveValue('90')
-    await expect(canvas.getByRole('slider', { name: 'Размытие фона' })).toHaveValue('85')
+    await expect(canvas.getByRole('slider', { name: 'Размытие фона' })).toHaveValue('56')
     await expect(canvas.getByRole('slider', { name: 'Параллакс' })).toHaveValue('91')
-    await expect(canvas.getByRole('slider', { name: 'Яркость блика' })).toHaveValue('42')
-    await expect(canvas.getByRole('slider', { name: 'Толщина кромки кнопок' })).toHaveValue('50')
+    await expect(canvas.getByRole('slider', { name: 'Яркость блика' })).toHaveValue('40')
+    await expect(canvas.getByRole('slider', { name: 'Толщина кромки кнопок' })).toHaveValue('61')
     canvas.getByRole('group', { name: 'Параметры стекла' }).scrollIntoView({ block: 'center' })
   },
 }

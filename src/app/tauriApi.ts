@@ -42,6 +42,7 @@ export interface NativeBackdropFrame {
   scale: number
   frost: number
   regions: NativeBackdropRegion[]
+  islandBody?: number
   lens?: { region: number } & NativeDesktopLens
   prewarmLens?: boolean
   prepareFrost?: number
