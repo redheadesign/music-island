@@ -2,11 +2,11 @@ import { useId, type ReactNode } from 'react'
 import { ColorSwatches } from '../../shared/ui/ColorSwatches'
 import { Switch } from '../../shared/ui/SettingsControls'
 import { Check } from '../../shared/ui/SettingsIcons'
-import { DEFAULT_GLASS_MATERIAL, type GlassMaterial } from '../../shared/lib/glassMaterial'
+import type { GlassMaterial } from '../../shared/lib/glassMaterial'
 import { INTERFACE_THEMES, INTERFACE_THEME_IDS, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import { AppearanceChoices } from '../settings/AppearanceChoices'
 import { GlassMaterialSettings } from '../settings/GlassMaterialSettings'
-import { dictationThemes, dictationPalettes, dictationPaletteSwatches, type DictationAppearance } from '../../shared/lib/dictationAppearance'
+import { DEFAULT_DICTATION_GLASS, dictationGlassMaterial, dictationThemes, dictationPalettes, dictationPaletteSwatches, type DictationAppearance } from '../../shared/lib/dictationAppearance'
 import { DictationVisual } from './DictationVisual'
 
 const themeNames = { classic: ['Классическая', 'Classic'], wave: ['Волны', 'Waves'], pixels: ['Лиса', 'Fox'] }
@@ -47,7 +47,7 @@ export function DictationThemePicker({ value, islandGlass, onChange, locale, chi
         })}
       />
       {value.materialTheme === 'glass' && <GlassMaterialSettings
-        locale={locale} material={value.glassMaterial ?? DEFAULT_GLASS_MATERIAL}
+        locale={locale} material={dictationGlassMaterial(value, islandGlass)} defaults={DEFAULT_DICTATION_GLASS}
         onChange={glassMaterial => patch({ glassMaterial })}
       />}
       {children}

@@ -29,7 +29,7 @@ describe('per-surface glass', () => {
   })
 
   it('derives separate default frost for native silhouettes and controls above the player', () => {
-    expect(getSurfaceDefaults('usage', DEFAULT_GLASS_MATERIAL).frost).toBe(27.2)
+    expect(getSurfaceDefaults('usage', DEFAULT_GLASS_MATERIAL).frost).toBe(6.4)
     expect(getSurfaceDefaults('transport', DEFAULT_GLASS_MATERIAL).frost).toBe(0)
   })
 })

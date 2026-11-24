@@ -272,7 +272,7 @@ export const GlassMaterialTuning: Story = {
     const parallax = controls.getByRole('slider', { name: 'Параллакс' })
     await expect(controls.getAllByRole('slider')).toHaveLength(5)
     await expect(transparency).toBeVisible()
-    await expect(frost).toHaveValue('56')
+    await expect(frost).toHaveValue('20')
     await expect(controls.getByRole('button', { name: 'Сбросить параметры стекла' })).toBeDisabled()
     const body = preview.querySelector<HTMLElement>('.island-card')!
     await fireEvent.change(frost, { target: { value: '100' } })
@@ -307,11 +307,11 @@ export const GlassMaterialTuning: Story = {
     await expect(canvas.getByRole('slider', { name: 'Прозрачность' })).toHaveValue('82')
     await userEvent.click(canvas.getByRole('button', { name: 'Сбросить параметры стекла' }))
     await expect(disclosure()).toHaveTextContent('По умолчанию')
-    await expect(canvas.getByRole('slider', { name: 'Прозрачность' })).toHaveValue('90')
-    await expect(canvas.getByRole('slider', { name: 'Размытие фона' })).toHaveValue('56')
-    await expect(canvas.getByRole('slider', { name: 'Параллакс' })).toHaveValue('91')
-    await expect(canvas.getByRole('slider', { name: 'Яркость блика' })).toHaveValue('40')
-    await expect(canvas.getByRole('slider', { name: 'Толщина кромки кнопок' })).toHaveValue('61')
+    await expect(canvas.getByRole('slider', { name: 'Прозрачность' })).toHaveValue('100')
+    await expect(canvas.getByRole('slider', { name: 'Размытие фона' })).toHaveValue('20')
+    await expect(canvas.getByRole('slider', { name: 'Параллакс' })).toHaveValue('100')
+    await expect(canvas.getByRole('slider', { name: 'Яркость блика' })).toHaveValue('42')
+    await expect(canvas.getByRole('slider', { name: 'Толщина кромки кнопок' })).toHaveValue('50')
     canvas.getByRole('group', { name: 'Параметры стекла' }).scrollIntoView({ block: 'center' })
   },
 }

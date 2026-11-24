@@ -28,10 +28,15 @@
   backdrop-filter: var(--island-control-filter, none);
 }
 .island-root[data-interface-theme='glass'] [data-island-control='track'] {
-  --island-lens-sheen: var(--glass-sheen);
+  --island-lens-sheen: var(--glass-control-sheen);
   --island-lens-shadow: var(--glass-control-rim);
+  --glass-light-width: 24%;
 }
-.island-root[data-interface-theme='glass'] [data-island-control='track']::before { background: none; }
+.island-root[data-interface-theme='glass'] [data-island-control='track']::before {
+  /* Keep the optical edge above both halves of the playback fill. */
+  z-index: 1;
+  background: var(--glass-control-reflection, var(--glass-contour));
+}
 
 /* One frosted plane for each action against the desktop. The preview and the
    catalog retain that material while rendering over their own backgrounds. */

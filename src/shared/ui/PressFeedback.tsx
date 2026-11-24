@@ -124,6 +124,7 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
   }
   return <Feedback.Provider value={ripple}>
     <section {...props} data-island-optical={glassOptic || undefined} ref={surface} className={`island-feedback ${className}`}>
+      {glassOptic && <IslandGlassOptic active={opticActive} refract />}
       <span ref={layer} className="island-feedback__layer" aria-hidden="true">
         {particles || playbackWave ? (
           <span
@@ -154,7 +155,6 @@ export function IslandFeedback({ children, className = '', glassOptic = false, o
           </span>
         ) : null}
       </span>
-      {glassOptic && <IslandGlassOptic active={opticActive} refract />}
       {children}
     </section>
   </Feedback.Provider>

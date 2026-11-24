@@ -20,7 +20,7 @@
   position: relative;
 }
 
-[data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, [data-island-control]:not([data-island-control="glyph"], [data-island-control="plain"], [data-island-control="track"]), [data-glass-light]:not(.island-card, .island-editor-element, [data-island-control="glyph"], [data-island-control="plain"], [data-native-backdrop-surface]))::before {
+[data-interface-theme='glass'] :where(.ui-button--primary, .ui-button--secondary, [data-island-control]:not([data-island-control="glyph"], [data-island-control="plain"]), [data-glass-light]:not(.island-card, .island-editor-element, [data-island-control="glyph"], [data-island-control="plain"], [data-native-backdrop-surface]))::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -28,13 +28,13 @@
   border-radius: inherit;
   pointer-events: none;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  background: var(--glass-contour);
+  background: var(--glass-control-reflection, var(--glass-contour));
   opacity: var(--glass-highlight-strength, .42);
 }
 
 [data-interface-theme='glass'] [data-glass-light]:not(.island-card, .island-editor-element, [data-island-control="glyph"], [data-island-control="plain"], [data-native-backdrop-surface])::before {
-  background:
-    radial-gradient(ellipse 54% 110% at var(--glass-light-x, 50%) var(--glass-light-y, 0%), var(--glass-light-peak), transparent 76%),
+  /* ai-design-check-ignore-next-line no-radial-halo -- The mask confines the reflection to the control's rim. */
+  --glass-control-reflection: radial-gradient(ellipse var(--glass-light-width, 54%) 110% at var(--glass-light-x, 50%) var(--glass-light-y, 0%), var(--glass-light-peak), transparent 76%),
     var(--glass-contour);
 }
 
@@ -56,7 +56,7 @@
   }
 }
 @media (forced-colors: active) {
-  [data-interface-theme='glass'] :where(.ui-button:not([data-island-control="plain"]), [data-island-control]:not([data-island-control="glyph"], [data-island-control="plain"], [data-island-control="track"]))::before {
+  [data-interface-theme='glass'] :where(.ui-button:not([data-island-control="plain"]), [data-island-control]:not([data-island-control="glyph"], [data-island-control="plain"]))::before {
     display: none;
   }
 }

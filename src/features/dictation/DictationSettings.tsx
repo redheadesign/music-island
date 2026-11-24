@@ -7,8 +7,8 @@ import type { AppSettings, HistoryEntry } from '../../shared/lib/dictationTypes'
 import type { AppConfig } from '../../shared/lib/types'
 import { DictationPreview } from './DictationPreview'
 import { DictationThemePicker } from './DictationThemePicker'
-import { defaultDictationAppearance, type DictationAppearance } from '../../shared/lib/dictationAppearance'
-import { DEFAULT_GLASS_MATERIAL, getGlassMaterial } from '../../shared/lib/glassMaterial'
+import { defaultDictationAppearance, dictationGlassMaterial, type DictationAppearance } from '../../shared/lib/dictationAppearance'
+import { getGlassMaterial } from '../../shared/lib/glassMaterial'
 import { getInterfaceTheme } from '../../shared/lib/uiPrefs'
 import { getInterfaceThemeDefinition } from '../../shared/lib/interfaceTheme'
 import { AdvancedGlassEditor } from '../settings/AdvancedGlassEditor'
@@ -89,7 +89,7 @@ export function DictationSettings({ controller: c, config, onConfigChange, page,
 <DictationThemePicker value={appearance} islandGlass={islandGlass} onChange={onAppearanceChange} locale={locale}>
   {config && onConfigChange && <AdvancedGlassEditor config={config} onChange={onConfigChange} locale={locale} scope="dictation"
     hasGlass={getInterfaceThemeDefinition(appearance.materialTheme ?? getInterfaceTheme(config)).material === 'glass'}
-    base={appearance.materialTheme === 'glass' ? appearance.glassMaterial ?? DEFAULT_GLASS_MATERIAL : islandGlass} />}
+    base={dictationGlassMaterial(appearance, islandGlass)} />}
 </DictationThemePicker>
 <section className="dictation-card" aria-label={t('Сочетания клавиш', 'Keyboard shortcuts')}>
         <DictationField label={t('Сочетание клавиш', 'Keyboard shortcut')}><DictationShortcut controller={c} id="transcribe" locale={locale} /></DictationField>

@@ -44,7 +44,7 @@
   transition: none;
 }
 
-/* One reading plane below the wave and one clear optical bezel above it.
+/* Sample and tint the desktop below the playback effect.
    Extend the lens past the top edge: Glisse fits a uniform corner radius,
    while this window needs only its two lower corners rounded. */
 [data-interface-theme='glass'] .island-card[data-island-optical] {
@@ -71,16 +71,16 @@
   --island-particle-ink: color-mix(in srgb, var(--island-cover-primary) 65%, #fff);
   --island-particle-soft-ink: color-mix(in srgb, var(--island-cover-secondary) 52%, #fff);
   --island-glass-ink: var(--fg-on-glass);
-  --island-wave-crest: rgb(209 216 220 / .13);
-  --island-wave-trough: rgb(177 185 194 / .06);
+  --island-wave-primary: var(--accent, #76a6dd);
+  --island-wave-secondary: var(--accent-soft, var(--island-wave-primary));
 }
 .island-root[data-interface-theme='glass'] .music-module { --player-reaction-size: 46px; }
 
 .island-root[data-interface-theme='glass'][data-cover-art='true'] {
   --island-cover-primary: rgb(var(--artwork-primary));
   --island-cover-secondary: rgb(var(--artwork-secondary));
-  --island-wave-crest: color-mix(in srgb, var(--island-cover-primary) 50%, transparent);
-  --island-wave-trough: color-mix(in srgb, var(--island-cover-secondary) 21%, transparent);
+  --island-wave-primary: var(--island-cover-primary);
+  --island-wave-secondary: var(--island-cover-secondary);
 }
 
 @property --island-wave-drive {
@@ -115,13 +115,24 @@
 
 :is(.island-feedback__rings, .island-feedback__launch)::before,
 :is(.island-feedback__rings, .island-feedback__launch)::after {
+  --wave-crest: var(--island-wave-crest, color-mix(in srgb, var(--island-wave-primary) 58%, transparent));
+  --wave-trough: var(--island-wave-trough, color-mix(in srgb, var(--island-wave-secondary) 23%, transparent));
   position: absolute;
   inset: 0;
+  /* ai-design-check-ignore-next-line no-radial-halo -- The authored playback rings expand from the center. */
   background: radial-gradient(ellipse closest-side at center,
-    transparent 16%, var(--island-wave-trough) 34%, var(--island-wave-crest) 53%,
-    var(--island-wave-trough) 67%, transparent 89%);
+    transparent 16%, var(--wave-trough) 34%, var(--wave-crest) 53%,
+    var(--wave-trough) 67%, transparent 89%);
   transform-origin: center;
   filter: blur(var(--wave-softness, 4px));
+}
+
+@supports (color: oklch(from red l c h)) {
+  :is(.island-feedback__rings, .island-feedback__launch)::before,
+  :is(.island-feedback__rings, .island-feedback__launch)::after {
+    --wave-crest: var(--island-wave-crest, oklch(from var(--island-wave-primary) clamp(.69, l, .84) clamp(.11, c, .18) h / .58));
+    --wave-trough: var(--island-wave-trough, oklch(from var(--island-wave-secondary) clamp(.58, l, .76) min(c, .14) h / .23));
+  }
 }
 
 .island-feedback__ambient[data-playback-motion='playing'] .island-feedback__rings::before {

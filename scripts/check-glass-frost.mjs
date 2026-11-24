@@ -68,6 +68,44 @@ export async function checkGlassReadingTone(page) {
   }
 }
 
+// A computed gradient can still be nearly invisible under an optical layer.
+export async function checkPlaybackWavePaint(page) {
+  const card = page.locator('.island-card')
+  const box = await card.boundingBox()
+  assert.ok(box, 'Expected the expanded island')
+  const clip = { x: Math.ceil(box.x), y: Math.ceil(box.y), width: Math.floor(box.width) - 1, height: Math.floor(box.height) - 1 }
+  const style = await page.addStyleTag({ content: `
+    .island-feedback__rings::after, .island-particles { visibility: hidden }
+    .island-feedback__rings::before { animation-play-state: paused }
+  ` })
+  const crest = page.locator('.island-feedback__rings')
+  await crest.evaluate(rings => {
+    const wave = rings.getAnimations({ subtree: true }).find(a => a.animationName === 'island-glass-wave-out')
+    const { duration, delay } = wave.effect.getTiming()
+    wave.currentTime = Number(duration) * .43 + delay
+  })
+  try {
+    for (const color of ['#17191c', '#f6f6f6']) {
+      const desktop = await page.addStyleTag({ content: `.workshop-stage { background: ${color} !important }` })
+      const sample = async () => sharp(await page.screenshot({ clip })).removeAlpha().raw().toBuffer()
+      const painted = await sample()
+      const hidden = await page.addStyleTag({ content: '.island-feedback__rings { visibility: hidden }' })
+      const plain = await sample()
+      await hidden.evaluate(el => el.remove())
+      await desktop.evaluate(el => el.remove())
+      let coloredPixels = 0
+      for (let i = 0; i < painted.length; i += 3) {
+        const r = painted[i] - plain[i], g = painted[i + 1] - plain[i + 1], b = painted[i + 2] - plain[i + 2]
+        if (Math.max(r, g, b) - Math.min(r, g, b) >= 10) coloredPixels++
+      }
+      const coverage = coloredPixels * 3 / painted.length
+      assert.ok(coverage >= .04, `Playback wave has too little color on ${color} (${(coverage * 100).toFixed(1)}% of the card)`)
+    }
+  } finally {
+    await style.evaluate(el => el.remove())
+  }
+}
+
 // Measure each widget's actual desktop transmission, including any ancestor
 // fills. Text covers some pixels, so compare the median in the centre.
 export async function checkIslandWidgetTransmission(page) {

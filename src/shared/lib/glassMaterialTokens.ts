@@ -1,3 +1,5 @@
+import defaultAppearance from './defaultAppearance.json' with { type: 'json' }
+
 /** Percentages are persisted independently of the color palette and recorder artwork. */
 export interface GlassMaterial {
   transparency: number
@@ -7,9 +9,7 @@ export interface GlassMaterial {
   edge: number
 }
 
-export const DEFAULT_GLASS_MATERIAL: Readonly<GlassMaterial> = {
-  transparency: 90, frost: 85, parallax: 91, highlight: 42, edge: 50,
-}
+export const DEFAULT_GLASS_MATERIAL: Readonly<GlassMaterial> = defaultAppearance.ui.glassMaterial
 
 export function glassMaterialStyle(material: GlassMaterial) {
   return {

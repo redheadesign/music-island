@@ -228,9 +228,26 @@ export const FactoryGlass: StoryObj<typeof meta> = {
       expect(node).toBeInTheDocument()
       return node!
     })
-    await expect(surface.style.getPropertyValue('--glass-frost-strength')).toBe('0.86')
+    await expect(surface.style.getPropertyValue('--glass-frost-strength')).toBe('0.2')
     await waitFor(() => expect(canvasElement.querySelector('.island-local-servers')).toBeInTheDocument())
     await waitFor(() => expect(canvasElement.querySelector('.island-feedback__ambient')).toHaveAttribute('data-bass-gain', '3'))
+    if (matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active)').matches) return
+    const track = within(canvasElement).getByRole('slider', { name: /Позиция трека|Seek track/ })
+    const card = track.closest('.island-card')!
+    const edge = () => getComputedStyle(track, '::before')
+    await expect(getComputedStyle(track).backdropFilter).toContain('blur(16px)')
+    await expect(edge().backgroundImage).toContain('linear-gradient')
+    await expect(edge().maskImage).toContain('linear-gradient')
+    await expect(edge().pointerEvents).toBe('none')
+    for (const x of [.15, .85]) {
+      const rect = track.getBoundingClientRect()
+      track.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse',
+        clientX: rect.left + rect.width * x, clientY: rect.top + rect.height / 2 }))
+      await waitFor(() => expect(edge().backgroundImage).toContain(`at ${x * 100}% `))
+      await expect(card).not.toHaveAttribute('data-glass-light')
+    }
+    card.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }))
+    await expect(track).not.toHaveAttribute('data-glass-light')
   },
 }
 export const AdvancedGlassSurfaces: StoryObj<typeof meta> = {
@@ -468,6 +485,8 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
     const fill = canvasElement.querySelector('.progress-fill')!
     const frame = canvasElement.querySelector('.progress-visual')!
     const backdrop = canvasElement.querySelector('.island-card .island-feedback__rings')!
+    const layer = backdrop.closest('.island-feedback__layer')!
+    await expect(layer.previousElementSibling).toHaveClass('island-glass-optic')
     await expect(fill.getBoundingClientRect().height).toBeCloseTo(frame.getBoundingClientRect().height)
     await expect(getComputedStyle(frame, '::before').content).toBe('none')
     await expect(getComputedStyle(frame, '::after').content).toBe('none')
@@ -490,7 +509,18 @@ export const GlassCoolCover: StoryObj<typeof meta> = {
     }
   },
 }
-export const GlassWithoutCover: StoryObj<typeof meta> = { ...Glass, name: 'Стекло · нейтральный прогресс без обложки', args: { artwork: 'missing' } }
+export const GlassWithoutCover: StoryObj<typeof meta> = {
+  ...Glass, name: 'Стекло · нейтральный прогресс без обложки', args: { artwork: 'missing' },
+  play: async ({ canvasElement }) => {
+    const rings = await waitFor(() => {
+      const element = canvasElement.querySelector('.island-feedback__rings')
+      expect(element).toBeInTheDocument()
+      return element!
+    })
+    const style = getComputedStyle(rings)
+    await expect(style.getPropertyValue('--island-wave-primary').trim()).toBe(style.getPropertyValue('--accent').trim())
+  },
+}
 export const GlassReactiveWave: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · волна реагирует на бас', args: { artwork: 'cool' },
   globals: { ...Glass.globals, locale: 'en' },

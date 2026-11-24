@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { chromium } from 'playwright-core'
 import { preview } from 'vite'
-import { checkGlassFrost, checkGlassReadingTone, checkIslandWidgetTransmission, checkRecorderContrast } from './check-glass-frost.mjs'
+import { checkGlassFrost, checkGlassReadingTone, checkIslandWidgetTransmission, checkPlaybackWavePaint, checkRecorderContrast } from './check-glass-frost.mjs'
 
 const criticalStories = [
   'foundations-interfacetheme--third-theme', 'screens-settings--retry-failed-save', 'screens-settings--unreadable-profile',
@@ -83,6 +83,9 @@ try {
       }
       if (id === 'screens-island--glass-cool-cover' || id === 'screens-island--factory-glass') {
         await checkGlassReadingTone(page)
+      }
+      if (id === 'screens-island--glass-cool-cover' || id === 'screens-island--glass-without-cover') {
+        await checkPlaybackWavePaint(page)
       }
       if (id === 'screens-island--glass-widget-panels' || id === 'screens-island--factory-glass-widget-panels') {
         await checkIslandWidgetTransmission(page)

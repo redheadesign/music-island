@@ -4,7 +4,7 @@ import { useReducedMotion } from 'framer-motion'
 import { Check, Copy, LoaderCircle, Mic, Stop, X } from '../../shared/ui/SettingsIcons'
 import { useDictationOverlay, useNativeBackdrop } from '../../app/useIslandApp'
 import type { DictationStatus } from '../../shared/lib/dictationTypes'
-import { defaultDictationAppearance, dictationPaletteColors, type DictationAppearance } from '../../shared/lib/dictationAppearance'
+import { defaultDictationAppearance, dictationGlassMaterial, dictationPaletteColors, type DictationAppearance } from '../../shared/lib/dictationAppearance'
 import { DEFAULT_DICTATION_SHADER, normalizeDictationShader } from '../../shared/lib/shaderTuning'
 import { getInterfaceThemeDefinition, type InterfaceThemeId } from '../../shared/lib/interfaceTheme'
 import type { InterfacePaletteId, buildInterfacePaletteStyle } from '../../shared/lib/interfacePalette'
@@ -65,7 +65,7 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   // Keep the canvas/context between recordings; hidden artwork has no clock.
   const artworkActive = active && visible
   const interfaceTheme = appearance.materialTheme ?? islandTheme
-  const glassMaterial = appearance.materialTheme === 'glass' ? appearance.glassMaterial ?? DEFAULT_GLASS_MATERIAL : islandGlass
+  const glassMaterial = dictationGlassMaterial(appearance, islandGlass)
   const material = getInterfaceThemeDefinition(interfaceTheme).material
   const advanced = useAdvancedGlass(material === 'glass' ? advancedGlass : undefined, glassMaterial, true)
   const nativeBackdrop = useNativeBackdrop(desktop ? root : previewRoot, material === 'glass' && artworkActive, '[data-native-backdrop-surface]', glassMaterial.frost / 100, advanced.regionFrostKey)

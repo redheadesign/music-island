@@ -33,6 +33,12 @@ fn update_stock_glass(ui: &mut Map<String, Value>) -> bool {
     use serde_json::json;
     let defaults = &appearance_defaults().ui;
     let mut changed = false;
+    if ui.get("glassMaterial") == Some(&json!({
+        "transparency": 90, "frost": 86, "parallax": 91, "highlight": 40, "edge": 61
+    })) {
+        ui.insert("glassMaterial".into(), defaults["glassMaterial"].clone());
+        changed = true;
+    }
     if ui.get("desktopLens") == Some(&json!({ "bend": 1, "dispersion": 0.47 })) {
         ui.insert("desktopLens".into(), defaults["desktopLens"].clone());
         changed = true;
@@ -42,11 +48,16 @@ fn update_stock_glass(ui: &mut Map<String, Value>) -> bool {
         // stays explicit, even if some of its values match the old preset.
         for (surface, old) in [
             ("body", json!({ "frost": 24 })),
+            ("body", json!({ "frost": 18 })),
             ("body", json!({ "frost": 18, "transparency": 69, "background": "#14171b", "text": "#ffffff" })),
             ("buttons", json!({ "background": "#000000", "frost": 7.5, "transparency": 75 })),
             ("progressTrack", json!({
                 "bend": 0.28, "dispersion": 0.08, "frost": 19.7, "transparency": 56,
                 "parallax": 0, "highlight": 42, "edge": 0, "background": "#121417"
+            })),
+            ("progressTrack", json!({
+                "bend": 0.16, "dispersion": 0.04, "frost": 16,
+                "parallax": 0, "highlight": 42, "edge": 0
             })),
         ] {
             if surfaces.get(surface) == Some(&old) {
@@ -625,7 +636,8 @@ mod tests {
     fn softens_only_the_previous_default_island_frost() {
         use serde_json::json;
         for (body, expected) in [
-            (json!({ "frost": 24 }), json!({ "frost": 18 })),
+            (json!({ "frost": 24 }), json!({ "frost": 6.4 })),
+            (json!({ "frost": 18 }), json!({ "frost": 6.4 })),
             (json!({ "frost": 24, "transparency": 84 }), json!({ "frost": 24, "transparency": 84 })),
             (json!({ "frost": 27 }), json!({ "frost": 27 })),
         ] {
@@ -635,6 +647,34 @@ mod tests {
             assert_eq!(config.plugins.settings[UI_PREFS_KEY]["advancedGlass"]["body"], expected);
             assert!(!config.migrate_interface_preferences());
         }
+    }
+
+    #[test]
+    fn updates_stock_glass_dials_and_inherits_track_parallax() {
+        use serde_json::json;
+
+        let mut config = AppConfig::default();
+        let ui = config.plugins.ui_preferences_mut();
+        ui.insert("glassMaterial".into(), json!({
+            "transparency": 90, "frost": 86, "parallax": 91, "highlight": 40, "edge": 61
+        }));
+        ui["advancedGlass"]["progressTrack"] = json!({
+            "bend": 0.16, "dispersion": 0.04, "frost": 16, "parallax": 0, "highlight": 42, "edge": 0
+        });
+        assert!(config.migrate_interface_preferences());
+        let saved = &config.plugins.settings[UI_PREFS_KEY];
+        assert_eq!(saved["glassMaterial"], json!({
+            "transparency": 100, "frost": 20, "parallax": 100, "highlight": 42, "edge": 50
+        }));
+        assert!(saved["advancedGlass"]["progressTrack"].get("parallax").is_none());
+
+        let ui = config.plugins.ui_preferences_mut();
+        ui["glassMaterial"]["parallax"] = json!(0);
+        ui["advancedGlass"]["progressTrack"]["parallax"] = json!(0);
+        assert!(!config.migrate_interface_preferences());
+        let saved = &config.plugins.settings[UI_PREFS_KEY];
+        assert_eq!(saved["glassMaterial"]["parallax"], 0);
+        assert_eq!(saved["advancedGlass"]["progressTrack"]["parallax"], 0);
     }
 
     #[test]

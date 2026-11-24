@@ -20,7 +20,7 @@ function configWithUi(ui?: unknown): AppConfig {
 
 describe('interface theme preferences', () => {
   it('uses the current glass preset for missing settings and preserves explicit legacy values', () => {
-    const preset = { transparency: 90, frost: 85, parallax: 91, highlight: 42, edge: 50 }
+    const preset = { transparency: 100, frost: 20, parallax: 100, highlight: 42, edge: 50 }
     expect(getGlassMaterial(null)).toEqual(preset)
     expect(getGlassMaterial(configWithUi({ glassMaterial: { transparency: 55, frost: 0 } })))
       .toEqual({ ...preset, transparency: 55, frost: 0 })

@@ -37,15 +37,15 @@
     "localServersEnabled": true,
     "showLatestDictationMessage": true,
     "glassMaterial": {
-      "transparency": 90,
-      "frost": 86,
-      "parallax": 91,
-      "highlight": 40,
-      "edge": 61
+      "transparency": 100,
+      "frost": 20,
+      "parallax": 100,
+      "highlight": 42,
+      "edge": 50
     },
     "advancedGlass": {
       "body": {
-        "frost": 18
+        "frost": 6.4
       },
       "transport": {
         "bend": 0,
@@ -58,7 +58,6 @@
         "bend": 0.16,
         "dispersion": 0.04,
         "frost": 16,
-        "parallax": 0,
         "highlight": 42,
         "edge": 0
       },

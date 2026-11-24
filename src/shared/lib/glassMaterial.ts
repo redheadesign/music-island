@@ -7,12 +7,12 @@ export function getGlassMaterial(config: AppConfig | null | undefined): GlassMat
   return normalizeGlassMaterial(getUiPrefs(config).glassMaterial)
 }
 
-export function normalizeGlassMaterial(saved?: Partial<GlassMaterial> | null): GlassMaterial {
+export function normalizeGlassMaterial(saved?: Partial<GlassMaterial> | null, defaults = DEFAULT_GLASS_MATERIAL): GlassMaterial {
   const read = (key: keyof GlassMaterial) => {
     const value = saved?.[key]
     return typeof value === 'number' && Number.isFinite(value)
       ? Math.round(Math.max(0, Math.min(100, value)))
-      : DEFAULT_GLASS_MATERIAL[key]
+      : defaults[key]
   }
   return {
     transparency: read('transparency'), frost: read('frost'), parallax: read('parallax'),

@@ -1,7 +1,7 @@
 import { normalizeHexColor } from './accentTheme'
 import { GLASS_SURFACE_FIELDS, GLASS_SURFACE_IDS, getSurfaceDefaults, normalizeAdvancedGlass, normalizeDesktopGlassMode, normalizeDesktopLens } from './advancedGlass'
-import { getDictationAppearance } from './dictationAppearance'
-import { DEFAULT_GLASS_MATERIAL, getGlassMaterial } from './glassMaterial'
+import { dictationGlassMaterial, getDictationAppearance } from './dictationAppearance'
+import { getGlassMaterial } from './glassMaterial'
 import { getIslandLayout } from './islandLayout'
 import { normalizeDictationShader, normalizeIslandShader, shaderOverrides } from './shaderTuning'
 import { getTaskbarLayout } from './taskbarLayout'
@@ -13,7 +13,7 @@ export function serializeAppearancePreset(config: AppConfig): string {
   const ui = getUiPrefs(config)
   const glass = getGlassMaterial(config)
   const capsule = getDictationAppearance(config)
-  const capsuleGlass = capsule.materialTheme === 'glass' ? capsule.glassMaterial ?? DEFAULT_GLASS_MATERIAL : glass
+  const capsuleGlass = dictationGlassMaterial(capsule, glass)
   const advanced = normalizeAdvancedGlass(ui.advancedGlass)
   const effective = Object.fromEntries(GLASS_SURFACE_IDS.map(id => {
     const base = getSurfaceDefaults(id, id === 'dictation' || id === 'dictationActions' ? capsuleGlass : glass)

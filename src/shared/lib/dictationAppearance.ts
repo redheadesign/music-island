@@ -21,6 +21,14 @@ export const defaultDictationAppearance: DictationAppearance = {
   theme: 'pixels', palette: 'accent', chromatic: false,
 }
 
+export const DEFAULT_DICTATION_GLASS: Readonly<GlassMaterial> = {
+  transparency: 90, frost: 85, parallax: 91, highlight: 42, edge: 50,
+}
+
+export function dictationGlassMaterial(appearance: DictationAppearance, islandGlass: GlassMaterial): GlassMaterial {
+  return appearance.materialTheme === 'glass' ? appearance.glassMaterial ?? DEFAULT_DICTATION_GLASS : islandGlass
+}
+
 function choice<T extends string>(value: unknown, options: readonly T[], fallback: T): T {
   return options.includes(value as T) ? value as T : fallback
 }
@@ -35,7 +43,7 @@ export function normalizeDictationAppearance(value: unknown): DictationAppearanc
     ...(Object.keys(shader).length && { shaderTuning: shader }),
     ...(isInterfaceThemeId(raw.materialTheme) && { materialTheme: raw.materialTheme }),
     ...(raw.glassMaterial && typeof raw.glassMaterial === 'object' && !Array.isArray(raw.glassMaterial)
-      && { glassMaterial: normalizeGlassMaterial(raw.glassMaterial) }),
+      && { glassMaterial: normalizeGlassMaterial(raw.glassMaterial, DEFAULT_DICTATION_GLASS) }),
   }
 }
 
