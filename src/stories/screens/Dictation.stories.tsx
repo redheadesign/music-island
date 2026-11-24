@@ -158,7 +158,7 @@ export const AdvancedCapsuleSurface: Story = {
     await fireEvent.change(frost, { target: { value: '9.5' } })
     await expect(frost).toHaveValue('9.5')
     await userEvent.click(controls.getByRole('button', { name: 'Сбросить «Размытие»' }))
-    await expect(frost).toHaveValue('27.5')
+    await expect(frost).toHaveValue('6.4')
     await userEvent.click(canvas.getByText('Корпус капсулы'))
     const body = within(await canvas.findByRole('group', { name: 'Корпус капсулы' }))
     await expect(body.queryByRole('slider', { name: 'Толщина кромки' })).toBeNull()

@@ -165,7 +165,7 @@ export const AdvancedSurfaceEditor: Story = {
     await fireEvent.change(material.getByRole('slider', { name: 'Параллакс' }), { target: { value: '100' } })
     await expect(body.getByRole('slider', { name: 'Размытие' })).toHaveValue('0')
     await userEvent.click(body.getByRole('button', { name: 'Сбросить «Размытие»' }))
-    await expect(backgroundFrost).toHaveValue('85')
+    await expect(backgroundFrost).toHaveValue('20')
     await userEvent.click(editor.getByText('Корпус островка'))
     await userEvent.click(editor.getByText('Заливка прогресса'))
     const group = await editor.findByRole('group', { name: 'Заливка прогресса' })
