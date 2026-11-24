@@ -11,6 +11,8 @@ const CONFIG_FILE_NAME: &str = "config.json";
 const UI_PREFS_KEY: &str = "ui";
 const INTERFACE_THEME_KEY: &str = "interfaceTheme";
 const GLASS_DEFAULT_MARKER: &str = "interfaceThemeGlassDefaultApplied";
+const STOCK_GLASS_MARKER: &str = "islandGlassPresetRevision";
+const STOCK_GLASS_REVISION: u64 = 1;
 const DEFAULT_INTERFACE_THEME: &str = "glass";
 const PLAYBACK_WAVE_KEY: &str = "playbackWaveEnabled";
 
@@ -29,19 +31,19 @@ fn appearance_defaults() -> &'static AppearanceDefaults {
     })
 }
 
-fn update_stock_glass(ui: &mut Map<String, Value>) -> bool {
+fn apply_stock_glass_once(ui: &mut Map<String, Value>) -> bool {
     use serde_json::json;
+    if ui.get(STOCK_GLASS_MARKER).and_then(Value::as_u64).unwrap_or(0) >= STOCK_GLASS_REVISION {
+        return false;
+    }
     let defaults = &appearance_defaults().ui;
-    let mut changed = false;
     if ui.get("glassMaterial") == Some(&json!({
         "transparency": 90, "frost": 86, "parallax": 91, "highlight": 40, "edge": 61
     })) {
         ui.insert("glassMaterial".into(), defaults["glassMaterial"].clone());
-        changed = true;
     }
     if ui.get("desktopLens") == Some(&json!({ "bend": 1, "dispersion": 0.47 })) {
         ui.insert("desktopLens".into(), defaults["desktopLens"].clone());
-        changed = true;
     }
     if let Some(surfaces) = ui.get_mut("advancedGlass").and_then(Value::as_object_mut) {
         // Replace a complete old factory surface. A partial or edited group
@@ -62,14 +64,12 @@ fn update_stock_glass(ui: &mut Map<String, Value>) -> bool {
         ] {
             if surfaces.get(surface) == Some(&old) {
                 surfaces.insert(surface.into(), defaults["advancedGlass"][surface].clone());
-                changed = true;
             }
         }
         let retired_widget = json!({ "frost": 32, "transparency": 34, "background": "#15181b" });
         for surface in ["usage", "localServers", "latestDictation", "notices"] {
             if surfaces.get(surface) == Some(&retired_widget) {
                 surfaces.remove(surface);
-                changed = true;
             }
         }
     }
@@ -79,9 +79,9 @@ fn update_stock_glass(ui: &mut Map<String, Value>) -> bool {
         "glassMaterial": { "transparency": 38, "frost": 77, "parallax": 91, "highlight": 73, "edge": 0 }
     })) {
         ui.insert("dictationAppearance".into(), defaults["dictationAppearance"].clone());
-        changed = true;
     }
-    changed
+    ui.insert(STOCK_GLASS_MARKER.into(), STOCK_GLASS_REVISION.into());
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -306,7 +306,7 @@ impl AppConfig {
     fn migrate_interface_preferences(&mut self) -> bool {
         let mut changed = self.plugins.apply_glass_default_once();
         let ui = self.plugins.ui_preferences_mut();
-        changed |= update_stock_glass(ui);
+        changed |= apply_stock_glass_once(ui);
         let old_bass = ui.remove("playbackReactiveWave");
         let old_visual = ui.remove("playbackVisual");
         changed |= old_bass.is_some() || old_visual.is_some();
@@ -340,7 +340,9 @@ impl Default for AppConfig {
         let defaults = appearance_defaults();
         let mut plugins = PluginsConfig::default();
         plugins.apply_glass_default_once();
-        plugins.ui_preferences_mut().extend(defaults.ui.clone());
+        let ui = plugins.ui_preferences_mut();
+        ui.extend(defaults.ui.clone());
+        ui.insert(STOCK_GLASS_MARKER.into(), STOCK_GLASS_REVISION.into());
         Self {
             schema_version: 2,
             taskbar: TaskbarConfig::default(),
@@ -524,10 +526,13 @@ impl ConfigState {
         normalized.layout.width = normalized.layout.width.clamp(80, 125);
         normalized.layout.scale = normalized.layout.scale.clamp(70, 120);
         normalized.taskbar.scale = sanitize_taskbar_scale(normalized.taskbar.scale);
-        // The migration marker belongs to native storage. A webview may save a
-        // config that omits it, including when the user switches to Classic.
+        // Migration markers belong to native storage. A stale webview may omit
+        // them when switching themes or intentionally restoring an old value.
         if current.plugins.glass_default_applied() {
             normalized.plugins.ui_preferences_mut().insert(GLASS_DEFAULT_MARKER.into(), true.into());
+        }
+        if let Some(revision) = current.plugins.settings.get(UI_PREFS_KEY).and_then(|ui| ui.get(STOCK_GLASS_MARKER)) {
+            normalized.plugins.ui_preferences_mut().insert(STOCK_GLASS_MARKER.into(), revision.clone());
         }
         normalized.migrate_interface_preferences();
         handy_core::embedded_assets::atomic_write(path, &serde_json::to_vec_pretty(&normalized)?)?;
@@ -590,6 +595,12 @@ fn read_config_at(path: &Path) -> anyhow::Result<AppConfig> {
 mod tests {
     use super::*;
 
+    fn previous_glass_preset_config() -> AppConfig {
+        let mut config = AppConfig::default();
+        config.plugins.ui_preferences_mut().remove(STOCK_GLASS_MARKER);
+        config
+    }
+
     #[test]
     fn legacy_light_island_profiles_load_in_dark() {
         let theme: Theme = serde_json::from_value(serde_json::json!("soft-light")).unwrap();
@@ -615,7 +626,7 @@ mod tests {
 
     #[test]
     fn updates_old_factory_glass_and_keeps_custom_surface_values() {
-        let mut config = AppConfig::default();
+        let mut config = previous_glass_preset_config();
         let ui = config.plugins.ui_preferences_mut();
         ui.insert("desktopLens".into(), serde_json::json!({ "bend": 1, "dispersion": 0.47 }));
         let surfaces = ui.get_mut("advancedGlass").and_then(Value::as_object_mut).unwrap();
@@ -641,7 +652,7 @@ mod tests {
             (json!({ "frost": 24, "transparency": 84 }), json!({ "frost": 24, "transparency": 84 })),
             (json!({ "frost": 27 }), json!({ "frost": 27 })),
         ] {
-            let mut config = AppConfig::default();
+            let mut config = previous_glass_preset_config();
             config.plugins.ui_preferences_mut().get_mut("advancedGlass").unwrap()["body"] = body;
             config.migrate_interface_preferences();
             assert_eq!(config.plugins.settings[UI_PREFS_KEY]["advancedGlass"]["body"], expected);
@@ -653,7 +664,7 @@ mod tests {
     fn updates_stock_glass_dials_and_inherits_track_parallax() {
         use serde_json::json;
 
-        let mut config = AppConfig::default();
+        let mut config = previous_glass_preset_config();
         let ui = config.plugins.ui_preferences_mut();
         ui.insert("glassMaterial".into(), json!({
             "transparency": 90, "frost": 86, "parallax": 91, "highlight": 40, "edge": 61
@@ -668,20 +679,30 @@ mod tests {
         }));
         assert!(saved["advancedGlass"]["progressTrack"].get("parallax").is_none());
 
-        let ui = config.plugins.ui_preferences_mut();
+        let state = ConfigState::from_config(config);
+        let mut edited = state.load().unwrap();
+        let ui = edited.plugins.ui_preferences_mut();
         ui["glassMaterial"]["parallax"] = json!(0);
         ui["advancedGlass"]["progressTrack"]["parallax"] = json!(0);
-        assert!(!config.migrate_interface_preferences());
+        ui["advancedGlass"]["body"]["frost"] = json!(18);
+        ui.remove(STOCK_GLASS_MARKER);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        state.save_to(edited, &path).unwrap();
+        let reopened = ConfigState::from_config(read_config_at(&path).unwrap());
+        assert!(!reopened.persist_ui_migration);
+        let config = reopened.load().unwrap();
         let saved = &config.plugins.settings[UI_PREFS_KEY];
         assert_eq!(saved["glassMaterial"]["parallax"], 0);
         assert_eq!(saved["advancedGlass"]["progressTrack"]["parallax"], 0);
+        assert_eq!(saved["advancedGlass"]["body"]["frost"], 18);
     }
 
     #[test]
     fn removes_retired_factory_widget_paint_and_keeps_edited_settings() {
         use serde_json::json;
 
-        let mut config = AppConfig::default();
+        let mut config = previous_glass_preset_config();
         let ui = config.plugins.ui_preferences_mut();
         let surfaces = ui.get_mut("advancedGlass").and_then(Value::as_object_mut).unwrap();
         let retired = json!({ "frost": 32, "transparency": 34, "background": "#15181b" });
