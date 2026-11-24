@@ -2,6 +2,10 @@
 
 Music Island ships as a **portable** `music-island.exe` under GPL-3.0-or-later. That remains the forever distribution model: users download or auto-update the same single file from GitHub Releases. There is no installer requirement.
 
+## 3.2.2 release
+
+[Music Island 3.2.2](https://github.com/redheadesign/music-island/releases/tag/v3.2.2) shipped on November 24, 2026. Tag `v3.2.2` points to `fbabc6b935fe95c0f5a2d20f1a0324e8b191841c`. The [approved Windows x64 build](https://github.com/redheadesign/music-island/actions/runs/45359442753) produced a 77,871,104-byte executable with SHA-256 `a8742a6c2ee3864e7833891d82f470879822c969a574eab16820ccd836ef41e3`. The bundled dictation smoke test passed. The published assets match the approved build, and the public update endpoint returns this release. [Release notes](releases/3.2.2-release-notes.md)
+
 ## 3.2.1 release
 
 [Music Island 3.2.1](https://github.com/redheadesign/music-island/releases/tag/v3.2.1) shipped on November 18, 2026. Tag `v3.2.1` points to `5b0d0b3798db100c41a316eaa3938c23df875839`. The [Windows x64 build](https://github.com/redheadesign/music-island/actions/runs/44326383052) produced a 77,433,344-byte executable with SHA-256 `e7a9c3b09f7b0df652fe4bf90c7c81cccec1ac3198bf723aadb6dd6840bc7662`. The downloaded EXE passed the bundled dictation runtime check on Windows. [Release notes](releases/3.2.1-release-notes.md)

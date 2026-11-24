@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased
+## 3.2.2 — 2026-11-24
 
-- The Glass island uses Glisse for optical edges and Windows 11 desktop blur behind the player. Track names, artwork and playback controls stay sharp. Windows 10 and reduced-transparency settings use a solid surface.
-- The recording capsule follows the island material as you switch between Glass and Classic. Your choice of recorder artwork and its palette is preserved, including during a recording.
-- Appearance now has live controls for transparency, background blur, parallax, highlight intensity and edge thickness. The player, usage indicators, local servers, latest transcript and recorder share these settings. The desktop compositor reuses its shapes, and opening the island or recorder no longer generates optical textures.
+- The Windows 11 GPU lens prepares the desktop backdrop during top-edge hover and waits for a usable frame before revealing the island. If capture is unavailable, the island keeps its system backdrop for that opening.
+- The playback bar has a cursor-responsive reflection along its edge, and the playback rings use the cover's colors or the theme accent. Surrounding widgets and the layout editor share the island's glass styles.
+- Appearance has live controls for transparency, blur, parallax, highlights and button edges. Advanced glass and shader settings can be exported as JSON. Factory values migrate once, with custom settings preserved.
+- The recording capsule can follow the island or use independent glass settings. Its settings preview stays pinned while scrolling.
 
 ## 3.2.1 — 2026-11-18
 
