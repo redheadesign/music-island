@@ -16,7 +16,10 @@ pub fn run(
         bail!("Probe strategy must be raw, planned or stream");
     }
     let engine_kind = engine.unwrap_or("TranscribeCpp");
-    if !matches!(engine_kind, "TranscribeCpp" | "GigaAMZapformer" | "GigaAMZapformerCompact") {
+    if !matches!(
+        engine_kind,
+        "TranscribeCpp" | "GigaAMZapformer" | "GigaAMZapformerCompact"
+    ) {
         bail!("Unsupported probe engine");
     }
     if !matches!(accelerator, "auto" | "cpu" | "vulkan") {

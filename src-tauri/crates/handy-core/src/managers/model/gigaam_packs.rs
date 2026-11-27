@@ -32,18 +32,27 @@ pub(super) struct Pack {
 pub(super) fn catalog() -> &'static [Pack] {
     static PACKS: OnceLock<Vec<Pack>> = OnceLock::new();
     PACKS.get_or_init(|| {
-        let mut packs: Vec<Pack> = serde_json::from_str(include_str!(
-            "../../catalog/gigaam-packs.json"
-        )).expect("invalid bundled GigaAM package catalog");
-        let offline_files: Vec<&str> = serde_json::from_str(include_str!(
-            "../../catalog/gigaam-v4-compact-files.json"
-        )).expect("invalid compact GigaAM file list");
-        let mut compact = packs.iter().find(|pack| pack.id == V4)
-            .expect("missing GigaAM-v4").clone();
+        let mut packs: Vec<Pack> =
+            serde_json::from_str(include_str!("../../catalog/gigaam-packs.json"))
+                .expect("invalid bundled GigaAM package catalog");
+        let offline_files: Vec<&str> =
+            serde_json::from_str(include_str!("../../catalog/gigaam-v4-compact-files.json"))
+                .expect("invalid compact GigaAM file list");
+        let mut compact = packs
+            .iter()
+            .find(|pack| pack.id == V4)
+            .expect("missing GigaAM-v4")
+            .clone();
         compact.id = V4_COMPACT.into();
         compact.streaming = false;
-        compact.files.retain(|file| offline_files.contains(&file.name.as_str()));
-        assert_eq!(compact.files.len(), offline_files.len(), "missing compact GigaAM files");
+        compact
+            .files
+            .retain(|file| offline_files.contains(&file.name.as_str()));
+        assert_eq!(
+            compact.files.len(),
+            offline_files.len(),
+            "missing compact GigaAM files"
+        );
         packs.push(compact);
         packs
     })
@@ -228,25 +237,34 @@ impl PackFile {
             return Ok(false);
         }
         let source = sibling.join(&self.name);
-        if !fs::symlink_metadata(&source).is_ok_and(|stat| stat.is_file() && stat.len() == self.size) {
+        if !fs::symlink_metadata(&source)
+            .is_ok_and(|stat| stat.is_file() && stat.len() == self.size)
+        {
             return Ok(false);
         }
         if let Err(error) = fs::hard_link(&source, temporary) {
-            log::debug!("Copying {} because a hard link is unavailable: {error}", self.name);
+            log::debug!(
+                "Copying {} because a hard link is unavailable: {error}",
+                self.name
+            );
             let new_file = temporary.to_owned();
             let copied = tokio::task::spawn_blocking(move || {
                 let mut input = fs::File::open(source)?;
                 let mut output = fs::File::create_new(new_file)?;
                 std::io::copy(&mut input, &mut output)
-            }).await?;
+            })
+            .await?;
             if let Err(copy_error) = copied {
                 log::debug!("Could not copy {}: {copy_error}", self.name);
-                if temporary.exists() { fs::remove_file(temporary)?; }
+                if temporary.exists() {
+                    fs::remove_file(temporary)?;
+                }
                 return Ok(false);
             }
         }
         if ModelManager::verify_file_with_events(model_id, temporary, Some(&self.sha256), emit)
-            .await.is_err()
+            .await
+            .is_err()
         {
             if temporary.exists() {
                 fs::remove_file(temporary)?;
@@ -319,12 +337,21 @@ impl ModelManager {
             };
             let destination = staging.join(&file.name);
             let reused = match &sibling {
-                Some(path) => file.reuse(id, path, &destination, &temporary, &emit).await?,
+                Some(path) => {
+                    file.reuse(id, path, &destination, &temporary, &emit)
+                        .await?
+                }
                 None => false,
             };
             if !reused {
                 let result = Self::download_http_resumable_with_events(
-                    id, &file.url, &destination, Some(file.size), Some(&file.sha256), &token, &emit,
+                    id,
+                    &file.url,
+                    &destination,
+                    Some(file.size),
+                    Some(&file.sha256),
+                    &token,
+                    &emit,
                 )
                 .await
                 .with_context(|| format!("Downloading {}", file.name))?;
@@ -410,10 +437,16 @@ mod tests {
         assert_eq!(compact.size(), 255_356_395);
         assert_eq!(full.size() - compact.size(), 966_084_736);
         assert!(!compact.model_info().supports_streaming);
-        assert!(matches!(compact.model_info().engine_type, EngineType::GigaAMZapformerCompact));
-        assert!(compact.files.iter().all(|file| full.files.iter().any(|shared|
-            shared.name == file.name && shared.size == file.size && shared.sha256 == file.sha256
-        )));
+        assert!(matches!(
+            compact.model_info().engine_type,
+            EngineType::GigaAMZapformerCompact
+        ));
+        assert!(compact.files.iter().all(|file| full
+            .files
+            .iter()
+            .any(|shared| shared.name == file.name
+                && shared.size == file.size
+                && shared.sha256 == file.sha256)));
     }
 
     #[tokio::test]
@@ -428,16 +461,28 @@ mod tests {
         file.sha256 = format!("{:x}", Sha256::digest(b"abc"));
         fs::write(&source, b"abc").unwrap();
         fs::write(&destination, b"a").unwrap();
-        assert!(!file.reuse("test", &sibling, &destination, &temporary, &|_| {}).await.unwrap());
+        assert!(!file
+            .reuse("test", &sibling, &destination, &temporary, &|_| {})
+            .await
+            .unwrap());
         assert_eq!(fs::read(&destination).unwrap(), b"a");
         fs::remove_file(&destination).unwrap();
         fs::write(&source, b"bad").unwrap();
-        assert!(!file.reuse("test", &sibling, &destination, &temporary, &|_| {}).await.unwrap());
+        assert!(!file
+            .reuse("test", &sibling, &destination, &temporary, &|_| {})
+            .await
+            .unwrap());
         assert!(!temporary.exists() && !destination.exists());
         assert_eq!(fs::read(&source).unwrap(), b"bad");
         fs::write(&source, b"abc").unwrap();
-        assert!(file.reuse("test", &sibling, &destination, &temporary, &|_| {}).await.unwrap());
-        assert!(!file.reuse("test", &sibling, &destination, &temporary, &|_| {}).await.unwrap());
+        assert!(file
+            .reuse("test", &sibling, &destination, &temporary, &|_| {})
+            .await
+            .unwrap());
+        assert!(!file
+            .reuse("test", &sibling, &destination, &temporary, &|_| {})
+            .await
+            .unwrap());
         assert!(!temporary.exists());
         fs::remove_dir_all(&sibling).unwrap();
         assert_eq!(fs::read(&destination).unwrap(), b"abc");
