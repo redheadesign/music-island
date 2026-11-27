@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { createInterface } from 'node:readline'
@@ -131,9 +131,21 @@ try {
 async function verifyPublicModels(settings) {
   assert.ok(settings, 'Owned Settings WebView not found')
   const packs = JSON.parse(await readFile(new URL('../../src-tauri/crates/handy-core/src/catalog/gigaam-packs.json', import.meta.url), 'utf8'))
+  const compactFiles = JSON.parse(await readFile(new URL('../../src-tauri/crates/handy-core/src/catalog/gigaam-v4-compact-files.json', import.meta.url), 'utf8'))
+  const fullId = 'gigaam-v4-rnnt', compactId = 'gigaam-v4-rnnt-compact'
+  const full = packs.find(pack => pack.id === fullId)
+  const compact = { id: compactId, streaming: false, files: full.files.filter(file => compactFiles.includes(file.name)) }
+  const modelsDir = path.join(output, 'roaming', 'Music Island', 'dictation', 'models')
+  const remove = modelId => settings.evaluate(async id => {
+    const invoke = window.__TAURI_INTERNALS__.invoke
+    await invoke('plugin:dictation|delete_model', { modelId: id })
+    await invoke('plugin:dictation|rescan_local_models')
+    const after = await invoke('plugin:dictation|get_model_info', { modelId: id })
+    if (!after || after.is_downloaded) throw Error('Model cleanup was not confirmed: ' + id)
+  }, modelId)
   await settings.evaluate(observeWorkload)
-  for (const id of ['gigaam-v4-rnnt', 'gigaam-multilingual-v2-rnnt']) {
-    const pack = packs.find(entry => entry.id === id)
+  for (const pack of [compact, ...packs]) {
+    const id = pack.id
     assert.ok(pack?.files?.length, 'No pinned catalog files for ' + id)
     await settings.evaluate(startModelWorkload, id)
     const run = await until(() => settings.evaluate(() => window.__hoverWorkload.finished && window.__hoverWorkload), 35 * 60000, 500)
@@ -147,14 +159,36 @@ async function verifyPublicModels(settings) {
       const status = await invoke('plugin:dictation|get_model_load_status')
       if (!model?.is_downloaded || !status.is_loaded || status.current_model !== modelId) throw Error('Expected selected model to be installed and loaded')
       await invoke('plugin:dictation|unload_model_manually')
-      await invoke('plugin:dictation|delete_model', { modelId })
-      await invoke('plugin:dictation|rescan_local_models')
-      const after = await invoke('plugin:dictation|get_model_info', { modelId })
-      if (!after || after.is_downloaded) throw Error('Model cleanup was not confirmed')
-      return { backend: status.backend, installed: true, loaded: true, removed: true }
+      return { backend: status.backend, installed: true, loaded: true, supportsStreaming: model.supports_streaming, bytes: model.size_bytes }
     }, id)
-    publicResults.push({ id, ...installed, verifiedFiles: verified, bytes: pack.files.reduce((n, file) => n + file.size, 0),
-      workload: run.spans.filter(span => span.id === id) })
+    assert.equal(installed.supportsStreaming, pack.streaming)
+    assert.equal(installed.bytes, pack.files.reduce((n, file) => n + file.size, 0))
+    assert.deepEqual((await readdir(path.join(modelsDir, id))).sort(), ['.verified', ...pack.files.map(file => file.name)].sort())
+    const entry = { id, ...installed, removed: false, verifiedFiles: verified, workload: run.spans.filter(span => span.id === id) }
+    publicResults.push(entry)
+    if (id === fullId) {
+      for (const file of compactFiles) {
+        const [original, shared] = await Promise.all([compactId, fullId].map(model =>
+          stat(path.join(modelsDir, model, file), { bigint: true })))
+        assert.ok(original.ino !== 0n && original.ino === shared.ino && shared.nlink >= 2n, 'Expected NTFS hard link for ' + file)
+      }
+      entry.reusedBytes = compact.files.reduce((n, file) => n + file.size, 0)
+    }
+    if (id !== compactId) {
+      await remove(id)
+      entry.removed = true
+    }
+    if (id === fullId) {
+      await settings.evaluate(async modelId => {
+        const invoke = window.__TAURI_INTERNALS__.invoke
+        await invoke('plugin:dictation|set_active_model', { modelId })
+        const status = await invoke('plugin:dictation|get_model_load_status')
+        if (!status.is_loaded || status.current_model !== modelId) throw Error('Compact installation damaged by full model removal')
+        await invoke('plugin:dictation|unload_model_manually')
+      }, compactId)
+      await remove(compactId)
+      publicResults.find(result => result.id === compactId).removed = true
+    }
     await writeFile(path.join(output, 'report.json'), JSON.stringify({ exeSha256: digest, models: publicResults }, null, 2))
     console.log(id, 'passed')
   }

@@ -1238,7 +1238,7 @@ impl TranscriptionManager {
                     };
                     applied_language_hint = options.language.clone();
                 }
-                "GigaAMZapformer" => {
+                "GigaAMZapformer" | "GigaAMZapformerCompact" => {
                     options.language = (validated_language != "auto").then(|| validated_language.clone());
                     applied_language_hint = options.language.clone();
                 }

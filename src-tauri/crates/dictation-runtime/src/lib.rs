@@ -194,8 +194,8 @@ fn load(request: &Request) -> Result<(Engine, Capabilities)> {
         }
         "SenseVoice" => Engine::SenseVoice(SenseVoiceModel::load(path, &Quantization::Int8)?),
         "GigaAM" => Engine::GigaAM(GigaAMModel::load(path, &Quantization::Int8)?),
-        "GigaAMZapformer" => {
-            let model = zapformer::Zapformer::load(path)?;
+        "GigaAMZapformer" | "GigaAMZapformerCompact" => {
+            let model = zapformer::Zapformer::load(path, engine == "GigaAMZapformer")?;
             caps.arch = "gigaam-zapformer".into();
             caps.languages = model.languages();
             caps.streaming = model.streaming();

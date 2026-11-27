@@ -102,7 +102,7 @@ mod tests {
             .samples::<i16>()
             .map(|sample| sample.map(|v| v as f32 / 32768.))
             .collect::<std::result::Result<Vec<_>, _>>()?;
-        let mut model = Zapformer::load(Path::new(&directory))?;
+        let mut model = Zapformer::load(Path::new(&directory), true)?;
         let expected_batch = env("MUSIC_ISLAND_GIGAAM_TEST_BATCH")?;
         ensure!(!expected_batch.trim().is_empty(), "Expected audible speech");
         assert_eq!(model.batch(&pcm, None)?, expected_batch);
@@ -228,7 +228,7 @@ pub(super) struct Zapformer {
 }
 
 impl Zapformer {
-    pub(super) fn load(root: &Path) -> Result<Self> {
+    pub(super) fn load(root: &Path, enable_streaming: bool) -> Result<Self> {
         let mut spec: ModelSpec =
             serde_json::from_slice(&fs::read(asset(root, "island-gigaam.json")?)?)?;
         ensure!(
@@ -265,6 +265,7 @@ impl Zapformer {
         let stream_spec = spec
             .stream_manifest
             .as_ref()
+            .filter(|_| enable_streaming)
             .map(|name| StreamSpec::load(root, name, spec.head_index))
             .transpose()?;
         asset(root, &spec.whole)?;

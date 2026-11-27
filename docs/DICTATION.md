@@ -31,17 +31,30 @@ CPU and shows the backend that loaded. ONNX models use CPU.
 In **Dictation → Models**, download **GigaAM-v4** for Russian and English or
 **GigaAM Multilingual-v2** for its 21 supported languages. Multilingual accepts
 an explicit language hint or automatic recognition. Both use the formatted E2E
-transcript. Select the **Live** recording overlay to see words during dictation.
-Live recognition uses the model’s 320 ms future context. For a saved recording,
+transcript. GigaAM-v4 defaults to a 255 MB compact download that transcribes
+after recording stops. Turn on **Live transcription package** on its model card for
+the 1.22 GB package. If the compact version is installed, the upgrade downloads
+about 966 MB. Existing streaming installs keep their selection. When both
+packages are installed, use the switch to view, activate or delete either one.
+Select the **Live** recording overlay with a streaming package to see words
+during dictation. Live recognition uses the model’s 320 ms future context. For a saved recording,
 choose **History → Transcribe again** to run the full-context model. Both modes
 run locally on the CPU.
 
-The catalog shows the combined download size. Downloads verify each file by
+The catalog shows the size of the selected package. Downloads verify each file by
 SHA-256. Resume checks previously completed files and continues the interrupted
 file. Model files are stored under the app's dictation models directory.
 Each pack includes its MIT license and the Apache notices for upstream encoder
 code. [GigaAM-v4 model card](https://huggingface.co/ai-sage/GigaAM-v4/tree/9fe3ebf50c9e0cce5eed60d546938632238b6a96)
 and [Multilingual-v2 model card](https://huggingface.co/ai-sage/GigaAM-Multilingual-v2/tree/c21483b5e185ff32f6fb2e2c801f92f4e7fbfee8).
+
+**Model ratings.** Handy supplies relative speed and accuracy scores for its catalog.
+For GigaAM-v4, the card shows the ONNX converter's full-context INT8 measurements.
+In its FLEURS sample, the word error rate was 2.53% on 16 Russian clips and 6.56%
+on 16 English clips. The warmed-up recognizer processed eight clips at 70.9 times
+real time on three Apple M4 Pro CPU threads. Both v4 downloads contain that same
+full-context model. Live recognition uses separate graphs, and speed on Windows
+depends on the processor. [Benchmark and test conditions](https://huggingface.co/ai-babai/gigaam-v4-onnx/blob/7cfd40087b6180a83d9ef7fb991bd6813c48952f/README.md)
 
 **Maintaining the model packs.** Run **Prepare GigaAM model assets**, then pass
 its run ID as `gigaam_models_run` to **Build Music Island for Windows**. The first
@@ -485,10 +498,8 @@ Installed/selected models remain discoverable. This catalog filter does not chan
 the saved speech-recognition language. Recommendation badges name the model's
 recommended language independently of the interface locale.
 
-The local Russian catalog recommends GigaAM v3 E2E-RNN-T Q8 and labels GigaAM v3 CTC
-as an alternative. This is a UI recommendation, not an automatic model switch or a
-claim that one model wins on every microphone. Model cards and capabilities remain
-upstream data. Existing model choices are preserved.
+The Russian catalog lists GigaAM-v4 first and marks it as recommended. GigaAM v3
+E2E-RNN-T Q8 follows as an alternative. Previously selected models stay active.
 
 The [Memento ASR investigation](MEMENTO_ASR.md) documents the installed Duo
 checkpoint and what would be needed to offer it as a model download.
@@ -514,7 +525,7 @@ process. Ordinary idle unloading and app shutdown are different lifecycle paths.
 
 ## Recommendations and AI processing in 3.0
 
-The Russian interface recommends GigaAM v3 E2E-RNN-T Q8; the English interface recommends Parakeet Unified EN 0.6B Q8. The existing pinned catalog supplies capabilities, download addresses and model terms. Language changes do not select, delete or download models automatically. Installed/imported models remain available in either UI language.
+The catalog uses the interface language for recommendations. Selecting only Russian puts GigaAM-v4 first in either interface language. Selecting only English puts Parakeet Unified EN 0.6B Q8 first. The pinned catalog supplies capabilities, download addresses and model terms. Changing the language keeps the active model and all installed or imported models available.
 
 Settings → Dictation → **AI processing** connects an explicitly chosen provider and model. Use the dedicated AI shortcut to send recognized text for processing before inserting its response. Regular dictation stays local. The resulting text is also available in History. Provider processing and auto-submit remain off by default; a custom endpoint may itself be local or remote.
 

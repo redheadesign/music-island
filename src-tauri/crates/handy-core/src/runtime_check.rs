@@ -16,7 +16,7 @@ pub fn run(
         bail!("Probe strategy must be raw, planned or stream");
     }
     let engine_kind = engine.unwrap_or("TranscribeCpp");
-    if !matches!(engine_kind, "TranscribeCpp" | "GigaAMZapformer") {
+    if !matches!(engine_kind, "TranscribeCpp" | "GigaAMZapformer" | "GigaAMZapformerCompact") {
         bail!("Unsupported probe engine");
     }
     if !matches!(accelerator, "auto" | "cpu" | "vulkan") {
@@ -63,6 +63,7 @@ pub fn run(
         report["requestedAccelerator"] = json!(accelerator);
         report["backend"] = json!(engine.capabilities.backend);
         report["engine"] = json!(engine_kind);
+        report["supportsStreaming"] = json!(engine.capabilities.streaming);
         let options = crate::runtime::RunOptions {
             language: language
                 .filter(|language| *language != "auto")

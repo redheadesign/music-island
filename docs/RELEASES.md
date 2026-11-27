@@ -86,8 +86,8 @@ if ((Get-Content release/SHA256.txt -Raw).Trim() -ne "$hash  music-island.exe") 
 ```
 
 6. Verify the artifact on Windows before upload: embedded frontend assets and version, startup/restart, overlay and Settings windows, real taskbar visibility/input/autohide, configured media-provider authority, and reconnect of each explicitly enabled usage provider without another consent toggle.
-7. Draft a GitHub Release with a version tag pointing to the commit from the approved run. Upload that artifact's `music-island.exe`, `SHA256.txt` and `THIRD_PARTY_NOTICES.md`. The updater requires the first two exact, case-sensitive asset names.
-8. Use the versioned release notes as the draft body and verify the uploaded files against the artifact. Publish the verified draft after release approval.
+7. Select `app_release_draft` on the candidate's build dispatch. After the requested checks pass, the Windows runner reads `docs/releases/<version>-release-notes.md`, stages a draft targeting the build commit and verifies the size and SHA-256 of its three uploaded assets. The updater expects the exact names `music-island.exe` and `SHA256.txt`. The third file is `THIRD_PARTY_NOTICES.md`.
+8. Publish the verified draft as the latest stable release after release approval. Check that `releases/latest` returns the new version and the version tag resolves to the tested commit.
 
 Write public release notes and changelog entries in English for the repository's
 English-speaking audience. Keep the versioned release-notes file and the published

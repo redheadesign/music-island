@@ -3,7 +3,7 @@ import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/tes
 import { DictationSettings } from '../../features/dictation/DictationSettings'
 import type { DictationController } from '../../app/useIslandApp'
 import { dictationApi } from '../mocks/dictationApi'
-import { dictationModels, dictationSettings, gigaamRnnt, parakeetEnglish } from '../dictationFixtures'
+import { dictationModels, dictationSettings, gigaamRnnt, gigaamV4, gigaamV4Compact, parakeetEnglish } from '../dictationFixtures'
 import { useState, type ComponentProps } from 'react'
 import { defaultDictationAppearance } from '../../shared/lib/dictationAppearance'
 import { getDefaultConfig } from '../../app/tauriApi'
@@ -34,7 +34,7 @@ function DictationWorkshop({ args }: { args: ComponentProps<typeof DictationSett
     }}
     showLatestMessage={showLatestMessage} onShowLatestMessage={args.onShowLatestMessage ? (checked) => { setShowLatestMessage(checked); args.onShowLatestMessage?.(checked) } : undefined} /></div>
 }
-const controller: DictationController = { enabled: true, api: dictationApi, busy: null, error: null, progress: {}, enable: fn(async () => {}), disable: fn(async () => {}), loadMoreHistory: fn(async () => {}), refresh: fn(async () => {}), run: fn(async (_id, action) => { await action() }), data: { settings: dictationSettings, models: [gigaamRnnt, parakeetEnglish, ...dictationModels], history: [], microphones: [{ index: '0', name: 'Microphone (USB Audio)', is_default: true }], path: 'C:\\Users\\User\\AppData\\Roaming\\Music Island\\dictation' } }
+const controller: DictationController = { enabled: true, api: dictationApi, busy: null, error: null, progress: {}, enable: fn(async () => {}), disable: fn(async () => {}), loadMoreHistory: fn(async () => {}), refresh: fn(async () => {}), run: fn(async (_id, action) => { await action() }), data: { settings: dictationSettings, models: [gigaamRnnt, parakeetEnglish, gigaamV4, gigaamV4Compact, ...dictationModels], history: [], microphones: [{ index: '0', name: 'Microphone (USB Audio)', is_default: true }], path: 'C:\\Users\\User\\AppData\\Roaming\\Music Island\\dictation' } }
 const meta = {
   title: 'Screens/Dictation', component: DictationSettings,
   args: { controller, page: 'models', locale: 'ru', onEnable: fn(async () => {}), onPage: fn() },
@@ -44,27 +44,91 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Models: Story = { name: 'Модели · русский язык' }
+const downloadGigaam = fn(dictationApi.downloadModel)
 export const GigaAMDownload: Story = {
   name: 'Потоковая модель GigaAM-v4 в каталоге',
   args: {
     controller: {
       ...controller,
+      api: { ...dictationApi, downloadModel: downloadGigaam },
       data: {
         ...controller.data!,
-        models: [{ ...gigaamRnnt, id: 'gigaam-v4-rnnt', name: 'GigaAM-v4', filename: 'gigaam-v4-rnnt',
-          source: 'GigaAMFiles', size_mb: 1165, is_directory: true, engine_type: 'GigaAMZapformer',
-          supports_language_selection: false, supported_languages: ['ru', 'en'], supports_language_detection: true,
-          supports_background_recognition: false, supports_streaming: true, is_recommended: false }],
+        models: [gigaamRnnt, parakeetEnglish, gigaamV4, gigaamV4Compact],
       },
     },
   },
   play: async ({ canvasElement }) => {
-    const card = await within(canvasElement).findByRole('article', { name: 'GigaAM-v4' })
-    await expect(card).toHaveTextContent('Текст во время записи')
+    const canvas = within(canvasElement)
+    const card = await canvas.findByRole('article', { name: gigaamV4.name })
+    await expect(canvas.getAllByRole('article')[0]).toBe(card)
+    await expect(within(card).getByText('Рекомендовано для русского')).toBeVisible()
+    await expect(within(canvas.getByRole('article', { name: gigaamRnnt.name })).queryByText('Рекомендовано для русского')).not.toBeInTheDocument()
+    const live = within(card).getByRole('switch', { name: 'Версия с текстом во время записи' })
+    await expect(live).not.toBeChecked()
+    await expect(card).toHaveTextContent('255 МБ')
+    await expect(live).toHaveAccessibleDescription(/966 МБ/)
     await userEvent.click(within(card).getByRole('button', { name: 'Скачать' }))
-    const confirm = await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'Скачать модель?' })
+    const dialogs = within(canvasElement.ownerDocument.body)
+    const compactDialog = await dialogs.findByRole('dialog', { name: 'Скачать модель?' })
+    await expect(compactDialog).toHaveTextContent('Компактная · 255 МБ')
+    await userEvent.click(within(compactDialog).getByRole('button', { name: 'Скачать' }))
+    await expect(downloadGigaam).toHaveBeenCalledWith(gigaamV4Compact.id)
+    await userEvent.click(live)
+    await expect(live).toBeChecked()
+    await expect(card).toHaveTextContent('1,22 ГБ')
+    await userEvent.click(within(card).getByRole('button', { name: 'Скачать' }))
+    const confirm = await dialogs.findByRole('dialog', { name: 'Скачать модель?' })
+    await expect(confirm).toHaveTextContent('С текстом во время записи · 1,22 ГБ')
     await expect(within(confirm).getByRole('button', { name: 'Условия модели · MIT' })).toBeVisible()
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Скачать' }))
+    await expect(downloadGigaam).toHaveBeenCalledWith(gigaamV4.id)
+  },
+}
+const selectGigaam = fn(dictationApi.setActiveModel)
+const deleteGigaam = fn(dictationApi.deleteModel)
+export const GigaAMReuse: Story = {
+  name: 'GigaAM-v4 · компактная из скачанной потоковой',
+  args: { controller: { ...controller, data: { ...controller.data!, models: [gigaamV4Compact, { ...gigaamV4, is_downloaded: true }] } } },
+  play: async ({ canvasElement }) => {
+    const card = within(await within(canvasElement).findByRole('article', { name: gigaamV4.name }))
+    const live = card.getByRole('switch', { name: 'Версия с текстом во время записи' })
+    await expect(live).toBeChecked()
+    await userEvent.click(live)
+    await userEvent.click(card.getByRole('button', { name: 'Скачать' }))
+    const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'Скачать модель?' })
+    await expect(dialog).toHaveTextContent('Компактная · 255 МБ')
+    await expect(dialog).toHaveTextContent('Дополнительная загрузка · 0 Б')
     await userEvent.keyboard('{Escape}')
+  },
+}
+
+export const GigaAMInstalled: Story = {
+  name: 'GigaAM-v4 · обе версии скачаны',
+  args: {
+    controller: {
+      ...controller,
+      api: { ...dictationApi, setActiveModel: selectGigaam, deleteModel: deleteGigaam },
+      data: {
+        ...controller.data!,
+        models: [gigaamV4Compact, gigaamV4].map(model => ({ ...model, is_downloaded: true })),
+        settings: { ...dictationSettings, selected_model: gigaamV4.id },
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const card = within(await within(canvasElement).findByRole('article', { name: gigaamV4.name }))
+    const live = card.getByRole('switch', { name: 'Версия с текстом во время записи' })
+    await expect(live).toBeChecked()
+    await expect(card.getByText('Выбрана')).toBeVisible()
+    await userEvent.click(live)
+    await expect(card.queryByText('Выбрана')).not.toBeInTheDocument()
+    await userEvent.click(card.getByRole('button', { name: 'Использовать' }))
+    await expect(selectGigaam).toHaveBeenCalledWith(gigaamV4Compact.id)
+    await userEvent.click(card.getByRole('button', { name: /Удалить модель/ }))
+    const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'Удалить модель?' })
+    await expect(dialog).toHaveTextContent('Компактная · 255 МБ')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+    await expect(deleteGigaam).toHaveBeenCalledWith(gigaamV4Compact.id)
   },
 }
 export const FloatingCatalog: Story = {

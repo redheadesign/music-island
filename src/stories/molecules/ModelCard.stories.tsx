@@ -1,22 +1,51 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { ModelCard } from '../../features/dictation/ModelCard'
-import { gigaamRnnt, parakeetEnglish } from '../dictationFixtures'
+import { gigaamRnnt, gigaamV4, gigaamV4Compact, parakeetEnglish } from '../dictationFixtures'
 const meta = {
   title: 'Molecules/ModelCard', component: ModelCard,
-  args: { model: gigaamRnnt, locale: 'ru', onDownload: fn(), onSelect: fn(), onCancel: fn(), onDelete: fn() },
+  args: { model: gigaamV4, locale: 'ru', onDownload: fn(), onSelect: fn(), onCancel: fn(), onDelete: fn() },
   parameters: { workshop: { width: 600 } },
   render: args => <div className="auxiliary-ui dictation-page" style={{ padding: 20, background: 'var(--surface-canvas)' }}><ModelCard {...args} /></div>,
 } satisfies Meta<typeof ModelCard>
 export default meta
 type Story = StoryObj<typeof meta>
 export const Download: Story = { name: 'Рекомендуемая · скачать', play: async ({ canvasElement }) => {
-  await expect(within(canvasElement).getByText('Рекомендовано для русского')).toBeVisible()
+  const canvas = within(canvasElement)
+  await expect(canvas.getByText('Рекомендовано для русского')).toBeVisible()
+  await expect(canvas.getByRole('meter', { name: 'Скорость' })).toHaveAttribute('aria-valuenow', '70.9')
+  await expect(canvas.getByRole('meter', { name: 'Точность · RU' })).toHaveAttribute('aria-valuenow', '97.47')
+  await expect(canvas.getByRole('meter', { name: 'Точность · EN' })).toHaveAttribute('aria-valuenow', '93.44')
+  await userEvent.click(canvas.getByText('Тест после записи · INT8'))
+  await expect(canvas.getByText(/Apple M4 Pro/)).toHaveTextContent('2,53% для русского и 6,56% для английского')
+} }
+export const Compact: Story = { name: 'Компактная модель · офлайн-замеры', args: { model: gigaamV4Compact, locale: 'en' }, play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement)
+  await expect(canvas.getByText('Offline benchmark · INT8')).toBeVisible()
+  await expect(canvas.getByRole('meter', { name: 'Speed' })).toHaveAttribute('aria-valuenow', '70.9')
+  await expect(canvas.getByRole('meter', { name: 'Accuracy · RU' })).toHaveAttribute('aria-valuenow', '97.47')
+  await expect(canvas.getByRole('meter', { name: 'Accuracy · EN' })).toHaveAttribute('aria-valuenow', '93.44')
+  await userEvent.click(canvas.getByText('Offline benchmark · INT8'))
+  await expect(canvas.getByText(/Apple M4 Pro/)).toHaveTextContent('2.53% for Russian and 6.56% for English')
 } }
 export const Selected: Story = { name: 'Выбрана · в памяти', args: { model: { ...gigaamRnnt, is_downloaded: true }, selected: true, loaded: true } }
 export const English: Story = { name: 'English · Parakeet', args: { locale: 'en', model: parakeetEnglish }, play: async ({ canvasElement }) => {
-  await expect(within(canvasElement).getByText('Recommended for English')).toBeVisible()
+  const canvas = within(canvasElement)
+  await expect(canvas.getByText('Recommended for English')).toBeVisible()
+  await expect(canvas.getByRole('meter', { name: 'Speed' })).toHaveAttribute('aria-valuenow', '79')
+  await expect(canvas.getByRole('meter', { name: 'Accuracy' })).toHaveAttribute('aria-valuenow', '90')
 } }
+export const Unrated: Story = {
+  name: 'Скорость и точность без оценок',
+  args: { model: { ...gigaamRnnt, id: 'custom/unrated', name: 'Custom model', is_custom: true, speed_score: 0, accuracy_score: 0 } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Скорость')).toBeVisible()
+    await expect(canvas.getByText('Точность')).toBeVisible()
+    await expect(canvas.getAllByText('Нет оценки')).toHaveLength(2)
+    await expect(canvas.queryByRole('meter')).not.toBeInTheDocument()
+  },
+}
 export const EnglishModelRussian: Story = { name: 'Для английского · русский интерфейс', args: { model: parakeetEnglish }, play: async ({ canvasElement }) => {
   await expect(within(canvasElement).getByText('Рекомендовано для английского')).toBeVisible()
 } }

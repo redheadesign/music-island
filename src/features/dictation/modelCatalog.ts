@@ -1,12 +1,28 @@
 import type { ModelInfo } from '../../shared/lib/dictationTypes'
 import { dictationModelNotices } from '../../shared/lib/dictationModelNotices'
 
-export const russianModelRank = (model: ModelInfo) => /gigaam-v3-e2e-rnnt.*Q8_0/i.test(model.id) ? 2 : /gigaam-v3-(?:e2e-)?ctc/i.test(model.id) ? 1 : 0
+export const primaryRecommendationRank = 3
+export const gigaamCompactId = 'gigaam-v4-rnnt-compact'
+export const gigaamStreamingId = 'gigaam-v4-rnnt'
+
+function gigaamV4Variants(models: ModelInfo[], selected: string | undefined) {
+  const compact = models.find(model => model.id === gigaamCompactId)
+  const streaming = models.find(model => model.id === gigaamStreamingId)
+  if (!compact || !streaming) return null
+  const representative = streaming.is_downloaded && (streaming.id === selected || !compact.is_downloaded) ? streaming : compact
+  return { compact, streaming, representative }
+}
+
+function russianModelRank(model: ModelInfo) {
+  if (model.id === gigaamStreamingId || model.id === gigaamCompactId) return primaryRecommendationRank
+  if (/gigaam-v3-e2e-rnnt.*Q8_0/i.test(model.id)) return 2
+  return /gigaam-v3-(?:e2e-)?ctc/i.test(model.id) ? 1 : 0
+}
 
 export function recommendationRank(model: ModelInfo, locale: 'ru' | 'en') {
   if (locale === 'ru') return russianModelRank(model)
   if (!model.supported_languages.includes('en')) return 0
-  return /parakeet-unified-en-0\.6b.*Q8_0/i.test(model.id) ? 2 : model.is_recommended ? 1 : 0
+  return /parakeet-unified-en-0\.6b.*Q8_0/i.test(model.id) ? primaryRecommendationRank : model.is_recommended ? 1 : 0
 }
 
 export function catalogLanguages(models: ModelInfo[], locale: 'ru' | 'en') {
@@ -22,17 +38,22 @@ export function catalogLanguages(models: ModelInfo[], locale: 'ru' | 'en') {
 }
 
 export function groupModels(models: ModelInfo[], selected: string | undefined, query: string, languages: readonly string[], locale: 'ru' | 'en' = 'ru') {
+  const variants = gigaamV4Variants(models, selected)
+  const hiddenVariant = variants && (variants.representative === variants.compact ? variants.streaming : variants.compact)
+  const visible = hiddenVariant ? models.filter(model => model !== hiddenVariant) : models
+  const singleLanguage = languages.length === 1 ? languages[0] : undefined
+  const catalogLanguage = singleLanguage === 'ru' || singleLanguage === 'en' ? singleLanguage : locale
   const matches = (model: ModelInfo) => `${model.name} ${model.description}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
-  const installed = models.filter((model) => (model.is_downloaded || model.id === selected) && (model.id === selected || matches(model)))
+  const installed = visible.filter((model) => (model.is_downloaded || model.id === selected) && (model.id === selected || matches(model)))
     .sort((a, b) => Number(b.id === selected) - Number(a.id === selected) || recommendationRank(b, locale) - recommendationRank(a, locale) || a.name.localeCompare(b.name, locale))
   // Stable sort preserves the pinned native catalog's editorial order for ties.
-  const catalog = models.filter((model) => !model.is_downloaded && model.id !== selected && matches(model) && (!languages.length || languages.some(language => model.supported_languages.includes(language)) || model.is_custom))
-    .sort((a, b) => recommendationRank(b, locale) - recommendationRank(a, locale) || Number(b.is_recommended) - Number(a.is_recommended))
-  return { installed, catalog }
+  const catalog = visible.filter((model) => !model.is_downloaded && model.id !== selected && matches(model) && (!languages.length || languages.some(language => model.supported_languages.includes(language)) || model.is_custom))
+    .sort((a, b) => recommendationRank(b, catalogLanguage) - recommendationRank(a, catalogLanguage) || Number(b.is_recommended) - Number(a.is_recommended))
+  return { installed, catalog, variants }
 }
 
 export function modelNotice(model: ModelInfo) {
-  if (model.source === 'GigaAMFiles') return dictationModelNotices[model.id] ?? null
+  if (model.source === 'GigaAMFiles') return dictationModelNotices[model.id === gigaamCompactId ? gigaamStreamingId : model.id] ?? null
   if (typeof model.source !== 'object' || !('HuggingFace' in model.source)) return null
   return dictationModelNotices[model.source.HuggingFace.repo_id] ?? null
 }
@@ -51,3 +72,14 @@ export function formatModelSize(mb: number, locale: string) {
   const ru = locale === 'ru'
   return mb >= 1024 ? `${(mb / 1024).toLocaleString(locale, { maximumFractionDigits: 1 })} ${ru ? 'ГБ' : 'GB'}` : `${mb.toLocaleString(locale, { maximumFractionDigits: 0 })} ${ru ? 'МБ' : 'MB'}`
 }
+
+export function formatDownloadBytes(bytes: number, locale: string) {
+  const gb = bytes >= 1_000_000_000
+  const value = bytes / (gb ? 1_000_000_000 : 1_000_000)
+  const unit = locale === 'ru' ? (gb ? 'ГБ' : 'МБ') : (gb ? 'GB' : 'MB')
+  return `${value.toLocaleString(locale, { maximumFractionDigits: gb ? 2 : 0 })} ${unit}`
+}
+
+export const modelDownloadSize = (model: ModelInfo, locale: string) => model.size_bytes
+  ? formatDownloadBytes(model.size_bytes, locale)
+  : formatModelSize(model.size_mb, locale)

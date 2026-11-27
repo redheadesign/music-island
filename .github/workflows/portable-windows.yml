@@ -22,7 +22,7 @@ on:
         type: boolean
         default: false
       gigaam_public_smoke:
-        description: Install and cold-load both GigaAM models through the candidate's public catalog
+        description: Verify compact, streaming and multilingual installs through the public catalog
         required: false
         type: boolean
         default: false
@@ -481,7 +481,7 @@ jobs:
             Start-Sleep -Seconds 15
           } until ([DateTime]::UtcNow -ge $deadline)
           throw 'The verified GigaAM model draft was still private after 15 minutes'
-      - name: Install, verify, load and remove the two public GigaAM packs
+      - name: Verify public GigaAM installs, the compact upgrade and model removal
         if: ${{ inputs.gigaam_public_smoke }}
         shell: pwsh
         env:

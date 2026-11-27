@@ -102,7 +102,7 @@ impl ModelManager {
     /// Emit verification events around a blocking sha256 check of `path`.
     /// On mismatch `verify_sha256` deletes the file, so the next attempt (or
     /// next source) starts clean. A `None` hash skips checking (custom models).
-    async fn verify_file_with_events(
+    pub(super) async fn verify_file_with_events(
         model_id: &str,
         path: &Path,
         expected_sha256: Option<&str>,

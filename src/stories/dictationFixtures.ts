@@ -50,8 +50,8 @@ export const dictationModels: ModelInfo[] = [
     "partial_size": 0,
     "is_directory": false,
     "engine_type": "TranscribeCpp",
-    "accuracy_score": 80,
-    "speed_score": 78,
+    "accuracy_score": 0.80,
+    "speed_score": 0.78,
     "supports_translation": true,
     "is_recommended": false,
     "supported_languages": [
@@ -177,8 +177,8 @@ export const dictationModels: ModelInfo[] = [
     "partial_size": 0,
     "is_directory": false,
     "engine_type": "TranscribeCpp",
-    "accuracy_score": 88,
-    "speed_score": 35,
+    "accuracy_score": 0.88,
+    "speed_score": 0.35,
     "supports_translation": false,
     "is_recommended": false,
     "supported_languages": [
@@ -306,8 +306,8 @@ export const dictationModels: ModelInfo[] = [
     "partial_size": 0,
     "is_directory": false,
     "engine_type": "TranscribeCpp",
-    "accuracy_score": 57,
-    "speed_score": 98,
+    "accuracy_score": 0.57,
+    "speed_score": 0.98,
     "supports_translation": false,
     "is_recommended": false,
     "supported_languages": [
@@ -338,8 +338,8 @@ export const gigaamRnnt: ModelInfo = {
   "partial_size": 0,
   "is_directory": false,
   "engine_type": "TranscribeCpp",
-  "accuracy_score": 70,
-  "speed_score": 94,
+  "accuracy_score": 0.70,
+  "speed_score": 0.94,
   "supports_translation": false,
   "is_recommended": false,
   "supported_languages": [
@@ -349,6 +349,35 @@ export const gigaamRnnt: ModelInfo = {
   "is_custom": false,
   "supports_streaming": false,
   "supports_language_detection": false
+}
+
+export const gigaamV4: ModelInfo = {
+  ...gigaamRnnt,
+  id: 'gigaam-v4-rnnt',
+  name: 'GigaAM-v4',
+  description: 'Local speech recognition with punctuation and number formatting',
+  filename: 'gigaam-v4-rnnt',
+  source: 'GigaAMFiles',
+  size_mb: 1165,
+  size_bytes: 1_221_441_131,
+  is_directory: true,
+  engine_type: 'GigaAMZapformer',
+  accuracy_score: 0,
+  speed_score: 0,
+  supported_languages: ['ru', 'en'],
+  supports_language_detection: true,
+  supports_background_recognition: false,
+  supports_streaming: true,
+}
+
+export const gigaamV4Compact: ModelInfo = {
+  ...gigaamV4,
+  id: 'gigaam-v4-rnnt-compact',
+  filename: 'gigaam-v4-rnnt-compact',
+  size_mb: 244,
+  size_bytes: 255_356_395,
+  engine_type: 'GigaAMZapformerCompact',
+  supports_streaming: false,
 }
 
 export const parakeetEnglish: ModelInfo = {
@@ -368,8 +397,8 @@ export const parakeetEnglish: ModelInfo = {
   "partial_size": 0,
   "is_directory": false,
   "engine_type": "TranscribeCpp",
-  "accuracy_score": 90,
-  "speed_score": 79,
+  "accuracy_score": 0.90,
+  "speed_score": 0.79,
   "supports_translation": false,
   "is_recommended": true,
   "supported_languages": [

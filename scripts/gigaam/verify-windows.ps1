@@ -25,6 +25,19 @@ foreach ($file in $pack.files) {
         throw "Package file changed: $($file.name)"
     }
 }
+$cases = @(
+    @{ name = 'raw'; strategy = 'raw'; directory = $modelDirectory; engine = 'GigaAMZapformer'; live = $true }
+    @{ name = 'stream'; strategy = 'stream'; directory = $modelDirectory; engine = 'GigaAMZapformer'; live = $true }
+)
+if ($pack.id -eq 'gigaam-v4-rnnt') {
+    $compact = New-Item -ItemType Directory -Path (Join-Path $WorkingDirectory 'gigaam-v4-rnnt-compact')
+    $list = Join-Path $PSScriptRoot '../../src-tauri/crates/handy-core/src/catalog/gigaam-v4-compact-files.json'
+    foreach ($name in (Get-Content -LiteralPath $list -Raw | ConvertFrom-Json)) {
+        if ($name -notin $pack.files.name) { throw "Missing pinned compact file $name" }
+        New-Item -ItemType HardLink -Path (Join-Path $compact.FullName $name) -Target (Join-Path $modelDirectory $name) | Out-Null
+    }
+    $cases += @{ name = 'compact'; strategy = 'raw'; directory = $compact.FullName; engine = 'GigaAMZapformerCompact'; live = $false }
+}
 $inputs = @([pscustomobject]@{
     name = 'upstream'; wav = $Wav; reference = Join-Path $PackageArtifact "$($pack.id).reference.json"
 })
@@ -47,13 +60,14 @@ foreach ($probe in $inputs) {
   $target = Get-Content -LiteralPath $windowsReference -Raw | ConvertFrom-Json
   if ($target.onnx_runtime -ne '1.24.2' -or !$target.onnx_offline) { throw 'Expected Windows ONNX Runtime 1.24.2' }
   Copy-Item -LiteralPath $probe.reference -Destination (Join-Path $referenceDir.FullName 'linux.json')
-  foreach ($strategy in @('raw', 'stream')) {
-    $profile = New-Item -ItemType Directory -Path (Join-Path $WorkingDirectory "$($probe.name)-$strategy")
+  foreach ($case in $cases) {
+    $strategy = $case.strategy
+    $profile = New-Item -ItemType Directory -Path (Join-Path $WorkingDirectory "$($probe.name)-$($case.name)")
     $start = [Diagnostics.ProcessStartInfo]::new($exeFile.FullName)
     $start.UseShellExecute = $false
     $start.CreateNoWindow = $true
     $start.Environment['APPDATA'] = $profile.FullName
-    foreach ($arg in @('--dictation-runtime-check', $modelDirectory, $inputWave, 'cpu', $strategy, 'GigaAMZapformer', $reference.language)) {
+    foreach ($arg in @('--dictation-runtime-check', $case.directory, $inputWave, 'cpu', $strategy, $case.engine, $reference.language)) {
         $start.ArgumentList.Add($arg)
     }
     $p = [Diagnostics.Process]::Start($start)
@@ -61,8 +75,9 @@ foreach ($probe in $inputs) {
     $report = Join-Path $profile.FullName 'Music Island/dictation/runtime-check.json'
     $result = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
     if ($p.ExitCode -ne 0 -or $result.error) { throw "Probe failed during $strategy. $($result.error)" }
+    if ($result.supportsStreaming -ne $case.live) { throw "Unexpected streaming capability for $($case.name)" }
     $expected = if ($strategy -eq 'stream') { $reference.torch_stream_320ms } else { $target.onnx_offline }
     if (!$expected -or $result.text -cne $expected) { throw "Unexpected $strategy text: $($result.text)" }
-    Write-Output "$($pack.name) $strategy matched its reference."
+    Write-Output "$($pack.name) $($case.name) matched its reference."
   }
 }

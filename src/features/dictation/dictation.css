@@ -89,6 +89,41 @@ dialog.dictation-confirm > div { width: auto; box-shadow: none; }
 .dictation-model__heading h3 { min-width: 0; overflow-wrap: anywhere; }
 .dictation-model__size { flex-shrink: 0; font-size: var(--text-caption); color: var(--fg-secondary); font-variant-numeric: tabular-nums; }
 .dictation-model p.dictation-model__description { margin: 0; font-size: var(--text-caption); }
+.dictation-model__ratings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: var(--space-2) var(--space-5);
+}
+.dictation-model__rating {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+}
+.dictation-model__rating-value { font-size: var(--text-small); font-variant-numeric: tabular-nums; }
+.dictation-model__benchmarks { display: grid; gap: var(--space-2); }
+.dictation-model__benchmarks details { color: var(--fg-secondary); font-size: var(--text-caption); }
+.dictation-model__benchmarks summary { width: fit-content; max-width: 100%; cursor: pointer; }
+.dictation-model__benchmarks summary:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.dictation-model__benchmarks details p { margin: var(--space-2) 0; font-size: inherit; }
+.dictation-model__rating-track {
+  grid-column: 1 / -1;
+  height: var(--space-1);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--control-track);
+}
+.dictation-model__rating-fill { display: block; height: 100%; border-radius: inherit; background: var(--control-value); }
+.dictation-model__rating-track--unrated {
+  background: repeating-linear-gradient(120deg, var(--control-track) 0 var(--space-half), transparent var(--space-half) var(--space-1));
+}
+@media (forced-colors: active) {
+  .dictation-model__rating-track { forced-color-adjust: none; background: Canvas; outline: 1px solid CanvasText; }
+  .dictation-model__rating-track--unrated { outline-style: dotted; }
+  .dictation-model__rating-fill { background: Highlight; }
+}
 .dictation-model__footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .dictation-model__details { flex: 1; min-width: 0; }
 .dictation-model__badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }

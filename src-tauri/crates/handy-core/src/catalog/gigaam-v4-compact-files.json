@@ -1,0 +1,11 @@
+[
+  "v4_rnnt_encoder.int8.onnx",
+  "v4_rnnt_advance.onnx",
+  "v4_rnnt_e2e_tokenizer.model",
+  "LICENSE",
+  "LICENSE-APACHE-2.0",
+  "NOTICE",
+  "window.f32",
+  "filters.f32",
+  "island-gigaam.json"
+]
