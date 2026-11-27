@@ -3,6 +3,7 @@
 import argparse
 import gc
 import json
+import wave
 from pathlib import Path
 
 import gigaam
@@ -39,13 +40,19 @@ def offline_text(pack, manifest, samples, language):
 
 def record(pack, wav, cache, language):
     manifest = json.loads((pack / "island-gigaam.json").read_text())
-    samples = gigaam.load_audio(str(wav))
+    with wave.open(str(wav), "rb") as reader:
+        if (reader.getframerate(), reader.getnchannels(), reader.getsampwidth()) != (16000, 1, 2):
+            raise ValueError("Expected mono 16 kHz signed PCM16 WAV")
+        pcm = np.frombuffer(reader.readframes(reader.getnframes()), dtype="<i2")
+    samples = torch.from_numpy(pcm.astype(np.float32) / 32768.0)
     golden = {"language": language, "onnx_offline": offline_text(pack, manifest, samples.numpy(), language)}
     gc.collect()
     torch.set_num_threads(2)
     model = gigaam.load_model(manifest["model"], download_root=str(cache), device="cpu",
                               fp16_encoder=False, language=None if language == "auto" else language)
-    golden["torch_offline"] = model.transcribe(str(wav))["e2e"].text
+    with torch.inference_mode():
+        encoded, lengths = model(samples[None], torch.tensor([len(samples)]))
+        golden["torch_offline"] = model.decode(encoded, lengths)["e2e"][0]
     from gigaam.streaming import GigaAMStreaming
     streaming = GigaAMStreaming(model, 320, None if language == "auto" else language)
     parts = [streaming.transcribe_partial(chunk)["e2e"].text for chunk in samples.split(5120)]
