@@ -1,9 +1,9 @@
 //! One monitor policy for the overlay and intro. Identity is independent of bounds/DPI.
 use serde::Serialize;
-use std::sync::{atomic::{AtomicBool, Ordering}, Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
 
-static DIRTY: AtomicBool = AtomicBool::new(true);
+static DISPLAY_CHANGED: tokio::sync::Notify = tokio::sync::Notify::const_new();
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -32,8 +32,15 @@ fn cache() -> &'static Mutex<MonitorSnapshot> {
     CACHE.get_or_init(|| Mutex::new(MonitorSnapshot::default()))
 }
 
-pub fn invalidate() { DIRTY.store(true, Ordering::Relaxed); }
-pub fn take_dirty() -> bool { DIRTY.swap(false, Ordering::Relaxed) }
+pub fn invalidate() { DISPLAY_CHANGED.notify_one(); }
+
+pub async fn watch(app: AppHandle) {
+    loop {
+        // A lost Windows notification still recovers, independent of cursor sampling.
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(2), DISPLAY_CHANGED.notified()).await;
+        if let Err(error) = refresh(&app) { log::debug!("Monitor refresh: {error}"); }
+    }
+}
 
 fn selected<'a>(monitors: &'a [MonitorInfo], preferred: Option<&str>) -> Option<&'a MonitorInfo> {
     preferred.and_then(|id| monitors.iter().find(|monitor| monitor.id == id))

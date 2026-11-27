@@ -631,9 +631,12 @@ export const GlassEdgeGesture: StoryObj<typeof meta> = {
     fireEvent.pointerMove(trigger, contact)
     await waitFor(() => expect(cue).toBeVisible())
     await waitFor(() => expect(island).toHaveClass('island-root--open'), { timeout: 2000 })
-    await expect(within(canvasElement).getByRole('button', { name: /^(?:Pause|Пауза)$/ })).toBeInTheDocument()
+    const pause = within(canvasElement).getByRole('button', { name: /^(?:Pause|Пауза)$/ })
+    await expect(pause.closest('[inert]')).toBeNull()
     await expect(island.querySelector('.island-feedback__ambient')).toHaveAttribute('data-wave-phase', 'steady')
     await expect(island.querySelector('.island-feedback__launch')).toBeNull()
+    fireEvent.click(pause)
+    await waitFor(() => expect(within(canvasElement).getByRole('button', { name: /^(?:Play|Воспроизвести)$/ })).toBeInTheDocument())
   },
 }
 export const GlassEdgeReducedMotion: StoryObj<typeof meta> = {

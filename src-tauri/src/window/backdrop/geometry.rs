@@ -35,12 +35,9 @@ pub struct BackdropFrame {
     pub prewarm_lens: bool,
     #[serde(default)]
     pub prepare_frost: Option<f64>,
-    #[serde(default)]
-    pub stage_lens: Option<u64>,
 }
 
-/// Select once per opening. A failed GPU path can fall back, but a late
-/// frame cannot replace the surface the user already sees.
+/// A late first GPU frame can replace the system backdrop without holding up input.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(super) enum LensOpening {
     #[default]
@@ -50,15 +47,12 @@ pub(super) enum LensOpening {
 }
 
 impl LensOpening {
-    pub(super) fn select(&mut self, ready: bool, wait: bool) -> Option<bool> {
-        if *self == Self::System {
-            return Some(false);
+    pub(super) fn presented(&mut self, ready: bool) -> bool {
+        if *self == Self::Pending && ready {
+            *self = Self::Live;
+            return true;
         }
-        if !ready && wait && *self == Self::Pending {
-            return None;
-        }
-        *self = if ready { Self::Live } else { Self::System };
-        Some(ready)
+        false
     }
 }
 
@@ -70,6 +64,8 @@ pub struct DesktopLensSettings {
     pub dispersion: f32,
     #[serde(default)]
     pub snapshot: bool,
+    #[serde(default)]
+    pub reduced_motion: bool,
 }
 
 impl BackdropFrame {
@@ -184,7 +180,6 @@ mod tests {
             island_body: None,
             prewarm_lens: false,
             prepare_frost: None,
-            stage_lens: None,
         }
     }
 
@@ -241,7 +236,6 @@ mod tests {
             island_body: None,
             prewarm_lens: false,
             prepare_frost: None,
-            stage_lens: None,
         };
         frame.regions = vec![
             BackdropRegion {
@@ -260,22 +254,22 @@ mod tests {
     }
 
     #[test]
-    fn a_late_lens_frame_cannot_change_the_open_island_material() {
-        let mut opening = LensOpening::default();
-        assert_eq!(opening.select(false, false), Some(false));
-        assert_eq!(opening.select(true, true), Some(false));
+    fn a_failed_capture_stays_on_system_glass_for_the_opening() {
+        let mut opening = LensOpening::System;
+        assert!(!opening.presented(true));
         assert_eq!(opening, LensOpening::System);
     }
 
     #[test]
-    fn transient_misses_are_retried_while_the_island_is_hidden() {
+    fn a_late_frame_replaces_system_glass_only_once() {
         let mut opening = LensOpening::default();
         for _ in 0..8 {
-            assert_eq!(opening.select(false, true), None);
+            assert!(!opening.presented(false));
         }
         assert_eq!(opening, LensOpening::Pending);
-        assert_eq!(opening.select(true, true), Some(true));
-        assert_eq!(opening.select(true, false), Some(true));
+        assert!(opening.presented(true));
+        assert!(!opening.presented(true));
+        assert_eq!(opening, LensOpening::Live);
     }
 
     #[test]
@@ -293,6 +287,7 @@ mod tests {
         };
         frame.regions = vec![card.clone(), card.clone()];
         let lens = DesktopLensSettings {
+            reduced_motion: false,
             region: 0,
             bend: 0.4,
             dispersion: 0.1,

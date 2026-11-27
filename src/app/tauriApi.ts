@@ -47,10 +47,10 @@ export interface NativeBackdropFrame {
   prewarmLens?: boolean
   prepareFrost?: number
   /** Prepare the exact body geometry before this opening becomes visible. */
-  stageLens?: number
 }
 
 export interface NativeDesktopLens {
+  reducedMotion?: boolean
   bend: number
   dispersion: number
   snapshot?: boolean

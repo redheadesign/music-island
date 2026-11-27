@@ -26,6 +26,7 @@ static BOUNDS_APPLIED: AtomicU64 = AtomicU64::new(0);
 static GESTURE_POLLS: AtomicU64 = AtomicU64::new(0);
 static GESTURE_EVENTS: AtomicU64 = AtomicU64::new(0);
 static CLICKTHROUGH: AtomicBool = AtomicBool::new(true);
+static HIT_LAYOUT_REVISION: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, Copy)]
 struct OverlayHitLayout {
@@ -209,28 +210,27 @@ pub fn set_overlay_bounds(
         COLLAPSED_HIT_HEIGHT
     };
 
-    {
+    let changed = {
         let mut layout = hit_layout()
             .lock()
             .expect("overlay hit layout lock poisoned");
-        if layout.expanded == expanded
-            && (layout.hit_width - hit_width).abs() < 0.5
-            && (layout.hit_height - hit_height).abs() < 0.5
-        {
-            return Ok(());
+        let changed = layout.expanded != expanded
+            || (layout.hit_width - hit_width).abs() >= 0.5
+            || (layout.hit_height - hit_height).abs() >= 0.5;
+        if changed {
+            layout.expanded = expanded;
+            layout.hit_width = hit_width;
+            layout.hit_height = hit_height;
+            HIT_LAYOUT_REVISION.fetch_add(1, Ordering::Release);
         }
-        layout.expanded = expanded;
-        layout.hit_width = hit_width;
-        layout.hit_height = hit_height;
-    }
+        changed
+    };
 
-    // Keep monitor coverage if the user moved monitors / DPI changed.
-    fit_overlay_to_monitor(app)?;
+    // Placement is maintained by the monitor watcher. A hover changes only
+    // the input band within that existing HWND. Acknowledge after applying it.
+    sync_clickthrough_from_cursor_ex(app, true)?;
 
-    // Geometry changes drop WS_EX_TRANSPARENT — force re-apply, don't trust the cache.
-    let _ = sync_clickthrough_from_cursor_ex(app, true);
-
-    BOUNDS_APPLIED.fetch_add(1, Ordering::Relaxed);
+    if changed { BOUNDS_APPLIED.fetch_add(1, Ordering::Relaxed); }
     Ok(())
 }
 
@@ -283,13 +283,26 @@ pub async fn set_overlay_widget_regions(
             return Ok(());
         }
         layout.widgets = regions;
+        HIT_LAYOUT_REVISION.fetch_add(1, Ordering::Release);
     }
     sync_clickthrough_from_cursor_ex(&app, true).map_err(|error| error.to_string())
 }
 
 fn sync_clickthrough_from_cursor_ex(app: &AppHandle, force: bool) -> tauri::Result<()> {
-    let (_, capture) = overlay_pointer_state(app)?;
-    set_overlay_clickthrough_ex(app, !capture, force)
+    sample_and_apply_pointer(app, force).map(|_| ())
+}
+
+fn sample_and_apply_pointer(app: &AppHandle, force: bool) -> tauri::Result<(CollapsedGestureState, bool)> {
+    // The hover watcher may have sampled the collapsed band just before the
+    // WebView opened. Discard that sample even if its Win32 style write raced
+    // the acknowledgement; repair it immediately instead of waiting for a poll.
+    loop {
+        let revision = HIT_LAYOUT_REVISION.load(Ordering::Acquire);
+        let (state, capture) = overlay_pointer_state(app)?;
+        if HIT_LAYOUT_REVISION.load(Ordering::Acquire) != revision { continue; }
+        set_overlay_clickthrough_ex(app, !capture, force)?;
+        if HIT_LAYOUT_REVISION.load(Ordering::Acquire) == revision { return Ok((state, capture)); }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -333,19 +346,13 @@ fn overlay_pointer_state(app: &AppHandle) -> tauri::Result<(CollapsedGestureStat
 }
 
 pub fn start_gesture_watcher(app: AppHandle) {
+    tauri::async_runtime::spawn(monitors::watch(app.clone()));
     tauri::async_runtime::spawn(async move {
         let mut previous = CollapsedGestureState::inactive();
-        let mut monitor_check = std::time::Instant::now();
         loop {
-            if monitors::take_dirty() || monitor_check.elapsed() >= Duration::from_secs(2) {
-                if let Err(error) = monitors::refresh(&app) { log::debug!("Monitor refresh: {error}"); }
-                monitor_check = std::time::Instant::now();
-            }
             GESTURE_POLLS.fetch_add(1, Ordering::Relaxed);
-            let (next, capture) = overlay_pointer_state(&app)
+            let (next, capture) = sample_and_apply_pointer(&app, false)
                 .unwrap_or_else(|_| (CollapsedGestureState::inactive(), false));
-
-            let _ = set_overlay_clickthrough_ex(&app, !capture, false);
 
             if next != previous {
                 let _ = app.emit("overlay:gesture-state", next.clone());

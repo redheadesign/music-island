@@ -1,5 +1,5 @@
 use super::{
-    compositor::{HostBackdrop, LensLayout, LENS_FRAME, LENS_PRESENT_TIMER, LENS_RETRY},
+    compositor::{HostBackdrop, LensLayout, LENS_FRAME, LENS_HANDOFF_TIMER, LENS_PRESENT_TIMER, LENS_RETRY},
     BackdropFrame, BackdropRegion,
 };
 use std::{cell::RefCell, collections::HashMap};
@@ -153,12 +153,10 @@ pub(super) fn apply(
         let shown =
             unsafe { IsWindowVisible(hwnd) }.as_bool() && !unsafe { IsIconic(hwnd) }.as_bool();
         let settings = (label == "main").then_some(frame.lens).flatten();
-        let stage = (label == "main").then_some(frame.stage_lens).flatten();
         let pending_frost = frame.prepare_frost.filter(|_| {
             shown
                 && label == "main"
                 && frame.prewarm_lens
-                && (settings.is_none() || stage.is_some())
         });
         if let Some(frost) = pending_frost {
             compositor.prepare_capture(LensLayout::capture_band(
@@ -208,9 +206,6 @@ pub(super) fn apply(
             )
         });
         let geometry_changed = state.frame.as_ref() != Some(&geometry);
-        if stage.is_some() {
-            compositor.hide_visuals();
-        }
         if geometry_changed {
             if compositor
                 .update_regions(geometry.0 as f32, geometry.1 as f32, &geometry.2)
@@ -223,16 +218,14 @@ pub(super) fn apply(
             state.frame = Some(geometry);
         }
         if let Some((index, layout)) = lens {
-            if (stage.is_some() || geometry_changed || lens != state.lens)
-                && !compositor.configure_lens(index, layout, stage)
-            {
-                return Ok(None);
+            if geometry_changed || lens != state.lens {
+                compositor.configure_lens(index, layout);
             }
         } else if !preparing {
             compositor.clear_lens();
         }
         state.lens = lens;
-        if stage.is_none() && compositor.show_visuals().is_err() {
+        if compositor.show_visuals().is_err() {
             compositor.clear();
             state.frame = None;
             return Ok(Some(false));
@@ -254,7 +247,8 @@ unsafe extern "system" fn window_proc(
     }
     let retry_present =
         message == LENS_RETRY || (message == WM_TIMER && wp.0 == LENS_PRESENT_TIMER);
-    if message == LENS_FRAME || retry_present {
+    let handoff = message == WM_TIMER && wp.0 == LENS_HANDOFF_TIMER;
+    if message == LENS_FRAME || retry_present || handoff {
         if retry_present {
             let _ = KillTimer(Some(hwnd), LENS_PRESENT_TIMER);
         }
@@ -264,7 +258,9 @@ unsafe extern "system" fn window_proc(
                     .get_mut(&(hwnd.0 as usize))
                     .and_then(|state| state.compositor.as_mut())
                 {
-                    if retry_present {
+                    if handoff {
+                        compositor.update_handoff();
+                    } else if retry_present {
                         compositor.retry_lens();
                     } else {
                         compositor.draw_lens();

@@ -165,8 +165,8 @@
   transition: transform calc(var(--motion-unit) * 30) linear;
 }
 
-.island-hover-zone[data-lens-staging] {
-  opacity: 0 !important;
+.island-expanded-layer[data-input-pending] {
+  visibility: hidden;
 }
 
 .island-hover-zone {

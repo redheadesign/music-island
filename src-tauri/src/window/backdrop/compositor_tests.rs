@@ -250,7 +250,6 @@ fn only_the_actual_silhouette_blurs_the_underlying_checker() -> windows::core::R
             island_body: Some(0),
             prewarm_lens: false,
             prepare_frost: None,
-            stage_lens: None,
         };
         update_visible(
             &mut compositor,

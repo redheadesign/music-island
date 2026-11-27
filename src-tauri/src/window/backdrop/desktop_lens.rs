@@ -90,6 +90,7 @@ pub(crate) struct LensLayout {
     pub frost: f32,
     pub opacity: f32,
     pub snapshot: bool,
+    pub reduced_motion: bool,
 }
 
 impl LensLayout {
@@ -110,6 +111,7 @@ impl LensLayout {
             frost: lens_blur_sigma(frost, scale),
             opacity: 0.0,
             snapshot: false,
+            reduced_motion: false,
         }
     }
 
@@ -131,6 +133,7 @@ impl LensLayout {
             frost: region.lens_blur_sigma(scale, global_frost),
             opacity: region.opacity as f32,
             snapshot: lens.snapshot,
+            reduced_motion: lens.reduced_motion,
         }
     }
 }
@@ -416,15 +419,12 @@ impl DesktopLens {
     }
 
     pub(super) fn configure(&mut self, layout: LensLayout) -> Result<bool> {
-        let mut renderer = if self.visible {
-            self.renderer.lock().map_err(|_| E_FAIL)?
-        } else {
-            // A first paint must never wait for WGC or the first blur pass.
-            match self.renderer.try_lock() {
-                Ok(renderer) => renderer,
-                Err(TryLockError::WouldBlock) => return Ok(false),
-                Err(TryLockError::Poisoned(_)) => return Err(E_FAIL.into()),
-            }
+        // A WGC callback might be filtering the current frame. Leave the
+        // latest geometry pending instead of blocking the window thread.
+        let mut renderer = match self.renderer.try_lock() {
+            Ok(renderer) => renderer,
+            Err(TryLockError::WouldBlock) => return Ok(false),
+            Err(TryLockError::Poisoned(_)) => return Err(E_FAIL.into()),
         };
         if let Some(error) = renderer.failure.take() {
             return Err(error);
@@ -449,7 +449,16 @@ impl DesktopLens {
     }
 
     pub(super) fn draw(&mut self, retry: bool) -> Result<()> {
-        let mut renderer = self.renderer.lock().map_err(|_| E_FAIL)?;
+        let mut renderer = match self.renderer.try_lock() {
+            Ok(renderer) => renderer,
+            Err(TryLockError::WouldBlock) => {
+                if retry {
+                    unsafe { PostMessageW(Some(self.hwnd), LENS_RETRY, WPARAM(0), LPARAM(0))?; }
+                }
+                return Ok(());
+            }
+            Err(TryLockError::Poisoned(_)) => return Err(E_FAIL.into()),
+        };
         if let Some(error) = renderer.failure.take() {
             return Err(error);
         }
@@ -470,6 +479,10 @@ impl DesktopLens {
         // A geometry update can briefly await another crop or Present.
         // Retain the already selected backend unless it reports an error.
         Ok(self.visible)
+    }
+
+    pub(super) fn set_mix(&self, mix: f32) -> Result<()> {
+        self.visual.SetOpacity(mix)
     }
 }
 

@@ -3,8 +3,6 @@ import { inlineActionsWidth, type IslandArrangement } from '../../shared/lib/isl
 
 export type OverlayWindowPhase = 'collapsed' | 'opening' | 'open' | 'closing'
 
-// Keep `opening` alive briefly so top chrome can finish fading over the animating card.
-const OPENING_CHROME_TAIL_MS = 60
 const ACTIONS_GUTTER_PER_SIDE = 56
 const USAGE_GAP = 12
 const USAGE_DETAILED_WIDTH = 124
@@ -46,14 +44,6 @@ export function shouldDeferOverlayClose(
   holdUntil = 0,
 ): boolean {
   return now - openedAt < OVERLAY_CLOSE_GRACE_MS || now < holdUntil
-}
-
-function delay(ms: number, operationId: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    window.setTimeout(() => {
-      resolve(operationId === boundsOperationId)
-    }, ms)
-  })
 }
 
 /**
@@ -128,21 +118,7 @@ export async function syncOverlayWindow(
 ): Promise<boolean> {
   const operationId = ++boundsOperationId
 
-  if (phase === 'opening') {
-    await setOverlayBounds(
-      true,
-      cssToPhysicalHitPx(bounds.cardWidth),
-      cssToPhysicalHitPx(bounds.expandedHeight),
-    )
-    if (operationId !== boundsOperationId) {
-      return false
-    }
-
-    const tailReady = await delay(OPENING_CHROME_TAIL_MS, operationId)
-    return tailReady
-  }
-
-  const expanded = phase === 'open' || phase === 'closing'
+  const expanded = phase !== 'collapsed'
 
   await setOverlayBounds(
     expanded,

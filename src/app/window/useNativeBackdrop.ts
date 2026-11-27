@@ -7,13 +7,9 @@ export type NativeBackdropStatus = 'pending' | 'active' | 'unavailable' | undefi
 let sequence = Date.now() * 1000
 const defaultFrost = DEFAULT_GLASS_MATERIAL.frost / 100
 const viewportRetryDelays = [16, 48, 120] as const
-const revealRetryDelay = 16
-const revealWatchdog = 420
-
-type LensReveal = { id: number; onReady: (id: number) => void }
 
 /** Measure the visible surface, including CSS transforms and ancestor fades. */
-export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElement, styles = new Map<HTMLElement, CSSStyleDeclaration>(), staging = false): NativeBackdropRegion | null {
+export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElement, styles = new Map<HTMLElement, CSSStyleDeclaration>()): NativeBackdropRegion | null {
   const rect = surface.getBoundingClientRect()
   if (!(rect.width > 0 && rect.height > 0) || rect.right <= 0 || rect.bottom <= 0
     || rect.left >= window.innerWidth || rect.top >= window.innerHeight) return null
@@ -21,7 +17,7 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
   for (let node: HTMLElement | null = surface; node; node = node.parentElement) {
     const ancestor = styles.get(node) ?? getComputedStyle(node)
     styles.set(node, ancestor)
-    if (!staging || !node.hasAttribute('data-lens-staging')) opacity *= Number(ancestor.opacity || 1)
+    opacity *= Number(ancestor.opacity || 1)
     if (ancestor.display === 'none' || ancestor.visibility === 'hidden') return null
     if (node === root) break
   }
@@ -44,15 +40,12 @@ export function measureNativeBackdropRegion(surface: HTMLElement, root: HTMLElem
 }
 
 /** DWM owns the backdrop; this hook only publishes each surface's geometry. */
-export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost, regionFrostKey = '', optics?: NativeDesktopLens, prepareFrost?: number, reveal?: LensReveal): NativeBackdropStatus {
+export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: boolean, selector: string, frost = defaultFrost, regionFrostKey = '', optics?: NativeDesktopLens, prepareFrost?: number): NativeBackdropStatus {
   const [status, setStatus] = useState<NativeBackdropStatus>()
   const frostAmount = useRef(defaultFrost)
   const individualFrost = useRef('')
   const lens = useRef<NativeDesktopLens | undefined>(undefined)
   const pendingFrost = useRef<number | undefined>(undefined)
-  const pendingReveal = useRef<LensReveal | undefined>(undefined)
-  const revealId = reveal?.id
-  const revealReady = reveal?.onReady
   const changeFrost = useRef<((crossedZero: boolean) => void) | null>(null)
   useLayoutEffect(() => {
     const amount = Number.isFinite(frost) ? Math.min(1, Math.max(0, frost)) : defaultFrost
@@ -61,14 +54,8 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
     individualFrost.current = regionFrostKey
     lens.current = optics
     pendingFrost.current = prepareFrost
-    pendingReveal.current = revealId !== undefined && revealReady ? { id: revealId, onReady: revealReady } : undefined
     changeFrost.current?.(crossedZero)
-  }, [frost, regionFrostKey, optics, prepareFrost, revealId, revealReady])
-  useLayoutEffect(() => {
-    if (revealId === undefined || !revealReady) return
-    const timeout = window.setTimeout(() => revealReady(revealId), revealWatchdog)
-    return () => window.clearTimeout(timeout)
-  }, [revealId, revealReady])
+  }, [frost, regionFrostKey, optics, prepareFrost])
   useLayoutEffect(() => {
     if (!('__TAURI_INTERNALS__' in window)) return
     const node = root.current
@@ -90,13 +77,13 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
     const resize = new ResizeObserver(() => refresh())
     const available = () => enabled && !document.hidden && !policy.matches && !unsupported
     const measuring = () => available() && (frostAmount.current > 0 || Boolean(individualFrost.current || lens.current))
-    const frame = (capture: boolean, stageLens?: number): NativeBackdropFrame => {
+    const frame = (capture: boolean): NativeBackdropFrame => {
       const styles = new Map<HTMLElement, CSSStyleDeclaration>()
       const regions: NativeBackdropRegion[] = []
       let islandBody: number | undefined
       let desktopLens: NativeBackdropFrame['lens']
       if (capture) for (const surface of surfaces) {
-        const region = measureNativeBackdropRegion(surface, node, styles, stageLens !== undefined)
+        const region = measureNativeBackdropRegion(surface, node, styles)
         if (!region) continue
         const isBody = surface.classList.contains('island-card')
         if ((region.frost ?? frostAmount.current) === 0 && !(isBody && lens.current)) continue
@@ -115,7 +102,6 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
         frost: frostAmount.current,
         regions,
         islandBody,
-        stageLens,
         ...(capture && lens.current && { prewarmLens: true, prepareFrost: pendingFrost.current }),
         ...(desktopLens && { lens: desktopLens }),
       }
@@ -128,19 +114,14 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
       if (disposed) return
       if (inFlight) { dirty = true; return }
       dirty = false
-      const next = frame(available(), pendingReveal.current?.id)
+      const next = frame(available())
       const signature = JSON.stringify({ ...next, generation: 0 })
       if (signature !== previous) {
         window.clearTimeout(retry)
         previous = signature
         inFlight = true
-        const finishReveal = () => {
-          const current = pendingReveal.current
-          if (current && current.id === next.stageLens) current.onReady(current.id)
-        }
         void setOverlayBackdrop(next).then(active => {
           if (disposed) return
-          if (!next.enabled || active === false || (active === true && next.lens)) finishReveal()
           if (active !== null && available()) {
             setStatus(active ? 'active' : 'unavailable')
             if (active) retryCount = 0
@@ -151,16 +132,14 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
           }
           // Keep the material during a show/DPI race. A policy denial is final
           // until Windows invalidates it, so it never starts a retry loop.
-          const waitingForLens = next.stageLens !== undefined && next.stageLens === pendingReveal.current?.id
-          const retryDelay = waitingForLens ? revealRetryDelay : viewportRetryDelays[retryCount]
+          const retryDelay = viewportRetryDelays[retryCount]
           if (active === null && next.enabled && next.regions.length && retryDelay !== undefined) {
-            if (!waitingForLens) retryCount += 1
+            retryCount += 1
             retry = window.setTimeout(() => { previous = ''; refresh() }, retryDelay)
           }
         }).catch(() => {
           if (disposed) return
           setStatus('unavailable')
-          finishReveal()
         }).finally(() => {
           inFlight = false
           if (!disposed && (dirty || (available() && inMotion())) && !animation) animation = requestAnimationFrame(publish)

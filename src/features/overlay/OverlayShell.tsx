@@ -6,7 +6,7 @@ import { normalizeDesktopGlassMode, normalizeDesktopLens } from '../../shared/li
 import { progressTrackKey } from '../music/progressTransition'
 import { createIslandBassEffect } from '../../shared/ui/islandBassEffect'
 import { IslandActionButton } from '../../shared/ui/IslandActionButton'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLatestDictationMessage, useLocalServersController, useNativeBackdrop, usePlaybackBass, type IslandAppState, type LatestDictationMessageController, type LocalServersController, type UsageController } from '../../app/useIslandApp'
@@ -154,7 +154,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const transitionRef = useRef(transition)
   const windowPhase = transition.phase
   const expandedVisible = windowPhase === 'open'
-  const [stagedGeneration, setStagedGeneration] = useState<number>()
+  const expandedMounted = expandedVisible || windowPhase === 'opening'
   const [edgeContact, setEdgeContact] = useState(false)
   const hasSession = media?.hasSession === true
   const reducedTransparency = useSystemReducedTransparency()
@@ -167,19 +167,13 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const advanced = useAdvancedGlass(usesGlassMaterial(config) ? uiPrefs.advancedGlass : undefined, glassMaterial)
   const glassMode = normalizeDesktopGlassMode(uiPrefs.desktopGlassMode)
   const desktopLens = useMemo(() => glassMode === 'system' ? undefined : {
-    ...normalizeDesktopLens(uiPrefs.desktopLens), snapshot: glassMode === 'snapshot',
-  }, [glassMode, uiPrefs.desktopLens])
+    ...normalizeDesktopLens(uiPrefs.desktopLens), snapshot: glassMode === 'snapshot', reducedMotion: Boolean(reducedMotion),
+  }, [glassMode, uiPrefs.desktopLens, reducedMotion])
   const glassBackdrop = usesGlassMaterial(config) && !reducedTransparency
-  const prepareLensOnOpen = isTauriRuntime() && glassBackdrop && desktopLens !== undefined
-  const stagingLens = expandedVisible && prepareLensOnOpen && stagedGeneration === transition.generation
-  const showPreparedLens = useCallback((generation: number) => {
-    setStagedGeneration(current => current === generation ? undefined : current)
-  }, [])
   const nativeBackdrop = useNativeBackdrop(overlay, glassBackdrop,
     '.island-surface, [data-island-control="floating"]', glassMaterial.frost / 100, advanced.regionFrostKey, desktopLens,
     windowPhase === 'opening' || windowPhase === 'open' || (windowPhase === 'collapsed' && edgeContact)
-      ? advanced.nativeBodyFrost : undefined,
-    stagingLens ? { id: transition.generation, onReady: showPreparedLens } : undefined)
+      ? advanced.nativeBodyFrost : undefined)
   const ambientRef = useRef<HTMLSpanElement>(null)
   const bassEffect = useRef<ReturnType<typeof createIslandBassEffect> | null>(null)
   const applyBassLevel = useCallback((bass?: number) => {
@@ -313,7 +307,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const progressColor = useMemo(() => artworkPalette ? progressFillColor(artworkPalette.primary) : undefined, [artworkPalette])
 
   const showCollapsedLayer = windowPhase === 'collapsed'
-  const showTopChrome = windowPhase === 'collapsed' || windowPhase === 'opening'
+  const showTopChrome = windowPhase !== 'closing'
 
   useEffect(() => {
     return () => {
@@ -352,12 +346,14 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     }
   }, [config, isPinned, mode, setMode, windowPhase, setWindowPhase])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Once input is active, ResizeObserver owns the measured (possibly asymmetric) band.
+    if (windowPhase === 'open') return
     let cancelled = false
     const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: false, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) }, arrangement, islandLayout.zones.actions.length)
     const phase = windowPhase
     const generation = transitionRef.current.generation
-    void syncOverlayWindow(phase, bounds).then(async (applied) => {
+    void syncOverlayWindow(phase, bounds).then((applied) => {
       if (!applied || cancelled || generation !== transitionRef.current.generation) {
         return
       }
@@ -365,14 +361,11 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
         if (!openCommittedRef.current) {
           return
         }
-        await nextPaint()
-        if (cancelled || generation !== transitionRef.current.generation || !openCommittedRef.current) return
         if (mode !== 'settings') {
           setMode('expanded')
         }
 
-        const opened = setWindowPhase('open', generation)
-        if (prepareLensOnOpen) setStagedGeneration(opened.generation)
+        setWindowPhase('open', generation)
       }
     }).catch(() => {
       if (cancelled || generation !== transitionRef.current.generation) return
@@ -383,7 +376,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     return () => {
       cancelled = true
     }
-  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, arrangement, islandLayout.zones.actions.length, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase, prepareLensOnOpen])
+  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, arrangement, islandLayout.zones.actions.length, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
 
   useEffect(() => {
     if ((!showLocalServers && !showLatestMessage) || !isTauriRuntime()) return
@@ -704,6 +697,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     }
 
     openCommittedRef.current = true
+    traceHover('accepted')
     gestureActiveRef.current = false
     stripArmedRef.current = false
     openedAtRef.current = performance.now()
@@ -783,6 +777,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     if (distanceToTop <= 3) {
       if (!topContactRef.current) {
         topEdgeContactAtRef.current = performance.now()
+        traceHover('contact')
         setEdgeContact(true)
       }
       topContactRef.current = true
@@ -959,8 +954,9 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
         <div
           className={[
             'island-top-chrome',
-            windowPhase === 'opening' ? 'island-top-chrome--opening' : '',
+            expandedMounted ? 'island-top-chrome--opening' : '',
           ].join(' ')}
+          inert={expandedMounted || undefined}
         >
           <div
             className={[
@@ -986,17 +982,16 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       ) : null}
 
       <AnimatePresence>
-        {expandedVisible ? (
-          <div className="island-expanded-layer" inert={stagingLens || undefined}>
+        {expandedMounted ? (
+          <div className="island-expanded-layer" data-input-pending={!expandedVisible || undefined} inert={!expandedVisible || undefined}>
             <motion.div
               ref={hoverZoneRef}
               className="island-hover-zone"
               key="island-expanded"
               onPointerEnter={handleExpandedHoverEnter}
               onPointerLeave={handleExpandedHoverLeave}
-              data-lens-staging={stagingLens || undefined}
-              initial={stagingLens ? { opacity: 0, y: reducedMotion ? 0 : -18 } : reducedMotion ? false : { opacity: 0, y: -18 }}
-              animate={stagingLens ? { opacity: 0, y: reducedMotion ? 0 : -18 } : { opacity: 1, y: 0 }}
+              initial={reducedMotion ? false : { opacity: 0, y: -18 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               onAnimationComplete={publishWidgetRegions}
               transition={{
@@ -1149,8 +1144,8 @@ function isTauriRuntime(): boolean {
   return '__TAURI_INTERNALS__' in window
 }
 
-function nextPaint(): Promise<void> {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-  })
+/** Installed for a local measurement run, absent during ordinary use. */
+function traceHover(phase: 'contact' | 'accepted') {
+  const target = window as Window & { __musicIslandHoverTrace?: (phase: string, timeMs: number) => void }
+  target.__musicIslandHoverTrace?.(phase, performance.now())
 }
