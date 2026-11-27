@@ -1,0 +1,48 @@
+name: Prepare GigaAM model assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/gigaam-model-assets]
+    paths: ['scripts/gigaam/**', '.github/workflows/gigaam-models.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - model: v4_rnnt
+            id: gigaam-v4-rnnt
+          - model: multilingual_v2_rnnt
+            id: gigaam-multilingual-v2-rnnt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned CPU exporter
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0 torchaudio==2.8.0
+          python -m pip install -r scripts/gigaam/requirements.txt
+      - name: Build ONNX package and its download lock
+        run: |
+          python scripts/gigaam/prepare.py "${{ matrix.model }}" --out packs --cache checkpoints --release-base https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11
+      - name: Record public speech probe
+        run: |
+          curl -fsSL --retry 3 -o example.wav https://cdn.chatwm.opensmodel.sberdevices.ru/GigaAM/example.wav
+          python scripts/gigaam/reference.py --pack "packs/${{ matrix.id }}" --cache checkpoints --wav example.wav --output "packs/${{ matrix.id }}.reference.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.id }}
+          retention-days: 3
+          compression-level: 1
+          path: |
+            packs/${{ matrix.id }}/
+            packs/${{ matrix.id }}.lock.json
+            packs/${{ matrix.id }}.reference.json

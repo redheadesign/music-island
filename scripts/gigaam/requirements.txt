@@ -1,0 +1,5 @@
+gigaam @ https://github.com/salute-developers/GigaAM/archive/e9bbf2e773eedd217c6f0d3b89b9728c41332b7d.zip
+torch==2.8.0
+torchaudio==2.8.0
+onnx==1.19.1
+onnxruntime==1.23.2
