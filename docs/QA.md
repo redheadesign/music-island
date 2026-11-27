@@ -5,6 +5,21 @@
 - Windows 11: primary target.
 - Windows 10: best effort with WebView2 and SMTC support.
 
+## Windows top-edge and GigaAM acceptance, 27 November 2026
+
+The [Windows runner](https://github.com/redheadesign/music-island/actions/runs/46019417249) tested commit `185f8b3` against release 3.2.2 on the same 1024×768 display at 96 DPI and 64 Hz. The test moved the system pointer and clicked Settings on the first targetable frame. Each executable completed 200 trials with its configured hover delay.
+
+| Measured interval | 3.2.2 | Candidate |
+| --- | ---: | ---: |
+| Opening DOM commit to first targetable frame, p99 | 152 ms | 20 ms |
+| Physical edge contact to first targetable frame, including dwell, p99 | 575.6 ms | 452.1 ms |
+
+The candidate received all 200 first clicks. From the accepted gesture to the first targetable frame, p99 was 23.8 ms and the maximum was 28.9 ms, inside the 31.25 ms two-frame budget. Trials overlapping a download, checksum and cold model load took 25.0, 14.9 and 14.7 ms respectively. After five minutes collapsed, the first opening took 23.4 ms. The process tree used 0.042% of machine CPU over that idle interval. [Measured trials](https://github.com/redheadesign/music-island/actions/runs/46019417249/artifacts/15212154446)
+
+The hosted display did not offer 150% scaling and the runner had no paired private audio endpoints. A 150% display and hover during live microphone capture remain hardware checks. [Display report](https://github.com/redheadesign/music-island/actions/runs/46019417249/artifacts/15211863954) · [Audio fixture report](https://github.com/redheadesign/music-island/actions/runs/46019417249/artifacts/15211739860)
+
+The same portable installed the two published GigaAM packs through Settings, verified 13 and 19 files respectively, loaded each model on CPU and removed it. Full-context and 320 ms streaming recognition passed on the reference recording and on samples of Russian, English, Kazakh and German. EXE SHA-256 was `b8d6dc77416cbdcf20295af804c8b99cfe27b9651e2d48cd5af34109f6b1a0c1`. [Public installation report](https://github.com/redheadesign/music-island/actions/runs/46019417249/artifacts/15210543241) · [Published model files](https://github.com/redheadesign/music-island/releases/tag/gigaam-2026-11)
+
 ## Windows glass surfaces
 
 - In Appearance → Advanced settings → Island body, switch from System glass to GPU lens with Glass selected. Open the island over a high-contrast image. At zero bend and dispersion the image aligns at both edges. Raise each slider separately and check the displacement and color separation follow the island's shape. Check the first-frame transition, including reduced motion and repeated openings.
