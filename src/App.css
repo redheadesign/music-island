@@ -169,6 +169,13 @@
   visibility: hidden;
 }
 
+.island-expanded-layer[data-preparing] *,
+.island-expanded-layer[data-preparing] *::before,
+.island-expanded-layer[data-preparing] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
 .island-hover-zone {
   position: relative;
   top: 0;

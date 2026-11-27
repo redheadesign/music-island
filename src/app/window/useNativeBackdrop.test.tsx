@@ -256,3 +256,20 @@ it('requests capture during edge contact with no visible card and releases it wh
   expect(stopped?.prepareFrost).toBeUndefined()
   expect(stopped?.regions).toEqual([])
 })
+
+it('starts measuring the same card only after its hidden preparation ends', async () => {
+  function Preparing({ waiting }: { waiting: boolean }) {
+    const ref = useRef<HTMLDivElement>(null)
+    useNativeBackdrop(ref, true, '[data-blur]', .18, '', previewOptics, .56)
+    return <div ref={ref}><section data-preparing={waiting || undefined}><div className="island-card" data-blur /></section></div>
+  }
+
+  await act(async () => root.render(<Preparing waiting />))
+  await act(async () => vi.advanceTimersByTimeAsync(30))
+  expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0]).toMatchObject({ prepareFrost: .56, regions: [] })
+  const card = container.querySelector('[data-blur]')
+  await act(async () => root.render(<Preparing waiting={false} />))
+  await act(async () => vi.advanceTimersByTimeAsync(50))
+  expect(container.querySelector('[data-blur]')).toBe(card)
+  expect(vi.mocked(setOverlayBackdrop).mock.lastCall?.[0].regions).toHaveLength(1)
+})

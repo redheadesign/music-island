@@ -36,6 +36,7 @@ function IslandPreview({
   artwork = 'warm',
   reducedMotion = false,
   startCollapsed = false,
+  hoverDelayMs,
   playbackWaveEnabled = true,
   advancedGlass,
   factoryAppearance = false,
@@ -60,6 +61,7 @@ function IslandPreview({
   artwork?: 'warm' | 'cool' | 'mixed' | 'missing'
   reducedMotion?: boolean
   startCollapsed?: boolean
+  hoverDelayMs?: number
   playbackWaveEnabled?: boolean
   advancedGlass?: AdvancedGlassOverrides
   factoryAppearance?: boolean
@@ -91,6 +93,7 @@ function IslandPreview({
     config: {
       ...config,
       appearance: { ...config.appearance, reducedMotion },
+      behavior: { ...config.behavior, hoverDelayMs: hoverDelayMs ?? config.behavior.hoverDelayMs },
       layout: { ...config.layout, width, scale },
       media: { ...config.media, protocol: unavailable ? 'smtc' : 'yandex-direct', directYandexConsent: !unavailable },
       plugins: {
@@ -391,6 +394,8 @@ export const GlassControlLenses: StoryObj<typeof meta> = {
     const like = canvas.getByRole('button', { name: 'Like' })
     const dislike = canvas.getByRole('button', { name: 'Dislike' })
     const settings = canvas.getByRole('button', { name: 'Open settings' })
+    await expect(canvasElement.querySelectorAll('.island-expanded-layer')).toHaveLength(1)
+    await expect(settings.closest('[data-preparing], [data-input-pending], [inert]')).toBeNull()
     const seek = canvas.getByRole('slider', { name: /Позиция трека|Seek track/ })
     const documentView = canvasElement.ownerDocument.defaultView!
     const forcedColors = documentView.matchMedia('(forced-colors: active)').matches
@@ -641,6 +646,83 @@ export const GlassEdgeGesture: StoryObj<typeof meta> = {
 }
 export const GlassEdgeReducedMotion: StoryObj<typeof meta> = {
   ...GlassEdgeGesture, name: 'Стекло · верхняя кромка без движения', args: { startCollapsed: true, reducedMotion: true },
+}
+
+const dwellDelayMs = 1200
+
+function contactTopEdge(canvasElement: HTMLElement) {
+  const trigger = canvasElement.querySelector<HTMLElement>('.edge-trigger')!
+  const rect = trigger.getBoundingClientRect()
+  const approach = { clientX: rect.left + rect.width / 2, clientY: rect.top + 9, pointerType: 'mouse' }
+  fireEvent.pointerOver(trigger, approach)
+  fireEvent.pointerMove(trigger, approach)
+  expect(canvasElement.querySelector('.island-expanded-layer')).toBeNull()
+  const contact = { ...approach, clientY: rect.top + 1 }
+  fireEvent.pointerMove(trigger, contact)
+  return { trigger, contact }
+}
+
+function preparedLayer(canvasElement: HTMLElement) {
+  return waitFor(() => {
+    const layers = canvasElement.querySelectorAll<HTMLElement>('.island-expanded-layer')
+    expect(layers).toHaveLength(1)
+    expect(layers[0]).toHaveAttribute('data-preparing')
+    expect(layers[0]).toHaveAttribute('data-input-pending')
+    expect(layers[0]).toHaveAttribute('inert')
+    expect(layers[0]).not.toBeVisible()
+    return layers[0]
+  })
+}
+
+export const EdgeDwellCancelled: StoryObj<typeof meta> = {
+  ...GlassEdge,
+  name: 'Уход с кромки отменяет подготовку',
+  args: { startCollapsed: true, hoverDelayMs: dwellDelayMs },
+  play: async ({ canvasElement }) => {
+    const { trigger, contact } = contactTopEdge(canvasElement)
+    const layer = await preparedLayer(canvasElement)
+    const settings = layer.querySelector<HTMLButtonElement>('button[aria-label="Open settings"]')!
+    await expect(settings).toBeInTheDocument()
+    await expect(trigger.closest('[inert]')).toBeNull()
+    await expect(document.elementFromPoint(contact.clientX, contact.clientY)).toBe(trigger)
+    settings.focus()
+    await expect(document.activeElement).not.toBe(settings)
+    const buttonBounds = settings.getBoundingClientRect()
+    await expect(layer.contains(document.elementFromPoint(buttonBounds.left + buttonBounds.width / 2, buttonBounds.top + buttonBounds.height / 2))).toBe(false)
+
+    fireEvent.pointerOut(trigger, { ...contact, clientY: trigger.getBoundingClientRect().bottom + 20, relatedTarget: canvasElement })
+    await waitFor(() => expect(layer).not.toBeInTheDocument())
+    // A queued dwell deadline must not reopen the abandoned gesture.
+    await new Promise(resolve => setTimeout(resolve, dwellDelayMs + 50))
+    await expect(canvasElement.querySelector('.island-expanded-layer')).toBeNull()
+    await expect(trigger.closest('.island-root')).toHaveClass('island-root--collapsed')
+    await expect(document.elementFromPoint(contact.clientX, contact.clientY)).toBe(trigger)
+  },
+}
+
+export const EdgeDwellFirstClick: StoryObj<typeof meta> = {
+  ...GlassEdge,
+  name: 'Первый клик по подготовленным настройкам',
+  args: { startCollapsed: true, hoverDelayMs: dwellDelayMs },
+  play: async ({ canvasElement }) => {
+    contactTopEdge(canvasElement)
+    const layer = await preparedLayer(canvasElement)
+    const stagedSettings = layer.querySelector<HTMLButtonElement>('button[aria-label="Open settings"]')!
+    await expect(stagedSettings).toBeInTheDocument()
+    await waitFor(() => expect(canvasElement.querySelector('.island-root')).toHaveClass('island-root--open'), { timeout: 5000 })
+    const settings = within(canvasElement).getByRole('button', { name: 'Open settings' })
+    await expect(canvasElement.querySelectorAll('.island-expanded-layer')).toHaveLength(1)
+    await expect(settings.closest('.island-expanded-layer')).toBe(layer)
+    await expect(settings).toBe(stagedSettings)
+    await expect(settings.closest('[inert], [data-input-pending], [data-preparing]')).toBeNull()
+    await waitFor(() => {
+      const bounds = settings.getBoundingClientRect()
+      expect(settings.contains(document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2))).toBe(true)
+    })
+    openSettings.mockClear()
+    await userEvent.click(settings)
+    await expect(openSettings).toHaveBeenCalledOnce()
+  },
 }
 export const GlassReducedMotion: StoryObj<typeof meta> = {
   ...Glass, name: 'Стекло · фон без движения', args: { reducedMotion: true },

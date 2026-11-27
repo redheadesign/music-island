@@ -163,6 +163,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const expandedVisible = windowPhase === 'open'
   const expandedMounted = expandedVisible || windowPhase === 'opening'
   const [edgeContact, setEdgeContact] = useState(false)
+  const [firstOpenPending, setFirstOpenPending] = useState(true)
+  const preparing = firstOpenPending && windowPhase === 'collapsed' && edgeContact
   const hasSession = media?.hasSession === true
   const reducedTransparency = useSystemReducedTransparency()
   const hasPlaybackWave = hasSession && getPlaybackWaveEnabled(config)
@@ -371,6 +373,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
           return
         }
         traceHover('inputReady')
+        setFirstOpenPending(false)
         if (mode !== 'settings') {
           setMode('expanded')
         }
@@ -1001,8 +1004,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       ) : null}
 
       <AnimatePresence>
-        {expandedMounted ? (
-          <div className="island-expanded-layer" data-input-pending={!expandedVisible || undefined} inert={!expandedVisible || undefined}>
+        {expandedMounted || preparing ? (
+          <div className="island-expanded-layer" data-preparing={preparing || undefined} data-input-pending={!expandedVisible || undefined} inert={!expandedVisible || undefined}>
             <motion.div
               ref={hoverZoneRef}
               className="island-hover-zone"
@@ -1010,11 +1013,11 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
               onPointerEnter={handleExpandedHoverEnter}
               onPointerLeave={handleExpandedHoverLeave}
               initial={reducedMotion ? false : { opacity: 0.12, y: -18 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              onAnimationComplete={publishWidgetRegions}
+              animate={preparing && !reducedMotion ? { opacity: 0.12, y: -18 } : { opacity: 1, y: 0 }}
+              exit={preparing ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -10 }}
+              onAnimationComplete={preparing ? undefined : publishWidgetRegions}
               transition={{
-                duration: reducedMotion ? 0 : 0.26,
+                duration: preparing || reducedMotion ? 0 : 0.26,
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
@@ -1022,16 +1025,16 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
             <IslandFeedback
               className="island-card island-surface"
               data-island-controls="nested"
-              glassOptic={usesGlassMaterial(config)}
+              glassOptic={!preparing && usesGlassMaterial(config)}
               opticActive={!reducedTransparency && !isTauriRuntime()}
-              particles={usesGlassMaterial(config)}
+              particles={!preparing && usesGlassMaterial(config)}
               ambientRef={ambientRef}
               shaderTuning={uiPrefs.islandShader}
-              playbackWave={hasPlaybackWave}
+              playbackWave={!preparing && hasPlaybackWave}
               playbackMotion={playbackMotion}
             >
               <MusicModule
-                systemVolume={<IslandSystemVolume locale={locale} />}
+                systemVolume={<IslandSystemVolume locale={locale} enabled={!preparing} />}
                 layout={islandLayout}
                 media={media}
                 progressMs={progressMs}
@@ -1044,7 +1047,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
                 showSource={config.layout.showSource}
                 showPreviousNext={config.layout.showPreviousNext}
                 locale={config.appearance.locale}
-                reducedMotion={config.appearance.reducedMotion}
+                reducedMotion={preparing || config.appearance.reducedMotion}
                 onCommand={(command) => void sendCommand(command)}
                 showDirectReload={showDirectReload}
                 directReloadBusy={directReloadBusy}
@@ -1128,7 +1131,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
 
                   }
                 }}
-              /> : <DictationMicrophone key={action} enabled={config.plugins.enabled.includes('dictation')} locale={locale} />)}
+              /> : <DictationMicrophone key={action} enabled={!preparing && config.plugins.enabled.includes('dictation')} locale={locale} />)}
             </header>
             </motion.div>
           </div>

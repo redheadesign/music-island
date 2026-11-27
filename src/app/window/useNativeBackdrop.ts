@@ -155,7 +155,7 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
     }
     const observeSurfaces = () => {
       const found = measuring() ? [...(node.matches(selector) ? [node] : []), ...node.querySelectorAll<HTMLElement>(selector)]
-        .filter(surface => !surface.parentElement?.closest(selector)) : []
+        .filter(surface => !surface.closest('[data-preparing]') && !surface.parentElement?.closest(selector)) : []
       const path = new Set<Element>()
       for (const surface of found) {
         for (let parent: Element | null = surface; parent && !path.has(parent); parent = parent.parentElement) {
@@ -198,7 +198,7 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
           membership ||= parts.some(includesSurface)
           geometry ||= ancestors.has(record.target) && !surfaces.includes(record.target as HTMLElement) && parts.some(part => part instanceof Element)
         } else {
-          membership ||= record.target.matches(selector) || surfaces.includes(record.target as HTMLElement)
+          membership ||= record.attributeName === 'data-preparing' || record.target.matches(selector) || surfaces.includes(record.target as HTMLElement)
         }
       }
       if (membership) observeSurfaces()
@@ -218,7 +218,7 @@ export function useNativeBackdrop(root: RefObject<HTMLElement | null>, enabled: 
     const syncAvailability = () => {
       mutations.disconnect()
       observeSurfaces()
-      if (measuring()) mutations.observe(node, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'data-native-backdrop-surface'] })
+      if (measuring()) mutations.observe(node, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'data-native-backdrop-surface', 'data-preparing'] })
       refresh()
     }
     changeFrost.current = crossedZero => crossedZero ? syncAvailability() : refresh()

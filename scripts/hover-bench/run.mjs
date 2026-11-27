@@ -13,6 +13,7 @@ import { idleCpuMetrics, observeWorkload, overlaps, startModelWorkload } from '.
 
 const [exeArg, expectedDigest, outputArg, countArg = '200', hzArg = 'auto', idleArg = '300', scenario = 'idle'] = process.argv.slice(2)
 const publicModels = countArg === 'public-models'
+const coldStartTimeoutMs = 90000
 if (!outputArg) throw Error('Usage: node run.mjs EXE SHA256 NEW_REPORT_DIRECTORY [public-models | cycles Hz idle-seconds scenario]')
 assert.equal(process.platform, 'win32')
 assert.equal(process.env.MUSIC_ISLAND_DISPOSABLE_DESKTOP, '1', 'Use a dedicated Windows test desktop and fresh account.')
@@ -44,7 +45,7 @@ const app = spawn(exe, ['--startup'], {
     WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=0 --remote-debugging-address=127.0.0.1',
   },
 })
-let browser, pointer, renderer, recordingSettings, appError
+let browser, pointer, renderer, recordingSettings, appError, startupDiagnostic
 app.on('error', error => { appError = error })
 async function until(check, timeout = 6000, interval = 30) {
   const untilMs = Date.now() + timeout
@@ -63,6 +64,21 @@ function sampleCpu() {
   const script = fileURLToPath(new URL('./cpu.ps1', import.meta.url))
   return JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-File', script, '-RootProcess', String(app.pid)],
     { encoding: 'utf8', windowsHide: true }))
+}
+async function diagnoseColdStart() {
+  const profile = path.join(output, 'roaming', 'Music Island')
+  const log = await readFile(path.join(profile, 'logs', 'app.log'), 'utf8').catch(() => '')
+  // Keep only the application's startup milestones. Paths and free-form error details stay private.
+  const milestone = /^\d{4}-[\dT.:+Z-]+ (app bootstrap started|second instance blocked|setup started|(?:overlay window|settings window|already-running window|intro window|tray) setup (?:ok|failed)|media watcher started|app run (?:requested|failed)|panic captured)\b/
+  const bootstrapTail = log.split(/\r?\n/).map(line => line.match(milestone)?.[0]).filter(Boolean).slice(-10)
+  let ownedWebViewProcesses = null
+  try { ownedWebViewProcesses = sampleCpu().webviews } catch { /* Keep the startup failure if process sampling is unavailable. */ }
+  return {
+    timeoutMs: coldStartTimeoutMs, tempDirectoryPresent: existsSync(path.join(output, 'temp')),
+    appProfilePresent: existsSync(profile),
+    webViewProfilePresent: ['EBWebView', 'Local State', 'Default'].some(name => existsSync(path.join(webview, name))),
+    ownedWebViewProcesses, bootstrapTail,
+  }
 }
 const percentile = (values, p) => values.length
   ? [...values].sort((a, b) => a - b)[Math.ceil(values.length * p) - 1] : null
@@ -102,7 +118,8 @@ try {
       if (/^\d+$/.test(port) && /^\/devtools\/browser\/[\da-f-]+$/i.test(url))
         return 'ws://127.0.0.1:' + port + url
     }
-  }, 30000, 150)
+  }, coldStartTimeoutMs, 150)
+  if (!endpoint) startupDiagnostic = await diagnoseColdStart()
   assert.ok(endpoint, 'The newly launched WebView did not publish its private debugging endpoint')
   browser = await chromium.connectOverCDP(endpoint)
   const ownWindow = (label, needsOverlay = false) => until(async () => {
@@ -118,7 +135,7 @@ try {
   else await measureHover(ownWindow)
 } catch (error) {
   const partial = publicModels ? { exeSha256: digest, models: publicResults } : report()
-  await writeFile(path.join(output, 'report.json'), JSON.stringify({ ...partial, error: String(error) }, null, 2))
+  await writeFile(path.join(output, 'report.json'), JSON.stringify({ ...partial, startupDiagnostic, error: String(error) }, null, 2))
   throw error
 } finally {
   if (recordingSettings) await recordingSettings.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:dictation|cancel_operation')).catch(() => {})
