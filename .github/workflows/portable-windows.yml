@@ -7,8 +7,18 @@ on:
         description: Model asset workflow run ID for CPU inference verification
         required: false
         type: string
+      gigaam_model_draft:
+        description: Stage and verify the 26 model assets in a draft after Windows inference passes
+        required: false
+        type: boolean
+        default: false
       hover_benchmark:
         description: Compare 200 native hovers each, including model workloads, against 3.2.2
+        required: false
+        type: boolean
+        default: false
+      gigaam_public_smoke:
+        description: Install and cold-load both GigaAM models through the candidate's public catalog
         required: false
         type: boolean
         default: false
@@ -26,6 +36,10 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: '0'
       RUSTUP_TOOLCHAIN: 1.96.1-x86_64-pc-windows-msvc
     steps:
+      - name: Check the model draft input
+        if: ${{ inputs.gigaam_model_draft && inputs.gigaam_models_run == '' }}
+        shell: pwsh
+        run: throw 'gigaam_model_draft requires the successful model export run ID in gigaam_models_run'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -257,6 +271,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the matching independent Windows reference runtime
+        run: python -m pip install onnxruntime==1.24.2 numpy==2.5.5 sentencepiece==0.2.3
       - name: Download the candidate and model pack
         shell: pwsh
         env:
@@ -275,6 +294,8 @@ jobs:
           exit $LASTEXITCODE
       - name: Verify batch and streaming against golden transcripts
         shell: pwsh
+        env:
+          PYTHONUTF8: '1'
         run: |
           $exe = @(Get-ChildItem "$env:RUNNER_TEMP/exe" -Recurse -Filter music-island.exe -File)
           if ($exe.Count -ne 1) { throw 'Expected one portable EXE' }
@@ -284,16 +305,51 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ${{ matrix.id }}-windows-check
-          path: ${{ runner.temp }}/qa/*/Music Island/dictation/runtime-check.json
+          path: |
+            ${{ runner.temp }}/qa/*/Music Island/dictation/runtime-check.json
+            ${{ runner.temp }}/qa/*-references/*.json
           retention-days: 7
           if-no-files-found: warn
 
+  gigaam-draft:
+    name: Stage verified GigaAM model draft
+    if: ${{ inputs.gigaam_model_draft && inputs.gigaam_models_run != '' }}
+    needs: [verify, gigaam]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      actions: read
+    concurrency:
+      group: gigaam-2026-11-model-draft
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify model provenance and stage the tested catalog
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODELS_RUN: ${{ inputs.gigaam_models_run }}
+        run: |
+          [[ "$MODELS_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$MODELS_RUN" | jq -e \
+            '.path == ".github/workflows/gigaam-models.yml" and .status == "completed" and .conclusion == "success"'
+          for model in gigaam-v4-rnnt gigaam-multilingual-v2-rnnt; do
+            gh run download "$MODELS_RUN" --name "$model" --dir "$RUNNER_TEMP/packs/$model"
+          done
+          python3 scripts/gigaam/catalog.py "$RUNNER_TEMP/packs" --stage "$RUNNER_TEMP/outgoing" --draft
+
   hover:
-    name: Measure top-edge input on a disposable Windows runner
-    if: ${{ inputs.hover_benchmark }}
-    needs: portable
+    name: Exercise the portable application on a disposable Windows runner
+    if: >-
+      ${{ !cancelled() && (inputs.hover_benchmark || inputs.gigaam_public_smoke)
+          && needs.portable.result == 'success'
+          && (!inputs.gigaam_model_draft || needs['gigaam-draft'].result == 'success') }}
+    needs: [portable, gigaam-draft]
     runs-on: windows-2022
-    timeout-minutes: 55
+    timeout-minutes: 115
     permissions:
       contents: read
       actions: read
@@ -305,34 +361,130 @@ jobs:
         with:
           node-version: '24.15.0'
           package-manager-cache: false
-      - name: Download the exact portable artifact and approved 3.2.2 baseline
+      - name: Download the exact portable artifact
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download $env:GITHUB_RUN_ID --name "music-island-windows-x64-$env:GITHUB_RUN_NUMBER" --dir "$env:RUNNER_TEMP/hover-exe"
+      - name: Download the approved 3.2.2 hover baseline
+        if: ${{ inputs.hover_benchmark }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run download $env:GITHUB_RUN_ID --name "music-island-windows-x64-$env:GITHUB_RUN_NUMBER" --dir "$env:RUNNER_TEMP/hover-exe"
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           gh release download v3.2.2 --pattern music-island.exe --pattern SHA256.txt --dir "$env:RUNNER_TEMP/hover-baseline"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $baselineHash = (Get-FileHash "$env:RUNNER_TEMP/hover-baseline/music-island.exe").Hash
           if ($baselineHash -ne 'a8742a6c2ee3864e7833891d82f470879822c969a574eab16820ccd836ef41e3') { throw 'Approved 3.2.2 binary changed' }
-      - name: Measure native hover and first-click delivery
+      - name: Prepare the candidate and test tools
         shell: pwsh
-        env:
-          MUSIC_ISLAND_DISPOSABLE_DESKTOP: '1'
         run: |
           npm ci
           if ($LASTEXITCODE) { throw 'npm ci failed' }
           $exe = Get-ChildItem -LiteralPath "$env:RUNNER_TEMP/hover-exe" -Recurse -Filter 'music-island.exe' -File -ErrorAction Stop
           if (@($exe).Count -ne 1) { throw 'Expected one portable EXE' }
+          Add-Content $env:GITHUB_ENV "MUSIC_ISLAND_TEST_EXE=$($exe.FullName)"
+      - name: Wait for the verified model draft to be published
+        if: ${{ inputs.gigaam_model_draft && inputs.gigaam_public_smoke }}
+        timeout-minutes: 16
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $deadline = [DateTime]::UtcNow.AddMinutes(15)
+          do {
+            $metadata = gh release view gigaam-2026-11 --json isDraft,isPrerelease,targetCommitish
+            if ($LASTEXITCODE -eq 0) {
+              $release = $metadata | ConvertFrom-Json
+              if (!$release.isPrerelease -or $release.targetCommitish -ne $env:GITHUB_SHA) {
+                throw 'The model release does not match the verified draft'
+              }
+              if (!$release.isDraft) { exit 0 }
+            }
+            Start-Sleep -Seconds 15
+          } until ([DateTime]::UtcNow -ge $deadline)
+          throw 'The verified GigaAM model draft was still private after 15 minutes'
+      - name: Install, verify, load and remove the two public GigaAM packs
+        if: ${{ inputs.gigaam_public_smoke }}
+        shell: pwsh
+        env:
+          MUSIC_ISLAND_DISPOSABLE_DESKTOP: '1'
+        run: |
+          $file = Get-Item -LiteralPath $env:MUSIC_ISLAND_TEST_EXE
+          $sha = ((Get-Content -LiteralPath (Join-Path $file.DirectoryName 'SHA256.txt') -Raw).Trim() -split '\s+')[0]
+          node scripts/hover-bench/run.mjs $file.FullName $sha "$env:RUNNER_TEMP/gigaam-public" public-models
+          exit $LASTEXITCODE
+      - name: Upload public model results
+        if: ${{ always() && inputs.gigaam_public_smoke }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: gigaam-public-${{ github.run_number }}
+          path: ${{ runner.temp }}/gigaam-public/report.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Measure native hover and first-click delivery
+        if: ${{ !cancelled() && inputs.hover_benchmark && env.MUSIC_ISLAND_TEST_EXE != '' }}
+        shell: pwsh
+        env:
+          MUSIC_ISLAND_DISPOSABLE_DESKTOP: '1'
+        run: |
           $env:MUSIC_ISLAND_HOVER_PYTHON = (Get-Command python.exe).Source
-          ./scripts/hover-bench/compare.ps1 -BaselineExe "$env:RUNNER_TEMP/hover-baseline/music-island.exe" -CandidateExe $exe.FullName -Output "$env:RUNNER_TEMP/hover-result"
+          ./scripts/hover-bench/compare.ps1 -BaselineExe "$env:RUNNER_TEMP/hover-baseline/music-island.exe" -CandidateExe $env:MUSIC_ISLAND_TEST_EXE -Output "$env:RUNNER_TEMP/hover-result"
           exit $LASTEXITCODE
       - name: Upload measured hover trials
-        if: always()
+        if: ${{ always() && inputs.hover_benchmark }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: hover-results-${{ github.run_number }}
           path: ${{ runner.temp }}/hover-result/*/report.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Exercise real 150 percent scale when the desktop supports it
+        if: ${{ !cancelled() && inputs.hover_benchmark && env.MUSIC_ISLAND_TEST_EXE != '' }}
+        shell: pwsh
+        env:
+          MUSIC_ISLAND_DISPOSABLE_DESKTOP: '1'
+          MUSIC_ISLAND_RUNNER_TYPE: ${{ runner.environment }}
+        run: |
+          $scale = "$env:RUNNER_TEMP/hover-scale.json"
+          ./scripts/hover-bench/set-test-display-scale.ps1 -ResultPath $scale
+          $result = Get-Content -LiteralPath $scale -Raw | ConvertFrom-Json
+          if (!$result.selected) {
+            Write-Warning "150% coverage unavailable on this display: $($result.reason)"
+            exit 0
+          }
+          $env:MUSIC_ISLAND_HOVER_PYTHON = (Get-Command python.exe).Source
+          ./scripts/hover-bench/compare.ps1 -BaselineExe "$env:RUNNER_TEMP/hover-baseline/music-island.exe" -CandidateExe $env:MUSIC_ISLAND_TEST_EXE -Output "$env:RUNNER_TEMP/hover-150" -Dpi 144
+          exit $LASTEXITCODE
+      - name: Upload the measured scale change and 150 percent trials
+        if: ${{ always() && inputs.hover_benchmark }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: hover-150-results-${{ github.run_number }}
+          path: |
+            ${{ runner.temp }}/hover-scale.json
+            ${{ runner.temp }}/hover-150/*/report.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Measure real streaming when a private test cable is present
+        if: ${{ !cancelled() && inputs.hover_benchmark && env.MUSIC_ISLAND_TEST_EXE != '' }}
+        shell: pwsh
+        env:
+          MUSIC_ISLAND_DISPOSABLE_DESKTOP: '1'
+        run: |
+          $env:MUSIC_ISLAND_HOVER_PYTHON = (Get-Command python.exe).Source
+          ./scripts/hover-bench/streaming.ps1 -BaselineExe "$env:RUNNER_TEMP/hover-baseline/music-island.exe" -CandidateExe $env:MUSIC_ISLAND_TEST_EXE -Output "$env:RUNNER_TEMP/hover-streaming" -RecordUnavailable
+          $resultCode = $LASTEXITCODE
+          $availability = Get-Content -LiteralPath "$env:RUNNER_TEMP/hover-streaming/availability.json" -Raw | ConvertFrom-Json
+          Add-Content $env:GITHUB_STEP_SUMMARY "Native streaming QA fixture: $($availability.status) $($availability.reason)"
+          if ($availability.status -eq 'available') { exit $resultCode }
+      - name: Upload native streaming evidence
+        if: ${{ always() && inputs.hover_benchmark }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: hover-streaming-results-${{ github.run_number }}
+          path: |
+            ${{ runner.temp }}/hover-streaming/availability.json
+            ${{ runner.temp }}/hover-streaming/trials/*/report.json
           if-no-files-found: warn
           retention-days: 7

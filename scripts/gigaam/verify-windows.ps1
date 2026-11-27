@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory)][string]$PackageArtifact,
     [Parameter(Mandatory)][string]$WorkingDirectory,
     [Parameter(Mandatory)][string]$Wav,
-    [string]$FixtureDirectory
+    [string]$FixtureDirectory,
+    [string]$ReferencePython = 'python.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -39,6 +40,13 @@ if ($FixtureDirectory) {
 foreach ($probe in $inputs) {
   $reference = Get-Content -LiteralPath $probe.reference -Raw | ConvertFrom-Json
   $inputWave = (Resolve-Path -LiteralPath $probe.wav).Path
+  $referenceDir = New-Item -ItemType Directory -Path (Join-Path $WorkingDirectory "$($probe.name)-references")
+  $windowsReference = Join-Path $referenceDir.FullName 'windows.json'
+  & $ReferencePython (Join-Path $PSScriptRoot 'reference.py') --offline-only --pack $modelDirectory --wav $inputWave --language $reference.language --cache $WorkingDirectory --output $windowsReference
+  if ($LASTEXITCODE) { throw 'Independent Windows ONNX reference failed' }
+  $target = Get-Content -LiteralPath $windowsReference -Raw | ConvertFrom-Json
+  if ($target.onnx_runtime -ne '1.24.2' -or !$target.onnx_offline) { throw 'Expected Windows ONNX Runtime 1.24.2' }
+  Copy-Item -LiteralPath $probe.reference -Destination (Join-Path $referenceDir.FullName 'linux.json')
   foreach ($strategy in @('raw', 'stream')) {
     $profile = New-Item -ItemType Directory -Path (Join-Path $WorkingDirectory "$($probe.name)-$strategy")
     $start = [Diagnostics.ProcessStartInfo]::new($exeFile.FullName)
@@ -53,7 +61,7 @@ foreach ($probe in $inputs) {
     $report = Join-Path $profile.FullName 'Music Island/dictation/runtime-check.json'
     $result = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
     if ($p.ExitCode -ne 0 -or $result.error) { throw "Probe failed during $strategy. $($result.error)" }
-    $expected = if ($strategy -eq 'stream') { $reference.torch_stream_320ms } else { $reference.onnx_offline }
+    $expected = if ($strategy -eq 'stream') { $reference.torch_stream_320ms } else { $target.onnx_offline }
     if (!$expected -or $result.text -cne $expected) { throw "Unexpected $strategy text: $($result.text)" }
     Write-Output "$($pack.name) $strategy matched its reference."
   }

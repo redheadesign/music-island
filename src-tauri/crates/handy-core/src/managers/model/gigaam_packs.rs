@@ -250,10 +250,15 @@ impl ModelManager {
                 return Ok(());
             }
             finished += file.size;
-            let _ = self.app_handle.emit("model-download-progress", DownloadProgress {
-                model_id: id.into(), downloaded: finished, total,
-                percentage: 100.0 * finished as f64 / total as f64,
-            });
+            let _ = self.app_handle.emit(
+                "model-download-progress",
+                DownloadProgress {
+                    model_id: id.into(),
+                    downloaded: finished,
+                    total,
+                    percentage: 100.0 * finished as f64 / total as f64,
+                },
+            );
         }
         if token.is_cancelled() {
             return Ok(());
@@ -270,6 +275,32 @@ impl ModelManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn catalog_pins_both_packs_and_their_explicit_languages() {
+        let bilingual = find("gigaam-v4-rnnt").unwrap();
+        assert_eq!(bilingual.languages, ["ru", "en"]);
+        assert!(!bilingual.model_info().supports_language_selection);
+        let multilingual = find("gigaam-multilingual-v2-rnnt").unwrap();
+        assert_eq!(multilingual.languages.len(), 21);
+        assert!(multilingual.model_info().supports_language_selection);
+        for pack in [bilingual, multilingual] {
+            let mut names = std::collections::HashSet::new();
+            assert!(pack.model_info().supports_streaming);
+            for file in &pack.files {
+                assert_eq!(
+                    Path::new(&file.name).file_name().unwrap(),
+                    file.name.as_str()
+                );
+                assert!(names.insert(file.name.as_str()));
+                assert!(file.size > 0);
+                assert!(file.url.starts_with("https://"));
+                assert_eq!(file.sha256.len(), 64);
+                assert!(file.sha256.bytes().all(|b| b.is_ascii_hexdigit()));
+            }
+            assert!(names.contains("island-gigaam.json") && names.contains("streaming.json"));
+        }
+    }
 
     fn fixture() -> Pack {
         Pack {

@@ -1982,20 +1982,6 @@
     ]
   },
   {
-    "name": "env_filter",
-    "version": "0.1.4",
-    "license": "MIT OR Apache-2.0",
-    "authors": [],
-    "repository": "https://github.com/rust-cli/env_logger",
-    "commit": "1514675ecd6cb0f0d14a71eb1caa8919fe16c964",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE-APACHE",
-      "LICENSE-MIT"
-    ]
-  },
-  {
     "name": "env_logger",
     "version": "0.10.2",
     "license": "MIT OR Apache-2.0",
@@ -2790,7 +2776,7 @@
     "authors": [],
     "repository": "https://github.com/huggingface/hf-hub",
     "commit": null,
-    "crateSource": "git+https://github.com/cjpais/hf-hub?branch=cancellable-downloads#9918f11ab3473135eb7865aa4a5d79d597e6e810",
+    "crateSource": "git+https://github.com/cjpais/hf-hub?branch=cancellable-downloads#fc273554a88ce5f5372c84386a9adf535ba71a1c",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
       "LICENSE"
@@ -3700,36 +3686,6 @@
     "licenseFiles": [
       "LICENSE-APACHE",
       "LICENSE-MIT"
-    ]
-  },
-  {
-    "name": "mime_guess",
-    "version": "2.0.5",
-    "license": "MIT",
-    "authors": [
-      "Austin Bonander <austin.bonander@gmail.com>"
-    ],
-    "repository": "https://github.com/abonander/mime_guess",
-    "commit": "805964fb54871f0154ee155bf21729b77ffd4a1c",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE"
-    ]
-  },
-  {
-    "name": "minisign-verify",
-    "version": "0.2.5",
-    "license": "MIT",
-    "authors": [
-      "Frank Denis <github@pureftpd.org>"
-    ],
-    "repository": "https://github.com/jedisct1/rust-minisign-verify",
-    "commit": "3a91d03f86a8462a1af953c2854687d3f953d541",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE"
     ]
   },
   {
@@ -5190,37 +5146,6 @@
     ]
   },
   {
-    "name": "reqwest",
-    "version": "0.13.4",
-    "license": "MIT OR Apache-2.0",
-    "authors": [
-      "Sean McArthur <sean@seanmonstar.com>"
-    ],
-    "repository": "https://github.com/seanmonstar/reqwest",
-    "commit": "11489b34eda6d32b15ad4033e62beba2ee401350",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE-APACHE",
-      "LICENSE-MIT"
-    ]
-  },
-  {
-    "name": "rfd",
-    "version": "0.16.0",
-    "license": "MIT",
-    "authors": [
-      "Poly <marynczak.bartlomiej@gmail.com>"
-    ],
-    "repository": "https://github.com/PolyMeilex/rfd",
-    "commit": "5d32eec3a7930eb43b7e864eb773831bbd3d91b4",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE"
-    ]
-  },
-  {
     "name": "ring",
     "version": "0.17.14",
     "license": "Apache-2.0 AND ISC",
@@ -5374,51 +5299,6 @@
     ]
   },
   {
-    "name": "rust-embed",
-    "version": "8.12.0",
-    "license": "MIT",
-    "authors": [
-      "pyrossh"
-    ],
-    "repository": "https://pyrossh.dev/repos/rust-embed",
-    "commit": "900d167d3cd2e6b897fee019a2a2ce34533edbef",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE"
-    ]
-  },
-  {
-    "name": "rust-embed-impl",
-    "version": "8.12.0",
-    "license": "MIT",
-    "authors": [
-      "pyrossh"
-    ],
-    "repository": "https://pyrossh.dev/repos/rust-embed",
-    "commit": "900d167d3cd2e6b897fee019a2a2ce34533edbef",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE"
-    ]
-  },
-  {
-    "name": "rust-embed-utils",
-    "version": "8.12.0",
-    "license": "MIT",
-    "authors": [
-      "pyrossh"
-    ],
-    "repository": "https://pyrossh.dev/repos/rust-embed",
-    "commit": "900d167d3cd2e6b897fee019a2a2ce34533edbef",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE"
-    ]
-  },
-  {
     "name": "rust-stemmers",
     "version": "1.2.0",
     "license": "MIT/BSD-3-Clause",
@@ -5498,11 +5378,11 @@
   },
   {
     "name": "rustls",
-    "version": "0.23.41",
+    "version": "0.23.46",
     "license": "Apache-2.0 OR ISC OR MIT",
     "authors": [],
     "repository": "https://github.com/rustls/rustls",
-    "commit": "642a10300a1e703279bdc70e73f7e6db8d99ccbf",
+    "commit": "f04804fa13341a9b1dc02b5d1dd8a746f2c4b7fb",
     "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
@@ -5540,26 +5420,12 @@
     ]
   },
   {
-    "name": "rustls-platform-verifier",
-    "version": "0.7.0",
-    "license": "MIT OR Apache-2.0",
-    "authors": [],
-    "repository": "https://github.com/rustls/rustls-platform-verifier",
-    "commit": "996b1c903491641b17b3c9afb65d1352f6fc6b76",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE-APACHE",
-      "LICENSE-MIT"
-    ]
-  },
-  {
     "name": "rustls-webpki",
-    "version": "0.103.13",
+    "version": "0.103.16",
     "license": "ISC",
     "authors": [],
     "repository": "https://github.com/rustls/webpki",
-    "commit": "2879b2ce7a476181ac3050f73fe0835f04728e86",
+    "commit": "8ecdcc76f56b68fda67a6adf7976f5eed5006a4c",
     "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
@@ -5751,6 +5617,19 @@
     "licenseFiles": [
       "LICENSE-APACHE",
       "LICENSE-MIT"
+    ]
+  },
+  {
+    "name": "sentencepiece-rs",
+    "version": "0.2.2",
+    "license": "Apache-2.0",
+    "authors": [],
+    "repository": "https://github.com/Rayato159/sentencepiece-rs",
+    "commit": "b55d256d395074d95c21e6a543ed3cda5c6896ad",
+    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
+    "upstreamLicenseFileMissing": false,
+    "licenseFiles": [
+      "LICENSE"
     ]
   },
   {
@@ -6074,22 +5953,6 @@
     ],
     "repository": "https://github.com/RustCrypto/hashes",
     "commit": "82c36a428f8d6f05f3bfccdedb243e9d1f85359d",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE-APACHE",
-      "LICENSE-MIT"
-    ]
-  },
-  {
-    "name": "sha2",
-    "version": "0.11.0",
-    "license": "MIT OR Apache-2.0",
-    "authors": [
-      "RustCrypto Developers"
-    ],
-    "repository": "https://github.com/RustCrypto/hashes",
-    "commit": "ffe093984c004769747e998f77da8ff7c0e7a765",
     "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
@@ -6914,40 +6777,6 @@
     ]
   },
   {
-    "name": "tauri-plugin-dialog",
-    "version": "2.7.3",
-    "license": "Apache-2.0 OR MIT",
-    "authors": [
-      "Tauri Programme within The Commons Conservancy"
-    ],
-    "repository": "https://github.com/tauri-apps/plugins-workspace",
-    "commit": "6aa2854f314481a459be1189b02c65a2450789ab",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE.spdx",
-      "LICENSE_APACHE-2.0",
-      "LICENSE_MIT"
-    ]
-  },
-  {
-    "name": "tauri-plugin-fs",
-    "version": "2.5.2",
-    "license": "Apache-2.0 OR MIT",
-    "authors": [
-      "Tauri Programme within The Commons Conservancy"
-    ],
-    "repository": "https://github.com/tauri-apps/plugins-workspace",
-    "commit": "6aa2854f314481a459be1189b02c65a2450789ab",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE.spdx",
-      "LICENSE_APACHE-2.0",
-      "LICENSE_MIT"
-    ]
-  },
-  {
     "name": "tauri-plugin-global-shortcut",
     "version": "2.3.2",
     "license": "Apache-2.0 OR MIT",
@@ -6982,21 +6811,6 @@
     ]
   },
   {
-    "name": "tauri-plugin-macos-permissions",
-    "version": "2.3.0",
-    "license": "MIT",
-    "authors": [
-      "ayangweb"
-    ],
-    "repository": "https://github.com/ayangweb/tauri-plugin-macos-permissions",
-    "commit": "d9f2f6c41f5b5ac19638717739c571113c2b65d5",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE"
-    ]
-  },
-  {
     "name": "tauri-plugin-opener",
     "version": "2.5.4",
     "license": "Apache-2.0 OR MIT",
@@ -7016,23 +6830,6 @@
   {
     "name": "tauri-plugin-os",
     "version": "2.3.2",
-    "license": "Apache-2.0 OR MIT",
-    "authors": [
-      "Tauri Programme within The Commons Conservancy"
-    ],
-    "repository": "https://github.com/tauri-apps/plugins-workspace",
-    "commit": "e7a68fa63755603b9fa12d28e077eea645551d24",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE.spdx",
-      "LICENSE_APACHE-2.0",
-      "LICENSE_MIT"
-    ]
-  },
-  {
-    "name": "tauri-plugin-process",
-    "version": "2.3.1",
     "license": "Apache-2.0 OR MIT",
     "authors": [
       "Tauri Programme within The Commons Conservancy"
@@ -7073,23 +6870,6 @@
     ],
     "repository": "https://github.com/tauri-apps/plugins-workspace",
     "commit": "3c5d2677677dc7ebea618514af56fc951449cc1b",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE.spdx",
-      "LICENSE_APACHE-2.0",
-      "LICENSE_MIT"
-    ]
-  },
-  {
-    "name": "tauri-plugin-updater",
-    "version": "2.10.1",
-    "license": "Apache-2.0 OR MIT",
-    "authors": [
-      "Tauri Programme within The Commons Conservancy"
-    ],
-    "repository": "https://github.com/tauri-apps/plugins-workspace",
-    "commit": "d6a3898001a4bcc659e045f9501498751b77dbe6",
     "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
@@ -7754,11 +7534,11 @@
   },
   {
     "name": "transcribe-cpp",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "license": "MIT",
     "authors": [],
     "repository": "https://github.com/handy-computer/transcribe.cpp",
-    "commit": "63a44d9239d610b3908e8a66b384924cd4a77217",
+    "commit": "4807edaf210d0d7e8a6f7fb2a44b65966a2797f0",
     "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
@@ -7767,11 +7547,11 @@
   },
   {
     "name": "transcribe-cpp-sys",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "license": "MIT",
     "authors": [],
     "repository": "https://github.com/handy-computer/transcribe.cpp",
-    "commit": "63a44d9239d610b3908e8a66b384924cd4a77217",
+    "commit": "4807edaf210d0d7e8a6f7fb2a44b65966a2797f0",
     "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
@@ -7960,22 +7740,6 @@
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
       "https://raw.githubusercontent.com/open-i18n/rust-unic/5878605364af97a3358368a6eaef02104af2e016/LICENSE-MIT"
-    ]
-  },
-  {
-    "name": "unicase",
-    "version": "2.9.0",
-    "license": "MIT OR Apache-2.0",
-    "authors": [
-      "Sean McArthur <sean@seanmonstar.com>"
-    ],
-    "repository": "https://github.com/seanmonstar/unicase",
-    "commit": "3101cfd168190b60bf445dee32c5a20bd74996e0",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE-APACHE",
-      "LICENSE-MIT"
     ]
   },
   {
@@ -9133,6 +8897,22 @@
   },
   {
     "name": "windows-sys",
+    "version": "0.48.0",
+    "license": "MIT OR Apache-2.0",
+    "authors": [
+      "Microsoft"
+    ],
+    "repository": "https://github.com/microsoft/windows-rs",
+    "commit": "406944152ef28d3273236edc958c2bfbf825775d",
+    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
+    "upstreamLicenseFileMissing": false,
+    "licenseFiles": [
+      "license-apache-2.0",
+      "license-mit"
+    ]
+  },
+  {
+    "name": "windows-sys",
     "version": "0.59.0",
     "license": "MIT OR Apache-2.0",
     "authors": [
@@ -9170,6 +8950,22 @@
     "authors": [],
     "repository": "https://github.com/microsoft/windows-rs",
     "commit": "32c3144490c016fe496a0aed769bce60987a2e9d",
+    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
+    "upstreamLicenseFileMissing": false,
+    "licenseFiles": [
+      "license-apache-2.0",
+      "license-mit"
+    ]
+  },
+  {
+    "name": "windows-targets",
+    "version": "0.48.5",
+    "license": "MIT OR Apache-2.0",
+    "authors": [
+      "Microsoft"
+    ],
+    "repository": "https://github.com/microsoft/windows-rs",
+    "commit": "b769fa7570f8eeaede0ed1995a7dbe1e9591a35b",
     "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
@@ -9244,6 +9040,22 @@
     "authors": [],
     "repository": "https://github.com/microsoft/windows-rs",
     "commit": "32c3144490c016fe496a0aed769bce60987a2e9d",
+    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
+    "upstreamLicenseFileMissing": false,
+    "licenseFiles": [
+      "license-apache-2.0",
+      "license-mit"
+    ]
+  },
+  {
+    "name": "windows_x86_64_msvc",
+    "version": "0.48.5",
+    "license": "MIT OR Apache-2.0",
+    "authors": [
+      "Microsoft"
+    ],
+    "repository": "https://github.com/microsoft/windows-rs",
+    "commit": "b769fa7570f8eeaede0ed1995a7dbe1e9591a35b",
     "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [
@@ -9535,24 +9347,6 @@
     ],
     "repository": "https://github.com/unicode-org/icu4x",
     "commit": "c9fac4e625ccb2c6a7aa35079fff9709db4385ac",
-    "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
-    "upstreamLicenseFileMissing": false,
-    "licenseFiles": [
-      "LICENSE"
-    ]
-  },
-  {
-    "name": "zip",
-    "version": "4.6.1",
-    "license": "MIT",
-    "authors": [
-      "Mathijs van de Nes <git@mathijs.vd-nes.nl>",
-      "Marli Frost <marli@frost.red>",
-      "Ryan Levick <ryan.levick@gmail.com>",
-      "Chris Hennick <hennickc@amazon.com>"
-    ],
-    "repository": "https://github.com/zip-rs/zip2",
-    "commit": "56fa5f6e1f3e29d747e5875867e7a647aa612b8c",
     "crateSource": "registry+https://github.com/rust-lang/crates.io-index",
     "upstreamLicenseFileMissing": false,
     "licenseFiles": [

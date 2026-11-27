@@ -31,8 +31,10 @@ CPU and shows the backend that loaded. ONNX models use CPU.
 In **Dictation → Models**, download **GigaAM-v4** for Russian and English or
 **GigaAM Multilingual-v2** for its 21 supported languages. Multilingual accepts
 an explicit language hint or automatic recognition. Both use the formatted E2E
-transcript. Live recognition uses the model’s 320 ms future context. Full-context
-recognition handles a completed recording. Recognition runs locally on the CPU.
+transcript. Select the **Live** recording overlay to see words during dictation.
+Live recognition uses the model’s 320 ms future context. For a saved recording,
+choose **History → Transcribe again** to run the full-context model. Both modes
+run locally on the CPU.
 
 The catalog shows the combined download size. Downloads verify each file by
 SHA-256. Resume checks previously completed files and continues the interrupted
@@ -40,6 +42,27 @@ file. Model files are stored under the app's dictation models directory.
 Each pack includes its MIT license and the Apache notices for upstream encoder
 code. [GigaAM-v4 model card](https://huggingface.co/ai-sage/GigaAM-v4/tree/9fe3ebf50c9e0cce5eed60d546938632238b6a96)
 and [Multilingual-v2 model card](https://huggingface.co/ai-sage/GigaAM-Multilingual-v2/tree/c21483b5e185ff32f6fb2e2c801f92f4e7fbfee8).
+
+**Maintaining the model packs.** Run **Prepare GigaAM model assets**, then pass
+its run ID as `gigaam_models_run` to **Build Music Island for Windows**. The first
+workflow exports the 320 ms packet graphs, records the formatted reference
+transcripts and emits a per-file lock for each model. The second verifies both
+recognition paths with the actual portable executable and public speech samples.
+The [v4 full-context conversion](https://huggingface.co/ai-babai/gigaam-v4-onnx/tree/7cfd40087b6180a83d9ef7fb991bd6813c48952f/rnnt)
+and [multilingual conversion](https://huggingface.co/ai-babai/gigaam-multilingual-v2-onnx/tree/47ab61c18615af526e5d0c4484ef2e688027e6ed)
+are pinned independently.
+
+To prepare the November model prerelease, select `gigaam_model_draft` in the
+Windows workflow and supply the successful model export run ID. After both
+Windows inference jobs and the component checks pass, a GitHub runner compares
+the exported locks with that commit’s embedded catalog and hashes every file.
+It uploads 26 files, including the licenses and notices, to the
+`gigaam-2026-11` draft and checks GitHub’s stored SHA-256 digests.
+A maintainer can then publish the verified draft as a prerelease with
+`make_latest=false`. Select `gigaam_public_smoke` on the same dispatch to
+test the public downloads with the verified portable executable. That job waits
+up to 15 minutes for publication. Select `hover_benchmark` to exercise the
+same executable on the disposable Windows desktop.
 
 By default GigaAM GGUF models recognize the recording after you stop. To process
 completed phrases while recording, select a GigaAM GGUF model and enable **GigaAM

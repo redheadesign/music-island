@@ -223,16 +223,9 @@ See `docs/DICTATION_MODEL_CATALOG.json` for pinned model-card references, revisi
 base models and declared license metadata. `other` and noncommercial model licenses
 must not be interpreted as MIT, Apache or GPL permission to redistribute weights.
 
-GigaAM-v4 and GigaAM Multilingual-v2 RNN-T weights and GigaAM reference code
-are copyright © 2026 Giga, MIT. The Zapformer encoder includes Apache-2.0
-contributions from Xiaomi Corp., Daniel Povey and Zengwei Yao. Each downloaded
-pack contains LICENSE, LICENSE-APACHE-2.0 and NOTICE. Music Island uses the
-full-context CPU conversions published by ai-babai and exports its live models
-with the [pinned GigaAM exporter](https://github.com/salute-developers/GigaAM/tree/e9bbf2e773eedd217c6f0d3b89b9728c41332b7d).
-
 The extracted `resources/licenses` folder contains full native dependency notices,
 the official ONNX Runtime third-party notices and a machine-readable index. The
-index covers 615 packages in the pinned Windows Cargo graphs, including build tools.
+index covers 602 packages in the pinned Windows Cargo graphs, including build tools.
 `scripts/collect-native-notices.py` reproduces it from Cargo metadata and upstream
 license files. Nine upstream packages declare an SPDX license but omit a separate
 license file at the reviewed revision: enum-map, enum-map-derive, ferrous-opencc,
@@ -280,7 +273,7 @@ to that tool. Do not add the encoder to the portable distribution.
 
 ## GigaAM speech recognition
 
-The runtime implements the streaming and offline ONNX contracts from [GigaAM](https://github.com/salute-developers/GigaAM/tree/e9bbf2e773eedd217c6f0d3b89b9728c41332b7d). GigaAM code and weights are copyright (c) 2026 Giga and distributed under MIT. The encoder includes code adapted from Xiaomi Corp., Daniel Povey and Zengwei Yao under Apache-2.0. Model packages carry their license and attribution files.
+GigaAM-v4 and GigaAM Multilingual-v2 code and weights are copyright (c) 2026 Giga and distributed under MIT. The Zapformer encoder includes code adapted from Xiaomi Corp., Daniel Povey and Zengwei Yao under Apache-2.0. Each downloaded package includes LICENSE, LICENSE-APACHE-2.0 and NOTICE. Music Island uses the full-context CPU conversions from ai-babai and exports the streaming graphs with the [pinned GigaAM exporter](https://github.com/salute-developers/GigaAM/tree/e9bbf2e773eedd217c6f0d3b89b9728c41332b7d).
 
 The Rust DLL decodes model tokens using [sentencepiece-rs 0.2.2](https://crates.io/crates/sentencepiece-rs/0.2.2) under Apache-2.0.
 

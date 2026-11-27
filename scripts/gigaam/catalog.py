@@ -45,10 +45,13 @@ def collect(root):
             if file.stat().st_size != item["size"] or sha(file) != item["sha256"]:
                 raise ValueError(f"Local file differs from tested lock: {file}")
             asset = f"{model}-{name}"
-            if item["url"] == BASE + asset:
-                assets[asset] = (file, item)
-            elif not item["url"].startswith("https://huggingface.co/" + HF_PINS[model]):
+            on_release = item["url"] == BASE + asset
+            if not on_release and not item["url"].startswith("https://huggingface.co/" + HF_PINS[model]):
                 raise ValueError(f"Asset URL does not match a pinned source: {item['url']}")
+            if on_release or name in {"LICENSE", "LICENSE-APACHE-2.0", "NOTICE"}:
+                # Include attribution with the public export as well as the
+                # canonical copies fetched when the app installs the pack.
+                assets[asset] = (file, item)
     return catalog, assets
 
 
@@ -58,10 +61,23 @@ def main():
     commands = parser.add_mutually_exclusive_group(required=True)
     commands.add_argument("--stage", type=Path, help="Prepare byte-identical files for prerelease upload")
     commands.add_argument("--catalog", type=Path, help="Verify public release digests and write the catalog")
+    parser.add_argument("--draft", action="store_true", help="Upload staged assets to the model draft on GitHub Actions")
     args = parser.parse_args()
+    if args.draft and (not args.stage or os.environ.get("GITHUB_ACTIONS") != "true"):
+        parser.error("--draft requires --stage on GitHub Actions")
     catalog, assets = collect(args.artifacts)
     if args.stage:
+        if args.draft:
+            embedded = Path("src-tauri/crates/handy-core/src/catalog/gigaam-packs.json")
+            if catalog != json.loads(embedded.read_bytes()):
+                raise ValueError("Model export locks differ from the tested application catalog")
+            notices = {f"{model}-{name}" for model in MODELS for name in ("LICENSE", "LICENSE-APACHE-2.0", "NOTICE")}
+            if len(assets) != 26 or not notices.issubset(assets):
+                raise ValueError("Expected the 26 November model assets including all six license and notice copies")
         args.stage.mkdir(exist_ok=True, parents=True)
+        extra = {path.name for path in args.stage.iterdir()} - set(assets)
+        if extra:
+            raise ValueError(f"Unexpected files in outgoing model assets: {sorted(extra)}")
         for name, (source, item) in assets.items():
             target = args.stage / name
             if target.exists():
@@ -72,6 +88,9 @@ def main():
                 os.link(source, target)
             except OSError:
                 shutil.copyfile(source, target)
+        if args.draft:
+            from draft import upload
+            upload(TAG, REPOSITORY, args.stage, assets)
         return
     url = f"https://api.github.com/repos/{REPOSITORY}/releases/tags/{TAG}"
     with urllib.request.urlopen(url, timeout=30) as response:
@@ -79,10 +98,12 @@ def main():
     if release["draft"] or not release["prerelease"]:
         raise ValueError("Expected the published model prerelease")
     served = {entry["name"]: entry for entry in release["assets"]}
+    if served.keys() != assets.keys():
+        raise ValueError("Unexpected asset inventory in the published model prerelease")
     for name, (_, item) in assets.items():
         entry = served.get(name, {})
         if (entry.get("browser_download_url"), entry.get("size"), entry.get("digest")) != (
-            item["url"], item["size"], "sha256:" + item["sha256"]
+            BASE + name, item["size"], "sha256:" + item["sha256"]
         ):
             raise ValueError(f"Public asset differs from locked bytes: {name}")
     args.catalog.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf8", newline="\n")

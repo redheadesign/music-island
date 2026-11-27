@@ -27,11 +27,12 @@
 
 ## Verification
 
+- Always build and run build-dependent checks on GitHub Actions. This includes Rust, the frontend, Storybook, model export and inference. Keep dependency installs, model weights, build caches and generated binaries on the runners. Share links to verified artifacts.
 - Use `npm run dev` for browser UI preview and `npm run tauri:dev` for native Windows behavior. Browser preview cannot verify SMTC, CDP, window hit-testing or the audio engine.
 - Run `npm test`, `npm run build`, and `npm run lint` for frontend changes.
 - Add characterization tests before changing timing, seek, session, or overlay-mode behavior.
 - For native changes, run `cargo check --manifest-path src-tauri/Cargo.toml` and relevant Rust tests; use `docs/QA.md` for affected Windows behavior and report any checks that could not run.
-- Use the [Build Music Island for Windows](https://github.com/redheadesign/music-island/actions/workflows/portable-windows.yml) workflow for every portable test and release build. Dispatch it on the intended branch, then download the artifact and verify its SHA-256. Publish the exact artifact approved on Windows and tag the commit that produced it.
+- Use the [Build Music Island for Windows](https://github.com/redheadesign/music-island/actions/workflows/portable-windows.yml) workflow for every portable test and release build. Dispatch it on the intended branch and verify the artifact's SHA-256 on a GitHub runner. Download it to the user's computer only when explicitly requested. Publish the exact artifact approved on Windows and tag the commit that produced it.
 - Do not commit generated release artifacts.
 
 ## Component workshop

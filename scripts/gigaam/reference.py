@@ -6,11 +6,9 @@ import json
 import wave
 from pathlib import Path
 
-import gigaam
 import numpy as np
 import onnxruntime as ort
 import sentencepiece
-import torch
 
 
 def offline_text(pack, manifest, samples, language):
@@ -22,6 +20,7 @@ def offline_text(pack, manifest, samples, language):
     features = np.log(np.clip(np.absolute(spectrum) ** 2 @ filters.T, 1e-9, 1e9)).T
     options = ort.SessionOptions()
     options.intra_op_num_threads = 2
+    options.log_severity_level = 3
     encoder = ort.InferenceSession(str(pack / manifest["whole"]), options, providers=["CPUExecutionProvider"])
     values = [features.astype(np.float32)[None], np.array([features.shape[1]], dtype=np.int64)]
     if len(encoder.get_inputs()) == 3:
@@ -38,15 +37,20 @@ def offline_text(pack, manifest, samples, language):
     return text
 
 
-def record(pack, wav, cache, language):
+def record(pack, wav, cache, language, offline_only=False):
     manifest = json.loads((pack / "island-gigaam.json").read_text())
     with wave.open(str(wav), "rb") as reader:
         if (reader.getframerate(), reader.getnchannels(), reader.getsampwidth()) != (16000, 1, 2):
             raise ValueError("Expected mono 16 kHz signed PCM16 WAV")
         pcm = np.frombuffer(reader.readframes(reader.getnframes()), dtype="<i2")
-    samples = torch.from_numpy(pcm.astype(np.float32) / 32768.0)
-    golden = {"language": language, "onnx_offline": offline_text(pack, manifest, samples.numpy(), language)}
+    audio = pcm.astype(np.float32) / 32768.0
+    golden = {"language": language, "onnx_runtime": ort.__version__, "onnx_offline": offline_text(pack, manifest, audio, language)}
+    if offline_only:
+        return golden
     gc.collect()
+    import gigaam
+    import torch
+    samples = torch.from_numpy(audio)
     torch.set_num_threads(2)
     model = gigaam.load_model(manifest["model"], download_root=str(cache), device="cpu",
                               fp16_encoder=False, language=None if language == "auto" else language)
@@ -70,7 +74,8 @@ if __name__ == "__main__":
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--language", default="auto")
+    parser.add_argument("--offline-only", action="store_true", help="Test only the installed platform's ONNX Runtime")
     args = parser.parse_args()
-    text = json.dumps(record(args.pack, args.wav, args.cache, args.language), ensure_ascii=False, indent=2)
+    text = json.dumps(record(args.pack, args.wav, args.cache, args.language, args.offline_only), ensure_ascii=False, indent=2)
     args.output.write_text(text + "\n", encoding="utf-8")
     print(text)

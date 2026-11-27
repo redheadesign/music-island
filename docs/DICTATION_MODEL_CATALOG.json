@@ -1,5 +1,5 @@
 {
-  "upstream": "Handy v0.9.7 / 05e0aedd2906f0d82722735f930465950c476b90",
+  "upstream": "Handy v0.9.7 / 05e0aedd2906f0d82722735f930465950c476b90, plus the independently pinned GigaAM-v4 and GigaAM Multilingual-v2 RNN-T checkpoints",
   "note": "Pinned upstream metadata; consult original model/base-model cards for complete terms. Not a grant to redistribute weights.",
   "models": [
     {

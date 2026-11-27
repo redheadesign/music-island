@@ -116,7 +116,7 @@ def main():
     for package in results:
         parts.append('\n' + '=' * 72 + '\n' + package['name'] + ' ' + package['version'])
         parts.append('SPDX: ' + str(package['license']))
-        parts.append('Authors: ' + ', '.join(package['authors']))
+        parts.append(('Authors: ' + ', '.join(package['authors'])).rstrip())
         parts.append('Source: ' + (package['repository'] or package['crateSource']))
         parts.append('Commit: ' + str(package['commit']))
         for notice in package['notices']:

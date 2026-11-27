@@ -60,8 +60,11 @@ export const GigaAMDownload: Story = {
   },
   play: async ({ canvasElement }) => {
     const card = await within(canvasElement).findByRole('article', { name: 'GigaAM-v4' })
-    await expect(within(card).getByRole('button', { name: 'Скачать' })).toBeVisible()
     await expect(card).toHaveTextContent('Текст во время записи')
+    await userEvent.click(within(card).getByRole('button', { name: 'Скачать' }))
+    const confirm = await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'Скачать модель?' })
+    await expect(within(confirm).getByRole('button', { name: 'Условия модели · MIT' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
   },
 }
 export const FloatingCatalog: Story = {

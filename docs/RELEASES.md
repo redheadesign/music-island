@@ -76,20 +76,9 @@ Reuse the approved executable without rebuilding unless compiled inputs change.
 
 1. Bump versions in `package.json` / `package-lock.json`, `src-tauri/Cargo.toml` / `Cargo.lock`, `src-tauri/tauri.conf.json`, and `APP_VERSION` in `src/features/settings/SettingsPanel.tsx`. The updater reads the Cargo package version at compile time.
 2. Refresh `CHANGELOG.md` and the public `README.md` status line.
-3. Run the frontend and native checks:
-
-```powershell
-npm test
-npm run build
-npm run lint
-npm run check:storybook
-npm run build-storybook
-cargo check --manifest-path src-tauri/Cargo.toml
-cargo test --manifest-path src-tauri/Cargo.toml --lib
-```
-
-4. Push the candidate branch. Open [Build Music Island for Windows](https://github.com/redheadesign/music-island/actions/workflows/portable-windows.yml), select **Run workflow**, and choose that branch. Use this workflow for all portable test and release builds.
-5. Download the artifact from the successful run. Record the run URL and its source commit. From the extracted artifact directory, verify the executable against the included checksum:
+3. Push the candidate branch. Select it in **Run workflow** on [Build Music Island for Windows](https://github.com/redheadesign/music-island/actions/workflows/portable-windows.yml).
+4. Check the frontend, Storybook, Rust and portable build results on the GitHub runners. Keep the build outputs and caches on the runners.
+5. Record the run URL, source commit and artifact link. Verify the executable against the included checksum on a Windows runner:
 
 ```powershell
 $hash = (Get-FileHash -Algorithm SHA256 release/music-island.exe).Hash.ToLowerInvariant()
