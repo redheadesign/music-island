@@ -2,6 +2,12 @@
 
 Music Island ships as a **portable** `music-island.exe` under GPL-3.0-or-later. That remains the forever distribution model: users download or auto-update the same single file from GitHub Releases. There is no installer requirement.
 
+## 3.3.0 release
+
+[Music Island 3.3.0](https://github.com/redheadesign/music-island/releases/tag/v3.3.0) shipped on November 27, 2026 from commit `16749c9c5454b9dd304df00a67ae991df8f646ff`. The Windows x64 executable is 78,240,768 bytes. Its SHA-256 is `0bdf084e1c440459297066f3a7268158d43e2193652fe6556bc27ab317cd5bf6`. The public update endpoint returned 3.3.0 and the published checksum matched. [Windows build](https://github.com/redheadesign/music-island/actions/runs/46030743602) · [Asset verification](https://github.com/redheadesign/music-island/actions/runs/46038406865) · [English release notes](releases/3.3.0-release-notes.md)
+
+The public model install check confirmed that the streaming upgrade reused all 255,356,395 bytes of the compact package and the compact model still worked after removing the full package. The first desktop run timed out while starting the test WebView. A fresh runner passed with the same executable. The hover comparison delivered all 200 first clicks at 96 DPI and 64 Hz. The accepted-gesture p99 was 25.5 ms. One cold opening took 52.1 ms against a 31.25 ms target. The release owner chose to publish the verified model build at that point. [Model install check](https://github.com/redheadesign/music-island/actions/runs/46034481227) · [Hover measurements](https://github.com/redheadesign/music-island/actions/runs/46030743602/attempts/1)
+
 ## 3.2.2 release
 
 [Music Island 3.2.2](https://github.com/redheadesign/music-island/releases/tag/v3.2.2) shipped on November 24, 2026. Tag `v3.2.2` points to `fbabc6b935fe95c0f5a2d20f1a0324e8b191841c`. The [approved Windows x64 build](https://github.com/redheadesign/music-island/actions/runs/45359442753) produced a 77,871,104-byte executable with SHA-256 `a8742a6c2ee3864e7833891d82f470879822c969a574eab16820ccd836ef41e3`. The bundled dictation smoke test passed. The published assets match the approved build, and the public update endpoint returns this release. [Release notes](releases/3.2.2-release-notes.md)
