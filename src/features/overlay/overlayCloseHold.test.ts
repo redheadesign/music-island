@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { deferOverlayClose, OVERLAY_CLOSE_GRACE_MS, shouldDeferOverlayClose } from './overlayWindow'
 
