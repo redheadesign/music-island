@@ -407,7 +407,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   // Native keep-alive band must cover Settings/Pin in *physical* px (DPR-aware).
   // 1.3.21 only hugged height in CSS px — on 125%/150% the band was too narrow and mid-path closed.
   useEffect(() => {
-    if (!config || !expandedVisible || (windowPhase !== 'open' && windowPhase !== 'opening')) {
+    if (!config || !expandedVisible || windowPhase !== 'open') {
       return
     }
     if (!isTauriRuntime()) {
@@ -420,8 +420,9 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     }
 
     const publish = () => {
+      if (windowPhaseRef.current !== 'open') return
       const { width, height } = measureExpandedHitBand(zone)
-      if (windowPhaseRef.current === 'open') void setOverlayBounds(true, width, height).catch(() => undefined)
+      void setOverlayBounds(true, width, height).catch(() => undefined)
     }
 
     publish()

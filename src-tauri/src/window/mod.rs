@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::sync::{
-    atomic::{AtomicBool, AtomicU64, Ordering},
+    atomic::{AtomicU64, Ordering},
     Mutex, OnceLock,
 };
 use tauri::{
@@ -25,7 +25,6 @@ static BOUNDS_REQUESTS: AtomicU64 = AtomicU64::new(0);
 static BOUNDS_APPLIED: AtomicU64 = AtomicU64::new(0);
 static GESTURE_POLLS: AtomicU64 = AtomicU64::new(0);
 static GESTURE_EVENTS: AtomicU64 = AtomicU64::new(0);
-static CLICKTHROUGH: AtomicBool = AtomicBool::new(true);
 static HIT_LAYOUT_REVISION: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, Copy)]
@@ -33,6 +32,7 @@ struct OverlayHitLayout {
     expanded: bool,
     hit_width: f64,
     hit_height: f64,
+    bounds_generation: u64,
     widgets: OverlayWidgetRegions,
     widget_generation: u64,
 }
@@ -102,6 +102,7 @@ impl Default for OverlayHitLayout {
             expanded: false,
             hit_width: DEFAULT_HIT_WIDTH,
             hit_height: COLLAPSED_HIT_HEIGHT,
+            bounds_generation: 0,
             widgets: OverlayWidgetRegions::default(),
             widget_generation: 0,
         }
@@ -149,8 +150,7 @@ pub fn setup_overlay_window(app: &AppHandle) -> tauri::Result<()> {
         fit_overlay_to_monitor(app)?;
         #[cfg(windows)] monitors::install_display_listener(&window);
         // The HWND starts hidden. React acknowledges its final viewport before first show.
-        set_overlay_clickthrough_ex(app, true, true)?;
-        set_overlay_bounds(app, false, DEFAULT_HIT_WIDTH, COLLAPSED_STRIP_HEIGHT)?;
+        set_overlay_bounds(app, false, DEFAULT_HIT_WIDTH, COLLAPSED_STRIP_HEIGHT, None)?;
     }
 
     Ok(())
@@ -183,26 +183,14 @@ fn viewport_matches(width: u32, height: u32, scale: f64, vw: f64, vh: f64) -> bo
 }
 
 /// Updates interaction layout only — the HWND stays monitor-sized (minus edge gaps).
-pub fn set_sequenced_overlay_bounds(app: &AppHandle, expanded: bool, width: f64, height: f64, generation: Option<u64>) -> tauri::Result<()> {
-    static LAST: Mutex<u64> = Mutex::new(0);
-    let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some(generation) = generation {
-        if generation <= *last { return Ok(()); }
-        *last = generation;
-    }
-    set_overlay_bounds(app, expanded, width, height)
-}
-
-/// Updates interaction layout only — the HWND stays monitor-sized (minus edge gaps).
 /// `visual_width` / `visual_height` describe the centered hit target (card + chrome).
 pub fn set_overlay_bounds(
     app: &AppHandle,
     expanded: bool,
     visual_width: f64,
     visual_height: f64,
+    generation: Option<u64>,
 ) -> tauri::Result<()> {
-    BOUNDS_REQUESTS.fetch_add(1, Ordering::Relaxed);
-
     let hit_width = visual_width.max(160.0);
     let hit_height = if expanded {
         visual_height.max(COLLAPSED_STRIP_HEIGHT)
@@ -211,9 +199,12 @@ pub fn set_overlay_bounds(
     };
 
     let changed = {
-        let mut layout = hit_layout()
-            .lock()
-            .expect("overlay hit layout lock poisoned");
+        let mut layout = hit_layout().lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(generation) = generation {
+            if generation <= layout.bounds_generation { return Ok(()); }
+            layout.bounds_generation = generation;
+        }
+        BOUNDS_REQUESTS.fetch_add(1, Ordering::Relaxed);
         let changed = layout.expanded != expanded
             || (layout.hit_width - hit_width).abs() >= 0.5
             || (layout.hit_height - hit_height).abs() >= 0.5;
@@ -231,31 +222,6 @@ pub fn set_overlay_bounds(
     sync_clickthrough_from_cursor_ex(app, true)?;
 
     if changed { BOUNDS_APPLIED.fetch_add(1, Ordering::Relaxed); }
-    Ok(())
-}
-
-fn set_overlay_clickthrough_ex(
-    app: &AppHandle,
-    clickthrough: bool,
-    force: bool,
-) -> tauri::Result<()> {
-    let Some(window) = app.get_webview_window("main") else {
-        return Ok(());
-    };
-
-    #[cfg(not(windows))]
-    if !force && CLICKTHROUGH.load(Ordering::Relaxed) == clickthrough {
-        return Ok(());
-    }
-
-    #[cfg(windows)]
-    {
-        let _ = force;
-        clickthrough::set(&window, clickthrough)?;
-    }
-    #[cfg(not(windows))]
-    window.set_ignore_cursor_events(clickthrough)?;
-    CLICKTHROUGH.store(clickthrough, Ordering::Relaxed);
     Ok(())
 }
 
@@ -293,14 +259,19 @@ fn sync_clickthrough_from_cursor_ex(app: &AppHandle, force: bool) -> tauri::Resu
 }
 
 fn sample_and_apply_pointer(app: &AppHandle, force: bool) -> tauri::Result<(CollapsedGestureState, bool)> {
+    let Some(window) = app.get_webview_window("main") else {
+        return Ok((CollapsedGestureState::inactive(), false));
+    };
+    // Sampling and style application target the same live window throughout this call.
+    let handle = platform::input_window(&window)?;
     // The hover watcher may have sampled the collapsed band just before the
     // WebView opened. Discard that sample even if its Win32 style write raced
     // the acknowledgement; repair it immediately instead of waiting for a poll.
     loop {
         let revision = HIT_LAYOUT_REVISION.load(Ordering::Acquire);
-        let (state, capture) = overlay_pointer_state(app)?;
+        let (state, capture) = platform::pointer_state(handle)?;
         if HIT_LAYOUT_REVISION.load(Ordering::Acquire) != revision { continue; }
-        set_overlay_clickthrough_ex(app, !capture, force)?;
+        platform::set_clickthrough(handle, !capture, force)?;
         if HIT_LAYOUT_REVISION.load(Ordering::Acquire) == revision { return Ok((state, capture)); }
     }
 }
@@ -342,7 +313,7 @@ fn overlay_pointer_state(app: &AppHandle) -> tauri::Result<(CollapsedGestureStat
         return Ok((CollapsedGestureState::inactive(), false));
     };
 
-    platform::pointer_state(&window)
+    platform::pointer_state(platform::input_window(&window)?)
 }
 
 pub fn start_gesture_watcher(app: AppHandle) {
@@ -393,9 +364,15 @@ mod platform {
         }
     }
 
-    pub fn pointer_state(window: &WebviewWindow) -> tauri::Result<(CollapsedGestureState, bool)> {
-        let native = window.hwnd()?;
-        let hwnd = HWND(native.0);
+    pub fn input_window(window: &WebviewWindow) -> tauri::Result<HWND> {
+        Ok(HWND(window.hwnd()?.0))
+    }
+
+    pub fn set_clickthrough(hwnd: HWND, ignore: bool, _force: bool) -> tauri::Result<()> {
+        super::clickthrough::set(hwnd, ignore)
+    }
+
+    pub fn pointer_state(hwnd: HWND) -> tauri::Result<(CollapsedGestureState, bool)> {
         let mut bounds = RECT::default();
         let mut point = POINT::default();
         unsafe {
@@ -451,9 +428,23 @@ mod platform {
 #[cfg(not(windows))]
 mod platform {
     use super::CollapsedGestureState;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use tauri::WebviewWindow;
 
     pub fn mark_non_rude_hwnd(_window: &WebviewWindow) {}
+
+    pub fn input_window(window: &WebviewWindow) -> tauri::Result<&WebviewWindow> {
+        Ok(window)
+    }
+
+    pub fn set_clickthrough(window: &WebviewWindow, ignore: bool, force: bool) -> tauri::Result<()> {
+        static CLICKTHROUGH: AtomicBool = AtomicBool::new(true);
+        if force || CLICKTHROUGH.load(Ordering::Relaxed) != ignore {
+            window.set_ignore_cursor_events(ignore)?;
+            CLICKTHROUGH.store(ignore, Ordering::Relaxed);
+        }
+        Ok(())
+    }
 
     pub fn pointer_state(
         _window: &WebviewWindow,

@@ -285,6 +285,16 @@ async function measureHover(ownWindow) {
   })
   let firstTarget
   await page.exposeFunction('__firstIslandTarget', point => firstTarget?.(point))
+  // A pinned 1.55 GB transfer keeps its real checksum active across the configured dwell.
+  const modelId = process.env.MUSIC_ISLAND_HOVER_MODEL || 'turbo'
+  const waitForModel = async condition => {
+    const reached = await until(async () => {
+      const state = await settings.evaluate(() => window.__hoverWorkload)
+      if (state.error) throw Error(state.error)
+      return condition(state)
+    }, 15 * 60000, 20)
+    assert.ok(reached, 'Timed out waiting for the native model workload')
+  }
   for (let i = 0; i < count; i++) {
     await command('dismiss')
     assert.ok(await until(async () => !(await command('settings'))), 'Owned Settings window did not hide')
@@ -314,10 +324,26 @@ async function measureHover(ownWindow) {
       } while (performance.now() < deadline)
       idleCpu = idleCpuMetrics(samples, os.cpus().length, durationMs)
     }
-    if (scenario === 'models' && i === 2) await settings.evaluate(startModelWorkload, process.env.MUSIC_ISLAND_HOVER_MODEL || 'small')
+    const intendedWorkload = scenario === 'models' ? ['download', 'hash', 'load'][i - 2] : undefined
+    if (intendedWorkload === 'download') await settings.evaluate(startModelWorkload, modelId)
+    if (intendedWorkload === 'download' || intendedWorkload === 'hash') {
+      // Start the physical gesture at the observed transfer or checksum event. The report
+      // still requires real overlap with acceptance, even if the native operation ends early.
+      await waitForModel(state => state.spans.some(span => span.name === intendedWorkload && span.id === modelId) || state.finished)
+    }
+    if (intendedWorkload === 'load') {
+      await waitForModel(state => state.finished)
+      await settings.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:dictation|unload_model_manually'))
+    }
     const target = new Promise(resolve => { firstTarget = point => { if (point.trial === i + 1) resolve(point) } })
     await page.evaluate(trial => window.__startHoverTrial(trial), i + 1)
     const edge = await command('edge')
+    // Cold-load from the installed model during this real gesture. Keep the pointer and
+    // frame observer independent from the Settings IPC promise so the first click is prompt.
+    let loadError
+    const reload = intendedWorkload === 'load' ? sleep(behavior.hoverDelayMs * .75).then(() =>
+      settings.evaluate(id => window.__TAURI_INTERNALS__.invoke('plugin:dictation|set_active_model', { modelId: id }), modelId)
+    ).catch(error => { loadError = error }) : null
     let timer
     const point = await Promise.race([target, new Promise(resolve => { timer = setTimeout(() => resolve(null), 6000) })])
     clearTimeout(timer)
@@ -338,12 +364,14 @@ async function measureHover(ownWindow) {
       streaming.previewEvents = evidence.events
     }
     rows.push({ trial: i + 1, phase: scenario === 'streaming' ? 'streaming' : i === 0 ? 'cold' : i === 1 && idleSeconds ? 'after-idle' : 'repeated',
-      realEdge: edge.at, ...sample, acceptanceSource: sample.accepted == null ? 'DOM commit (baseline)' : 'gesture',
+      realEdge: edge.at, ...sample, intendedWorkload, acceptanceSource: sample.accepted == null ? 'DOM commit (baseline)' : 'gesture',
       acceptToReadyMs: sample.ready != null && acceptance != null ? sample.ready - acceptance : null,
       openingCommitToReadyMs: sample.ready != null && sample.openingCommit != null ? sample.ready - sample.openingCommit : null,
       edgeToReadyMs: sample.ready != null ? sample.ready - edge.at : null,
       edgeToFirstFrameMs: sample.visible != null ? sample.visible - edge.at : null,
       nativeClick: click, openedSettings })
+    await reload
+    if (loadError) throw loadError
     if (settings) workload = await settings.evaluate(() => window.__hoverWorkload)
     await writeFile(path.join(output, 'report.json'), JSON.stringify(report(), null, 2))
   }

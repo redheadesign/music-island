@@ -23,8 +23,8 @@ fn cursor_style(current: u32, ignore: bool) -> u32 {
     }
 }
 
-pub(super) fn set(window: &tauri::WebviewWindow, ignore: bool) -> tauri::Result<()> {
-    apply(HWND(window.hwnd()?.0), ignore)
+pub(super) fn set(hwnd: HWND, ignore: bool) -> tauri::Result<()> {
+    apply(hwnd, ignore)
         .map(|_| ())
         .map_err(Into::into)
 }

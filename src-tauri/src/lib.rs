@@ -260,14 +260,16 @@ async fn reset_window_position(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn set_overlay_bounds(
+fn set_overlay_bounds(
     app: tauri::AppHandle,
     expanded: bool,
     visual_width: f64,
     visual_height: f64,
     generation: Option<u64>,
 ) -> Result<(), String> {
-    window::set_sequenced_overlay_bounds(&app, expanded, visual_width, visual_height, generation)
+    // Handle the short Win32 input update on the invoking WebView thread. Moving
+    // it to an async worker would send the HWND lookup back to that same thread.
+    window::set_overlay_bounds(&app, expanded, visual_width, visual_height, generation)
         .map_err(|error| error.to_string())
 }
 

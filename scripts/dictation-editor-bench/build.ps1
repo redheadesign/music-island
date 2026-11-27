@@ -3,9 +3,27 @@ $ErrorActionPreference='Stop'
 $finder=Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Microsoft Visual Studio\Installer\vswhere.exe'
 $vs=& $finder -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if(!$vs){throw 'Install the Visual Studio C++ desktop tools.'}
-$vc=Get-ChildItem (Join-Path $vs 'VC\Tools\MSVC') -Directory | Sort-Object { [Version]$_.Name } -Descending | Select-Object -First 1
+$vc = Get-ChildItem -LiteralPath (Join-Path $vs 'VC\Tools\MSVC') -Directory |
+    Where-Object {
+        ($_.Name -as [version]) -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName 'bin\Hostx64\x64\cl.exe')) -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName 'include\vector')) -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName 'lib\x64\libcmt.lib'))
+    } | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+if (!$vc) { throw 'No complete x64 MSVC toolset was found in the Visual Studio installation.' }
 $kit=Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Windows Kits\10'
-$version=Get-ChildItem (Join-Path $kit 'Include') -Directory | Sort-Object { [Version]$_.Name } -Descending | Select-Object -First 1 -ExpandProperty Name
+$version = Get-ChildItem -LiteralPath (Join-Path $kit 'Include') -Directory |
+    Where-Object {
+        $sdkLib = Join-Path $kit "Lib\$($_.Name)"
+        ($_.Name -as [version]) -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName 'shared')) -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName 'um\Windows.h')) -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName 'ucrt\stdio.h')) -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName 'winrt')) -and
+        (Test-Path -LiteralPath (Join-Path $sdkLib 'um\x64\user32.lib')) -and
+        (Test-Path -LiteralPath (Join-Path $sdkLib 'ucrt\x64\libucrt.lib'))
+    } | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1 -ExpandProperty Name
+if (!$version) { throw 'No Windows SDK with matching desktop headers and x64 libraries was found.' }
 $inc=Join-Path $kit "Include\$version"
 $lib=Join-Path $kit "Lib\$version"
 $dest=[IO.Directory]::CreateDirectory($Output).FullName

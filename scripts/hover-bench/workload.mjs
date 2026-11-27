@@ -39,7 +39,7 @@ export async function observeWorkload() {
 }
 
 // Uses the same public commands as the dictation settings screen, in the same
-// process as the overlay. The 'small' direct-HTTP entry verifies its pinned SHA.
+// process as the overlay. Direct-HTTP catalog entries verify their pinned SHA.
 export function startModelWorkload(modelId) {
   const state = window.__hoverWorkload
   state.finished = false
