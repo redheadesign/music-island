@@ -88,6 +88,7 @@ const report = () => {
       physicalEdgeToTargetMaxMs: physicalContact.length ? Math.max(...physicalContact) : null,
       missingCommits: rows.filter(row => !Number.isFinite(row.openingCommitToReadyMs)).map(row => row.trial) },
     maximumMs: intervals.length ? Math.max(...intervals) : null,
+    missingGestureAcceptance: rows.filter(row => !Number.isFinite(row.accepted)).map(row => row.trial),
     missingFrames: rows.filter(row => !Number.isFinite(row.acceptToReadyMs)).map(row => row.trial),
     overBudget: rows.filter(row => budgetMs !== null && row.acceptToReadyMs > budgetMs).map(row => row.trial),
     missedFirstClicks: rows.filter(row => !row.openedSettings || !row.trustedClick).map(row => row.trial),

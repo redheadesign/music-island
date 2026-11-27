@@ -24,6 +24,9 @@ $candidate = Get-Content -LiteralPath $runs.candidate.path -Raw | ConvertFrom-Js
 if ($baseline.error -or $candidate.error -or $baseline.completed -ne $Trials -or $candidate.completed -ne $Trials) {
     throw 'Pair incomplete. See the individual reports.'
 }
+if ($null -eq $candidate.missingGestureAcceptance -or $candidate.missingGestureAcceptance.Count -gt 0) {
+    throw 'Candidate lacks the accepted-gesture timestamp required for the two-frame budget. See missingGestureAcceptance in its report.'
+}
 if (!$candidate.display.dpi -or !$candidate.hz -or $baseline.display.dpi -ne $candidate.display.dpi -or
     $baseline.hz -ne $candidate.hz -or $baseline.display.device -ne $candidate.display.device -or
     $baseline.behavior.hoverDelayMs -ne $candidate.behavior.hoverDelayMs) {

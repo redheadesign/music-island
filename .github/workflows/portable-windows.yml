@@ -3,6 +3,10 @@ name: Build Music Island for Windows
 on:
   workflow_dispatch:
     inputs:
+      desktop_artifact_run:
+        description: Replay desktop QA on a successful official portable build from this run ID
+        required: false
+        type: string
       gigaam_models_run:
         description: Model asset workflow run ID for CPU inference verification
         required: false
@@ -27,7 +31,44 @@ permissions:
   contents: read
 
 jobs:
+  desktop-source:
+    name: Validate desktop replay source
+    if: ${{ inputs.desktop_artifact_run != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      number: ${{ steps.source.outputs.number }}
+      sha: ${{ steps.source.outputs.sha }}
+      job_url: ${{ steps.source.outputs.job_url }}
+    steps:
+      - id: source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.desktop_artifact_run }}
+          DESKTOP_QA: ${{ inputs.hover_benchmark || inputs.gigaam_public_smoke }}
+          MODEL_DRAFT: ${{ inputs.gigaam_model_draft }}
+          MODELS_RUN: ${{ inputs.gigaam_models_run }}
+        run: |
+          if [[ ! "$SOURCE_RUN" =~ ^[0-9]+$ || "$DESKTOP_QA" != true || "$MODEL_DRAFT" == true || -n "$MODELS_RUN" ]]; then
+            echo "::error::Desktop replay requires hover or public model QA and cannot prepare a model draft or run model export verification."
+            exit 1
+          fi
+          route="repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN"
+          source=$(gh api "$route")
+          jq -e --arg repo "$GITHUB_REPOSITORY" '.path == ".github/workflows/portable-windows.yml"
+            and .head_repository.full_name == $repo and (.head_sha | test("^[0-9a-f]{40}$"))' <<< "$source"
+          job_url=$(gh api "$route/jobs?per_page=100" | jq -er '[.jobs[] | select(.name == "Build portable Windows x64 EXE"
+            and .status == "completed" and .conclusion == "success")] |
+            if length == 1 then .[0].html_url else error("Expected one successful official portable build job") end')
+          echo "number=$(jq -r .run_number <<< "$source")" >> "$GITHUB_OUTPUT"
+          echo "sha=$(jq -r .head_sha <<< "$source")" >> "$GITHUB_OUTPUT"
+          echo "job_url=$job_url" >> "$GITHUB_OUTPUT"
+
   verify:
+    if: ${{ inputs.desktop_artifact_run == '' }}
     name: Check components and native behavior
     runs-on: windows-2022
     timeout-minutes: 50
@@ -71,6 +112,7 @@ jobs:
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml --workspace --lib -j 2
 
   portable:
+    if: ${{ inputs.desktop_artifact_run == '' }}
     name: Build portable Windows x64 EXE
     runs-on: windows-2022
     timeout-minutes: 60
@@ -204,7 +246,7 @@ jobs:
 
   gigaam-speech:
     name: Prepare GigaAM language references
-    if: ${{ inputs.gigaam_models_run != '' }}
+    if: ${{ inputs.desktop_artifact_run == '' && inputs.gigaam_models_run != '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:
@@ -256,7 +298,7 @@ jobs:
 
   gigaam:
     name: Verify Windows GigaAM inference
-    if: ${{ inputs.gigaam_models_run != '' }}
+    if: ${{ inputs.desktop_artifact_run == '' && inputs.gigaam_models_run != '' }}
     needs: [portable, gigaam-speech]
     runs-on: windows-2022
     timeout-minutes: 45
@@ -313,7 +355,7 @@ jobs:
 
   gigaam-draft:
     name: Stage verified GigaAM model draft
-    if: ${{ inputs.gigaam_model_draft && inputs.gigaam_models_run != '' }}
+    if: ${{ inputs.desktop_artifact_run == '' && inputs.gigaam_model_draft && inputs.gigaam_models_run != '' }}
     needs: [verify, gigaam]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -345,9 +387,10 @@ jobs:
     name: Exercise the portable application on a disposable Windows runner
     if: >-
       ${{ !cancelled() && (inputs.hover_benchmark || inputs.gigaam_public_smoke)
-          && needs.portable.result == 'success'
-          && (!inputs.gigaam_model_draft || needs['gigaam-draft'].result == 'success') }}
-    needs: [portable, gigaam-draft]
+          && ((inputs.desktop_artifact_run != '' && needs['desktop-source'].result == 'success')
+              || (inputs.desktop_artifact_run == '' && needs.portable.result == 'success'
+                  && (!inputs.gigaam_model_draft || needs['gigaam-draft'].result == 'success'))) }}
+    needs: [portable, gigaam-draft, desktop-source]
     runs-on: windows-2022
     timeout-minutes: 115
     permissions:
@@ -365,7 +408,9 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh run download $env:GITHUB_RUN_ID --name "music-island-windows-x64-$env:GITHUB_RUN_NUMBER" --dir "$env:RUNNER_TEMP/hover-exe"
+          SOURCE_RUN: ${{ inputs.desktop_artifact_run || github.run_id }}
+          SOURCE_NUMBER: ${{ needs['desktop-source'].outputs.number || github.run_number }}
+        run: gh run download $env:SOURCE_RUN --name "music-island-windows-x64-$env:SOURCE_NUMBER" --dir "$env:RUNNER_TEMP/hover-exe"
       - name: Download the approved 3.2.2 hover baseline
         if: ${{ inputs.hover_benchmark }}
         shell: pwsh
@@ -378,12 +423,34 @@ jobs:
           if ($baselineHash -ne 'a8742a6c2ee3864e7833891d82f470879822c969a574eab16820ccd836ef41e3') { throw 'Approved 3.2.2 binary changed' }
       - name: Prepare the candidate and test tools
         shell: pwsh
+        env:
+          SOURCE_RUN: ${{ inputs.desktop_artifact_run || github.run_id }}
+          SOURCE_SHA: ${{ needs['desktop-source'].outputs.sha || github.sha }}
+          BUILD_JOB_URL: ${{ needs['desktop-source'].outputs.job_url }}
         run: |
           npm ci
           if ($LASTEXITCODE) { throw 'npm ci failed' }
           $exe = Get-ChildItem -LiteralPath "$env:RUNNER_TEMP/hover-exe" -Recurse -Filter 'music-island.exe' -File -ErrorAction Stop
           if (@($exe).Count -ne 1) { throw 'Expected one portable EXE' }
+          $digest = (Get-FileHash -LiteralPath $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          $checksum = (Get-Content -LiteralPath (Join-Path $exe.DirectoryName 'SHA256.txt') -Raw).Trim()
+          if ($checksum -cne "$digest  music-island.exe") { throw 'Desktop artifact checksum mismatch' }
+          $sourceUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:SOURCE_RUN"
+          $evidence = [ordered]@{
+            sourceRun = $sourceUrl; sourceCommit = $env:SOURCE_SHA; harnessCommit = $env:GITHUB_SHA
+            buildJob = $env:BUILD_JOB_URL; portableSha256 = $digest
+          }
+          $evidence | ConvertTo-Json | Set-Content -LiteralPath "$env:RUNNER_TEMP/desktop-artifact-source.json"
+          Add-Content $env:GITHUB_STEP_SUMMARY "Desktop QA used [portable run $env:SOURCE_RUN]($sourceUrl), commit $env:SOURCE_SHA, SHA-256 $digest. Harness commit $env:GITHUB_SHA."
           Add-Content $env:GITHUB_ENV "MUSIC_ISLAND_TEST_EXE=$($exe.FullName)"
+      - name: Upload desktop replay provenance
+        if: ${{ inputs.desktop_artifact_run != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: desktop-artifact-source-${{ github.run_number }}
+          path: ${{ runner.temp }}/desktop-artifact-source.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Wait for the verified model draft to be published
         if: ${{ inputs.gigaam_model_draft && inputs.gigaam_public_smoke }}
         timeout-minutes: 16
@@ -478,6 +545,8 @@ jobs:
           $availability = Get-Content -LiteralPath "$env:RUNNER_TEMP/hover-streaming/availability.json" -Raw | ConvertFrom-Json
           Add-Content $env:GITHUB_STEP_SUMMARY "Native streaming QA fixture: $($availability.status) $($availability.reason)"
           if ($availability.status -eq 'available') { exit $resultCode }
+          if ($availability.status -eq 'unavailable') { exit 0 }
+          throw 'Missing or unknown native streaming fixture status'
       - name: Upload native streaming evidence
         if: ${{ always() && inputs.hover_benchmark }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
