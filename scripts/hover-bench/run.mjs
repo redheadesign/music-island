@@ -9,21 +9,23 @@ import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright-core'
-import { observeWorkload, overlaps, startModelWorkload } from './workload.mjs'
+import { idleCpuMetrics, observeWorkload, overlaps, startModelWorkload } from './workload.mjs'
 
 const [exeArg, expectedDigest, outputArg, countArg = '200', hzArg = 'auto', idleArg = '300', scenario = 'idle'] = process.argv.slice(2)
-if (!outputArg) throw Error('Usage: node run.mjs EXE SHA256 NEW_REPORT_DIRECTORY [cycles] [Hz] [idle-seconds] [scenario]')
+const publicModels = countArg === 'public-models'
+if (!outputArg) throw Error('Usage: node run.mjs EXE SHA256 NEW_REPORT_DIRECTORY [public-models | cycles Hz idle-seconds scenario]')
 assert.equal(process.platform, 'win32')
-assert.equal(process.env.MUSIC_ISLAND_DISPOSABLE_DESKTOP, '1', 'Use a dedicated Windows test desktop. This benchmark drives the system pointer.')
+assert.equal(process.env.MUSIC_ISLAND_DISPOSABLE_DESKTOP, '1', 'Use a dedicated Windows test desktop and fresh account.')
 const exe = path.resolve(exeArg)
 const output = path.resolve(outputArg)
 const count = Number(countArg), idleSeconds = Number(idleArg)
 let hz = hzArg === 'auto' ? null : Number(hzArg)
 let display = null
 let behavior = null, idleCpu = null
+let streaming = null
 let workload = { spans: [], finished: false, error: null }
 const requiredWork = scenario === 'models' ? ['download', 'hash', 'load'] : scenario === 'streaming' ? ['streaming'] : []
-assert.ok(Number.isInteger(count) && count > 0 && count <= 2000)
+assert.ok(publicModels || (Number.isInteger(count) && count > 0 && count <= 2000))
 assert.ok((hz === null || (hz >= 30 && hz <= 1000)) && idleSeconds >= 0 && idleSeconds <= 3600)
 assert.ok(['idle', 'models', 'streaming'].includes(scenario), 'Choose idle, models or streaming')
 const digest = createHash('sha256').update(await readFile(exe)).digest('hex')
@@ -42,7 +44,7 @@ const app = spawn(exe, ['--startup'], {
     WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=0 --remote-debugging-address=127.0.0.1',
   },
 })
-let browser, pointer, appError
+let browser, pointer, renderer, recordingSettings, appError
 app.on('error', error => { appError = error })
 async function until(check, timeout = 6000, interval = 30) {
   const untilMs = Date.now() + timeout
@@ -56,7 +58,7 @@ async function until(check, timeout = 6000, interval = 30) {
   return null
 }
 
-const rows = []
+const rows = [], publicResults = []
 function sampleCpu() {
   const script = fileURLToPath(new URL('./cpu.ps1', import.meta.url))
   return JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-File', script, '-RootProcess', String(app.pid)],
@@ -67,6 +69,8 @@ const percentile = (values, p) => values.length
 const report = () => {
   const budgetMs = hz ? 2000 / hz : null
   const intervals = rows.map(row => row.acceptToReadyMs).filter(Number.isFinite)
+  const sharedCommit = rows.map(row => row.openingCommitToReadyMs).filter(Number.isFinite)
+  const physicalContact = rows.map(row => row.edgeToReadyMs).filter(Number.isFinite)
   const evidence = rows.map(row => ({ ...row, workloads: [...new Set(workload.spans
     .filter(span => overlaps(span, row.accepted ?? row.openingCommit, row.ready)).map(span => span.name))] }))
   const byWorkload = Object.fromEntries(requiredWork.map(name => {
@@ -76,8 +80,13 @@ const report = () => {
       maximumMs: latency.length ? Math.max(...latency) : null }]
   }))
   return { exeSha256: digest, windows: os.release(), display, hz, budgetMs, behavior, scenario, idleSeconds,
-    idleCpu, requested: count,
+    idleCpu, streaming, requested: count,
     completed: rows.length, acceptedToTargetableFrameP99Ms: percentile(intervals, .99),
+    comparable: { openingCommitToTargetP99Ms: percentile(sharedCommit, .99),
+      openingCommitToTargetMaxMs: sharedCommit.length ? Math.max(...sharedCommit) : null,
+      physicalEdgeToTargetP99Ms: percentile(physicalContact, .99),
+      physicalEdgeToTargetMaxMs: physicalContact.length ? Math.max(...physicalContact) : null,
+      missingCommits: rows.filter(row => !Number.isFinite(row.openingCommitToReadyMs)).map(row => row.trial) },
     maximumMs: intervals.length ? Math.max(...intervals) : null,
     missingFrames: rows.filter(row => !Number.isFinite(row.acceptToReadyMs)).map(row => row.trial),
     overBudget: rows.filter(row => budgetMs !== null && row.acceptToReadyMs > budgetMs).map(row => row.trial),
@@ -104,6 +113,54 @@ try {
       if (matched) return candidate
     }
   }, 30000)
+  if (publicModels) await verifyPublicModels(await ownWindow('settings'))
+  else await measureHover(ownWindow)
+} catch (error) {
+  const partial = publicModels ? { exeSha256: digest, models: publicResults } : report()
+  await writeFile(path.join(output, 'report.json'), JSON.stringify({ ...partial, error: String(error) }, null, 2))
+  throw error
+} finally {
+  if (recordingSettings) await recordingSettings.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:dictation|cancel_operation')).catch(() => {})
+  if (renderer?.pid && renderer.exitCode === null) renderer.kill()
+  pointer?.stdin.end()
+  await browser?.close().catch(() => {})
+  if (app.pid && app.exitCode === null) app.kill()
+}
+
+async function verifyPublicModels(settings) {
+  assert.ok(settings, 'Owned Settings WebView not found')
+  const packs = JSON.parse(await readFile(new URL('../../src-tauri/crates/handy-core/src/catalog/gigaam-packs.json', import.meta.url), 'utf8'))
+  await settings.evaluate(observeWorkload)
+  for (const id of ['gigaam-v4-rnnt', 'gigaam-multilingual-v2-rnnt']) {
+    const pack = packs.find(entry => entry.id === id)
+    assert.ok(pack?.files?.length, 'No pinned catalog files for ' + id)
+    await settings.evaluate(startModelWorkload, id)
+    const run = await until(() => settings.evaluate(() => window.__hoverWorkload.finished && window.__hoverWorkload), 35 * 60000, 500)
+    assert.ok(run && !run.error, id + ': ' + (run?.error || 'timed out'))
+    const verified = run.spans.filter(span => span.id === id && span.name === 'hash' && span.end != null).length
+    assert.equal(verified, pack.files.length, 'Native checksum completions for ' + id)
+    const installed = await settings.evaluate(async modelId => {
+      const invoke = window.__TAURI_INTERNALS__.invoke
+      await invoke('plugin:dictation|rescan_local_models')
+      const model = await invoke('plugin:dictation|get_model_info', { modelId })
+      const status = await invoke('plugin:dictation|get_model_load_status')
+      if (!model?.is_downloaded || !status.is_loaded || status.current_model !== modelId) throw Error('Expected selected model to be installed and loaded')
+      await invoke('plugin:dictation|unload_model_manually')
+      await invoke('plugin:dictation|delete_model', { modelId })
+      await invoke('plugin:dictation|rescan_local_models')
+      const after = await invoke('plugin:dictation|get_model_info', { modelId })
+      if (!after || after.is_downloaded) throw Error('Model cleanup was not confirmed')
+      return { backend: status.backend, installed: true, loaded: true, removed: true }
+    }, id)
+    publicResults.push({ id, ...installed, verifiedFiles: verified, bytes: pack.files.reduce((n, file) => n + file.size, 0),
+      workload: run.spans.filter(span => span.id === id) })
+    await writeFile(path.join(output, 'report.json'), JSON.stringify({ exeSha256: digest, models: publicResults }, null, 2))
+    console.log(id, 'passed')
+  }
+}
+
+async function measureHover(ownWindow) {
+  let streamEvidence
   const page = await ownWindow('main', true)
   assert.ok(page, 'Owned main WebView not found')
   behavior = await page.evaluate(async () => {
@@ -135,9 +192,54 @@ try {
     await settings.evaluate(observeWorkload)
   }
   if (scenario === 'streaming') {
-    console.log('Use the isolated instance with a test audio input and a streaming model. Start the live dictation, then press Enter.')
-    const input = createInterface({ input: process.stdin })
-    try { await input[Symbol.asyncIterator]().next() } finally { input.close() }
+    const device = process.env.MUSIC_ISLAND_DICTATION_REQUIRED_INPUT
+    const helper = process.env.MUSIC_ISLAND_HOVER_AUDIO_HELPER
+    const renderId = process.env.MUSIC_ISLAND_HOVER_RENDER_ID
+    const wav = process.env.MUSIC_ISLAND_HOVER_WAV
+    assert.ok(device && helper && renderId && wav && idleSeconds === 0, 'Use streaming.ps1 with a private audio cable and synthetic WAV')
+    const model = await settings.evaluate(async requiredInput => {
+      const invoke = window.__TAURI_INTERNALS__.invoke
+      const status = await invoke('plugin:dictation|get_status')
+      if (status.captureConstraint?.requiredInput !== requiredInput) throw Error('Application did not acknowledge the exact required input device')
+      const models = await invoke('plugin:dictation|get_available_models')
+      await invoke('plugin:dictation|change_transcribe_accelerator_setting', { accelerator: 'cpu' })
+      await invoke('plugin:dictation|change_paste_method_setting', { method: 'none' })
+      await invoke('plugin:dictation|change_post_process_enabled_setting', { enabled: false })
+      await invoke('plugin:dictation|change_audio_feedback_setting', { enabled: false })
+      await invoke('plugin:dictation|change_mute_while_recording_setting', { enabled: false })
+      await invoke('plugin:dictation|change_overlay_style_setting', { style: 'live' })
+      return models.find(m => m.filename === 'moonshine-streaming-tiny-Q8_0.gguf' && m.supports_streaming)?.id
+    }, device)
+    assert.ok(model, 'Missing Moonshine Streaming Tiny Q8_0')
+    await settings.evaluate(startModelWorkload, model)
+    const loaded = await until(() => settings.evaluate(() => window.__hoverWorkload.finished && window.__hoverWorkload), 300000, 250)
+    assert.ok(loaded && !loaded.error, loaded?.error || 'Streaming model failed to load')
+    await settings.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:dictation|toggle', { postProcess: false }))
+    recordingSettings = settings
+    const active = await until(() => settings.evaluate(async () => {
+      const data = await window.__TAURI_INTERNALS__.invoke('plugin:dictation|get_status')
+      if (data.phase === 'error') throw Error('Capture failed: ' + data.error)
+      return data.phase === 'streaming' && data.ready && data.operationId
+    }), 30000, 60)
+    assert.ok(active, 'The real recorder never entered ready streaming')
+    const capsule = await ownWindow('recording_overlay')
+    assert.ok(capsule, 'Owned dictation capsule not found')
+    await capsule.evaluate(async operationId => {
+      window.__hoverPreview = { events: 0, last: null }
+      const { invoke, transformCallback } = window.__TAURI_INTERNALS__
+      await invoke('plugin:event|listen', { event: 'stream-text-event', target: {kind: 'Any'},
+        handler: transformCallback(({payload}) => {
+          if (payload.operation_id !== operationId || !(payload.committed || payload.tentative)) return
+          window.__hoverPreview.events++
+          window.__hoverPreview.last = performance.timeOrigin + performance.now()
+        }) })
+    }, active)
+    renderer = spawn(helper, ['render', renderId, wav], { cwd: output, stdio: 'inherit', windowsHide: true })
+    renderer.on('error', error => { appError = error })
+    const preview = await until(() => capsule.evaluate(() => window.__hoverPreview.events > 0), 45000, 120)
+    assert.ok(preview, 'The streaming engine emitted no speech preview from the private fixture')
+    streaming = { model, active, device, wavSha256: createHash('sha256').update(await readFile(wav)).digest('hex') }
+    streamEvidence = () => capsule.evaluate(() => window.__hoverPreview)
   }
   await page.evaluate(() => {
     const selector = '[data-island-action="settings"]'
@@ -184,18 +286,32 @@ try {
   await page.exposeFunction('__firstIslandTarget', point => firstTarget?.(point))
   for (let i = 0; i < count; i++) {
     await command('dismiss')
+    assert.ok(await until(async () => !(await command('settings'))), 'Owned Settings window did not hide')
+    const previous = rows.at(-1)
+    if (previous) {
+      // The released 3.2.2 loses a leave received within its 280 ms opening grace.
+      // Exercise the candidate's first early leave, then use identical resets.
+      const earlyLeave = i === 1 && previous.accepted != null
+      if (!earlyLeave && previous.openingCommit != null) await sleep(Math.max(0, previous.openingCommit + 310 - Date.now()))
+      previous.earlyLeaveCheck = earlyLeave
+    }
     await command('leave')
-    assert.ok(await until(async () => !(await command('settings')) && await page.locator('.island-root--collapsed').count()
-      && !(await page.locator('.island-hover-zone').count())), 'Overlay did not finish collapsing')
+    if (!await until(async () => await page.locator('.island-root--collapsed').count() && !(await page.locator('.island-hover-zone').count()))) {
+      const diagnostics = await page.evaluate(async () => ({
+        classes: document.querySelector('.island-root')?.className,
+        pointer: await window.__TAURI_INTERNALS__.invoke('get_collapsed_gesture_state'),
+      }))
+      throw Error('Overlay did not finish collapsing after trial ' + i + ': ' + JSON.stringify(diagnostics))
+    }
     if (i === 1 && idleSeconds) {
-      const before = sampleCpu()
-      await sleep(idleSeconds * 1000)
-      const after = sampleCpu()
-      const continuous = Object.keys(before.cpuMs).filter(id => Object.hasOwn(after.cpuMs, id))
-      const cpuMs = continuous.reduce((t, id) => t + after.cpuMs[id] - before.cpuMs[id], 0)
-      const elapsedMs = after.at - before.at
-      idleCpu = { elapsedMs, cpuMs, corePercent: 100 * cpuMs / elapsedMs, continuousProcesses: continuous.length,
-        processSetChanged: continuous.length !== Object.keys(before.cpuMs).length || continuous.length !== Object.keys(after.cpuMs).length }
+      const durationMs = idleSeconds * 1000
+      const samples = [sampleCpu()]
+      const deadline = performance.now() + durationMs
+      do {
+        await sleep(Math.min(30000, Math.max(0, deadline - performance.now())))
+        samples.push(sampleCpu())
+      } while (performance.now() < deadline)
+      idleCpu = idleCpuMetrics(samples, os.cpus().length, durationMs)
     }
     if (scenario === 'models' && i === 2) await settings.evaluate(startModelWorkload, process.env.MUSIC_ISLAND_HOVER_MODEL || 'small')
     const target = new Promise(resolve => { firstTarget = point => { if (point.trial === i + 1) resolve(point) } })
@@ -213,9 +329,18 @@ try {
       return row
     })
     const acceptance = sample.accepted ?? sample.openingCommit
-    rows.push({ trial: i + 1, phase: i === 0 ? 'cold' : i === 1 && idleSeconds ? 'after-idle' : 'repeated',
+    if (streamEvidence) {
+      assert.ok(renderer?.pid && renderer.exitCode === null, 'Synthetic speech ended before the hover trials finished')
+      const evidence = await streamEvidence()
+      sample.previewEvents = evidence.events
+      sample.lastPreviewAt = evidence.last
+      streaming.previewEvents = evidence.events
+    }
+    rows.push({ trial: i + 1, phase: scenario === 'streaming' ? 'streaming' : i === 0 ? 'cold' : i === 1 && idleSeconds ? 'after-idle' : 'repeated',
       realEdge: edge.at, ...sample, acceptanceSource: sample.accepted == null ? 'DOM commit (baseline)' : 'gesture',
       acceptToReadyMs: sample.ready != null && acceptance != null ? sample.ready - acceptance : null,
+      openingCommitToReadyMs: sample.ready != null && sample.openingCommit != null ? sample.ready - sample.openingCommit : null,
+      edgeToReadyMs: sample.ready != null ? sample.ready - edge.at : null,
       edgeToFirstFrameMs: sample.visible != null ? sample.visible - edge.at : null,
       nativeClick: click, openedSettings })
     if (settings) workload = await settings.evaluate(() => window.__hoverWorkload)
@@ -224,13 +349,8 @@ try {
   const result = report()
   console.log(JSON.stringify({ cycles: rows.length, p99Ms: result.acceptedToTargetableFrameP99Ms, maximumMs: result.maximumMs,
     missedFirstClicks: result.missedFirstClicks, overBudget: result.overBudget }))
-  if (!hz || result.missedFirstClicks.length || result.missingFrames.length || result.overBudget.length
-    || result.missingWorkloads.length || workload.error || (scenario === 'models' && !workload.finished)) process.exitCode = 1
-} catch (error) {
-  await writeFile(path.join(output, 'report.json'), JSON.stringify({ ...report(), error: String(error) }, null, 2))
-  throw error
-} finally {
-  pointer?.stdin.end()
-  await browser?.close().catch(() => {})
-  if (app.pid && app.exitCode === null) app.kill()
+  if (!hz || result.missedFirstClicks.length || result.missingFrames.length || result.overBudget.length ||
+    result.comparable.missingCommits.length || (idleSeconds > 0 && !idleCpu?.withinBudget)
+    || result.missingWorkloads.length || workload.error || (scenario === 'models' && !workload.finished)
+    || (scenario === 'streaming' && (streaming.previewEvents < 2 || result.byWorkload.streaming.trials.length !== count))) process.exitCode = 1
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { observeWorkload, overlaps } from './workload.mjs'
+import { idleCpuMetrics, observeWorkload, overlaps, startModelWorkload } from './workload.mjs'
 
 test('workload spans use native phase boundaries and exclude intervening idle trials', async () => {
   const events = new Map()
@@ -30,4 +30,42 @@ test('workload spans use native phase boundaries and exclude intervening idle tr
     assert.ok(!overlaps({ start: 2, end: null }, null, 5))
     assert.ok(overlaps({ start: 2, end: null }, 4, 5))
   } finally { delete globalThis.window }
+})
+
+test('successive model runs reset completion and surface native download errors', async () => {
+  const calls = []
+  const state = { finished: true, error: 'previous error' }
+  globalThis.window = { __hoverWorkload: state, __TAURI_INTERNALS__: {
+    invoke: async (command, args) => {
+      calls.push(command)
+      if (command.endsWith('get_available_models')) return [{ id: 'first' }, { id: 'second' }]
+      if (args?.modelId === 'second' && command.endsWith('download_model')) throw Error('Upstream unavailable')
+      if (command.endsWith('get_model_load_status')) return { is_loaded: true }
+    },
+  } }
+  try {
+    startModelWorkload('first')
+    assert.equal(state.finished, false)
+    await new Promise(resolve => setImmediate(resolve))
+    assert.ok(state.finished && !state.error)
+    assert.ok(calls.includes('plugin:dictation|set_active_model'))
+    startModelWorkload('second')
+    assert.equal(state.finished, false)
+    await new Promise(resolve => setImmediate(resolve))
+    assert.ok(state.finished && state.error.includes('Upstream unavailable'))
+  } finally { delete globalThis.window }
+})
+
+test('idle CPU uses machine capacity, rejects transient processes and fails above one percent', () => {
+  const snapshot = (at, cpuMs) => ({ at, cpuMs, rootFound: true, webviews: 1 })
+  const first = snapshot(0, { app: 20, web: 10 })
+  const middle = snapshot(500, { app: 30, web: 15 })
+  const last = snapshot(1000, { app: 40, web: 20 })
+  const valid = idleCpuMetrics([first, middle, last], 4, 1000)
+  assert.equal(valid.oneCorePercent, 3)
+  assert.equal(valid.machinePercent, .75)
+  assert.ok(valid.withinBudget)
+  assert.equal(idleCpuMetrics([first, last], 2, 1000).withinBudget, false)
+  assert.equal(idleCpuMetrics([first, { ...middle, cpuMs: { ...middle.cpuMs, helper: 0 } }, last], 4, 1000).valid, false)
+  assert.equal(idleCpuMetrics([first, { ...last, webviews: 0 }], 4, 1000).valid, false)
 })

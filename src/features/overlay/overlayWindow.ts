@@ -46,6 +46,11 @@ export function shouldDeferOverlayClose(
   return now - openedAt < OVERLAY_CLOSE_GRACE_MS || now < holdUntil
 }
 
+export function deferOverlayClose(now: number, openedAt: number, holdUntil: number, close: () => void): number | null {
+  const remaining = Math.max(openedAt + OVERLAY_CLOSE_GRACE_MS, holdUntil) - now
+  return remaining > 0 ? window.setTimeout(close, Math.ceil(remaining)) : null
+}
+
 /**
  * Native hit-testing (GetCursorPos / GetWindowRect) is in physical pixels.
  * Layout math in the webview is CSS pixels — without DPR the band is too small on

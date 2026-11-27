@@ -27,6 +27,7 @@ import { ActiveSelectionChip } from '../music/wave/ActiveSelectionChip'
 import { useAppUpdater } from '../settings/useAppUpdater'
 import {
   cancelOverlayWindowOperations,
+  deferOverlayClose,
   getOverlayBounds,
   shouldDeferOverlayClose,
   measureExpandedHitBand,
@@ -94,6 +95,12 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
   const systemReducedMotion = useReducedMotion()
   const reducedMotion = config.appearance.reducedMotion || Boolean(systemReducedMotion)
   const hasUsage = islandLayout.zones.left.length + islandLayout.zones.right.length > 0
+  const maxRailProviders = Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length)
+  const actionCount = islandLayout.zones.actions.length
+  const estimatedBounds = useMemo(() => getOverlayBounds(config.layout.width, config.layout.scale, {
+    visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: false, maxProviders: maxRailProviders,
+  }, arrangement, actionCount), [config.layout.width, config.layout.scale, hasUsage, usageScale, usageCompact, maxRailProviders, arrangement, actionCount])
+  const gestureBounds = useRef<{ generation: number; bounds: typeof estimatedBounds; result: Promise<boolean> } | null>(null)
   const updater = useAppUpdater(true, Boolean(uiPrefs.forceSameVersionUpdate))
   const locale = normalizeLocale(config?.appearance.locale)
   const t = useMemo(() => createTranslator(locale), [locale])
@@ -350,10 +357,12 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     // Once input is active, ResizeObserver owns the measured (possibly asymmetric) band.
     if (windowPhase === 'open') return
     let cancelled = false
-    const bounds = getOverlayBounds(config.layout.width, config.layout.scale, { visible: hasUsage, scale: usageScale, compact: usageCompact, visibleWhenCollapsed: false, maxProviders: Math.max(islandLayout.zones.left.length, islandLayout.zones.right.length) }, arrangement, islandLayout.zones.actions.length)
     const phase = windowPhase
     const generation = transitionRef.current.generation
-    void syncOverlayWindow(phase, bounds).then((applied) => {
+    const pending = gestureBounds.current
+    const result = phase === 'opening' && pending?.generation === generation && pending.bounds === estimatedBounds
+      ? pending.result : syncOverlayWindow(phase, estimatedBounds)
+    void result.then((applied) => {
       if (!applied || cancelled || generation !== transitionRef.current.generation) {
         return
       }
@@ -361,6 +370,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
         if (!openCommittedRef.current) {
           return
         }
+        traceHover('inputReady')
         if (mode !== 'settings') {
           setMode('expanded')
         }
@@ -376,7 +386,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     return () => {
       cancelled = true
     }
-  }, [config.layout.scale, config.layout.width, hasUsage, usageScale, usageCompact, arrangement, islandLayout.zones.actions.length, islandLayout.zones.left.length, islandLayout.zones.right.length, mode, setMode, windowPhase, setWindowPhase])
+  }, [estimatedBounds, mode, setMode, windowPhase, setWindowPhase])
 
   useEffect(() => {
     if ((!showLocalServers && !showLatestMessage) || !isTauriRuntime()) return
@@ -517,11 +527,12 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       }
 
       lastPointerRef.current = { x: state.clientX, y: state.clientY }
-      if (state.active) revealHoldUntilRef.current = 0
-      if (shouldDeferOverlayClose(performance.now(), openedAtRef.current, revealHoldUntilRef.current)) {
-        return
+      if (state.active) {
+        revealHoldUntilRef.current = 0
+        if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+        closeTimerRef.current = null
       }
-      if (phase === 'opening' && !expandedVisible) {
+      if (phase === 'opening' && (!expandedVisible || shouldDeferOverlayClose(performance.now(), openedAtRef.current, revealHoldUntilRef.current))) {
         return
       }
       // Keep-alive is the native hit-band only. DOM elementFromPoint is unreliable across
@@ -538,11 +549,15 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     }
 
     let cleanup: () => void = () => undefined
-    void onCollapsedGestureState(processState).then((unlisten) => {
-      if (active) cleanup = unlisten
-      else unlisten()
+    let receivedEvent = false
+    void onCollapsedGestureState(state => {
+      receivedEvent = true
+      processState(state)
+    }).then(unlisten => {
+      if (!active) { unlisten(); return }
+      cleanup = unlisten
+      void getCollapsedGestureState().then(state => { if (!receivedEvent) processState(state) })
     })
-    void getCollapsedGestureState().then(processState)
 
     return () => {
       active = false
@@ -711,6 +726,10 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
     })
     setHideCollapsedProgress(true)
     setWindowPhase('opening')
+    // Issue the native hit-band request while React mounts the controls.
+    const result = syncOverlayWindow('opening', estimatedBounds)
+    gestureBounds.current = { generation: transitionRef.current.generation, bounds: estimatedBounds, result }
+    void result.catch(() => {}) // The matching transition effect handles a rejected or cancelled request.
     setEdgeContact(false)
   }
 
@@ -873,9 +892,8 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
       return
     }
 
-    if (shouldDeferOverlayClose(performance.now(), openedAtRef.current, revealHoldUntilRef.current)) {
-      return
-    }
+    closeTimerRef.current = deferOverlayClose(performance.now(), openedAtRef.current, revealHoldUntilRef.current, () => scheduleCloseRef.current())
+    if (closeTimerRef.current !== null) return
 
     setIsHoveringIsland(false)
     setWindowPhase('closing')
@@ -990,7 +1008,7 @@ export function OverlayShell({ app, usage, localServers, latestDictation }: Over
               key="island-expanded"
               onPointerEnter={handleExpandedHoverEnter}
               onPointerLeave={handleExpandedHoverLeave}
-              initial={reducedMotion ? false : { opacity: 0, y: -18 }}
+              initial={reducedMotion ? false : { opacity: 0.12, y: -18 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               onAnimationComplete={publishWidgetRegions}

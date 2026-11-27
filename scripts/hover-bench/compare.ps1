@@ -29,8 +29,9 @@ if (!$candidate.display.dpi -or !$candidate.hz -or $baseline.display.dpi -ne $ca
     $baseline.behavior.hoverDelayMs -ne $candidate.behavior.hoverDelayMs) {
     throw 'Pair does not share a measured monitor, DPI, refresh rate and dwell'
 }
-if ($baseline.missingFrames.Count -eq $Trials -or $baseline.workload.error -or $baseline.missingWorkloads.Count -or
+if ($baseline.missingFrames.Count -eq $Trials -or $baseline.comparable.missingCommits.Count -or
+    ($IdleSeconds -gt 0 -and !$baseline.idleCpu.valid) -or $baseline.workload.error -or $baseline.missingWorkloads.Count -or
     ($Scenario -eq 'models' -and !$baseline.workload.finished)) { throw 'Baseline lacks the requested evidence' }
-Write-Output "Baseline P99 = $($baseline.acceptedToTargetableFrameP99Ms) ms, max = $($baseline.maximumMs) ms"
-Write-Output "Candidate P99 = $($candidate.acceptedToTargetableFrameP99Ms) ms, max = $($candidate.maximumMs) ms"
+Write-Output "Opening DOM commit to first target, baseline P99 = $($baseline.comparable.openingCommitToTargetP99Ms) ms, candidate P99 = $($candidate.comparable.openingCommitToTargetP99Ms) ms"
+Write-Output "OS edge contact to first target, baseline P99 = $($baseline.comparable.physicalEdgeToTargetP99Ms) ms, candidate P99 = $($candidate.comparable.physicalEdgeToTargetP99Ms) ms"
 exit $runs.candidate.exitCode

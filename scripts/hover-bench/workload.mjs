@@ -42,6 +42,8 @@ export async function observeWorkload() {
 // process as the overlay. The 'small' direct-HTTP entry verifies its pinned SHA.
 export function startModelWorkload(modelId) {
   const state = window.__hoverWorkload
+  state.finished = false
+  state.error = null
   const invoke = window.__TAURI_INTERNALS__.invoke
   void (async () => {
     await invoke('set_plugin_enabled', { id: 'dictation', enabled: true })
@@ -59,4 +61,23 @@ export function startModelWorkload(modelId) {
 
 export function overlaps(span, start, end) {
   return Number.isFinite(start) && Number.isFinite(end) && span.start <= end && (span.end == null || span.end >= start)
+}
+
+export function idleCpuMetrics(samples, logicalProcessors, expectedMs) {
+  const first = samples[0], last = samples.at(-1)
+  const ids = Object.keys(first.cpuMs).sort()
+  const elapsedMs = last.at - first.at
+  const sameProcesses = samples.every(sample => {
+    const keys = Object.keys(sample.cpuMs).sort()
+    return keys.length === ids.length && keys.every((key, i) => key === ids[i])
+  })
+  const valid = sameProcesses && logicalProcessors > 0 && elapsedMs >= expectedMs && elapsedMs > 0 &&
+    samples.every((sample, i) => sample.rootFound && sample.webviews > 0 && (!i || sample.at > samples[i - 1].at) &&
+      ids.every(id => Number.isFinite(sample.cpuMs[id]) && (!i || sample.cpuMs[id] >= samples[i - 1].cpuMs[id])))
+  const cpuMs = valid ? ids.reduce((total, id) => total + last.cpuMs[id] - first.cpuMs[id], 0) : null
+  const oneCorePercent = valid ? 100 * cpuMs / elapsedMs : null
+  const machinePercent = valid ? oneCorePercent / logicalProcessors : null
+  return { valid, cpuMs, elapsedMs, oneCorePercent, machinePercent, limitMachinePercent: 1,
+    withinBudget: valid && machinePercent <= 1, logicalProcessors, processCount: ids.length,
+    processSetChanged: !sameProcesses, sampleCount: samples.length }
 }
