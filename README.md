@@ -2,7 +2,7 @@
 
 Control music from the top edge of your Windows desktop and type with your voice in the app you are using
 
-**3.2.2** · Windows 10/11 · [GPL-3.0-or-later](LICENSE) · local-first · no telemetry
+**3.3.0** · Windows 10/11 · [GPL-3.0-or-later](LICENSE) · local-first · no telemetry
 
 [**Download the latest published version**](https://github.com/redheadesign/music-island/releases/latest) · [Website](https://music-island.space/) · [What's new](CHANGELOG.md) · [Component workshop](docs/STORYBOOK.md)
 
@@ -17,6 +17,8 @@ Download `music-island.exe`, save it in a folder you want to keep and open it �
 ![Dictation turns speech into text in the active application](docs/media/v3/06-dictation.webp)
 
 Press your shortcut, speak and finish the recording. Recognition runs on your computer; the result is inserted into the active app and can be kept with its audio in History. Download speech recognition for your language in Settings → Dictation, reuse files from Handy and manage your dictionary and optionally use **AI processing** through a provider you configure. Regular dictation stays local; provider processing is off by default and uses a separate shortcut.
+
+For Russian, start with **GigaAM-v4**. Download 255 MB to transcribe after recording or enable streaming on its model card for a total of 1.22 GB. GigaAM-v4 also recognizes English. **GigaAM Multilingual-v2** supports 21 languages and takes 3.93 GB. [Dictation models](docs/DICTATION.md#gigaam-v4-and-gigaam-multilingual-v2).
 
 Choose **Classic**, **Waves** or **Fox** in Settings → Dictation → General to change the recording overlay. Under **Capsule material**, choose **Match island**, **Classic** or **Glass**. Glass has separate controls for the recording capsule. Waves and Fox offer color palettes. Waves also supports colored wave edges. Fox adds a pixel character with animated expressions and recognition games. [Recorder appearance](docs/DICTATION.md#recorder-appearance).
 

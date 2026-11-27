@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.3.0 — 2026-11-27
+
+- GigaAM-v4 is the first recommendation for Russian dictation. Download 255 MB to transcribe after recording, or enable streaming on the same model card for live text. Both modes together take 1.22 GB.
+- GigaAM Multilingual-v2 adds local dictation in 21 languages, with live and recorded speech recognition. Model cards show supported modes and restore Handy’s relative speed and accuracy ratings where available.
+- The top-edge player accepts the first click while desktop glass is warming up and closes reliably when the pointer leaves during opening.
+- Dictation resumes interrupted model downloads more reliably, reports silent microphones and keeps the transcript available to copy when Windows blocks pasting into an elevated app.
+
 ## 3.2.2 — 2026-11-24
 
 - The Windows 11 GPU lens prepares the desktop backdrop during top-edge hover and waits for a usable frame before revealing the island. If capture is unavailable, the island keeps its system backdrop for that opening.

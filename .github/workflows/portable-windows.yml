@@ -26,6 +26,11 @@ on:
         required: false
         type: boolean
         default: false
+      app_release_draft:
+        description: Stage this verified Windows build and its English notes in a stable application draft
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -50,10 +55,11 @@ jobs:
           SOURCE_RUN: ${{ inputs.desktop_artifact_run }}
           DESKTOP_QA: ${{ inputs.hover_benchmark || inputs.gigaam_public_smoke }}
           MODEL_DRAFT: ${{ inputs.gigaam_model_draft }}
+          APP_DRAFT: ${{ inputs.app_release_draft }}
           MODELS_RUN: ${{ inputs.gigaam_models_run }}
         run: |
-          if [[ ! "$SOURCE_RUN" =~ ^[0-9]+$ || "$DESKTOP_QA" != true || "$MODEL_DRAFT" == true || -n "$MODELS_RUN" ]]; then
-            echo "::error::Desktop replay requires hover or public model QA and cannot prepare a model draft or run model export verification."
+          if [[ ! "$SOURCE_RUN" =~ ^[0-9]+$ || "$DESKTOP_QA" != true || "$MODEL_DRAFT" == true || "$APP_DRAFT" == true || -n "$MODELS_RUN" ]]; then
+            echo "::error::Desktop replay requires hover or public model QA and cannot prepare release drafts or run model export verification."
             exit 1
           fi
           route="repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN"
@@ -77,6 +83,10 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: '0'
       RUSTUP_TOOLCHAIN: 1.96.1-x86_64-pc-windows-msvc
     steps:
+      - name: Check that application and model drafts are prepared separately
+        if: ${{ inputs.app_release_draft && inputs.gigaam_model_draft }}
+        shell: pwsh
+        run: throw 'Choose one release draft per run'
       - name: Check the model draft input
         if: ${{ inputs.gigaam_model_draft && inputs.gigaam_models_run == '' }}
         shell: pwsh
@@ -557,3 +567,38 @@ jobs:
             ${{ runner.temp }}/hover-streaming/trials/*/report.json
           if-no-files-found: warn
           retention-days: 7
+
+  app-release-draft:
+    name: Stage verified Windows application release
+    needs: [verify, portable, gigaam, hover]
+    if: >-
+      ${{ !cancelled() && inputs.app_release_draft && !inputs.gigaam_model_draft
+          && inputs.desktop_artifact_run == '' && needs.verify.result == 'success' && needs.portable.result == 'success'
+          && (inputs.gigaam_models_run == '' || needs.gigaam.result == 'success')
+          && (!(inputs.hover_benchmark || inputs.gigaam_public_smoke) || needs.hover.result == 'success') }}
+    runs-on: windows-2022
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    concurrency:
+      group: stable-application-release-draft
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Download the Windows x64 artifact from this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download $env:GITHUB_RUN_ID --repo $env:GITHUB_REPOSITORY --name "music-island-windows-x64-$env:GITHUB_RUN_NUMBER" --dir "$env:RUNNER_TEMP/app-release"
+      - name: Verify the Windows product version and stage the three public assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $exe = Get-Item -LiteralPath "$env:RUNNER_TEMP/app-release/release/music-island.exe"
+          $version = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
+          if ($exe.VersionInfo.ProductVersion -cne $version) { throw 'EXE product version differs from the source version' }
+          python scripts/stage-app-release.py "$env:RUNNER_TEMP/app-release" $version
+          exit $LASTEXITCODE
