@@ -417,8 +417,6 @@ impl TranscriptionManager {
             let mut engine = self.lock_engine();
             // Dropping the engine frees all resources
             *engine = None;
-        }
-        {
             let mut current_model = self.current_model_id.lock().unwrap();
             *current_model = None;
         }
@@ -548,8 +546,6 @@ impl TranscriptionManager {
         {
             let mut engine = self.lock_engine();
             *engine = None;
-        }
-        {
             let mut current_model = self.current_model_id.lock().unwrap();
             *current_model = None;
         }
@@ -824,7 +820,7 @@ impl TranscriptionManager {
             }
         };
 
-        // Only transcribe-cpp models expose streaming; ONNX engines fall back to
+        // Trust the loaded engine's capabilities; batch-only engines fall back to
         // batch. The loaded session (not the ModelManager copy) is the source of
         // truth for run-path capabilities.
         let supports_streaming = engine.capabilities.streaming;
@@ -886,9 +882,11 @@ impl TranscriptionManager {
             );
 
             let mut perf = StreamPerf::new();
+            let mut feed_error = None;
             while let Ok(cmd) = rx.recv() {
                 match cmd {
                     StreamCmd::Feed(pcm) => {
+                        if feed_error.is_some() { continue; }
                         self.touch_activity();
                         perf.record_feed(pcm.len());
                         let feed_start = Instant::now();
@@ -915,12 +913,17 @@ impl TranscriptionManager {
                             Err(e) => {
                                 perf.record_compute(feed_start.elapsed());
                                 warn!("stream feed failed: {}", e);
+                                feed_error = Some(e);
                             }
                         }
                     }
                     StreamCmd::Finalize(reply) => {
                         let finalize_start = Instant::now();
-                        let result = match stream.finalize() {
+                        let finalized = match feed_error.take() {
+                            Some(error) => { stream.reset(); Err(error) }
+                            None => stream.finalize(),
+                        };
+                        let result = match finalized {
                             // After finalize the committed prefix holds the full
                             // text; display() = committed + tentative is the safe read.
                             Ok(update) => {
@@ -999,23 +1002,14 @@ impl TranscriptionManager {
     /// Return the leased engine to the mutex, unless the model was switched or
     /// unloaded during transcription (in which case the stale engine is dropped).
     fn return_engine(&self, engine: LoadedEngine, expected_model_id: &str) {
-        if !crate::is_enabled() || !engine.is_healthy() {
-            *self
-                .current_model_id
-                .lock()
-                .unwrap_or_else(|e| e.into_inner()) = None;
-            return;
-        }
-        let still_current =
-            self.current_model_id.lock().unwrap().as_deref() == Some(expected_model_id);
-        if still_current {
-            *self.lock_engine() = Some(engine);
-        } else {
-            info!(
-                "Model changed/unloaded during transcription; dropping stale engine (was '{}')",
-                expected_model_id
-            );
-            // `engine` drops here, freeing its resources.
+        let mut slot = self.lock_engine();
+        let mut current = self.current_model_id.lock().unwrap_or_else(|e| e.into_inner());
+        if slot.is_none() && current.as_deref() == Some(expected_model_id) {
+            if crate::is_enabled() && engine.is_healthy() {
+                *slot = Some(engine);
+            } else {
+                *current = None;
+            }
         }
     }
 
@@ -1090,12 +1084,12 @@ impl TranscriptionManager {
         if crate::status::snapshot().operation_id != operation_id {
             return;
         }
-        let _ = StreamTextEvent {
+        let text = StreamTextEvent {
             operation_id,
             committed: committed.to_string(),
             tentative: tentative.to_string(),
-        }
-        .emit(&self.app_handle);
+        };
+        let _ = self.app_handle.emit_to("recording_overlay", "stream-text-event", text);
     }
 
     pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
@@ -1244,6 +1238,10 @@ impl TranscriptionManager {
                     };
                     applied_language_hint = options.language.clone();
                 }
+                "GigaAMZapformer" => {
+                    options.language = (validated_language != "auto").then(|| validated_language.clone());
+                    applied_language_hint = options.language.clone();
+                }
                 "Canary" => {
                     options.language =
                         (validated_language != "auto").then(|| validated_language.clone());
@@ -1320,24 +1318,23 @@ impl TranscriptionManager {
                         panic_msg
                     );
 
-                    // Clear the model ID so it will be reloaded on next attempt
-                    {
-                        let mut current_model = self
-                            .current_model_id
-                            .lock()
-                            .unwrap_or_else(|e| e.into_inner());
-                        *current_model = None;
+                    // A different session may have filled the slot during inference.
+                    let slot = self.lock_engine();
+                    let mut current = self.current_model_id.lock().unwrap_or_else(|e| e.into_inner());
+                    if slot.is_none() && current.as_deref() == Some(active_model.as_str()) {
+                        *current = None;
+                        drop(current);
+                        drop(slot);
+                        let _ = self.app_handle.emit(
+                            "model-state-changed",
+                            ModelStateEvent {
+                                event_type: "unloaded".into(),
+                                model_id: None,
+                                model_name: None,
+                                error: Some(format!("Engine panicked: {panic_msg}")),
+                            },
+                        );
                     }
-
-                    let _ = self.app_handle.emit(
-                        "model-state-changed",
-                        ModelStateEvent {
-                            event_type: "unloaded".to_string(),
-                            model_id: None,
-                            model_name: None,
-                            error: Some(format!("Engine panicked: {}", panic_msg)),
-                        },
-                    );
 
                     return Err(anyhow::anyhow!(
                         "Transcription engine panicked: {}. The model has been unloaded and will reload on next attempt.",

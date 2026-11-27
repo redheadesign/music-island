@@ -20,7 +20,7 @@ Press your shortcut, speak and finish the recording. Recognition runs on your co
 
 Choose **Classic**, **Waves** or **Fox** in Settings → Dictation → General to change the recording overlay. Under **Capsule material**, choose **Match island**, **Classic** or **Glass**. Glass has separate controls for the recording capsule. Waves and Fox offer color palettes. Waves also supports colored wave edges. Fox adds a pixel character with animated expressions and recognition games. [Recorder appearance](docs/DICTATION.md#recorder-appearance).
 
-Dictation is adapted from [Handy v0.9.7](https://github.com/cjpais/Handy/tree/v0.9.7), commit `05e0aedd2906f0d82722735f930465950c476b90` (CJ Pais, MIT), with selected 0.9.8 fixes and October 7 loading notices. See [setup and storage](docs/DICTATION.md), the [adaptation and upgrade journal](docs/HANDY_ADAPTATIONS.md), and [third-party notices](THIRD_PARTY_NOTICES.md). Models have their own licenses. Downloaded files live under `%APPDATA%\Music Island\dictation\`; deleting the EXE does not remove them. Manage them in System → Data.
+Dictation is adapted from [Handy v0.9.7](https://github.com/cjpais/Handy/tree/v0.9.7), commit `05e0aedd2906f0d82722735f930465950c476b90` (CJ Pais, MIT). Selected upstream fixes cover shortcut timing, microphone silence, local AI providers, model downloads and GPU recovery. See [setup and storage](docs/DICTATION.md), the [adaptation and upgrade journal](docs/HANDY_ADAPTATIONS.md), and [third-party notices](THIRD_PARTY_NOTICES.md). Models have their own licenses. Downloaded files live under `%APPDATA%\Music Island\dictation\`. Manage them in System → Data.
 
 ![Music Island's live layout editor with a media player, assistant quota and a component tray](docs/media/v3/01-island.webp)
 

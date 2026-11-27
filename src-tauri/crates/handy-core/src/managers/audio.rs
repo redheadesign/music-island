@@ -1010,7 +1010,7 @@ impl AudioRecordingManager {
         self.cancel_generation.load(Ordering::Acquire) != generation
     }
 
-    pub fn stop_recording(&self, binding_id: &str, cancel_generation: u64) -> Option<Vec<f32>> {
+    pub fn stop_recording(&self, binding_id: &str, cancel_generation: u64) -> Option<(Vec<f32>, bool)> {
         self.invalidate_recording_readiness();
         let mut state = self.state.lock().unwrap();
 
@@ -1043,17 +1043,17 @@ impl AudioRecordingManager {
                     }
                 }
 
-                let samples = if let Some(rec) = self.recorder.lock().unwrap().as_ref() {
-                    match rec.stop() {
+                let (samples, digital_silence) = if let Some(rec) = self.recorder.lock().unwrap().as_ref() {
+                    match rec.stop_with_signal_status() {
                         Ok(buf) => buf,
                         Err(e) => {
                             error!("stop() failed: {e}");
-                            Vec::new()
+                            (Vec::new(), false)
                         }
                     }
                 } else {
                     error!("Recorder not available");
-                    Vec::new()
+                    (Vec::new(), false)
                 };
 
                 *self.is_recording.lock().unwrap() = false;
@@ -1079,9 +1079,9 @@ impl AudioRecordingManager {
                 if s_len < WHISPER_SAMPLE_RATE && s_len > 0 {
                     let mut padded = samples;
                     padded.resize(WHISPER_SAMPLE_RATE * 5 / 4, 0.0);
-                    Some(padded)
+                    Some((padded, digital_silence))
                 } else {
-                    Some(samples)
+                    Some((samples, digital_silence))
                 }
             }
             _ => None,

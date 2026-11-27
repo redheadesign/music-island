@@ -24,7 +24,7 @@ enum Cmd {
     /// Begin capturing. Carries the send timestamp so the consumer can log how
     /// long the command sat in the channel, plus a one-shot first-sample acknowledgement.
     Start(VadPolicy, Instant, mpsc::Sender<()>),
-    Stop(mpsc::Sender<Vec<f32>>),
+    Stop(mpsc::Sender<(Vec<f32>, bool)>),
     Shutdown,
 }
 
@@ -391,6 +391,10 @@ impl AudioRecorder {
     }
 
     pub fn stop(&self) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+        self.stop_with_signal_status().map(|(samples, _)| samples)
+    }
+
+    pub(crate) fn stop_with_signal_status(&self) -> Result<(Vec<f32>, bool), Box<dyn std::error::Error>> {
         let tx = self
             .cmd_tx
             .as_ref()
@@ -713,6 +717,8 @@ struct CaptureProcessor {
     // ---- recording-scoped: reset by `begin_recording` ------------------- //
     vad_policy: VadPolicy,
     processed_samples: Vec<f32>,
+    // None means the device delivered no samples. Inspect before VAD and padding.
+    digital_silence: Option<bool>,
     awaiting_first_captured_chunk: Option<Instant>,
     capture_ready_tx: Option<mpsc::Sender<()>>,
     total_dropped_samples: u64,
@@ -764,6 +770,7 @@ impl CaptureProcessor {
             first_chunk_logged: false,
             vad_policy: VadPolicy::Offline,
             processed_samples: Vec::new(),
+            digital_silence: None,
             awaiting_first_captured_chunk: None,
             capture_ready_tx: None,
             total_dropped_samples: 0,
@@ -778,6 +785,7 @@ impl CaptureProcessor {
         self.total_dropped_samples = 0;
         self.overrun_warning_logged = false;
         self.vad_policy = policy;
+        self.digital_silence = None;
         self.processed_samples.clear();
         self.visualizer.reset();
         self.frame_resampler.reset();
@@ -819,6 +827,9 @@ impl CaptureProcessor {
 
         if disposition == ChunkDisposition::Discard {
             return;
+        }
+        if !raw.is_empty() && self.digital_silence != Some(false) {
+            self.digital_silence = Some(raw.iter().all(|&sample| sample == 0.0));
         }
 
         if let Some(buckets) = self.visualizer.feed(raw) {
@@ -1001,7 +1012,7 @@ fn run_consumer(
                             transport.pause_acknowledged.store(false, Ordering::Relaxed);
                             transport.pause_requested.store(false, Ordering::Release);
                         }
-                        let _ = reply_tx.send(samples);
+                        let _ = reply_tx.send((samples, processor.digital_silence == Some(true)));
 
                         if pause_timed_out {
                             return;

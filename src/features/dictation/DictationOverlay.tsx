@@ -55,7 +55,15 @@ export function DictationOverlayView({ status, visible, levels, text, locale = '
   </span> : null
   const label = status.phase === 'transcribing' && status.modelLoading ? loadingLabel : labels[status.phase]?.[ru ? 0 : 1] ?? ''
   const error = status.phase === 'error'
-  const message = error && copyFailure === status.operationId ? ru ? 'Не удалось скопировать' : 'Could not copy' : label
+  let message = label
+  if (error && status.error === 'microphone-silent') {
+    message = ru ? 'Нет сигнала с микрофона' : 'No microphone signal'
+  } else if (error && status.error === 'target-elevated') {
+    message = ru ? 'Окно запущено от администратора. Скопируйте текст.' : 'The target runs as administrator. Copy your text.'
+  }
+  if (error && copyFailure === status.operationId) {
+    message = ru ? 'Не удалось скопировать' : 'Could not copy'
+  }
   const closeLabel = ru ? 'Закрыть' : 'Dismiss'
   const copyLabel = ru ? 'Скопировать текст' : 'Copy text'
   const hasText = Boolean(text.committed || text.tentative)

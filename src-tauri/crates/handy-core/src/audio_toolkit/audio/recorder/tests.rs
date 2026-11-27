@@ -78,6 +78,20 @@ fn idle_chunks_are_discarded_without_reaching_the_recording() {
 }
 
 #[test]
+fn digital_silence_counts_only_nonempty_active_input_before_vad() {
+    let mut processor = CaptureProcessor::new(16_000, None, None, None, Instant::now());
+    processor.process_raw_chunk(&[0.2], ChunkDisposition::Discard);
+    assert_eq!(processor.digital_silence, None);
+    processor.process_raw_chunk(&[0.0; 480], ChunkDisposition::Capture);
+    assert_eq!(processor.digital_silence, Some(true));
+    processor.process_raw_chunk(&[1e-9], ChunkDisposition::Capture);
+    processor.process_raw_chunk(&[0.0; 480], ChunkDisposition::Capture);
+    assert_eq!(processor.digital_silence, Some(false));
+    processor.begin_recording(VadPolicy::Offline, mpsc::channel().0);
+    assert_eq!(processor.digital_silence, None);
+}
+
+#[test]
 fn shutdown_is_processed_without_audio_samples() {
     let (_producer, consumer) = RingBuffer::<f32>::new(48_000);
     let (cmd_tx, cmd_rx) = mpsc::channel();
@@ -284,7 +298,7 @@ fn repeated_start_stop_cycles_resume_capture_without_leaking_samples() {
     // so it belongs to the recording.
     AudioRecorder::write_input_to_ring(&[99.0f32], 1, None, &mut producer, &transport);
 
-    let first_samples = reply_rx
+    let (first_samples, _) = reply_rx
         .recv_timeout(Duration::from_secs(1))
         .expect("first stop reply");
     let first_expected = [0.25f32, -0.5, 1.0, 99.0];
@@ -317,7 +331,7 @@ fn repeated_start_stop_cycles_resume_capture_without_leaking_samples() {
     wait_for_pause_request();
     AudioRecorder::write_input_to_ring(&[199.0f32], 1, None, &mut producer, &transport);
 
-    let second_samples = reply_rx
+    let (second_samples, _) = reply_rx
         .recv_timeout(Duration::from_secs(1))
         .expect("second stop reply");
     let second_expected = [0.75f32, -0.25, 0.5, 199.0];
@@ -371,7 +385,7 @@ fn missing_callback_at_stop_marks_stream_for_rebuild_and_returns_samples() {
     let (reply_tx, reply_rx) = mpsc::channel();
     cmd_tx.send(Cmd::Stop(reply_tx)).expect("stop");
 
-    let samples = reply_rx
+    let (samples, _) = reply_rx
         .recv_timeout(Duration::from_secs(3))
         .expect("pause timeout still returns captured samples");
     assert!(samples.is_empty());

@@ -732,7 +732,7 @@ impl ShortcutAction for TranscribeAction {
                 error!("Recording stop worker failed: {error}");
                 None
             });
-            if let Some(samples) = captured {
+            if let Some((samples, digital_silence)) = captured {
                 debug!(
                     "Recording stopped and samples retrieved in {:?}, sample count: {}",
                     stop_recording_time.elapsed(),
@@ -749,7 +749,7 @@ impl ShortcutAction for TranscribeAction {
 
                 if samples.is_empty() {
                     debug!("Recording produced no audio samples; skipping persistence");
-                    crate::status::result(&ah, String::new(), None);
+                    crate::status::result(&ah, String::new(), digital_silence.then(|| "microphone-silent".into()));
                     // Tear down any streaming worker so its channel doesn't leak
                     // and block the next start_stream.
                     tm.cancel_stream();
@@ -777,6 +777,10 @@ impl ShortcutAction for TranscribeAction {
                     let worker = Arc::clone(&tm);
                     let recorder = Arc::clone(&rm);
                     let transcription_result = tauri::async_runtime::spawn_blocking(move || {
+                        if digital_silence {
+                            worker.cancel_stream();
+                            return Ok(String::new());
+                        }
                         match worker.finalize_stream() {
                             Ok(Some(text)) if !text.trim().is_empty() => Ok(text),
                             Ok(_) => worker.transcribe_until_cancelled(&samples, Some(operation), || {
@@ -868,7 +872,7 @@ impl ShortcutAction for TranscribeAction {
                             }
 
                             if processed.final_text.is_empty() {
-                                crate::status::result(&ah, String::new(), None);
+                                crate::status::result(&ah, String::new(), digital_silence.then(|| "microphone-silent".into()));
                                 utils::hide_recording_overlay(&ah);
                                 set_tray_state(&ah, TrayIconState::Idle);
                             } else {

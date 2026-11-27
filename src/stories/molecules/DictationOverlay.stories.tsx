@@ -250,6 +250,22 @@ export const WaveError: Story = {
     await expect(canvas.getByRole('button', { name: 'Закрыть' })).toBeVisible()
   },
 }
+export const SilentMicrophone: Story = {
+  name: 'Микрофон передаёт тишину',
+  args: { ...Waves.args, status: { ...meta.args.status, phase: 'error', error: 'microphone-silent' } },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole('alert')).toHaveTextContent('Нет сигнала с микрофона')
+  },
+}
+export const ElevatedTarget: Story = {
+  name: 'Вставка в окно администратора',
+  args: { ...Waves.args, status: { ...meta.args.status, phase: 'error', error: 'target-elevated', text: 'Текст записи' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('alert')).toHaveTextContent('Окно запущено от администратора')
+    await expect(canvas.getByRole('button', { name: 'Скопировать текст' })).toBeVisible()
+  },
+}
 export const FoxStill: Story = { ...PixelFox, name: 'Лиса · без движения', args: { ...PixelFox.args, reducedMotion: true } }
 
 function RestartPreview(args: ComponentProps<typeof DictationOverlayView>) {

@@ -8,7 +8,10 @@ import { useDictationOverlay } from './useDictationOverlay'
 import { withUiPrefs } from '../../shared/lib/uiPrefs'
 
 const mocks = vi.hoisted(() => ({ listeners: new Map<string, (event: { payload: unknown }) => void>(), disposers: [] as ReturnType<typeof vi.fn>[], readConfig: vi.fn(async () => ({ appearance: { locale: 'ru', reducedMotion: false, accentColor: '#f76100' } })), configChanged: null as null | ((config: AppConfig) => void), configDispose: vi.fn() }))
-vi.mock('./dictationEvents', () => ({ listenDictationEvent: async (name: string, callback: (event: { payload: unknown }) => void) => {
+vi.mock('./dictationEvents', () => ({ listenDictationEvent: async (name: string, callback: (event: { payload: unknown }) => void, options?: { target?: string }) => {
+  if (['mic-level', 'stream-text-event'].includes(name) && options?.target !== 'recording_overlay') {
+    return () => {}
+  }
   mocks.listeners.set(name, callback)
   const dispose = vi.fn(() => mocks.listeners.delete(name)); mocks.disposers.push(dispose)
   return dispose

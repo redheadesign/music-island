@@ -63,11 +63,66 @@ pub fn restore() -> Result<(), String> {
         if t.window == 0 || !IsWindow(Some(window)).as_bool() || process != t.process {
             return Err("Target window is no longer available. Copy the text from History.".into());
         }
+        if blocks_keyboard_input(process) {
+            return Err("target-elevated".into());
+        }
         if GetForegroundWindow() != window && !SetForegroundWindow(window).as_bool() {
             return Err("Could not focus the target window. Copy the text from History.".into());
         }
     }
     Ok(())
+}
+
+/// Windows can silently discard SendInput into a higher-integrity target.
+fn blocks_keyboard_input(process_id: u32) -> bool {
+    use windows::Win32::{
+        Foundation::{CloseHandle, E_ACCESSDENIED},
+        System::Threading::{GetCurrentProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION},
+    };
+    unsafe {
+        let own = integrity_level(GetCurrentProcess());
+        let target =
+            OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id).and_then(|process| {
+                let level = integrity_level(process);
+                let _ = CloseHandle(process);
+                level
+            });
+        match (target, own) {
+            (Ok(theirs), Ok(ours)) => theirs > ours,
+            (Err(error), _) => error.code() == E_ACCESSDENIED,
+            _ => false,
+        }
+    }
+}
+
+fn integrity_level(process: windows::Win32::Foundation::HANDLE) -> windows::core::Result<u32> {
+    use windows::Win32::{
+        Foundation::{CloseHandle, HANDLE},
+        Security::{
+            GetSidSubAuthority, GetSidSubAuthorityCount, GetTokenInformation, TokenIntegrityLevel,
+            TOKEN_MANDATORY_LABEL, TOKEN_QUERY,
+        },
+        System::Threading::OpenProcessToken,
+    };
+    // A mandatory label followed by its SID fits in 128 aligned bytes.
+    unsafe {
+        let mut token = HANDLE::default();
+        OpenProcessToken(process, TOKEN_QUERY, &mut token)?;
+        let mut buffer = [0u64; 16];
+        let mut written = 0;
+        let result = GetTokenInformation(
+            token,
+            TokenIntegrityLevel,
+            Some(buffer.as_mut_ptr().cast()),
+            std::mem::size_of_val(&buffer) as u32,
+            &mut written,
+        );
+        let _ = CloseHandle(token);
+        result?;
+        let sid = (*buffer.as_ptr().cast::<TOKEN_MANDATORY_LABEL>()).Label.Sid;
+        let count = u32::from(*GetSidSubAuthorityCount(sid));
+        Ok(*GetSidSubAuthority(sid, count.saturating_sub(1)))
+    }
 }
 
 pub fn ensure_foreground() -> Result<(), String> {

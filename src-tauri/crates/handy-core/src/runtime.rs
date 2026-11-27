@@ -1,4 +1,5 @@
 //! Versioned C ABI client. No Tauri, Rust object or allocator crosses the DLL.
+use crate::embedded_assets::EmbeddedAsset;
 use anyhow::{anyhow, bail, Context, Result};
 use music_island_dictation_protocol::{self as protocol, *};
 use serde::de::DeserializeOwned;
@@ -8,7 +9,6 @@ use std::{
     path::{Path, PathBuf},
     sync::OnceLock,
 };
-use crate::embedded_assets::EmbeddedAsset;
 include!(concat!(env!("OUT_DIR"), "/runtime_assets.rs"));
 struct Runtime {
     _library: libloading::Library,
@@ -107,7 +107,15 @@ pub struct RemoteEngine {
     pub capabilities: Capabilities,
     pub kind: String,
     healthy: std::cell::Cell<bool>,
+    gpu_lost: std::cell::Cell<bool>,
+    load_request: Request,
+    owned_handle: Option<u64>,
 }
+
+fn backend_failure(error: &str) -> bool {
+    error.starts_with("[backend-lost]") || error.starts_with("[backend-oom]")
+}
+
 impl RemoteEngine {
     pub fn load(
         path: &Path,
@@ -117,35 +125,77 @@ impl RemoteEngine {
         device_index: Option<usize>,
         cpu_only: bool,
     ) -> Result<Self> {
-        let capabilities = call(
-            &Request::Load {
-                path: path.to_string_lossy().into(),
-                engine: kind.clone(),
-                accelerator,
-                device,
-                device_index,
-                cpu_only,
-            },
-            &[],
-        )?;
+        let load_request = Request::Load {
+            path: path.to_string_lossy().into(),
+            engine: kind.clone(),
+            accelerator,
+            device,
+            device_index,
+            cpu_only,
+        };
+        let capabilities: Capabilities = call(&load_request, &[])?;
         Ok(Self {
+            owned_handle: Some(capabilities.handle),
             capabilities,
             kind,
             healthy: std::cell::Cell::new(true),
+            gpu_lost: std::cell::Cell::new(false),
+            load_request,
         })
     }
     pub fn is_healthy(&self) -> bool {
         self.healthy.get()
     }
     fn observe<T>(&self, result: Result<T>) -> Result<T> {
-        if result.as_ref().is_err_and(|e| {
-            e.to_string().contains("worker stopped") || e.to_string().contains("runtime panicked")
-        }) {
-            self.healthy.set(false);
+        if let Err(error) = &result {
+            let message = error.to_string();
+            if backend_failure(&message)
+                && self
+                    .capabilities
+                    .backend
+                    .to_ascii_lowercase()
+                    .starts_with("vulkan")
+            {
+                self.gpu_lost.set(true);
+            } else if backend_failure(&message)
+                || message.contains("worker stopped")
+                || message.contains("runtime panicked")
+            {
+                self.healthy.set(false);
+            }
         }
         result
     }
-    pub fn run(&mut self, audio: &[f32], options: RunOptions) -> Result<Text> {
+    fn release_handle(&mut self) {
+        if let Some(handle) = self.owned_handle.take() {
+            let _ = call::<Value>(&Request::Unload { handle }, &[]);
+        }
+    }
+    fn reopen(&mut self, cpu_only: bool) -> Result<()> {
+        self.release_handle();
+        self.healthy.set(false);
+        if cpu_only {
+            if let Request::Load {
+                accelerator,
+                device,
+                device_index,
+                cpu_only,
+                ..
+            } = &mut self.load_request
+            {
+                *accelerator = "cpu".into();
+                *device = None;
+                *device_index = None;
+                *cpu_only = true;
+            }
+        }
+        self.capabilities = call(&self.load_request, &[])?;
+        self.owned_handle = Some(self.capabilities.handle);
+        self.healthy.set(true);
+        self.gpu_lost.set(false);
+        Ok(())
+    }
+    fn run_once(&self, audio: &[f32], options: RunOptions) -> Result<Text> {
         self.observe(call(
             &Request::Run {
                 handle: self.capabilities.handle,
@@ -154,7 +204,30 @@ impl RemoteEngine {
             audio,
         ))
     }
+    pub fn run(&mut self, audio: &[f32], options: RunOptions) -> Result<Text> {
+        if !self.gpu_lost.get() {
+            let result = self.run_once(audio, options.clone());
+            if !self.gpu_lost.get() {
+                return result;
+            }
+        }
+        // A complete buffered recording can be replayed after a driver reset.
+        // Stream packets are never replayed separately.
+        log::warn!("Dictation GPU session failed; retrying with a fresh session");
+        if self.reopen(false).is_ok() {
+            let result = self.run_once(audio, options.clone());
+            if !self.gpu_lost.get() {
+                return result;
+            }
+        }
+        log::warn!("Dictation GPU recovery failed; recognizing buffered audio on CPU");
+        self.reopen(true)?;
+        self.run_once(audio, options)
+    }
     pub fn stream(&mut self, options: RunOptions) -> Result<RemoteStream<'_>> {
+        if self.gpu_lost.get() {
+            self.reopen(false).or_else(|_| self.reopen(true))?;
+        }
         self.observe(call::<Value>(
             &Request::Begin {
                 handle: self.capabilities.handle,
@@ -171,12 +244,7 @@ impl RemoteEngine {
 }
 impl Drop for RemoteEngine {
     fn drop(&mut self) {
-        let _ = call::<Value>(
-            &Request::Unload {
-                handle: self.capabilities.handle,
-            },
-            &[],
-        );
+        self.release_handle();
     }
 }
 pub struct RemoteStream<'a> {
@@ -257,3 +325,42 @@ pub enum Task {
     Translate,
 }
 pub use protocol::RunOptions;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn engine(backend: &str) -> RemoteEngine {
+        RemoteEngine {
+            capabilities: Capabilities {
+                backend: backend.into(),
+                ..Default::default()
+            },
+            kind: "TranscribeCpp".into(),
+            healthy: true.into(),
+            gpu_lost: false.into(),
+            owned_handle: None,
+            load_request: Request::Devices,
+        }
+    }
+
+    #[test]
+    fn only_a_lost_gpu_session_marks_the_recording_for_replay() {
+        let gpu = engine("Vulkan0");
+        let _ = gpu.observe::<()>(Err(anyhow!("unsupported language")));
+        assert!(!gpu.gpu_lost.get());
+        for error in [
+            "[backend-lost] device removed",
+            "[backend-oom] out of memory",
+        ] {
+            let gpu = engine("Vulkan0");
+            let _ = gpu.observe::<()>(Err(anyhow!(error)));
+            assert!(gpu.gpu_lost.get());
+            assert!(gpu.is_healthy()); // Keep the leased engine for batch replay.
+            let cpu = engine("cpu");
+            let _ = cpu.observe::<()>(Err(anyhow!(error)));
+            assert!(!cpu.gpu_lost.get());
+            assert!(!cpu.is_healthy());
+        }
+    }
+}

@@ -376,7 +376,12 @@ name = "music-island-dictation-runtime"
 version = "0.9.7"
 dependencies = [
  "anyhow",
+ "hound",
  "music-island-dictation-protocol",
+ "ort",
+ "rustfft",
+ "sentencepiece-rs",
+ "serde",
  "serde_json",
  "transcribe-cpp",
  "transcribe-rs",
@@ -698,6 +703,12 @@ dependencies = [
  "core-foundation-sys",
  "libc",
 ]
+
+[[package]]
+name = "sentencepiece-rs"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6bc4483945bfd66b8727ed59005af1543d3d966ca92f9bc065bfef532de1d7e8"
 
 [[package]]
 name = "serde"

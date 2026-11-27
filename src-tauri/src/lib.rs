@@ -408,6 +408,8 @@ pub fn run() {
             probe_args.get(3).map(std::path::Path::new),
             probe_args.get(4).map(String::as_str),
             probe_args.get(5).map(String::as_str),
+            probe_args.get(6).map(String::as_str),
+            probe_args.get(7).map(String::as_str),
         );
         let failed = result.is_err();
         let report =

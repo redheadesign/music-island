@@ -11,7 +11,14 @@ crate-type = ["cdylib"]
 [dependencies]
 music-island-dictation-protocol = { path = "../dictation-protocol" }
 anyhow = "1"
+ort = "=2.0.0-rc.12"
+rustfft = "6"
+sentencepiece-rs = "=0.2.2"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 transcribe-rs = { version = "=0.3.8", features = ["onnx"] }
 transcribe-cpp = { version = "=0.2.4", default-features = false, features = ["dynamic-backends", "vulkan"] }
 vad-rs = { git = "https://github.com/cjpais/vad-rs", default-features = false }
+
+[dev-dependencies]
+hound = "3.5"

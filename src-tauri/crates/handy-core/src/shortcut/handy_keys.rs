@@ -90,11 +90,12 @@ impl HandyKeysState {
     pub fn new(app: AppHandle) -> Result<Self, String> {
         let (cmd_tx, cmd_rx) = mpsc::channel::<ManagerCommand>();
 
-        // Start the manager thread
-        let app_clone = app.clone();
-        let thread_handle = thread::spawn(move || {
-            Self::manager_thread(cmd_rx, app_clone);
-        });
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let thread_handle = thread::Builder::new()
+            .name("dictation-hotkeys".into())
+            .spawn(move || Self::manager_thread(cmd_rx, app, ready_tx))
+            .map_err(|e| format!("Failed to start hotkey thread: {e}"))?;
+        ready_rx.recv().map_err(|_| "Hotkey thread exited during startup")??;
 
         Ok(Self {
             command_sender: Mutex::new(cmd_tx),
@@ -107,17 +108,19 @@ impl HandyKeysState {
     }
 
     /// The main manager thread - owns the HotkeyManager and processes commands
-    fn manager_thread(cmd_rx: Receiver<ManagerCommand>, app: AppHandle) {
+    fn manager_thread(cmd_rx: Receiver<ManagerCommand>, app: AppHandle, ready: Sender<Result<(), String>>) {
         info!("handy-keys manager thread started");
 
         // Create the HotkeyManager in this thread
         let manager = match HotkeyManager::new_with_blocking() {
             Ok(m) => m,
             Err(e) => {
-                error!("Failed to create HotkeyManager: {}", e);
+                let _ = ready.send(Err(format!("Failed to create HotkeyManager: {e}")));
                 return;
             }
         };
+
+        if ready.send(Ok(())).is_err() { return; }
 
         // Maps binding IDs to HotkeyIds and hotkey strings
         let mut binding_to_hotkey: HashMap<String, HotkeyId> = HashMap::new();

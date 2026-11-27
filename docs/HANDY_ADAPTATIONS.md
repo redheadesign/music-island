@@ -43,6 +43,23 @@ re-run native unit tests, ABI probe, recording/paste QA, download interruption a
 same-hardware performance comparison. Do not copy upstream global app/update controls
 back into the host.
 
+## Selected fixes through Handy 0.10.2 · 27 November 2026
+
+Reviewed [v0.10.2](https://github.com/cjpais/Handy/releases/tag/v0.10.2) and
+[main through e95d4888](https://github.com/cjpais/Handy/commit/e95d488805ed95268f5f0e7482b806c4d9851d51).
+The vendored coordinator retains its 0.9.7 baseline.
+
+| Change | Music Island integration |
+| --- | --- |
+| [#2318](https://github.com/cjpais/Handy/pull/2318), [#2432](https://github.com/cjpais/Handy/pull/2432) | Pin the fixed cancellable HF downloader (`fc27355`) and update TLS dependencies. An HTTP 200 response to a ranged chunk request switches to a bounded sequential transfer. |
+| [#2097](https://github.com/cjpais/Handy/pull/2097), [#2327](https://github.com/cjpais/Handy/pull/2327) | Timestamp input before queuing it and wait for native hotkey-manager startup acknowledgement so startup failures reach the existing fallback. |
+| [#2485](https://github.com/cjpais/Handy/pull/2485) | In the embedded runtime, a failed GPU recognition or stream packet invalidates the GPU session. Replay buffered audio on a fresh session, then on CPU if the fresh GPU fails. The coordinator owns the single final insertion. |
+| [#2486](https://github.com/cjpais/Handy/pull/2486), [#2502](https://github.com/cjpais/Handy/pull/2502) | Distinguish digital silence before VAD from a quiet recording. Report a higher-integrity paste target through the existing result with its manual Copy action. |
+| [#2580](https://github.com/cjpais/Handy/pull/2580), after 0.10.2 | Local AI model-list and completion requests share a loopback-only direct HTTP pool. Remote requests retain the normal system proxy policy. |
+
+The output chime already uses the device's default buffer in the pinned Rodio
+fork (`fed3029`), which covers [#2525](https://github.com/cjpais/Handy/pull/2525).
+
 ## Selected Handy 0.10 fixes · 17 November 2026
 
 Latest stable reviewed: [Handy 0.10.1](https://github.com/cjpais/Handy/releases/tag/v0.10.1)

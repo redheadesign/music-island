@@ -1,6 +1,7 @@
 //! Inference adapter derived from Handy 0.9.7 (MIT, see ../handy-core/LICENSE).
 //! Each loaded engine owns one worker. A streaming borrow never crosses FFI
 //! or outlives its session, and no Rust allocation is freed by another module.
+mod zapformer;
 use anyhow::{anyhow, bail, Result};
 use music_island_dictation_protocol::*;
 use serde_json::{json, Value};
@@ -36,6 +37,7 @@ enum Engine {
     MoonshineStreaming(StreamingModel),
     SenseVoice(SenseVoiceModel),
     GigaAM(GigaAMModel),
+    Zapformer(Box<zapformer::Zapformer>),
     Canary(CanaryModel),
     Cohere(CohereModel),
     Vad(vad_rs::Vad),
@@ -192,6 +194,13 @@ fn load(request: &Request) -> Result<(Engine, Capabilities)> {
         }
         "SenseVoice" => Engine::SenseVoice(SenseVoiceModel::load(path, &Quantization::Int8)?),
         "GigaAM" => Engine::GigaAM(GigaAMModel::load(path, &Quantization::Int8)?),
+        "GigaAMZapformer" => {
+            let model = zapformer::Zapformer::load(path)?;
+            caps.arch = "gigaam-zapformer".into();
+            caps.languages = model.languages();
+            caps.streaming = model.streaming();
+            Engine::Zapformer(Box::new(model))
+        }
         "Canary" => Engine::Canary(CanaryModel::load(path, &Quantization::Int8)?),
         "Cohere" => Engine::Cohere(CohereModel::load(path, &Quantization::Int8)?),
         _ => bail!("Unknown inference engine"),
@@ -207,7 +216,7 @@ fn run(engine: &mut Engine, audio: &[f32], o: &RunOptions) -> Result<Text> {
     let mut language = None;
     let full = match engine {
         Engine::Cpp(session) => {
-            let r = session.run(audio, &cpp_options(o))?;
+            let r = session.run(audio, &cpp_options(o)).map_err(cpp_run_error)?;
             language = r.language;
             r.text
         }
@@ -234,6 +243,7 @@ fn run(engine: &mut Engine, audio: &[f32], o: &RunOptions) -> Result<Text> {
             .text
         }
         Engine::GigaAM(e) => e.transcribe(audio, &TranscribeOptions::default())?.text,
+        Engine::Zapformer(e) => e.batch(audio, o.language.as_deref())?,
         Engine::Canary(e) => e.transcribe(audio, &options)?.text,
         Engine::Cohere(e) => e.transcribe(audio, &options)?.text,
         Engine::Vad(_) => bail!("VAD is not a transcription model"),
@@ -243,6 +253,15 @@ fn run(engine: &mut Engine, audio: &[f32], o: &RunOptions) -> Result<Text> {
         language,
         ..Default::default()
     })
+}
+// The host uses these stable prefixes after the inference error crosses ABI 1.
+// Invalid user input and ordinary recognizer errors keep their original meaning.
+fn cpp_run_error(error: CppError) -> anyhow::Error {
+    match error {
+        CppError::Backend(message) => anyhow!("[backend-lost] {message}"),
+        CppError::OutOfMemory(message) => anyhow!("[backend-oom] {message}"),
+        other => anyhow!(other),
+    }
 }
 fn stream(
     session: &mut Session,
@@ -254,7 +273,7 @@ fn stream(
     let mut stream = match session.stream(&run_options, &StreamOptions::default()) {
         Ok(s) => s,
         Err(e) => {
-            let _ = begin_reply.send(Err(e.to_string()));
+            let _ = begin_reply.send(Err(cpp_run_error(e).to_string()));
             return;
         }
     };
@@ -266,8 +285,8 @@ fn stream(
         );
         let result = (|| -> Result<Value> {
             let u = match cmd.request {
-                Request::Feed { .. } => stream.feed(&cmd.audio)?,
-                Request::Finalize { .. } => stream.finalize()?,
+                Request::Feed { .. } => stream.feed(&cmd.audio).map_err(cpp_run_error)?,
+                Request::Finalize { .. } => stream.finalize().map_err(cpp_run_error)?,
                 Request::Cancel { .. } => {
                     stream.reset();
                     return Ok(Value::Null);
@@ -292,8 +311,51 @@ fn stream(
                 tentative_changed: u.tentative_changed,
             })?)
         })();
+        let failed = result.is_err();
         let _ = cmd.reply.send(result.map_err(|e| e.to_string()));
-        if finish {
+        if finish || failed {
+            break;
+        }
+    }
+}
+fn zapformer_stream(
+    model: &mut zapformer::Zapformer,
+    language: Option<&str>,
+    begin_reply: mpsc::Sender<Result<Value, String>>,
+    rx: &mpsc::Receiver<Command>,
+) {
+    let mut stream = match model.begin(language) {
+        Ok(stream) => stream,
+        Err(error) => {
+            let _ = begin_reply.send(Err(error.to_string()));
+            return;
+        }
+    };
+    let _ = begin_reply.send(Ok(Value::Null));
+    while let Ok(cmd) = rx.recv() {
+        let finish = matches!(
+            cmd.request,
+            Request::Finalize { .. } | Request::Cancel { .. }
+        );
+        let result = match cmd.request {
+            Request::Feed { .. } => stream.feed(&cmd.audio, false),
+            Request::Finalize { .. } => stream.feed(&[], true),
+            Request::Cancel { .. } => {
+                let _ = cmd.reply.send(Ok(Value::Null));
+                break;
+            }
+            _ => {
+                let _ = cmd.reply.send(Err("Engine is streaming".into()));
+                continue;
+            }
+        };
+        let failed = result.is_err();
+        let _ = cmd.reply.send(
+            result
+                .and_then(|value| Ok(serde_json::to_value(value)?))
+                .map_err(|error| error.to_string()),
+        );
+        if finish || failed {
             break;
         }
     }
@@ -317,6 +379,9 @@ fn worker(
         if let Request::Begin { options, .. } = &cmd.request {
             match &mut engine {
                 Engine::Cpp(session) => stream(session, options.clone(), cmd.reply, &rx),
+                Engine::Zapformer(model) => {
+                    zapformer_stream(model, options.language.as_deref(), cmd.reply, &rx)
+                }
                 _ => {
                     let _ = cmd
                         .reply
@@ -471,5 +536,22 @@ pub unsafe extern "C" fn music_island_dictation_release(buffer: Buffer) {
             buffer.data,
             buffer.len,
         )));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recoverable_backend_failures_survive_abi_serialization() {
+        assert_eq!(
+            cpp_run_error(CppError::Backend("device lost".into())).to_string(),
+            "[backend-lost] device lost"
+        );
+        assert_eq!(
+            cpp_run_error(CppError::OutOfMemory("allocation".into())).to_string(),
+            "[backend-oom] allocation"
+        );
     }
 }

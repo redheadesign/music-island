@@ -24,7 +24,7 @@ export function useDictationOverlay() {
     let alive = true
     const cleanup: (() => void)[] = []
     const subscribe = async <T,>(name: string, callback: (payload: T) => void) => {
-      const dispose = await listen<T>(name, ({ payload }) => { if (alive) callback(payload) })
+      const dispose = await listen<T>(name, ({ payload }) => { if (alive) callback(payload) }, { target: 'recording_overlay' })
       if (alive) cleanup.push(dispose); else dispose()
     }
     let revision = -1

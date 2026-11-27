@@ -173,14 +173,36 @@ fn build_headers(provider: &PostProcessProvider, api_key: &str) -> Result<Header
     Ok(headers)
 }
 
-/// Pool connections across calls. Provider credentials belong to each request.
-fn http_client() -> Result<&'static reqwest::Client, String> {
-    static CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
-    CLIENT.get_or_try_init(|| {
-        reqwest::Client::builder()
+fn is_loopback(url: &str) -> bool {
+    reqwest::Url::parse(url)
+        .ok()
+        .and_then(|url| {
+            url.host_str().map(|host| {
+                let host = host.trim_end_matches('.');
+                host == "localhost"
+                    || host.ends_with(".localhost")
+                    || host
+                        .trim_matches(['[', ']'])
+                        .parse::<std::net::IpAddr>()
+                        .is_ok_and(|ip| ip.is_loopback())
+            })
+        })
+        .unwrap_or(false)
+}
+
+/// Keep loopback traffic direct. Provider credentials belong to each request.
+fn http_client(url: &str) -> Result<&'static reqwest::Client, String> {
+    static DIRECT: OnceCell<reqwest::Client> = OnceCell::new();
+    static PROXIED: OnceCell<reqwest::Client> = OnceCell::new();
+    let local = is_loopback(url);
+    let pool = if local { &DIRECT } else { &PROXIED };
+    pool.get_or_try_init(|| {
+        let builder = reqwest::Client::builder()
             .pool_idle_timeout(Duration::from_secs(30))
             .tcp_keepalive(Duration::from_secs(15))
-            .connect_timeout(Duration::from_secs(10))
+            .connect_timeout(Duration::from_secs(10));
+        let builder = if local { builder.no_proxy() } else { builder };
+        builder
             .build()
             .map_err(|e| report_reqwest_error("Failed to build HTTP client", &e))
     })
@@ -348,7 +370,7 @@ pub async fn send_chat_completion_with_schema(
         sanitized_url_for_log(&url)
     );
 
-    let client = http_client()?;
+    let client = http_client(&url)?;
     let headers = build_headers(provider, &api_key)?;
 
     // Build messages vector
@@ -480,7 +502,7 @@ pub async fn fetch_models(
 
     debug!("Fetching models from: {}", sanitized_url_for_log(&url));
 
-    let response = http_client()?
+    let response = http_client(&url)?
         .get(&url)
         .headers(build_headers(provider, &api_key)?)
         .send()
@@ -603,6 +625,77 @@ mod tests {
         format!("http://{address}")
     }
 
+    #[test]
+    fn loopback_is_decided_from_the_url_host() {
+        for endpoint in [
+            "http://LOCALHOST.:8080",
+            "http://llm.localhost/v1",
+            "http://127.1.2.3",
+            "http://[::1]/v1",
+        ] {
+            assert!(is_loopback(endpoint), "{endpoint}");
+        }
+        for endpoint in [
+            "https://localhost.example.com",
+            "http://localhost@example.com/v1",
+            "http://192.168.0.1",
+            "invalid",
+        ] {
+            assert!(!is_loopback(endpoint), "{endpoint}");
+        }
+    }
+
+    #[tokio::test]
+    async fn local_providers_bypass_the_system_proxy() {
+        const CHILD: &str = "MUSIC_ISLAND_TEST_LOOPBACK_PROXY";
+        if std::env::var_os(CHILD).is_none() {
+            let proxy = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            proxy.set_nonblocking(true).unwrap();
+            let proxy_url = format!("http://{}", proxy.local_addr().unwrap());
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "llm_client::tests::local_providers_bypass_the_system_proxy",
+                ])
+                .env(CHILD, "1")
+                .env("HTTP_PROXY", &proxy_url)
+                .env("ALL_PROXY", &proxy_url)
+                .env_remove("NO_PROXY")
+                .status()
+                .unwrap();
+            assert!(status.success());
+            assert_eq!(
+                proxy.accept().unwrap_err().kind(),
+                std::io::ErrorKind::WouldBlock
+            );
+            return;
+        }
+        tokio::time::timeout(Duration::from_secs(5), async {
+            let endpoint = serve_one_response("200 OK", r#"{"data":[{"id":"local"}]}"#).await;
+            assert_eq!(
+                fetch_models(&provider("custom", &endpoint), String::new())
+                    .await
+                    .unwrap(),
+                ["local"]
+            );
+            let endpoint =
+                serve_one_response("200 OK", r#"{"choices":[{"message":{"content":"done"}}]}"#)
+                    .await;
+            let result = send_chat_completion(
+                &provider("custom", &endpoint),
+                "test".into(),
+                "local",
+                "hello".into(),
+                false,
+            )
+            .await
+            .unwrap();
+            assert_eq!(result.as_deref(), Some("done"));
+        })
+        .await
+        .expect("loopback requests should go directly to their listeners");
+    }
+
     #[tokio::test]
     async fn reused_connection_sends_only_each_requests_credentials() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -630,7 +723,11 @@ mod tests {
                     "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: keep-alive\r\n\r\n{body}",
                     body.len()
                 );
-                stream.get_mut().write_all(response.as_bytes()).await.unwrap();
+                stream
+                    .get_mut()
+                    .write_all(response.as_bytes())
+                    .await
+                    .unwrap();
             }
         });
 
@@ -641,7 +738,9 @@ mod tests {
                     tokio::time::sleep(Duration::from_millis(200)).await;
                 }
                 assert_eq!(
-                    fetch_models(&request_target, token.to_owned()).await.unwrap(),
+                    fetch_models(&request_target, token.to_owned())
+                        .await
+                        .unwrap(),
                     ["test-model"]
                 );
             }
