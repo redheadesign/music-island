@@ -69,7 +69,7 @@ export type EngineType =
  * Voxtral, Qwen3-ASR, Nemotron, …). The architecture is auto-detected from
  * the file, so this one variant covers the whole transcribe-cpp family.
  */
-"TranscribeCpp" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "Canary" | "Cohere"
+"TranscribeCpp" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "GigaAMZapformer" | "Canary" | "Cohere"
 export type GpuDeviceOption = { id: string; name: string; total_vram_mb: number }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
 export type LatestDictationMessage = { id: number; timestamp: number; text: string }
@@ -97,6 +97,7 @@ export type ModelLoadStatus = { is_loaded: boolean; current_model: string | null
  * for downloading and on-disk resolution.
  */
 export type ModelSource = 
+"GigaAMFiles" |
 /**
  * Direct HTTP download from a URL (current blob.handy.computer hosting).
  */

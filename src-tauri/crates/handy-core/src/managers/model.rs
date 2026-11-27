@@ -20,6 +20,7 @@ use tar::Archive;
 use tauri::{AppHandle, Emitter};
 
 mod download;
+mod gigaam_packs;
 
 use download::{HttpDownloadOutcome, DOWNLOAD_STALL_TIMEOUT};
 
@@ -34,6 +35,7 @@ pub enum EngineType {
     MoonshineStreaming,
     SenseVoice,
     GigaAM,
+    GigaAMZapformer,
     Canary,
     Cohere,
 }
@@ -42,6 +44,8 @@ pub enum EngineType {
 /// for downloading and on-disk resolution.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub enum ModelSource {
+    /// A pinned multi-file Music Island ONNX package installed as one directory.
+    GigaAMFiles,
     /// Direct HTTP download from a URL (current blob.handy.computer hosting).
     Url {
         url: String,
@@ -1146,6 +1150,10 @@ impl ModelManager {
         // only insert ids not already present) instead of showing as a bare cache
         // find. Additive — see `seed_catalog_models`.
         Self::seed_catalog_models(&mut available_models);
+        for pack in gigaam_packs::catalog() {
+            pack.recover(&models_dir)?;
+            available_models.insert(pack.id.clone(), pack.model_info());
+        }
 
         // Auto-discover custom transcribe-cpp models (.bin / .gguf) in the models directory
         if let Err(e) = Self::discover_custom_transcribe_models(&models_dir, &mut available_models)
@@ -1395,6 +1403,12 @@ impl ModelManager {
         let mut vanished_models: Vec<String> = Vec::new();
 
         for model in models.values_mut() {
+            if let Some(pack) = gigaam_packs::find(&model.id) {
+                model.is_downloaded = pack.is_installed(&self.models_dir.join(&model.filename));
+                model.is_downloading = downloading_ids.contains(&model.id);
+                model.partial_size = pack.partial_size(&self.models_dir);
+                continue;
+            }
             if let ModelSource::HuggingFace { repo_id, revision } = &model.source {
                 // A models-dir copy counts too: mirror-fallback downloads land
                 // there, and it makes manual drop-ins of catalog files work.
@@ -2221,6 +2235,7 @@ impl ModelManager {
             model_info.ok_or_else(|| anyhow::anyhow!("Model not found: {}", model_id))?;
 
         let (url, expected_sha256) = match &model_info.source {
+            ModelSource::GigaAMFiles => return self.download_gigaam_pack(model_id).await,
             ModelSource::Url { url, sha256 } => (url.clone(), sha256.clone()),
             ModelSource::HuggingFace { repo_id, revision } => {
                 return self
@@ -2412,6 +2427,16 @@ impl ModelManager {
     pub fn delete_model(&self, model_id: &str) -> Result<()> {
         debug!("ModelManager: delete_model called for: {}", model_id);
 
+        if let Some(pack) = gigaam_packs::find(model_id) {
+            let flags = self.cancel_flags.lock().unwrap();
+            anyhow::ensure!(!flags.contains_key(model_id), "Model download is still running");
+            pack.remove(&self.models_dir)?;
+            drop(flags);
+            self.update_download_status()?;
+            let _ = self.app_handle.emit("model-deleted", model_id);
+            return Ok(());
+        }
+
         let model_info = {
             let models = self.available_models.lock().unwrap();
             models.get(model_id).cloned()
@@ -2590,6 +2615,15 @@ impl ModelManager {
                 "Model is currently downloading: {}",
                 model_id
             ));
+        }
+
+        if let Some(pack) = gigaam_packs::find(model_id) {
+            let path = self.models_dir.join(&model_info.filename);
+            if !pack.is_installed(&path) {
+                self.mark_model_unavailable(model_id);
+                anyhow::bail!("Model package is incomplete: {}", model_id);
+            }
+            return Ok(path);
         }
 
         if let ModelSource::HuggingFace { repo_id, revision } = &model_info.source {

@@ -44,6 +44,26 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Models: Story = { name: 'Модели · русский язык' }
+export const GigaAMDownload: Story = {
+  name: 'Потоковая модель GigaAM-v4 в каталоге',
+  args: {
+    controller: {
+      ...controller,
+      data: {
+        ...controller.data!,
+        models: [{ ...gigaamRnnt, id: 'gigaam-v4-rnnt', name: 'GigaAM-v4', filename: 'gigaam-v4-rnnt',
+          source: 'GigaAMFiles', size_mb: 1165, is_directory: true, engine_type: 'GigaAMZapformer',
+          supports_language_selection: false, supported_languages: ['ru', 'en'], supports_language_detection: true,
+          supports_background_recognition: false, supports_streaming: true, is_recommended: false }],
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const card = await within(canvasElement).findByRole('article', { name: 'GigaAM-v4' })
+    await expect(within(card).getByRole('button', { name: 'Скачать' })).toBeVisible()
+    await expect(card).toHaveTextContent('Текст во время записи')
+  },
+}
 export const FloatingCatalog: Story = {
   ...Models,
   name: 'карточки моделей',

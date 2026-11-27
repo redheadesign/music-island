@@ -1,0 +1,235 @@
+[
+  {
+    "id": "gigaam-v4-rnnt",
+    "name": "GigaAM-v4",
+    "languages": [
+      "ru",
+      "en"
+    ],
+    "streaming": true,
+    "files": [
+      {
+        "name": "v4_rnnt_encoder.int8.onnx",
+        "url": "https://huggingface.co/ai-babai/gigaam-v4-onnx/resolve/7cfd40087b6180a83d9ef7fb991bd6813c48952f/rnnt/v4_rnnt_encoder.int8.onnx",
+        "size": 242532777,
+        "sha256": "4cc7dd3e2a5f1503239df920976d419287f67df87f1849fff0c34ce4b3d58e20"
+      },
+      {
+        "name": "v4_rnnt_advance.onnx",
+        "url": "https://huggingface.co/ai-babai/gigaam-v4-onnx/resolve/7cfd40087b6180a83d9ef7fb991bd6813c48952f/rnnt/v4_rnnt_advance.onnx",
+        "size": 12753376,
+        "sha256": "d992302d83f03367202d4200cbdf2f74e65cb36d1e553f5ce330e73f26949b45"
+      },
+      {
+        "name": "v4_rnnt_e2e_tokenizer.model",
+        "url": "https://huggingface.co/ai-babai/gigaam-v4-onnx/resolve/7cfd40087b6180a83d9ef7fb991bd6813c48952f/rnnt/v4_rnnt_e2e_tokenizer.model",
+        "size": 14686,
+        "sha256": "f547bcb38e071694ef1ddb25d9d40c86b4ab88cd0b16ab9fd52f27dd52c48e39"
+      },
+      {
+        "name": "LICENSE",
+        "url": "https://huggingface.co/ai-babai/gigaam-v4-onnx/resolve/7cfd40087b6180a83d9ef7fb991bd6813c48952f/LICENSE",
+        "size": 1061,
+        "sha256": "d02ed0afc408cb4ed5eb34b233096ad8c3db8b6751cd9385276a6725dbf92925"
+      },
+      {
+        "name": "LICENSE-APACHE-2.0",
+        "url": "https://huggingface.co/ai-babai/gigaam-v4-onnx/resolve/7cfd40087b6180a83d9ef7fb991bd6813c48952f/LICENSE-APACHE-2.0",
+        "size": 11358,
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "name": "NOTICE",
+        "url": "https://huggingface.co/ai-babai/gigaam-v4-onnx/resolve/7cfd40087b6180a83d9ef7fb991bd6813c48952f/NOTICE",
+        "size": 208,
+        "sha256": "3c8a3a8477970a4306a9af076b85fd2f0064a3bb59466a3fe7f9114fbba7f412"
+      },
+      {
+        "name": "window.f32",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-v4-rnnt-window.f32",
+        "size": 1280,
+        "sha256": "42e25fcba0bf1e83f24f71368f6ccedef245e6faeac6ec2b9ebabb6cf6e66705"
+      },
+      {
+        "name": "filters.f32",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-v4-rnnt-filters.f32",
+        "size": 41216,
+        "sha256": "03f0c05dba900b44f54d816789838e498908cd4ee492ef231f8459c61a5158ac"
+      },
+      {
+        "name": "v4_rnnt_dynamic_stream_frontend.onnx",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-v4-rnnt-v4_rnnt_dynamic_stream_frontend.onnx",
+        "size": 3228802,
+        "sha256": "fc043bdf5b3e9e01174c7dca936da977944d5589a1c8a632ce9ffed2f8753f3e"
+      },
+      {
+        "name": "v4_rnnt_dynamic_stream_step.onnx",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-v4-rnnt-v4_rnnt_dynamic_stream_step.onnx",
+        "size": 948128635,
+        "sha256": "8422818dfcecfb02c68d46a63f676f2db51437894e4569aa2a1b148b36461053"
+      },
+      {
+        "name": "v4_rnnt_dynamic_packet_decode.onnx",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-v4-rnnt-v4_rnnt_dynamic_packet_decode.onnx",
+        "size": 14721000,
+        "sha256": "fbb280a4f3da37e1418ed73c28176ae3e1b662abc39611e3ff9cc6cafabd20cb"
+      },
+      {
+        "name": "streaming.json",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-v4-rnnt-streaming.json",
+        "size": 6299,
+        "sha256": "9f79b63629f20dbd747880bbf604d3bd47e0a222c7493a19987cc9a6ab9f3692"
+      },
+      {
+        "name": "island-gigaam.json",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-v4-rnnt-island-gigaam.json",
+        "size": 433,
+        "sha256": "ed3ee3b55873b28480dc771e115652738ad28e4db16dfca347c42e629b943526"
+      }
+    ]
+  },
+  {
+    "id": "gigaam-multilingual-v2-rnnt",
+    "name": "GigaAM Multilingual-v2",
+    "languages": [
+      "ru",
+      "en",
+      "kk",
+      "ky",
+      "uz",
+      "be",
+      "fr",
+      "es",
+      "ba",
+      "ka",
+      "hy",
+      "ro",
+      "tk",
+      "az",
+      "tg",
+      "de",
+      "it",
+      "nl",
+      "pl",
+      "pt",
+      "tt"
+    ],
+    "streaming": true,
+    "files": [
+      {
+        "name": "multilingual_v2_rnnt_encoder.int8.onnx",
+        "url": "https://huggingface.co/ai-babai/gigaam-multilingual-v2-onnx/resolve/47ab61c18615af526e5d0c4484ef2e688027e6ed/multilingual_v2_rnnt_encoder.int8.onnx",
+        "size": 787823851,
+        "sha256": "0c460231ed0d57e2f6251601d5459dd05cf55ab6a50b55ae2de9333f5bf58d3d"
+      },
+      {
+        "name": "multilingual_v2_rnnt_advance.onnx",
+        "url": "https://huggingface.co/ai-babai/gigaam-multilingual-v2-onnx/resolve/47ab61c18615af526e5d0c4484ef2e688027e6ed/multilingual_v2_rnnt_advance.onnx",
+        "size": 23009508,
+        "sha256": "7cba5f1245f9c14d2b9ec70c33d49b83babd864bb6753e8b6031dd4d7f1e80cc"
+      },
+      {
+        "name": "multilingual_v2_rnnt_e2e_tokenizer.model",
+        "url": "https://huggingface.co/ai-babai/gigaam-multilingual-v2-onnx/resolve/47ab61c18615af526e5d0c4484ef2e688027e6ed/multilingual_v2_rnnt_e2e_tokenizer.model",
+        "size": 54214,
+        "sha256": "3b049685e51a893350452f31613b47f4bd7640857f53facdf32266de82df3c0a"
+      },
+      {
+        "name": "LICENSE",
+        "url": "https://huggingface.co/ai-babai/gigaam-multilingual-v2-onnx/resolve/47ab61c18615af526e5d0c4484ef2e688027e6ed/LICENSE",
+        "size": 1061,
+        "sha256": "d02ed0afc408cb4ed5eb34b233096ad8c3db8b6751cd9385276a6725dbf92925"
+      },
+      {
+        "name": "LICENSE-APACHE-2.0",
+        "url": "https://huggingface.co/ai-babai/gigaam-multilingual-v2-onnx/resolve/47ab61c18615af526e5d0c4484ef2e688027e6ed/LICENSE-APACHE-2.0",
+        "size": 11358,
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "name": "NOTICE",
+        "url": "https://huggingface.co/ai-babai/gigaam-multilingual-v2-onnx/resolve/47ab61c18615af526e5d0c4484ef2e688027e6ed/NOTICE",
+        "size": 208,
+        "sha256": "3c8a3a8477970a4306a9af076b85fd2f0064a3bb59466a3fe7f9114fbba7f412"
+      },
+      {
+        "name": "window.f32",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-window.f32",
+        "size": 1280,
+        "sha256": "42e25fcba0bf1e83f24f71368f6ccedef245e6faeac6ec2b9ebabb6cf6e66705"
+      },
+      {
+        "name": "filters.f32",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-filters.f32",
+        "size": 41216,
+        "sha256": "03f0c05dba900b44f54d816789838e498908cd4ee492ef231f8459c61a5158ac"
+      },
+      {
+        "name": "multilingual_v2_rnnt_dynamic_stream_frontend.onnx",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-multilingual_v2_rnnt_dynamic_stream_frontend.onnx",
+        "size": 8688958,
+        "sha256": "982eb34163db73a1fa1428e2417349cf2bdbe349d46cdf66849d5846425daaef"
+      },
+      {
+        "name": "multilingual_v2_rnnt_dynamic_stream_step.onnx",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-multilingual_v2_rnnt_dynamic_stream_step.onnx",
+        "size": 2290511,
+        "sha256": "24c6a01d5fb6fde1cbf79178c9e3f550d28feba80c4352dde9e98df8e37d96fd"
+      },
+      {
+        "name": "multilingual_v2_rnnt_dynamic_stream_step-000.bin",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-multilingual_v2_rnnt_dynamic_stream_step-000.bin",
+        "size": 527767552,
+        "sha256": "425db30c513ab924d9ff0fe72e87d6265c5c26b0b5f368bbf8dac82b1c63498b"
+      },
+      {
+        "name": "multilingual_v2_rnnt_dynamic_stream_step-001.bin",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-multilingual_v2_rnnt_dynamic_stream_step-001.bin",
+        "size": 522770432,
+        "sha256": "7e89a9f8a6d7a00a7c0a195a4ea893b5661da12c798c029e9562f4755f83a802"
+      },
+      {
+        "name": "multilingual_v2_rnnt_dynamic_stream_step-002.bin",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-multilingual_v2_rnnt_dynamic_stream_step-002.bin",
+        "size": 530903040,
+        "sha256": "6e0b2c5e353dc52698b6f51311c9552f5e0c0d6858960dfd347c6f180f996427"
+      },
+      {
+        "name": "multilingual_v2_rnnt_dynamic_stream_step-003.bin",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-multilingual_v2_rnnt_dynamic_stream_step-003.bin",
+        "size": 530903040,
+        "sha256": "2f8c6f86f501b57b8037802f99e761de3b18822c571a47f489fddb8b16f057e2"
+      },
+      {
+        "name": "multilingual_v2_rnnt_dynamic_stream_step-004.bin",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-multilingual_v2_rnnt_dynamic_stream_step-004.bin",
+        "size": 532731904,
+        "sha256": "9e73c2b552c74db884a8c90f78e6edfcceb90011de8797f0f89218f53c4ff804"
+      },
+      {
+        "name": "multilingual_v2_rnnt_dynamic_stream_step-005.bin",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-multilingual_v2_rnnt_dynamic_stream_step-005.bin",
+        "size": 437473280,
+        "sha256": "f5b92fbe5ac99f4787a9eb1866fe31cf93ad98d67604a68598e0b93a30be4e1e"
+      },
+      {
+        "name": "multilingual_v2_rnnt_dynamic_packet_decode.onnx",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-multilingual_v2_rnnt_dynamic_packet_decode.onnx",
+        "size": 25632508,
+        "sha256": "abaee748a62ec31f26a8c65f9901da0e9e995bf7c79191671094e68b729938a2"
+      },
+      {
+        "name": "streaming.json",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-streaming.json",
+        "size": 10968,
+        "sha256": "554093c85285ae900fb0b5ea74ab504c7c039f23280322e7153b536f32ba72ec"
+      },
+      {
+        "name": "island-gigaam.json",
+        "url": "https://github.com/redheadesign/music-island/releases/download/gigaam-2026-11/gigaam-multilingual-v2-rnnt-island-gigaam.json",
+        "size": 675,
+        "sha256": "cb574a79748bb9d7f5699dcd0c7cd31ac96a2774c003584d801260c0149e3753"
+      }
+    ]
+  }
+]

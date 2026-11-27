@@ -26,6 +26,21 @@ GPU is detected and can use a specific graphics card. A change takes effect on
 the next recording. If Vulkan cannot initialize the model, dictation retries on
 CPU and shows the backend that loaded. ONNX models use CPU.
 
+### GigaAM-v4 and GigaAM Multilingual-v2
+
+In **Dictation → Models**, download **GigaAM-v4** for Russian and English or
+**GigaAM Multilingual-v2** for its 21 supported languages. Multilingual accepts
+an explicit language hint or automatic recognition. Both use the formatted E2E
+transcript. Live recognition uses the model’s 320 ms future context. Full-context
+recognition handles a completed recording. Recognition runs locally on the CPU.
+
+The catalog shows the combined download size. Downloads verify each file by
+SHA-256. Resume checks previously completed files and continues the interrupted
+file. Model files are stored under the app's dictation models directory.
+Each pack includes its MIT license and the Apache notices for upstream encoder
+code. [GigaAM-v4 model card](https://huggingface.co/ai-sage/GigaAM-v4/tree/9fe3ebf50c9e0cce5eed60d546938632238b6a96)
+and [Multilingual-v2 model card](https://huggingface.co/ai-sage/GigaAM-Multilingual-v2/tree/c21483b5e185ff32f6fb2e2c801f92f4e7fbfee8).
+
 By default GigaAM GGUF models recognize the recording after you stop. To process
 completed phrases while recording, select a GigaAM GGUF model and enable **GigaAM
 background recognition** under **Dictation → Advanced → Compute**. This preference

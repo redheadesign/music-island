@@ -32,6 +32,7 @@ export function groupModels(models: ModelInfo[], selected: string | undefined, q
 }
 
 export function modelNotice(model: ModelInfo) {
+  if (model.source === 'GigaAMFiles') return dictationModelNotices[model.id] ?? null
   if (typeof model.source !== 'object' || !('HuggingFace' in model.source)) return null
   return dictationModelNotices[model.source.HuggingFace.repo_id] ?? null
 }

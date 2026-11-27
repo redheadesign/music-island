@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import type { ModelInfo } from '../../shared/lib/dictationTypes'
-import { catalogLanguages, groupModels } from './modelCatalog'
+import { catalogLanguages, groupModels, modelNotice } from './modelCatalog'
 const model = (id: string, installed: boolean, languages: string[] = []): ModelInfo => ({ id, name: id, description: '', is_downloaded: installed, supported_languages: languages } as ModelInfo)
 describe('model catalogue after Handy import', () => {
+  it('links packaged GigaAM downloads to their original licensed checkpoints', () => {
+    for (const [id, upstream, languages] of [
+      ['gigaam-v4-rnnt', 'GigaAM-v4', ['ru', 'en']],
+      ['gigaam-multilingual-v2-rnnt', 'GigaAM-Multilingual-v2', ['ru', 'kk', 'de']],
+    ] as const) {
+      const pack = { ...model(id, false, [...languages]), source: 'GigaAMFiles' as const }
+      expect(modelNotice(pack)).toEqual({ license: 'MIT', url: expect.stringMatching(
+        new RegExp(`^https://huggingface\\.co/ai-sage/${upstream}/tree/[a-f0-9]{40}$`),
+      ) })
+      expect(groupModels([pack], undefined, '', [languages[1]]).catalog).toEqual([pack])
+    }
+  })
   it('keeps imported and selected models visible without language metadata', () => {
     const current = model('gigaam-v3-e2e-rnnt-Q8_0.gguf', true)
     const imported = model('custom-en', true, ['en'])

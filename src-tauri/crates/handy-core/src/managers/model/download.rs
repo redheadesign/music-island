@@ -42,7 +42,7 @@ pub(super) enum HttpDownloadOutcome {
 /// Side-channel notifications from the resumable HTTP downloader, decoupled
 /// from Tauri (the production wrapper maps them onto app events) so the
 /// transport logic is testable without an `AppHandle`.
-enum HttpDownloadEvent<'a> {
+pub(super) enum HttpDownloadEvent<'a> {
     Progress(&'a DownloadProgress),
     VerificationStarted,
     VerificationCompleted,
@@ -181,7 +181,7 @@ impl ModelManager {
     ///   at the first excess byte, not trusted until it closes the stream
     /// - the final bytes are checked against `expected_size` (catalog, or
     ///   content-length when unknown) and `expected_sha256` before returning
-    async fn download_http_resumable_with_events(
+    pub(super) async fn download_http_resumable_with_events(
         model_id: &str,
         url: &str,
         partial_path: &Path,

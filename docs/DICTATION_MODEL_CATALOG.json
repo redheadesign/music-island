@@ -3,6 +3,20 @@
   "note": "Pinned upstream metadata; consult original model/base-model cards for complete terms. Not a grant to redistribute weights.",
   "models": [
     {
+      "id": "gigaam-v4-rnnt",
+      "revision": "9fe3ebf50c9e0cce5eed60d546938632238b6a96",
+      "name": "GigaAM-v4",
+      "base_model": "ai-sage/GigaAM-v4",
+      "license": "mit"
+    },
+    {
+      "id": "gigaam-multilingual-v2-rnnt",
+      "revision": "c21483b5e185ff32f6fb2e2c801f92f4e7fbfee8",
+      "name": "GigaAM Multilingual-v2",
+      "base_model": "ai-sage/GigaAM-Multilingual-v2",
+      "license": "mit"
+    },
+    {
       "id": "handy-computer/parakeet-unified-en-0.6b-gguf",
       "revision": "7e948f21b7bdbac698d3318db9d350f1096f3b6c",
       "name": "Parakeet Unified EN 0.6B",

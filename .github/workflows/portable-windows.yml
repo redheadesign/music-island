@@ -1,6 +1,17 @@
 name: Build Music Island for Windows
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      gigaam_models_run:
+        description: Model asset workflow run ID for CPU inference verification
+        required: false
+        type: string
+      hover_benchmark:
+        description: Compare 200 native hovers each, including model workloads, against 3.2.2
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -176,3 +187,152 @@ jobs:
         run: |
           $drive = Get-PSDrive -Name (Get-Location).Drive.Name
           'Free after build: {0:N2} GiB' -f ($drive.Free / 1GB)
+
+  gigaam-speech:
+    name: Prepare GigaAM language references
+    if: ${{ inputs.gigaam_models_run != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: gigaam-v4-rnnt
+            locales: ru_ru en_us
+          - id: gigaam-multilingual-v2-rnnt
+            locales: kk_kz de_de
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download the tested model and public FLEURS clips
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODELS_RUN: ${{ inputs.gigaam_models_run }}
+          MODEL_ID: ${{ matrix.id }}
+        run: |
+          [[ "$MODELS_RUN" =~ ^[0-9]+$ ]]
+          gh run download "$MODELS_RUN" --name "$MODEL_ID" --dir model
+          sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          python scripts/gigaam/speech_fixtures.py speech
+      - name: Compute independent formatted transcripts
+        env:
+          MODEL_ID: ${{ matrix.id }}
+          LOCALES: ${{ matrix.locales }}
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0 torchaudio==2.8.0
+          python -m pip install -r scripts/gigaam/requirements.txt
+          for locale in $LOCALES; do
+            language=${locale%_*}
+            if [[ "$MODEL_ID" == gigaam-v4-rnnt ]]; then language=auto; fi
+            python scripts/gigaam/reference.py --pack "model/$MODEL_ID" --wav "speech/$locale.wav" --cache checkpoints --language "$language" --output "speech/$locale.reference.json"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ${{ matrix.id }}-public-speech
+          path: speech/
+          if-no-files-found: error
+          retention-days: 7
+
+  gigaam:
+    name: Verify Windows GigaAM inference
+    if: ${{ inputs.gigaam_models_run != '' }}
+    needs: [portable, gigaam-speech]
+    runs-on: windows-2022
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        id: [gigaam-v4-rnnt, gigaam-multilingual-v2-rnnt]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Download the candidate and model pack
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODELS_RUN: ${{ inputs.gigaam_models_run }}
+          MODEL_ID: ${{ matrix.id }}
+        run: |
+          if ($env:MODELS_RUN -notmatch '^\d+$') { throw 'Invalid model workflow run ID' }
+          gh run download $env:GITHUB_RUN_ID --name "music-island-windows-x64-$env:GITHUB_RUN_NUMBER" --dir "$env:RUNNER_TEMP/exe"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          gh run download $env:MODELS_RUN --name $env:MODEL_ID --dir "$env:RUNNER_TEMP/model"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          gh run download $env:GITHUB_RUN_ID --name "$env:MODEL_ID-public-speech" --dir "$env:RUNNER_TEMP/speech"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          curl.exe -fsSL --retry 3 -o "$env:RUNNER_TEMP/example.wav" https://cdn.chatwm.opensmodel.sberdevices.ru/GigaAM/example.wav
+          exit $LASTEXITCODE
+      - name: Verify batch and streaming against golden transcripts
+        shell: pwsh
+        run: |
+          $exe = @(Get-ChildItem "$env:RUNNER_TEMP/exe" -Recurse -Filter music-island.exe -File)
+          if ($exe.Count -ne 1) { throw 'Expected one portable EXE' }
+          ./scripts/gigaam/verify-windows.ps1 -Exe $exe[0].FullName -PackageArtifact "$env:RUNNER_TEMP/model" -Wav "$env:RUNNER_TEMP/example.wav" -FixtureDirectory "$env:RUNNER_TEMP/speech" -WorkingDirectory "$env:RUNNER_TEMP/qa"
+      - name: Upload native inference evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ${{ matrix.id }}-windows-check
+          path: ${{ runner.temp }}/qa/*/Music Island/dictation/runtime-check.json
+          retention-days: 7
+          if-no-files-found: warn
+
+  hover:
+    name: Measure top-edge input on a disposable Windows runner
+    if: ${{ inputs.hover_benchmark }}
+    needs: portable
+    runs-on: windows-2022
+    timeout-minutes: 55
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.15.0'
+          package-manager-cache: false
+      - name: Download the exact portable artifact and approved 3.2.2 baseline
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download $env:GITHUB_RUN_ID --name "music-island-windows-x64-$env:GITHUB_RUN_NUMBER" --dir "$env:RUNNER_TEMP/hover-exe"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          gh release download v3.2.2 --pattern music-island.exe --pattern SHA256.txt --dir "$env:RUNNER_TEMP/hover-baseline"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $baselineHash = (Get-FileHash "$env:RUNNER_TEMP/hover-baseline/music-island.exe").Hash
+          if ($baselineHash -ne 'a8742a6c2ee3864e7833891d82f470879822c969a574eab16820ccd836ef41e3') { throw 'Approved 3.2.2 binary changed' }
+      - name: Measure native hover and first-click delivery
+        shell: pwsh
+        env:
+          MUSIC_ISLAND_DISPOSABLE_DESKTOP: '1'
+        run: |
+          npm ci
+          if ($LASTEXITCODE) { throw 'npm ci failed' }
+          $exe = Get-ChildItem -LiteralPath "$env:RUNNER_TEMP/hover-exe" -Recurse -Filter 'music-island.exe' -File -ErrorAction Stop
+          if (@($exe).Count -ne 1) { throw 'Expected one portable EXE' }
+          $env:MUSIC_ISLAND_HOVER_PYTHON = (Get-Command python.exe).Source
+          ./scripts/hover-bench/compare.ps1 -BaselineExe "$env:RUNNER_TEMP/hover-baseline/music-island.exe" -CandidateExe $exe.FullName -Output "$env:RUNNER_TEMP/hover-result"
+          exit $LASTEXITCODE
+      - name: Upload measured hover trials
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: hover-results-${{ github.run_number }}
+          path: ${{ runner.temp }}/hover-result/*/report.json
+          if-no-files-found: warn
+          retention-days: 7

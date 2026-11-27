@@ -1,5 +1,13 @@
-// Pinned Handy 0.9.7 catalog declarations; licenses apply to models separately.
+// Pinned upstream model declarations. Each model retains its own license.
 export const dictationModelNotices: Record<string, { license: string; url: string }> = {
+  "gigaam-v4-rnnt": {
+    "license": "MIT",
+    "url": "https://huggingface.co/ai-sage/GigaAM-v4/tree/9fe3ebf50c9e0cce5eed60d546938632238b6a96"
+  },
+  "gigaam-multilingual-v2-rnnt": {
+    "license": "MIT",
+    "url": "https://huggingface.co/ai-sage/GigaAM-Multilingual-v2/tree/c21483b5e185ff32f6fb2e2c801f92f4e7fbfee8"
+  },
   "handy-computer/parakeet-unified-en-0.6b-gguf": {
     "license": "cc-by-4.0",
     "url": "https://huggingface.co/handy-computer/parakeet-unified-en-0.6b-gguf/tree/7e948f21b7bdbac698d3318db9d350f1096f3b6c"
