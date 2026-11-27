@@ -1163,7 +1163,7 @@ function isTauriRuntime(): boolean {
 }
 
 /** Installed for a local measurement run, absent during ordinary use. */
-function traceHover(phase: 'contact' | 'accepted') {
+function traceHover(phase: 'contact' | 'accepted' | 'inputReady') {
   const target = window as Window & { __musicIslandHoverTrace?: (phase: string, timeMs: number) => void }
   target.__musicIslandHoverTrace?.(phase, performance.now())
 }
